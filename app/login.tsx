@@ -1,14 +1,54 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import * as Updates from 'expo-updates';
 import { login } from '@/src/api/auth';
+import { setLanguage, getCurrentLanguage } from '@/src/i18n';
 
 const LoginScreen = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+
+  const handleLanguageChange = async (langCode: string) => {
+    if (langCode === currentLang) return;
+
+    try {
+      await setLanguage(langCode);
+      setCurrentLang(langCode);
+
+      Alert.alert(
+        langCode === 'ar' ? 'نجاح' : 'Success',
+        langCode === 'ar'
+          ? 'تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات.'
+          : 'Language changed. The app will restart to apply changes.',
+        [
+          {
+            text: langCode === 'ar' ? 'موافق' : 'OK',
+            onPress: async () => {
+              try {
+                await Updates.reloadAsync();
+              } catch {
+                Alert.alert(
+                  langCode === 'ar' ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
+                  langCode === 'ar'
+                    ? 'يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة.'
+                    : 'Please close and reopen the app to apply language changes.'
+                );
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert(t('common.error'), t('errors.unknownError'));
+    }
+  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -17,10 +57,10 @@ const LoginScreen = () => {
     setLoading(false);
 
     if (response.success) {
-      router.push('/otp'); // Or router.replace('/explore') if OTP is not needed after login
+      router.push('/otp');
     } else {
       setError(response.error);
-      Alert.alert('Login Failed', response.error);
+      Alert.alert(t('auth.loginError'), response.error);
     }
   };
 
@@ -30,12 +70,12 @@ const LoginScreen = () => {
       <Image source={require('@/assets/images/start-logo.png')} style={styles.headerLogo} />
 
       {/* Welcome Text */}
-      <Text style={styles.welcomeText}>Welcome Back!</Text>
-      <Text style={styles.subtitleText}>Continue to Employee Log in</Text>
+      <Text style={styles.welcomeText}>{t('auth.welcomeBack', 'Welcome Back!')}</Text>
+      <Text style={styles.subtitleText}>{t('auth.loginSubtitle', 'Continue to Employee Log in')}</Text>
 
       {/* Input Fields */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Email</Text>
+        <Text style={styles.inputLabel}>{t('auth.email')}</Text>
         <TextInput
           style={styles.textInput}
           placeholder="user@example.com"
@@ -48,7 +88,7 @@ const LoginScreen = () => {
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Password</Text>
+        <Text style={styles.inputLabel}>{t('auth.password')}</Text>
         <TextInput
           style={styles.textInput}
           placeholder="*******"
@@ -63,12 +103,12 @@ const LoginScreen = () => {
 
       {/* Login Button */}
       <TouchableOpacity style={[styles.loginButton, loading && styles.disabledButton]} onPress={handleLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>LOGIN</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>{t('auth.loginButton')}</Text>}
       </TouchableOpacity>
 
       {/* Forgot Password */}
       <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
       </TouchableOpacity>
 
       {/* Footer */}
@@ -79,11 +119,17 @@ const LoginScreen = () => {
           resizeMode="contain"
         />
         <View style={styles.languageContainer}>
-          <TouchableOpacity style={[styles.languageButton, styles.activeLanguage]}>
-            <Text style={styles.activeLanguageText}>EN</Text>
+          <TouchableOpacity
+            style={[styles.languageButton, currentLang === 'en' && styles.activeLanguage]}
+            onPress={() => handleLanguageChange('en')}
+          >
+            <Text style={currentLang === 'en' ? styles.activeLanguageText : styles.languageText}>EN</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.languageButton}>
-            <Text style={styles.languageText}>AR</Text>
+          <TouchableOpacity
+            style={[styles.languageButton, currentLang === 'ar' && styles.activeLanguage]}
+            onPress={() => handleLanguageChange('ar')}
+          >
+            <Text style={currentLang === 'ar' ? styles.activeLanguageText : styles.languageText}>AR</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.versionText}>V.3.0</Text>

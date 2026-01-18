@@ -142,9 +142,25 @@ const IncidentDetailsScreen = () => {
               <Text style={styles.detailValue}>{incident.department?.name || 'N/A'}</Text>
             </View>
             <DottedSeparator />
-             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Assignee Phone:</Text>
-              <Text style={styles.detailValue}>{incident.assignee?.phone || 'N/A'}</Text>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Assignee(s):</Text>
+              <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                {incident.assignees && incident.assignees.length > 0 ? (
+                  incident.assignees.map((assignee, index) => (
+                    <Text key={assignee.id} style={styles.detailValue}>
+                      {assignee.first_name} {assignee.last_name}
+                      {assignee.phone ? ` (${assignee.phone})` : ''}
+                    </Text>
+                  ))
+                ) : incident.assignee ? (
+                  <Text style={styles.detailValue}>
+                    {incident.assignee.first_name} {incident.assignee.last_name}
+                    {incident.assignee.phone ? ` (${incident.assignee.phone})` : ''}
+                  </Text>
+                ) : (
+                  <Text style={styles.detailValue}>N/A</Text>
+                )}
+              </View>
             </View>
             <DottedSeparator />
             <View style={styles.detailItem}>
@@ -244,13 +260,20 @@ const IncidentDetailsScreen = () => {
           </View>
         </ScrollView>
         {availableTransitions.length > 0 && (
-          <TouchableOpacity 
-            style={styles.updateButton} 
+          <TouchableOpacity
+            style={styles.updateButton}
             onPress={() => router.push({
               pathname: '/update-status',
-              params: { 
-                id: incident.id, 
-                transitions: JSON.stringify(availableTransitions) 
+              params: {
+                id: incident.id,
+                transitions: JSON.stringify(availableTransitions),
+                incident: JSON.stringify({
+                  id: incident.id,
+                  classification_id: incident.classification_id,
+                  location_id: incident.location_id,
+                  department_id: incident.department_id,
+                  assignee_id: incident.assignee_id,
+                }),
               },
             })}
           >

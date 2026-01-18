@@ -1,7 +1,7 @@
 import apiClient from './client';
 import * as SecureStore from 'expo-secure-store';
 
-export const login = async (email, password) => {
+export const login = async (email: string, password: string) => {
   try {
     const response = await apiClient.post('/auth/login', {
       email,
@@ -9,25 +9,28 @@ export const login = async (email, password) => {
     });
 
     if (response.data && response.data.success) {
-      const { token, user } = response.data.data;
+      const { token, refresh_token, user } = response.data.data;
       await SecureStore.setItemAsync('authToken', token);
-      // Optionally, you could store the user object in a state management library
+      if (refresh_token) {
+        await SecureStore.setItemAsync('refreshToken', refresh_token);
+      }
       return { success: true, user };
     }
     return { success: false, error: 'Invalid response from server' };
-  } catch (error) {
+  } catch (error: any) {
     return { success: false, error: error.response?.data?.message || error.message };
   }
 };
 
 export const logout = async () => {
   try {
-    // We can call the logout endpoint, but the main goal is to remove the token locally
-    await SecureStore.deleteItemAsync('authToken');
-    // We don't necessarily need to wait for the server response
-    apiClient.post('/auth/logout'); 
+    // Call logout endpoint first while we still have the token
+    await apiClient.post('/auth/logout');
   } catch (error) {
-    // Even if logout fails, the token is removed locally
-    console.error('Logout error:', error);
+    // Ignore server errors - we still want to clear local tokens
+  } finally {
+    // Always clear local tokens regardless of server response
+    await SecureStore.deleteItemAsync('authToken');
+    await SecureStore.deleteItemAsync('refreshToken');
   }
 };
