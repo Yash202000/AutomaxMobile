@@ -20,6 +20,7 @@ export const getIncidents = async (params: Record<string, any> = {}): Promise<In
     const queryParams = {
       page: params.page || 1,
       limit: params.limit || 20,
+      record_type: 'incident',
       ...params,
     };
 
@@ -128,7 +129,7 @@ export const addComment = async (incidentId: string, content: string, isInternal
 
 export const getIncidentStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params });
+    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'incident' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -239,5 +240,167 @@ export const getMyReportedIncidents = async (page = 1, limit = 20): Promise<Inci
     return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
   } catch (error: any) {
     return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+  }
+};
+
+// ==================== REQUESTS ====================
+
+export const getRequests = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+  try {
+    const queryParams = {
+      page: params.page || 1,
+      limit: params.limit || 20,
+      record_type: 'request',
+      ...params,
+    };
+
+    const response = await apiClient.get('/incidents', { params: queryParams });
+    if (response.data && response.data.success) {
+      return {
+        success: true,
+        data: response.data.data,
+        pagination: {
+          page: response.data.page,
+          limit: response.data.limit,
+          total_items: response.data.total_items,
+          total_pages: response.data.total_pages,
+        },
+      };
+    }
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const getRequestStats = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'request' } });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const createRequest = async (requestData: any) => {
+  try {
+    const response = await apiClient.post('/incidents', { ...requestData, record_type: 'request' });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+// ==================== COMPLAINTS ====================
+
+export const getComplaints = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+  try {
+    const queryParams = {
+      page: params.page || 1,
+      limit: params.limit || 20,
+      record_type: 'complaint',
+      ...params,
+    };
+
+    const response = await apiClient.get('/incidents', { params: queryParams });
+    if (response.data && response.data.success) {
+      return {
+        success: true,
+        data: response.data.data,
+        pagination: {
+          page: response.data.page,
+          limit: response.data.limit,
+          total_items: response.data.total_items,
+          total_pages: response.data.total_pages,
+        },
+      };
+    }
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const getComplaintStats = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'complaint' } });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const createComplaint = async (complaintData: any) => {
+  try {
+    const response = await apiClient.post('/incidents', { ...complaintData, record_type: 'complaint' });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+// ==================== QUERIES ====================
+
+export const getQueries = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+  try {
+    const queryParams = {
+      page: params.page || 1,
+      limit: params.limit || 20,
+      record_type: 'query',
+      ...params,
+    };
+
+    const response = await apiClient.get('/incidents', { params: queryParams });
+    if (response.data && response.data.success) {
+      return {
+        success: true,
+        data: response.data.data,
+        pagination: {
+          page: response.data.page,
+          limit: response.data.limit,
+          total_items: response.data.total_items,
+          total_pages: response.data.total_pages,
+        },
+      };
+    }
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const getQueryStats = async (params = {}) => {
+  try {
+    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'query' } });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const createQuery = async (queryData: any) => {
+  try {
+    const response = await apiClient.post('/incidents', { ...queryData, record_type: 'query' });
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
   }
 };

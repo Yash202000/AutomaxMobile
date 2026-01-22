@@ -4,24 +4,41 @@ import { FontAwesome } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { getIncidentStats } from '@/src/api/incidents';
+import { getIncidentStats, getRequestStats, getComplaintStats, getQueryStats } from '@/src/api/incidents';
 
 const DashboardScreen = () => {
     const { t } = useTranslation();
     const router = useRouter();
     const [incidentStats, setIncidentStats] = useState(null);
+    const [requestStats, setRequestStats] = useState(null);
+    const [complaintStats, setComplaintStats] = useState(null);
+    const [queryStats, setQueryStats] = useState(null);
     const [loadingStats, setLoadingStats] = useState(true);
     const [errorStats, setErrorStats] = useState('');
 
     useEffect(() => {
         const fetchStats = async () => {
             setLoadingStats(true);
-            const response = await getIncidentStats();
-            if (response.success) {
-                setIncidentStats(response.data);
-            } else {
-                setErrorStats(response.error);
-                Alert.alert('Error', 'Failed to fetch incident statistics.');
+            try {
+                const [incidentRes, requestRes, complaintRes, queryRes] = await Promise.all([
+                    getIncidentStats(),
+                    getRequestStats(),
+                    getComplaintStats(),
+                    getQueryStats(),
+                ]);
+
+                if (incidentRes.success) setIncidentStats(incidentRes.data);
+                if (requestRes.success) setRequestStats(requestRes.data);
+                if (complaintRes.success) setComplaintStats(complaintRes.data);
+                if (queryRes.success) setQueryStats(queryRes.data);
+
+                if (!incidentRes.success && !requestRes.success && !complaintRes.success && !queryRes.success) {
+                    setErrorStats('Failed to fetch statistics');
+                    Alert.alert('Error', 'Failed to fetch statistics.');
+                }
+            } catch (error) {
+                setErrorStats('Failed to fetch statistics');
+                Alert.alert('Error', 'Failed to fetch statistics.');
             }
             setLoadingStats(false);
         };
@@ -74,14 +91,27 @@ const DashboardScreen = () => {
 
         {/* Main Content */}
         <ScrollView style={styles.content}>
-          {/* Total Incidents Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('dashboard.totalIncidents')}</Text>
-            <View style={styles.cardBody}>
-              <View style={styles.totalIncidents}>
-                <Text style={styles.totalIncidentsNumber}>{incidentStats?.total || 0}</Text>
-              </View>
-              <Ionicons name="stats-chart" size={32} color="#1A237E" />
+          {/* Summary Cards */}
+          <View style={styles.summaryCardsContainer}>
+            <View style={[styles.summaryCard, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="alert-circle" size={24} color="#2E7D32" />
+              <Text style={styles.summaryCardNumber}>{incidentStats?.total || 0}</Text>
+              <Text style={styles.summaryCardLabel}>Incidents</Text>
+            </View>
+            <View style={[styles.summaryCard, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="document-text" size={24} color="#9B59B6" />
+              <Text style={styles.summaryCardNumber}>{requestStats?.total || 0}</Text>
+              <Text style={styles.summaryCardLabel}>Requests</Text>
+            </View>
+            <View style={[styles.summaryCard, { backgroundColor: '#FDEAEA' }]}>
+              <Ionicons name="chatbubble-ellipses" size={24} color="#E74C3C" />
+              <Text style={styles.summaryCardNumber}>{complaintStats?.total || 0}</Text>
+              <Text style={styles.summaryCardLabel}>Complaints</Text>
+            </View>
+            <View style={[styles.summaryCard, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="help-circle" size={24} color="#3498DB" />
+              <Text style={styles.summaryCardNumber}>{queryStats?.total || 0}</Text>
+              <Text style={styles.summaryCardLabel}>Queries</Text>
             </View>
           </View>
 
@@ -110,21 +140,19 @@ const DashboardScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Incidents Details Section */}
+          {/* Incidents by Status */}
           <Text style={styles.sectionTitle}>{t('dashboard.incidentsByStatus')}</Text>
-
-          {/* Use by_state_details if available, otherwise fallback to by_state */}
           {incidentStats?.by_state_details && incidentStats.by_state_details.length > 0 ? (
             incidentStats.by_state_details.map((stateDetail) => (
               <TouchableOpacity
                 style={styles.detailsCard}
-                key={stateDetail.id}
+                key={`incident-${stateDetail.id}`}
                 onPress={() => router.push({
                   pathname: '/(tabs)/incident',
                   params: { state_id: stateDetail.id, state_name: stateDetail.name }
                 })}
               >
-                <View style={[styles.detailsCardBar, { backgroundColor: '#FF6F00' }]} />
+                <View style={[styles.detailsCardBar, { backgroundColor: '#2E7D32' }]} />
                 <View style={styles.detailsCardContent}>
                   <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
                   <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
@@ -132,24 +160,100 @@ const DashboardScreen = () => {
                 <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
             ))
-          ) : incidentStats?.by_state && Object.keys(incidentStats.by_state).length > 0 ? (
-            // Fallback to by_state (non-clickable since we don't have IDs)
-            Object.entries(incidentStats.by_state).map(([status, count]) => (
-              <View style={styles.detailsCard} key={status}>
-                <View style={[styles.detailsCardBar, { backgroundColor: '#FF6F00' }]} />
-                <View style={styles.detailsCardContent}>
-                  <Text style={styles.detailsCardTitle}>{status}</Text>
-                  <Text style={styles.detailsCardNumber}>{String(count)}</Text>
-                </View>
+          ) : (
+            <View style={styles.detailsCard}>
+              <View style={styles.detailsCardContent}>
+                <Text style={styles.detailsCardTitle}>No incidents</Text>
               </View>
+            </View>
+          )}
+
+          {/* Requests by Status */}
+          <Text style={styles.sectionTitle}>Requests by Status</Text>
+          {requestStats?.by_state_details && requestStats.by_state_details.length > 0 ? (
+            requestStats.by_state_details.map((stateDetail) => (
+              <TouchableOpacity
+                style={styles.detailsCard}
+                key={`request-${stateDetail.id}`}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/request',
+                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                })}
+              >
+                <View style={[styles.detailsCardBar, { backgroundColor: '#9B59B6' }]} />
+                <View style={styles.detailsCardContent}>
+                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.detailsCard}>
               <View style={styles.detailsCardContent}>
-                <Text style={styles.detailsCardTitle}>No states available</Text>
+                <Text style={styles.detailsCardTitle}>No requests</Text>
               </View>
             </View>
           )}
+
+          {/* Complaints by Status */}
+          <Text style={styles.sectionTitle}>Complaints by Status</Text>
+          {complaintStats?.by_state_details && complaintStats.by_state_details.length > 0 ? (
+            complaintStats.by_state_details.map((stateDetail) => (
+              <TouchableOpacity
+                style={styles.detailsCard}
+                key={`complaint-${stateDetail.id}`}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/complaint',
+                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                })}
+              >
+                <View style={[styles.detailsCardBar, { backgroundColor: '#E74C3C' }]} />
+                <View style={styles.detailsCardContent}>
+                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.detailsCard}>
+              <View style={styles.detailsCardContent}>
+                <Text style={styles.detailsCardTitle}>No complaints</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Queries by Status */}
+          <Text style={styles.sectionTitle}>Queries by Status</Text>
+          {queryStats?.by_state_details && queryStats.by_state_details.length > 0 ? (
+            queryStats.by_state_details.map((stateDetail) => (
+              <TouchableOpacity
+                style={styles.detailsCard}
+                key={`query-${stateDetail.id}`}
+                onPress={() => router.push({
+                  pathname: '/(tabs)/query',
+                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                })}
+              >
+                <View style={[styles.detailsCardBar, { backgroundColor: '#3498DB' }]} />
+                <View style={styles.detailsCardContent}>
+                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.detailsCard}>
+              <View style={styles.detailsCardContent}>
+                <Text style={styles.detailsCardTitle}>No queries</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Bottom padding */}
+          <View style={{ height: 20 }} />
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -193,6 +297,35 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  summaryCardsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  summaryCard: {
+    width: '48%',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  summaryCardNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+  },
+  summaryCardLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   card: {
     backgroundColor: 'white',
