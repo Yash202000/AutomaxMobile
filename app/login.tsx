@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Updates from 'expo-updates';
-import { login } from '@/src/api/auth';
 import { setLanguage, getCurrentLanguage } from '@/src/i18n';
+import { useAuth } from '@/src/context/AuthContext';
+import apiClient from '@/src/api/client';
 
 const LoginScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -53,14 +55,25 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     setLoading(true);
     setError('');
-    const response = await login(email, password);
-    setLoading(false);
 
-    if (response.success) {
-      router.push('/otp');
-    } else {
-      setError(response.error);
-      Alert.alert(t('auth.loginError'), response.error);
+    try {
+      const response = await apiClient.post('/auth/login', { email, password });
+
+      if (response.data && response.data.success) {
+        const { token, refresh_token } = response.data.data;
+        await login(token, refresh_token);
+        router.push('/otp');
+      } else {
+        const errorMsg = 'Invalid response from server';
+        setError(errorMsg);
+        Alert.alert(t('auth.loginError'), errorMsg);
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message;
+      setError(errorMsg);
+      Alert.alert(t('auth.loginError'), errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 

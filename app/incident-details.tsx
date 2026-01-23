@@ -1,9 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ImageView from 'react-native-image-viewing';
+import MapView, { Marker } from 'react-native-maps';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
@@ -18,7 +20,7 @@ const priorityMap = {
     5: { text: 'Very Low', color: '#2ECC71' },
 };
 
-const TransitionHistoryCard = ({ item }) => (
+const TransitionHistoryCard = ({ item }: { item: { from_state: { name: string }; to_state: { name: string }; performed_by: { username: string }; transitioned_at: string; comment?: string } }) => (
     <View style={styles.historyCard}>
         <View style={styles.historyIcon}>
             <Ionicons name="git-compare-outline" size={24} color="#fff" />
@@ -36,15 +38,62 @@ const TransitionHistoryCard = ({ item }) => (
 );
 
 
+interface IncidentData {
+  id: string;
+  incident_number: string;
+  title: string;
+  description?: string;
+  classification?: { id: string; name: string };
+  classification_id?: string;
+  current_state?: { name: string };
+  department?: { name: string };
+  department_id?: string;
+  location?: { id: string; name: string; address?: string };
+  location_id?: string;
+  assignee?: { id: string; first_name?: string; last_name?: string; phone?: string };
+  assignee_id?: string;
+  assignees?: Array<{ id: string; first_name?: string; last_name?: string; phone?: string }>;
+  reporter?: { username: string; first_name?: string; last_name?: string; email?: string; phone?: string };
+  reporter_email?: string;
+  reporter_name?: string;
+  priority?: number;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  created_at: string;
+  attachments?: Array<{ id: string; file_name: string; mime_type: string }>;
+  comments?: Array<{ id: string; content: string; author: { username: string }; created_at: string }>;
+  transition_history?: Array<{
+    id: string;
+    from_state: { name: string };
+    to_state: { name: string };
+    performed_by: { username: string };
+    transitioned_at: string;
+    comment?: string;
+  }>;
+}
+
+interface TransitionData {
+  can_execute: boolean;
+  transition: {
+    id: string;
+    name: string;
+  };
+}
+
 const IncidentDetailsScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [incident, setIncident] = useState(null);
-  const [availableTransitions, setAvailableTransitions] = useState([]);
-  const [attachments, setAttachments] = useState([]);
+  const [incident, setIncident] = useState<IncidentData | null>(null);
+  const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
+  const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; mime_type: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -80,7 +129,7 @@ const IncidentDetailsScreen = () => {
     }
 
     if (transitionsResponse.success) {
-      const executableTransitions = transitionsResponse.data.filter(t => t.can_execute);
+      const executableTransitions = transitionsResponse.data.filter((t: TransitionData) => t.can_execute);
       setAvailableTransitions(executableTransitions);
     } else {
       console.log('Could not fetch transitions:', transitionsResponse.error);
@@ -104,7 +153,7 @@ const IncidentDetailsScreen = () => {
     return <View style={styles.centered}><Text style={styles.errorText}>{error || 'Incident not found.'}</Text></View>;
   }
   
-  const priority = priorityMap[incident.priority] || { text: 'Unknown', color: '#95A5A6' };
+  const priority = (incident.priority && priorityMap[incident.priority as keyof typeof priorityMap]) || { text: 'Unknown', color: '#95A5A6' };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -127,47 +176,74 @@ const IncidentDetailsScreen = () => {
 
             <DottedSeparator />
 
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Classification:</Text>
-              <Text style={styles.detailValue}>{incident.classification?.name || 'N/A'}</Text>
-            </View>
-            <DottedSeparator />
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Status:</Text>
-              <Text style={styles.detailValue}>{incident.current_state?.name || 'N/A'}</Text>
-            </View>
-            <DottedSeparator />
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Department:</Text>
-              <Text style={styles.detailValue}>{incident.department?.name || 'N/A'}</Text>
-            </View>
-            <DottedSeparator />
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Assignee(s):</Text>
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                {incident.assignees && incident.assignees.length > 0 ? (
-                  incident.assignees.map((assignee, index) => (
-                    <Text key={assignee.id} style={styles.detailValue}>
-                      {assignee.first_name} {assignee.last_name}
-                      {assignee.phone ? ` (${assignee.phone})` : ''}
+            {/* Compact detail grid - only show items with values */}
+            <View style={styles.detailsGrid}>
+              {incident.current_state && (
+                <View style={styles.detailGridItem}>
+                  <Text style={styles.detailLabel}>Status</Text>
+                  <Text style={styles.detailValue}>{incident.current_state.name}</Text>
+                </View>
+              )}
+              {incident.classification && (
+                <View style={styles.detailGridItem}>
+                  <Text style={styles.detailLabel}>Classification</Text>
+                  <Text style={styles.detailValue}>{incident.classification.name}</Text>
+                </View>
+              )}
+              {incident.department && (
+                <View style={styles.detailGridItem}>
+                  <Text style={styles.detailLabel}>Department</Text>
+                  <Text style={styles.detailValue}>{incident.department.name}</Text>
+                </View>
+              )}
+              {(incident.assignees?.length || incident.assignee) && (
+                <View style={styles.detailGridItem}>
+                  <Text style={styles.detailLabel}>Assignee(s)</Text>
+                  {incident.assignees && incident.assignees.length > 0 ? (
+                    <Text style={styles.detailValue}>
+                      {incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')}
                     </Text>
-                  ))
-                ) : incident.assignee ? (
-                  <Text style={styles.detailValue}>
-                    {incident.assignee.first_name} {incident.assignee.last_name}
-                    {incident.assignee.phone ? ` (${incident.assignee.phone})` : ''}
-                  </Text>
-                ) : (
-                  <Text style={styles.detailValue}>N/A</Text>
-                )}
+                  ) : incident.assignee ? (
+                    <Text style={styles.detailValue}>
+                      {incident.assignee.first_name} {incident.assignee.last_name}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </View>
+
+            {incident.description && (
+              <>
+                <DottedSeparator />
+                <Text style={styles.sectionTitleSmall}>Description</Text>
+                <Text style={styles.descriptionText}>{incident.description}</Text>
+              </>
+            )}
+
+            {/* Reporter Section - compact inline */}
+            <DottedSeparator />
+            <View style={styles.reporterCompact}>
+              <Text style={styles.reporterLabel}>Reporter:</Text>
+              <View style={styles.reporterInfo}>
+                <Text style={styles.reporterName}>
+                  {incident.reporter?.first_name
+                    ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
+                    : incident.reporter?.username || incident.reporter_name || 'Unknown'}
+                </Text>
+                <View style={styles.reporterContacts}>
+                  {(incident.reporter_email || incident.reporter?.email) && (
+                    <TouchableOpacity onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}>
+                      <Ionicons name="mail-outline" size={16} color="#2EC4B6" style={{ marginRight: 12 }} />
+                    </TouchableOpacity>
+                  )}
+                  {incident.reporter?.phone && (
+                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}>
+                      <Ionicons name="call-outline" size={16} color="#2EC4B6" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
-            <DottedSeparator />
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Description:</Text>
-              <Text style={[styles.detailValue, { flex: 1, textAlign: 'left' }]}>{incident.description}</Text>
-            </View>
-            <DottedSeparator />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Comments:</Text>
@@ -237,17 +313,64 @@ const IncidentDetailsScreen = () => {
             />
 
 
-            <Text style={styles.sectionTitle}>Location:</Text>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-sharp" size={20} color="#E74C3C" />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={styles.locationText}>{incident.location?.name || 'No Location'}</Text>
-                <Text style={styles.locationText}>{incident.location?.address || ''}</Text>
-              </View>
-            </View>
-            <View style={styles.mapPlaceholder}>
-              <Text>Map Placeholder</Text>
-            </View>
+            {/* Location - only show if available */}
+            {incident.location && (
+              <>
+                <Text style={styles.sectionTitleSmall}>Location</Text>
+                <View style={styles.locationContainerCompact}>
+                  <Ionicons name="location-sharp" size={16} color="#E74C3C" />
+                  <Text style={styles.locationTextCompact}>
+                    {incident.location.name}{incident.location.address ? ` - ${incident.location.address}` : ''}
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* Geolocation Section - compact with map */}
+            {(incident.latitude !== undefined && incident.longitude !== undefined) && (
+              <>
+                <Text style={styles.sectionTitleSmall}>Geolocation</Text>
+                {/* Map first - smaller height */}
+                <View style={styles.mapContainerCompact}>
+                  <MapView
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: incident.latitude,
+                      longitude: incident.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: incident.latitude,
+                        longitude: incident.longitude,
+                      }}
+                      title={incident.title}
+                      description={incident.address || 'Incident Location'}
+                      pinColor="#2EC4B6"
+                    />
+                  </MapView>
+                </View>
+                {/* Compact coordinates and address */}
+                <View style={styles.geoInfoCompact}>
+                  <View style={styles.coordRow}>
+                    <Ionicons name="navigate" size={14} color="#2EC4B6" />
+                    <Text style={styles.coordText}>
+                      {incident.latitude?.toFixed(6)}, {incident.longitude?.toFixed(6)}
+                    </Text>
+                  </View>
+                  {incident.address && (
+                    <Text style={styles.geoAddressText} numberOfLines={2}>{incident.address}</Text>
+                  )}
+                  {(incident.city || incident.state || incident.country) && (
+                    <Text style={styles.geoLocationLine}>
+                      {[incident.city, incident.state, incident.country, incident.postal_code].filter(Boolean).join(', ')}
+                    </Text>
+                  )}
+                </View>
+              </>
+            )}
 
             <Text style={styles.sectionTitle}>Transition History</Text>
             {incident.transition_history && incident.transition_history.length > 0 ? (
@@ -349,7 +472,16 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#EEE',
         borderStyle: 'dashed',
-        marginVertical: 15,
+        marginVertical: 10,
+    },
+    detailsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 5,
+    },
+    detailGridItem: {
+        width: '50%',
+        marginBottom: 10,
     },
     detailItem: {
         flexDirection: 'row',
@@ -357,14 +489,21 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     detailLabel: {
-        fontSize: 16,
-        color: '#666',
+        fontSize: 11,
+        color: '#999',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     detailValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        textAlign: 'right',
-        flexShrink: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginTop: 2,
+    },
+    descriptionText: {
+        fontSize: 14,
+        color: '#333',
+        lineHeight: 20,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -373,10 +512,17 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
-        marginTop: 20,
-        marginBottom: 10,
+        marginTop: 15,
+        marginBottom: 8,
+    },
+    sectionTitleSmall: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        marginTop: 12,
+        marginBottom: 6,
     },
     viewAllText: {
         color: '#2EC4B6',
@@ -450,13 +596,31 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#333',
     },
-    mapPlaceholder: {
-        height: 200,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 10,
-        justifyContent: 'center',
+    locationContainerCompact: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 80, // Space for the button
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+    },
+    locationTextCompact: {
+        fontSize: 13,
+        color: '#333',
+        marginLeft: 8,
+        flex: 1,
+    },
+    mapContainer: {
+        height: 150,
+        borderRadius: 10,
+        overflow: 'hidden',
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    map: {
+        width: '100%',
+        height: '100%',
     },
     updateButton: {
         position: 'absolute',
@@ -513,6 +677,90 @@ const styles = StyleSheet.create({
         backgroundColor: '#F0F0F0',
         padding: 5,
         borderRadius: 5,
+    },
+    reporterContainer: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 15,
+    },
+    reporterRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    reporterText: {
+        fontSize: 14,
+        color: '#333',
+        marginLeft: 10,
+    },
+    reporterLink: {
+        fontSize: 14,
+        color: '#2EC4B6',
+        marginLeft: 10,
+    },
+    // Compact reporter styles
+    reporterCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    reporterLabel: {
+        fontSize: 14,
+        color: '#666',
+    },
+    reporterInfo: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+    },
+    reporterName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginRight: 10,
+    },
+    reporterContacts: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    // Compact map and geo styles
+    mapContainerCompact: {
+        height: 140,
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    geoInfoCompact: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+    },
+    coordRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    coordText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#333',
+        marginLeft: 6,
+    },
+    geoAddressText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
+        marginLeft: 20,
+    },
+    geoLocationLine: {
+        fontSize: 11,
+        color: '#999',
+        marginTop: 2,
+        marginLeft: 20,
     },
 });
 

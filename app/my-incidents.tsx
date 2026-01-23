@@ -3,7 +3,8 @@ import { getProfile } from '@/src/api/user';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, SafeAreaView, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const priorityMap: Record<number, { text: string; color: string }> = {
   1: { text: 'Critical', color: '#E74C3C' },

@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient, { setLoggingOut } from './client';
 import * as SecureStore from 'expo-secure-store';
 
 export const login = async (email: string, password: string) => {
@@ -23,14 +23,19 @@ export const login = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
+  // Set flag to prevent 401 interceptor from running during logout
+  setLoggingOut(true);
+
   try {
-    // Call logout endpoint first while we still have the token
+    // Call logout endpoint FIRST while we still have the token
     await apiClient.post('/auth/logout');
   } catch (error) {
-    // Ignore server errors - we still want to clear local tokens
-  } finally {
-    // Always clear local tokens regardless of server response
-    await SecureStore.deleteItemAsync('authToken');
-    await SecureStore.deleteItemAsync('refreshToken');
+    // Ignore server errors - we'll clear tokens anyway
   }
+
+  // Clear local tokens AFTER the API call
+  await SecureStore.deleteItemAsync('authToken');
+  await SecureStore.deleteItemAsync('refreshToken');
+
+  setLoggingOut(false);
 };

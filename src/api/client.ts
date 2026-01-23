@@ -18,6 +18,13 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
+// Flag to prevent interceptor from running during logout
+let isLoggingOut = false;
+
+export const setLoggingOut = (value: boolean) => {
+  isLoggingOut = value;
+};
+
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -39,7 +46,25 @@ const redirectToLogin = async () => {
 // Interceptor to add the token to requests
 apiClient.interceptors.request.use(
   async (config) => {
+    // If logging out, reject all requests except the logout request itself
+    if (isLoggingOut && !config.url?.includes('/auth/logout')) {
+      const error = new Error('Request cancelled - logging out');
+      (error as any).isLogoutCancel = true;
+      return Promise.reject(error);
+    }
+
     const token = await SecureStore.getItemAsync('authToken');
+
+    // If no token and not a public endpoint, reject the request
+    const publicEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/logout'];
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
+
+    if (!token && !isPublicEndpoint) {
+      const error = new Error('No auth token available');
+      (error as any).isNoToken = true;
+      return Promise.reject(error);
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -58,6 +83,16 @@ apiClient.interceptors.response.use(
 
     // If no config or error is not 401 or request already retried, reject
     if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // If we're logging out, don't try to refresh - just reject
+    if (isLoggingOut) {
+      return Promise.reject(error);
+    }
+
+    // If this is the logout request failing, don't try to refresh
+    if (originalRequest.url?.includes('/auth/logout')) {
       return Promise.reject(error);
     }
 

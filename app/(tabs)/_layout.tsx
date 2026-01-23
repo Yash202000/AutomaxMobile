@@ -1,16 +1,17 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePermissions } from '@/src/hooks/usePermissions';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
 
   // Calculate tab bar height with safe area
   const tabBarHeight = 60 + insets.bottom;
@@ -41,6 +42,7 @@ export default function TabLayout() {
         options={{
           title: 'Incident',
           tabBarIcon: ({ color }) => <Ionicons size={22} name="alert-circle" color={color} />,
+          href: canViewAllIncidents() ? '/(tabs)/incident' : null,
         }}
       />
       <Tabs.Screen
@@ -48,6 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Request',
           tabBarIcon: ({ color }) => <Ionicons size={22} name="document-text" color={color} />,
+          href: canViewAllRequests() ? '/(tabs)/request' : null,
         }}
       />
       <Tabs.Screen
@@ -55,6 +58,7 @@ export default function TabLayout() {
         options={{
           title: 'Complaint',
           tabBarIcon: ({ color }) => <Ionicons size={22} name="chatbubble-ellipses" color={color} />,
+          href: canViewAllComplaints() ? '/(tabs)/complaint' : null,
         }}
       />
       <Tabs.Screen
@@ -62,6 +66,7 @@ export default function TabLayout() {
         options={{
           title: 'Query',
           tabBarIcon: ({ color }) => <Ionicons size={22} name="help-circle" color={color} />,
+          href: canViewAllQueries() ? '/(tabs)/query' : null,
         }}
       />
       <Tabs.Screen

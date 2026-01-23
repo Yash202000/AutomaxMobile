@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { getIncidentStats, getRequestStats, getComplaintStats, getQueryStats } from '@/src/api/incidents';
+import { usePermissions } from '@/src/hooks/usePermissions';
 
 const DashboardScreen = () => {
     const { t } = useTranslation();
     const router = useRouter();
+    const { canViewIncidents, canViewAllIncidents, canViewRequests, canViewAllRequests, canViewComplaints, canViewAllComplaints, canViewQueries, canViewAllQueries } = usePermissions();
     const [incidentStats, setIncidentStats] = useState(null);
     const [requestStats, setRequestStats] = useState(null);
     const [complaintStats, setComplaintStats] = useState(null);
@@ -93,163 +96,191 @@ const DashboardScreen = () => {
         <ScrollView style={styles.content}>
           {/* Summary Cards */}
           <View style={styles.summaryCardsContainer}>
-            <View style={[styles.summaryCard, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="alert-circle" size={24} color="#2E7D32" />
-              <Text style={styles.summaryCardNumber}>{incidentStats?.total || 0}</Text>
-              <Text style={styles.summaryCardLabel}>Incidents</Text>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="document-text" size={24} color="#9B59B6" />
-              <Text style={styles.summaryCardNumber}>{requestStats?.total || 0}</Text>
-              <Text style={styles.summaryCardLabel}>Requests</Text>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: '#FDEAEA' }]}>
-              <Ionicons name="chatbubble-ellipses" size={24} color="#E74C3C" />
-              <Text style={styles.summaryCardNumber}>{complaintStats?.total || 0}</Text>
-              <Text style={styles.summaryCardLabel}>Complaints</Text>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="help-circle" size={24} color="#3498DB" />
-              <Text style={styles.summaryCardNumber}>{queryStats?.total || 0}</Text>
-              <Text style={styles.summaryCardLabel}>Queries</Text>
-            </View>
+            {canViewIncidents() && (
+              <View style={[styles.summaryCard, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="alert-circle" size={24} color="#2E7D32" />
+                <Text style={styles.summaryCardNumber}>{incidentStats?.total || 0}</Text>
+                <Text style={styles.summaryCardLabel}>Incidents</Text>
+              </View>
+            )}
+            {canViewRequests() && (
+              <View style={[styles.summaryCard, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="document-text" size={24} color="#9B59B6" />
+                <Text style={styles.summaryCardNumber}>{requestStats?.total || 0}</Text>
+                <Text style={styles.summaryCardLabel}>Requests</Text>
+              </View>
+            )}
+            {canViewComplaints() && (
+              <View style={[styles.summaryCard, { backgroundColor: '#FDEAEA' }]}>
+                <Ionicons name="chatbubble-ellipses" size={24} color="#E74C3C" />
+                <Text style={styles.summaryCardNumber}>{complaintStats?.total || 0}</Text>
+                <Text style={styles.summaryCardLabel}>Complaints</Text>
+              </View>
+            )}
+            {canViewQueries() && (
+              <View style={[styles.summaryCard, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="help-circle" size={24} color="#3498DB" />
+                <Text style={styles.summaryCardNumber}>{queryStats?.total || 0}</Text>
+                <Text style={styles.summaryCardLabel}>Queries</Text>
+              </View>
+            )}
           </View>
 
           {/* My Incidents Section */}
-          <Text style={styles.sectionTitle}>{t('dashboard.myIncidents')}</Text>
-          <View style={styles.myIncidentsContainer}>
-            <TouchableOpacity
-              style={styles.myIncidentCard}
-              onPress={() => router.push({ pathname: '/my-incidents', params: { type: 'assigned' } })}
-            >
-              <View style={[styles.myIncidentIconContainer, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="checkbox-outline" size={24} color="#1976D2" />
+          {canViewIncidents() && (
+            <>
+              <Text style={styles.sectionTitle}>{t('dashboard.myIncidents')}</Text>
+              <View style={styles.myIncidentsContainer}>
+                <TouchableOpacity
+                  style={styles.myIncidentCard}
+                  onPress={() => router.push({ pathname: '/my-incidents', params: { type: 'assigned' } })}
+                >
+                  <View style={[styles.myIncidentIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="checkbox-outline" size={24} color="#1976D2" />
+                  </View>
+                  <Text style={styles.myIncidentText}>{t('dashboard.assignedToMe')}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.myIncidentCard}
+                  onPress={() => router.push({ pathname: '/my-incidents', params: { type: 'created' } })}
+                >
+                  <View style={[styles.myIncidentIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="create-outline" size={24} color="#F57C00" />
+                  </View>
+                  <Text style={styles.myIncidentText}>{t('dashboard.createdByMe')}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.myIncidentText}>{t('dashboard.assignedToMe')}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.myIncidentCard}
-              onPress={() => router.push({ pathname: '/my-incidents', params: { type: 'created' } })}
-            >
-              <View style={[styles.myIncidentIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="create-outline" size={24} color="#F57C00" />
-              </View>
-              <Text style={styles.myIncidentText}>{t('dashboard.createdByMe')}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
-            </TouchableOpacity>
-          </View>
+            </>
+          )}
 
           {/* Incidents by Status */}
-          <Text style={styles.sectionTitle}>{t('dashboard.incidentsByStatus')}</Text>
-          {incidentStats?.by_state_details && incidentStats.by_state_details.length > 0 ? (
-            incidentStats.by_state_details.map((stateDetail) => (
-              <TouchableOpacity
-                style={styles.detailsCard}
-                key={`incident-${stateDetail.id}`}
-                onPress={() => router.push({
-                  pathname: '/(tabs)/incident',
-                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
-                })}
-              >
-                <View style={[styles.detailsCardBar, { backgroundColor: '#2E7D32' }]} />
-                <View style={styles.detailsCardContent}>
-                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
-                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+          {canViewAllIncidents() && (
+            <>
+              <Text style={styles.sectionTitle}>{t('dashboard.incidentsByStatus')}</Text>
+              {incidentStats?.by_state_details && incidentStats.by_state_details.length > 0 ? (
+                incidentStats.by_state_details.map((stateDetail) => (
+                  <TouchableOpacity
+                    style={styles.detailsCard}
+                    key={`incident-${stateDetail.id}`}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/incident',
+                      params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                    })}
+                  >
+                    <View style={[styles.detailsCardBar, { backgroundColor: '#2E7D32' }]} />
+                    <View style={styles.detailsCardContent}>
+                      <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                      <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#999" />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailsCardContent}>
+                    <Text style={styles.detailsCardTitle}>No incidents</Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.detailsCard}>
-              <View style={styles.detailsCardContent}>
-                <Text style={styles.detailsCardTitle}>No incidents</Text>
-              </View>
-            </View>
+              )}
+            </>
           )}
 
           {/* Requests by Status */}
-          <Text style={styles.sectionTitle}>Requests by Status</Text>
-          {requestStats?.by_state_details && requestStats.by_state_details.length > 0 ? (
-            requestStats.by_state_details.map((stateDetail) => (
-              <TouchableOpacity
-                style={styles.detailsCard}
-                key={`request-${stateDetail.id}`}
-                onPress={() => router.push({
-                  pathname: '/(tabs)/request',
-                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
-                })}
-              >
-                <View style={[styles.detailsCardBar, { backgroundColor: '#9B59B6' }]} />
-                <View style={styles.detailsCardContent}>
-                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
-                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+          {canViewAllRequests() && (
+            <>
+              <Text style={styles.sectionTitle}>Requests by Status</Text>
+              {requestStats?.by_state_details && requestStats.by_state_details.length > 0 ? (
+                requestStats.by_state_details.map((stateDetail) => (
+                  <TouchableOpacity
+                    style={styles.detailsCard}
+                    key={`request-${stateDetail.id}`}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/request',
+                      params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                    })}
+                  >
+                    <View style={[styles.detailsCardBar, { backgroundColor: '#9B59B6' }]} />
+                    <View style={styles.detailsCardContent}>
+                      <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                      <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#999" />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailsCardContent}>
+                    <Text style={styles.detailsCardTitle}>No requests</Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.detailsCard}>
-              <View style={styles.detailsCardContent}>
-                <Text style={styles.detailsCardTitle}>No requests</Text>
-              </View>
-            </View>
+              )}
+            </>
           )}
 
           {/* Complaints by Status */}
-          <Text style={styles.sectionTitle}>Complaints by Status</Text>
-          {complaintStats?.by_state_details && complaintStats.by_state_details.length > 0 ? (
-            complaintStats.by_state_details.map((stateDetail) => (
-              <TouchableOpacity
-                style={styles.detailsCard}
-                key={`complaint-${stateDetail.id}`}
-                onPress={() => router.push({
-                  pathname: '/(tabs)/complaint',
-                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
-                })}
-              >
-                <View style={[styles.detailsCardBar, { backgroundColor: '#E74C3C' }]} />
-                <View style={styles.detailsCardContent}>
-                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
-                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+          {canViewAllComplaints() && (
+            <>
+              <Text style={styles.sectionTitle}>Complaints by Status</Text>
+              {complaintStats?.by_state_details && complaintStats.by_state_details.length > 0 ? (
+                complaintStats.by_state_details.map((stateDetail) => (
+                  <TouchableOpacity
+                    style={styles.detailsCard}
+                    key={`complaint-${stateDetail.id}`}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/complaint',
+                      params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                    })}
+                  >
+                    <View style={[styles.detailsCardBar, { backgroundColor: '#E74C3C' }]} />
+                    <View style={styles.detailsCardContent}>
+                      <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                      <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#999" />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailsCardContent}>
+                    <Text style={styles.detailsCardTitle}>No complaints</Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.detailsCard}>
-              <View style={styles.detailsCardContent}>
-                <Text style={styles.detailsCardTitle}>No complaints</Text>
-              </View>
-            </View>
+              )}
+            </>
           )}
 
           {/* Queries by Status */}
-          <Text style={styles.sectionTitle}>Queries by Status</Text>
-          {queryStats?.by_state_details && queryStats.by_state_details.length > 0 ? (
-            queryStats.by_state_details.map((stateDetail) => (
-              <TouchableOpacity
-                style={styles.detailsCard}
-                key={`query-${stateDetail.id}`}
-                onPress={() => router.push({
-                  pathname: '/(tabs)/query',
-                  params: { state_id: stateDetail.id, state_name: stateDetail.name }
-                })}
-              >
-                <View style={[styles.detailsCardBar, { backgroundColor: '#3498DB' }]} />
-                <View style={styles.detailsCardContent}>
-                  <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
-                  <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+          {canViewAllQueries() && (
+            <>
+              <Text style={styles.sectionTitle}>Queries by Status</Text>
+              {queryStats?.by_state_details && queryStats.by_state_details.length > 0 ? (
+                queryStats.by_state_details.map((stateDetail) => (
+                  <TouchableOpacity
+                    style={styles.detailsCard}
+                    key={`query-${stateDetail.id}`}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/query',
+                      params: { state_id: stateDetail.id, state_name: stateDetail.name }
+                    })}
+                  >
+                    <View style={[styles.detailsCardBar, { backgroundColor: '#3498DB' }]} />
+                    <View style={styles.detailsCardContent}>
+                      <Text style={styles.detailsCardTitle}>{stateDetail.name}</Text>
+                      <Text style={styles.detailsCardNumber}>{stateDetail.count}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#999" />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailsCardContent}>
+                    <Text style={styles.detailsCardTitle}>No queries</Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.detailsCard}>
-              <View style={styles.detailsCardContent}>
-                <Text style={styles.detailsCardTitle}>No queries</Text>
-              </View>
-            </View>
+              )}
+            </>
           )}
 
           {/* Bottom padding */}

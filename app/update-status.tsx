@@ -30,8 +30,16 @@ const UpdateStatusModal = () => {
   const [uploadProgress, setUploadProgress] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
+  // Feedback rating state
+  const [feedbackRating, setFeedbackRating] = useState(0);
+
   const transitionRequiresComment = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment' && req.is_mandatory);
+  const transitionRequiresFeedback = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback' && req.is_mandatory);
   const transitionRequiresAttachment = selectedTransition?.requirements?.some(req => req.requirement_type === 'attachment' && req.is_mandatory);
+
+  // Check if comment or feedback field should be shown (even if optional)
+  const showCommentField = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment');
+  const showFeedbackField = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback');
 
   // Check if manual user selection is needed
   const needsManualUserSelection = selectedTransition?.transition?.manual_select_user && selectedTransition?.transition?.assignment_role_id;
@@ -148,6 +156,10 @@ const UpdateStatusModal = () => {
       Alert.alert('Error', 'A comment is required for this transition.');
       return;
     }
+    if (transitionRequiresFeedback && feedbackRating === 0) {
+      Alert.alert('Error', 'Please provide a feedback rating for this transition.');
+      return;
+    }
     if (needsManualUserSelection && !selectedUser) {
       Alert.alert('Error', 'Please select a user to assign this incident to.');
       return;
@@ -197,6 +209,7 @@ const UpdateStatusModal = () => {
       comment: comment.trim() || undefined,
       user_id: selectedUser?.id || undefined,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
+      feedback_rating: feedbackRating > 0 ? feedbackRating : undefined,
     };
     const response = await executeTransition(incidentId, transitionData);
     setLoading(false);
@@ -217,6 +230,8 @@ const UpdateStatusModal = () => {
     setSelectedTransition(trans);
     setSelectedUser(null);
     setMatchingUsers([]);
+    setFeedbackRating(0);
+    setComment('');
     setShowPicker(false);
   };
 
@@ -343,19 +358,52 @@ const UpdateStatusModal = () => {
           )}
 
           {/* Comment Field */}
-          {(transitionRequiresComment || selectedTransition) && (
+          {(showCommentField || selectedTransition) && (
             <>
               <Text style={styles.label}>
-                {transitionRequiresComment ? 'Feedback (Required)' : 'Feedback (Optional)'}
+                {transitionRequiresComment ? 'Comment (Required)' : 'Comment (Optional)'}
               </Text>
               <TextInput
-                style={styles.feedbackInput}
+                style={styles.commentInput}
                 placeholder="Add a comment..."
                 placeholderTextColor="#999"
                 multiline
                 value={comment}
                 onChangeText={setComment}
               />
+            </>
+          )}
+
+          {/* Feedback Rating Field */}
+          {showFeedbackField && (
+            <>
+              <Text style={styles.label}>
+                {transitionRequiresFeedback ? 'Feedback Rating (Required)' : 'Feedback Rating (Optional)'}
+              </Text>
+              <View style={styles.starRatingContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setFeedbackRating(star)}
+                    style={styles.starButton}
+                  >
+                    <Ionicons
+                      name={star <= feedbackRating ? 'star' : 'star-outline'}
+                      size={36}
+                      color={star <= feedbackRating ? '#FFD700' : '#CCC'}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {feedbackRating > 0 && (
+                <Text style={styles.ratingText}>
+                  {feedbackRating === 1 && 'Poor'}
+                  {feedbackRating === 2 && 'Fair'}
+                  {feedbackRating === 3 && 'Good'}
+                  {feedbackRating === 4 && 'Very Good'}
+                  {feedbackRating === 5 && 'Excellent'}
+                </Text>
+              )}
             </>
           )}
 
@@ -608,7 +656,7 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
   },
-  feedbackInput: {
+  commentInput: {
     backgroundColor: '#F8F9FA',
     borderRadius: 10,
     padding: 15,
@@ -617,6 +665,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     fontSize: 16,
+  },
+  starRatingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  starButton: {
+    padding: 5,
+    marginHorizontal: 5,
+  },
+  ratingText: {
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   attachmentPreviewContainer: {
     flexDirection: 'row',

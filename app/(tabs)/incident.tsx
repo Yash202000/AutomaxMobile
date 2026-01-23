@@ -2,7 +2,9 @@ import { getIncidents, getIncidentStats } from '@/src/api/incidents';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, SafeAreaView, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePermissions } from '@/src/hooks/usePermissions';
 
 const priorityMap: Record<number, { text: string; color: string }> = {
     1: { text: 'Critical', color: '#E74C3C' },
@@ -80,6 +82,7 @@ const IncidentCard = ({ incident }: { incident: Incident }) => {
 
 const IncidentsScreen = () => {
   const router = useRouter();
+  const { canCreateIncidents } = usePermissions();
   const {
     state_id,
     state_name,
@@ -348,10 +351,12 @@ const IncidentsScreen = () => {
         />
       )}
 
-      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-incident')}>
-        <FontAwesome name="plus" size={24} color="white" />
-      </TouchableOpacity>
+      {/* Floating Action Button - only show if user has create permission */}
+      {canCreateIncidents() && (
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-incident')}>
+          <FontAwesome name="plus" size={24} color="white" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };

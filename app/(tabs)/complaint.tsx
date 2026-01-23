@@ -2,7 +2,9 @@ import { getComplaints, getComplaintStats } from '@/src/api/incidents';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, SafeAreaView, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePermissions } from '@/src/hooks/usePermissions';
 
 const priorityMap: Record<number, { text: string; color: string }> = {
     1: { text: 'Critical', color: '#E74C3C' },
@@ -87,6 +89,7 @@ const ComplaintCard = ({ complaint }: { complaint: Complaint }) => {
 
 const ComplaintsScreen = () => {
   const router = useRouter();
+  const { canCreateComplaints } = usePermissions();
   const {
     state_id,
     state_name,
@@ -354,9 +357,12 @@ const ComplaintsScreen = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-complaint')}>
-        <FontAwesome name="plus" size={24} color="white" />
-      </TouchableOpacity>
+      {/* Floating Action Button - only show if user has create permission */}
+      {canCreateComplaints() && (
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-complaint')}>
+          <FontAwesome name="plus" size={24} color="white" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
