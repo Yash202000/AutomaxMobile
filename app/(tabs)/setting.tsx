@@ -5,8 +5,8 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Updates from 'expo-updates';
-import { logout } from '@/src/api/auth';
 import { getProfile } from '@/src/api/user';
+import { useAuth } from '@/src/context/AuthContext';
 import { setLanguage, supportedLanguages, getCurrentLanguage } from '@/src/i18n';
 
 const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
@@ -31,6 +31,7 @@ const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
 const SettingsScreen = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { logout } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -55,7 +56,6 @@ const SettingsScreen = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
   };
 
   const handleLanguageChange = async (langCode: string) => {
