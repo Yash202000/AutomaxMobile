@@ -1,42 +1,45 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions, Platform, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ImageView from 'react-native-image-viewing';
 import MapView, { Marker } from 'react-native-maps';
+import { useTranslation } from 'react-i18next';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 
-const DottedSeparator = () => <View style={styles.separator} />;
-
-const priorityMap = {
-    1: { text: 'Critical', color: '#E74C3C' },
-    2: { text: 'High', color: '#E67E22' },
-    3: { text: 'Medium', color: '#F1C40F' },
-    4: { text: 'Low', color: '#3498DB' },
-    5: { text: 'Very Low', color: '#2ECC71' },
+const COLORS = {
+  primary: '#1A237E',
+  accent: '#2EC4B6',
+  background: '#F5F7FA',
+  white: '#FFFFFF',
+  text: {
+    primary: '#1A1A2E',
+    secondary: '#64748B',
+    muted: '#94A3B8',
+  },
+  card: '#FFFFFF',
+  border: '#E2E8F0',
+  error: '#DC2626',
+  priority: {
+    critical: '#DC2626',
+    high: '#EA580C',
+    medium: '#F59E0B',
+    low: '#3B82F6',
+    veryLow: '#22C55E',
+  },
 };
 
-const TransitionHistoryCard = ({ item }: { item: { from_state: { name: string }; to_state: { name: string }; performed_by: { username: string }; transitioned_at: string; comment?: string } }) => (
-    <View style={styles.historyCard}>
-        <View style={styles.historyIcon}>
-            <Ionicons name="git-compare-outline" size={24} color="#fff" />
-        </View>
-        <View style={styles.historyDetails}>
-            <Text style={styles.historyText}>
-                Status changed from <Text style={styles.historyState}>{item.from_state.name}</Text> to <Text style={styles.historyState}>{item.to_state.name}</Text>
-            </Text>
-            <Text style={styles.historyMeta}>
-                by {item.performed_by.username} on {new Date(item.transitioned_at).toLocaleDateString()}
-            </Text>
-            {item.comment && <Text style={styles.historyComment}>{`"${item.comment}"`}</Text>}
-        </View>
-    </View>
-);
-
+const priorityConfig: Record<number, { key: string; color: string }> = {
+  1: { key: 'critical', color: COLORS.priority.critical },
+  2: { key: 'high', color: COLORS.priority.high },
+  3: { key: 'medium', color: COLORS.priority.medium },
+  4: { key: 'low', color: COLORS.priority.low },
+  5: { key: 'veryLow', color: COLORS.priority.veryLow },
+};
 
 interface IncidentData {
   id: string;
@@ -79,13 +82,28 @@ interface IncidentData {
 
 interface TransitionData {
   can_execute: boolean;
-  transition: {
-    id: string;
-    name: string;
-  };
+  transition: { id: string; name: string };
 }
 
+const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { icon: string; label: string; value: string; iconColor?: string }) => (
+  <View style={styles.infoRow}>
+    <View style={styles.infoRowLeft}>
+      <Ionicons name={icon as any} size={18} color={iconColor} />
+      <Text style={styles.infoLabel}>{label}</Text>
+    </View>
+    <Text style={styles.infoValue}>{value || 'N/A'}</Text>
+  </View>
+);
+
+const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
+  <View style={styles.sectionHeader}>
+    <Ionicons name={icon as any} size={20} color={COLORS.accent} />
+    <Text style={styles.sectionTitle}>{title}</Text>
+  </View>
+);
+
 const IncidentDetailsScreen = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [incident, setIncident] = useState<IncidentData | null>(null);
@@ -100,7 +118,6 @@ const IncidentDetailsScreen = () => {
   const imageAttachments = attachments.filter(att => att.mime_type.startsWith('image/'));
   const otherAttachments = attachments.filter(att => !att.mime_type.startsWith('image/'));
 
-
   useEffect(() => {
     const fetchToken = async () => {
       const storedToken = await SecureStore.getItemAsync('authToken');
@@ -108,7 +125,6 @@ const IncidentDetailsScreen = () => {
     };
     fetchToken();
   }, []);
-
 
   const fetchDetails = useCallback(async () => {
     const incidentId = Array.isArray(id) ? id[0] : id;
@@ -125,285 +141,331 @@ const IncidentDetailsScreen = () => {
       setAttachments(detailsResponse.data.attachments || []);
     } else {
       setError(detailsResponse.error);
-      Alert.alert('Error', `Failed to fetch incident details: ${detailsResponse.error}`);
+      Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
     }
 
     if (transitionsResponse.success) {
       const executableTransitions = transitionsResponse.data.filter((t: TransitionData) => t.can_execute);
       setAvailableTransitions(executableTransitions);
     } else {
-      console.log('Could not fetch transitions:', transitionsResponse.error);
       setAvailableTransitions([]);
     }
 
     setLoading(false);
-  }, [id]);
+  }, [id, t]);
 
   useFocusEffect(
     useCallback(() => {
       fetchDetails();
     }, [fetchDetails])
   );
-  
+
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator size="large" /></View>;
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (error || !incident) {
-    return <View style={styles.centered}><Text style={styles.errorText}>{error || 'Incident not found.'}</Text></View>;
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={64} color={COLORS.text.muted} />
+          <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
+          <Text style={styles.errorText}>{error || t('details.notFound')}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchDetails}>
+            <Ionicons name="refresh" size={20} color={COLORS.white} />
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
-  
-  const priority = (incident.priority && priorityMap[incident.priority as keyof typeof priorityMap]) || { text: 'Unknown', color: '#95A5A6' };
+
+  const config = priorityConfig[incident.priority as number] || { key: 'unknown', color: COLORS.text.muted };
+  const priorityText = t(`priorities.${config.key}`, config.key);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      {/* Header */}
+      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#333" />
+          <Ionicons name="chevron-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{incident.incident_number}</Text>
-        <View style={{ width: 28 }} />
-      </View>
-      
-      <View style={{ flex: 1 }}>
-        <ScrollView>
-          <View style={styles.content}>
-            <Text style={styles.incidentTitle}>{incident.title}</Text>
-            <Text style={styles.incidentDate}>{new Date(incident.created_at).toLocaleString()} ({incident.reporter?.username || 'N/A'})</Text>
-            <View style={[styles.priorityBadge, { backgroundColor: priority.color }]}>
-              <Text style={styles.priorityText}>{priority.text}</Text>
-            </View>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{incident.incident_number}</Text>
+          <Text style={styles.headerSubtitle}>{t('incidents.incidentDetails')}</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </ImageBackground>
 
-            <DottedSeparator />
-
-            {/* Compact detail grid - only show items with values */}
-            <View style={styles.detailsGrid}>
-              {incident.current_state && (
-                <View style={styles.detailGridItem}>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <Text style={styles.detailValue}>{incident.current_state.name}</Text>
-                </View>
-              )}
-              {incident.classification && (
-                <View style={styles.detailGridItem}>
-                  <Text style={styles.detailLabel}>Classification</Text>
-                  <Text style={styles.detailValue}>{incident.classification.name}</Text>
-                </View>
-              )}
-              {incident.department && (
-                <View style={styles.detailGridItem}>
-                  <Text style={styles.detailLabel}>Department</Text>
-                  <Text style={styles.detailValue}>{incident.department.name}</Text>
-                </View>
-              )}
-              {(incident.assignees?.length || incident.assignee) && (
-                <View style={styles.detailGridItem}>
-                  <Text style={styles.detailLabel}>Assignee(s)</Text>
-                  {incident.assignees && incident.assignees.length > 0 ? (
-                    <Text style={styles.detailValue}>
-                      {incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')}
-                    </Text>
-                  ) : incident.assignee ? (
-                    <Text style={styles.detailValue}>
-                      {incident.assignee.first_name} {incident.assignee.last_name}
-                    </Text>
-                  ) : null}
-                </View>
-              )}
-            </View>
-
-            {incident.description && (
-              <>
-                <DottedSeparator />
-                <Text style={styles.sectionTitleSmall}>Description</Text>
-                <Text style={styles.descriptionText}>{incident.description}</Text>
-              </>
-            )}
-
-            {/* Reporter Section - compact inline */}
-            <DottedSeparator />
-            <View style={styles.reporterCompact}>
-              <Text style={styles.reporterLabel}>Reporter:</Text>
-              <View style={styles.reporterInfo}>
-                <Text style={styles.reporterName}>
-                  {incident.reporter?.first_name
-                    ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
-                    : incident.reporter?.username || incident.reporter_name || 'Unknown'}
-                </Text>
-                <View style={styles.reporterContacts}>
-                  {(incident.reporter_email || incident.reporter?.email) && (
-                    <TouchableOpacity onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}>
-                      <Ionicons name="mail-outline" size={16} color="#2EC4B6" style={{ marginRight: 12 }} />
-                    </TouchableOpacity>
-                  )}
-                  {incident.reporter?.phone && (
-                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}>
-                      <Ionicons name="call-outline" size={16} color="#2EC4B6" />
-                    </TouchableOpacity>
-                  )}
-                </View>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Title Card */}
+        <View style={styles.titleCard}>
+          <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
+          <View style={styles.titleCardContent}>
+            <View style={styles.titleHeader}>
+              <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+                <Ionicons name="flag" size={12} color={COLORS.white} />
+                <Text style={styles.priorityBadgeText}>{priorityText}</Text>
               </View>
+              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString()}</Text>
             </View>
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Comments:</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View all</Text>
-              </TouchableOpacity>
-            </View>
-            {incident.comments && incident.comments.length > 0 ? (
-                incident.comments.map(comment => (
-                    <View style={styles.commentCard} key={comment.id}>
-                        <Text style={styles.commentText}>{comment.content}</Text>
-                        <Text style={styles.commentAuthor}>{`By ${comment.author.username} | ${new Date(comment.created_at).toLocaleString()}`}</Text>
-                    </View>
-                ))
-            ) : (
-                <Text style={styles.noDataText}>No comments yet.</Text>
-            )}
-
-
-            <Text style={styles.sectionTitle}>Attachments:</Text>
-            {imageAttachments.length > 0 && (
-                <View style={styles.carouselContainer}>
-                    <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onScroll={event => {
-                            const slide = Math.ceil(event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width);
-                            if (slide !== currentImageIndex) {
-                                setCurrentImageIndex(slide);
-                            }
-                        }}
-                    >
-                        {imageAttachments.map((att, index) => (
-                            <TouchableOpacity key={att.id} onPress={() => {
-                                setCurrentImageIndex(index);
-                                setImageViewerVisible(true);
-                            }}>
-                                <Image source={{ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }} style={styles.attachmentImage} />
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                    <View style={styles.pagination}>
-                        {imageAttachments.map((_, index) => (
-                            <Text key={index} style={index === currentImageIndex ? styles.paginationDotActive : styles.paginationDot}>
-                                ●
-                            </Text>
-                        ))}
-                    </View>
-                </View>
-            )}
-
-            {otherAttachments.map(att => (
-                <TouchableOpacity key={att.id} onPress={() => Linking.openURL(`${baseURL}/attachments/${att.id}`)} style={styles.attachmentButton}>
-                    <Ionicons name="attach" size={20} color="#2EC4B6" />
-                    <Text style={styles.attachmentText}>{att.file_name}</Text>
-                </TouchableOpacity>
-            ))}
-
-            {attachments.length === 0 && <Text style={styles.noDataText}>No attachments</Text>}
-
-            <ImageView
-                images={imageAttachments.map(att => ({ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }))}
-                imageIndex={currentImageIndex}
-                visible={isImageViewerVisible}
-                onRequestClose={() => setImageViewerVisible(false)}
-            />
-
-
-            {/* Location - only show if available */}
-            {incident.location && (
-              <>
-                <Text style={styles.sectionTitleSmall}>Location</Text>
-                <View style={styles.locationContainerCompact}>
-                  <Ionicons name="location-sharp" size={16} color="#E74C3C" />
-                  <Text style={styles.locationTextCompact}>
-                    {incident.location.name}{incident.location.address ? ` - ${incident.location.address}` : ''}
-                  </Text>
-                </View>
-              </>
-            )}
-
-            {/* Geolocation Section - compact with map */}
-            {(incident.latitude !== undefined && incident.longitude !== undefined) && (
-              <>
-                <Text style={styles.sectionTitleSmall}>Geolocation</Text>
-                {/* Map first - smaller height */}
-                <View style={styles.mapContainerCompact}>
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: incident.latitude,
-                      longitude: incident.longitude,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
-                    }}
-                  >
-                    <Marker
-                      coordinate={{
-                        latitude: incident.latitude,
-                        longitude: incident.longitude,
-                      }}
-                      title={incident.title}
-                      description={incident.address || 'Incident Location'}
-                      pinColor="#2EC4B6"
-                    />
-                  </MapView>
-                </View>
-                {/* Compact coordinates and address */}
-                <View style={styles.geoInfoCompact}>
-                  <View style={styles.coordRow}>
-                    <Ionicons name="navigate" size={14} color="#2EC4B6" />
-                    <Text style={styles.coordText}>
-                      {incident.latitude?.toFixed(6)}, {incident.longitude?.toFixed(6)}
-                    </Text>
-                  </View>
-                  {incident.address && (
-                    <Text style={styles.geoAddressText} numberOfLines={2}>{incident.address}</Text>
-                  )}
-                  {(incident.city || incident.state || incident.country) && (
-                    <Text style={styles.geoLocationLine}>
-                      {[incident.city, incident.state, incident.country, incident.postal_code].filter(Boolean).join(', ')}
-                    </Text>
-                  )}
-                </View>
-              </>
-            )}
-
-            <Text style={styles.sectionTitle}>Transition History</Text>
-            {incident.transition_history && incident.transition_history.length > 0 ? (
-                incident.transition_history.map(item => (
-                    <TransitionHistoryCard key={item.id} item={item} />
-                ))
-            ) : (
-                <Text style={styles.noDataText}>No transition history.</Text>
+            <Text style={styles.incidentTitle}>{incident.title}</Text>
+            {incident.current_state && (
+              <View style={styles.statusContainer}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>{incident.current_state.name}</Text>
+              </View>
             )}
           </View>
-        </ScrollView>
-        {availableTransitions.length > 0 && (
-          <TouchableOpacity
-            style={styles.updateButton}
-            onPress={() => router.push({
-              pathname: '/update-status',
-              params: {
-                id: incident.id,
-                transitions: JSON.stringify(availableTransitions),
-                incident: JSON.stringify({
-                  id: incident.id,
-                  classification_id: incident.classification_id,
-                  location_id: incident.location_id,
-                  department_id: incident.department_id,
-                  assignee_id: incident.assignee_id,
-                }),
-              },
-            })}
-          >
-            <Text style={styles.updateButtonText}>UPDATE</Text>
-          </TouchableOpacity>
+        </View>
+
+        {/* Details Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
+          <View style={styles.infoContainer}>
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={incident.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={incident.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="person-outline" label={t('details.assignees')}
+              value={incident.assignees?.length
+                ? incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+                : incident.assignee
+                  ? `${incident.assignee.first_name || ''} ${incident.assignee.last_name || ''}`.trim()
+                  : ''
+              }
+              iconColor="#EC4899"
+            />
+            {incident.location && (
+              <InfoRow icon="location-outline" label={t('details.location')} value={incident.location.name} iconColor={COLORS.error} />
+            )}
+          </View>
+        </View>
+
+        {/* Description Card */}
+        {incident.description && (
+          <View style={styles.card}>
+            <SectionHeader title={t('details.description')} icon="document-text" />
+            <Text style={styles.descriptionText}>{incident.description}</Text>
+          </View>
         )}
-      </View>
+
+        {/* Reporter Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('details.reporter')} icon="person-circle" />
+          <View style={styles.reporterCard}>
+            <View style={styles.reporterAvatar}>
+              <Text style={styles.reporterAvatarText}>
+                {incident.reporter?.first_name?.[0] || incident.reporter?.username?.[0] || 'U'}
+              </Text>
+            </View>
+            <View style={styles.reporterInfo}>
+              <Text style={styles.reporterName}>
+                {incident.reporter?.first_name
+                  ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
+                  : incident.reporter?.username || incident.reporter_name || 'Unknown'}
+              </Text>
+              {(incident.reporter_email || incident.reporter?.email) && (
+                <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
+              )}
+            </View>
+            <View style={styles.reporterActions}>
+              {(incident.reporter_email || incident.reporter?.email) && (
+                <TouchableOpacity
+                  style={styles.reporterActionButton}
+                  onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}
+                >
+                  <Ionicons name="mail" size={18} color={COLORS.accent} />
+                </TouchableOpacity>
+              )}
+              {incident.reporter?.phone && (
+                <TouchableOpacity
+                  style={styles.reporterActionButton}
+                  onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}
+                >
+                  <Ionicons name="call" size={18} color={COLORS.accent} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Comments Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('details.comments')} icon="chatbubbles" />
+          {incident.comments && incident.comments.length > 0 ? (
+            incident.comments.map(comment => (
+              <View style={styles.commentItem} key={comment.id}>
+                <View style={styles.commentHeader}>
+                  <View style={styles.commentAvatar}>
+                    <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+                  </View>
+                  <View style={styles.commentMeta}>
+                    <Text style={styles.commentAuthor}>{comment.author.username}</Text>
+                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                  </View>
+                </View>
+                <Text style={styles.commentContent}>{comment.content}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
+              <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Attachments Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('details.attachments')} icon="attach" />
+          {imageAttachments.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+              {imageAttachments.map((att, index) => (
+                <TouchableOpacity
+                  key={att.id}
+                  onPress={() => { setCurrentImageIndex(index); setImageViewerVisible(true); }}
+                  style={styles.imageThumb}
+                >
+                  <Image
+                    source={{ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }}
+                    style={styles.attachmentImage}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          {otherAttachments.map(att => (
+            <TouchableOpacity
+              key={att.id}
+              onPress={() => Linking.openURL(`${baseURL}/attachments/${att.id}`)}
+              style={styles.fileAttachment}
+            >
+              <View style={styles.fileIconContainer}>
+                <Ionicons name="document" size={20} color={COLORS.accent} />
+              </View>
+              <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
+              <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
+            </TouchableOpacity>
+          ))}
+          {attachments.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="images-outline" size={32} color={COLORS.text.muted} />
+              <Text style={styles.emptyStateText}>{t('details.noAttachments')}</Text>
+            </View>
+          )}
+        </View>
+
+        <ImageView
+          images={imageAttachments.map(att => ({ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }))}
+          imageIndex={currentImageIndex}
+          visible={isImageViewerVisible}
+          onRequestClose={() => setImageViewerVisible(false)}
+        />
+
+        {/* Geolocation Card */}
+        {(incident.latitude !== undefined && incident.longitude !== undefined) && (
+          <View style={styles.card}>
+            <SectionHeader title={t('details.geolocation')} icon="navigate" />
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: incident.latitude,
+                  longitude: incident.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+              >
+                <Marker
+                  coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
+                  title={incident.title}
+                  description={incident.address || 'Incident Location'}
+                  pinColor={COLORS.accent}
+                />
+              </MapView>
+            </View>
+            {incident.address && (
+              <View style={styles.addressContainer}>
+                <Ionicons name="location" size={16} color={COLORS.error} />
+                <Text style={styles.addressText}>{incident.address}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Transition History Card */}
+        <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
+          <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
+          {incident.transition_history && incident.transition_history.length > 0 ? (
+            <View style={styles.timeline}>
+              {incident.transition_history.map((item, index) => (
+                <View key={item.id} style={styles.timelineItem}>
+                  <View style={styles.timelineLeft}>
+                    <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
+                    {index < incident.transition_history!.length - 1 && <View style={styles.timelineLine} />}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <View style={styles.transitionBadges}>
+                      <View style={styles.fromBadge}>
+                        <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
+                      </View>
+                      <Ionicons name="arrow-forward" size={14} color={COLORS.text.muted} />
+                      <View style={styles.toBadge}>
+                        <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.transitionMeta}>
+                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                    </Text>
+                    {item.comment && (
+                      <View style={styles.transitionComment}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                        <Text style={styles.transitionCommentText}>"{item.comment}"</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="time-outline" size={32} color={COLORS.text.muted} />
+              <Text style={styles.emptyStateText}>{t('details.noTransitionHistory')}</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Update Button */}
+      {availableTransitions.length > 0 && (
+        <TouchableOpacity
+          style={styles.updateButton}
+          onPress={() => router.push({
+            pathname: '/update-status',
+            params: {
+              id: incident.id,
+              transitions: JSON.stringify(availableTransitions),
+              incident: JSON.stringify({
+                id: incident.id,
+                classification_id: incident.classification_id,
+                location_id: incident.location_id,
+                department_id: incident.department_id,
+                assignee_id: incident.assignee_id,
+              }),
+            },
+          })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="sync" size={20} color={COLORS.white} />
+          <Text style={styles.updateButtonText}>{t('details.update')}</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -411,357 +473,129 @@ const IncidentDetailsScreen = () => {
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: 'white',
-    },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    errorText: {
-        color: 'red',
-        fontSize: 16
-    },
-    noDataText: {
-        color: '#999',
-        fontStyle: 'italic',
-        marginTop: 10,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    backButton: {},
-    scrollView: {},
-    content: {
-        padding: 20,
-    },
-    incidentTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 5,
-    },
-    incidentDate: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 10,
-    },
-    priorityBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 15,
-        marginBottom: 15,
-    },
-    priorityText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    separator: {
-        height: 1,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
-        borderStyle: 'dashed',
-        marginVertical: 10,
-    },
-    detailsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 5,
-    },
-    detailGridItem: {
-        width: '50%',
-        marginBottom: 10,
-    },
-    detailItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    detailLabel: {
-        fontSize: 11,
-        color: '#999',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    detailValue: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#333',
-        marginTop: 2,
-    },
-    descriptionText: {
-        fontSize: 14,
-        color: '#333',
-        lineHeight: 20,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginTop: 15,
-        marginBottom: 8,
-    },
-    sectionTitleSmall: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#666',
-        marginTop: 12,
-        marginBottom: 6,
-    },
-    viewAllText: {
-        color: '#2EC4B6',
-        fontWeight: 'bold',
-    },
-    commentCard: {
-        backgroundColor: '#F8F9FA',
-        padding: 15,
-        borderRadius: 10,
-        borderLeftWidth: 4,
-        borderLeftColor: '#2EC4B6',
-        marginBottom: 10,
-    },
-    commentText: {
-        fontSize: 14,
-        marginBottom: 10,
-    },
-    commentAuthor: {
-        fontSize: 12,
-        color: '#999',
-    },
-    attachmentButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        padding: 10,
-        borderRadius: 5,
-        marginBottom: 10,
-    },
-    attachmentText: {
-        marginLeft: 10,
-        fontSize: 14,
-        color: '#333',
-    },
-    attachmentContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    attachmentImage: {
-        width: width - 40,
-        height: 200,
-        borderRadius: 10,
-        marginBottom: 10,
-    },
-    carouselContainer: {
-        height: 200,
-        marginBottom: 10,
-    },
-    pagination: {
-        flexDirection: 'row',
-        position: 'absolute',
-        bottom: 0,
-        alignSelf: 'center',
-    },
-    paginationDot: {
-        color: 'white',
-        margin: 3,
-        fontSize: 10,
-    },
-    paginationDotActive: {
-        color: '#2EC4B6',
-        margin: 3,
-        fontSize: 10,
-    },
-    locationContainer: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 10,
-    },
-    locationText: {
-        fontSize: 14,
-        color: '#333',
-    },
-    locationContainerCompact: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 10,
-    },
-    locationTextCompact: {
-        fontSize: 13,
-        color: '#333',
-        marginLeft: 8,
-        flex: 1,
-    },
-    mapContainer: {
-        height: 150,
-        borderRadius: 10,
-        overflow: 'hidden',
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-    map: {
-        width: '100%',
-        height: '100%',
-    },
-    updateButton: {
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        right: 20,
-        backgroundColor: '#2EC4B6',
-        paddingVertical: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    updateButtonText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    historyCard: {
-        flexDirection: 'row',
-        marginBottom: 15,
-    },
-    historyIcon: {
-        backgroundColor: '#8B5CF6',
-        borderRadius: 20,
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    historyDetails: {
-        flex: 1,
-    },
-    historyText: {
-        fontSize: 14,
-    },
-    historyState: {
-        fontWeight: 'bold',
-    },
-    historyMeta: {
-        fontSize: 12,
-        color: '#999',
-        marginTop: 3,
-    },
-    historyComment: {
-        fontSize: 12,
-        color: '#666',
-        fontStyle: 'italic',
-        marginTop: 5,
-        backgroundColor: '#F0F0F0',
-        padding: 5,
-        borderRadius: 5,
-    },
-    reporterContainer: {
-        backgroundColor: '#F8F9FA',
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 15,
-    },
-    reporterRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    reporterText: {
-        fontSize: 14,
-        color: '#333',
-        marginLeft: 10,
-    },
-    reporterLink: {
-        fontSize: 14,
-        color: '#2EC4B6',
-        marginLeft: 10,
-    },
-    // Compact reporter styles
-    reporterCompact: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    reporterLabel: {
-        fontSize: 14,
-        color: '#666',
-    },
-    reporterInfo: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-    },
-    reporterName: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#333',
-        marginRight: 10,
-    },
-    reporterContacts: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    // Compact map and geo styles
-    mapContainerCompact: {
-        height: 140,
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-    geoInfoCompact: {
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 10,
-    },
-    coordRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    coordText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#333',
-        marginLeft: 6,
-    },
-    geoAddressText: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 4,
-        marginLeft: 20,
-    },
-    geoLocationLine: {
-        fontSize: 11,
-        color: '#999',
-        marginTop: 2,
-        marginLeft: 20,
-    },
+  safeArea: { flex: 1, backgroundColor: COLORS.primary },
+  centered: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: COLORS.background, paddingHorizontal: 40,
+  },
+  loadingText: { marginTop: 12, color: COLORS.text.secondary, fontSize: 14 },
+  errorTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text.primary, marginTop: 16 },
+  errorText: { fontSize: 14, color: COLORS.text.secondary, textAlign: 'center', marginTop: 8 },
+  retryButton: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.accent,
+    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 24, gap: 8,
+  },
+  retryButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20,
+  },
+  backButton: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
+  headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
+
+  container: { flex: 1, backgroundColor: COLORS.background },
+
+  titleCard: {
+    backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: -10,
+    borderRadius: 16, flexDirection: 'row', overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
+      android: { elevation: 4 },
+    }),
+  },
+  priorityBar: { width: 5 },
+  titleCardContent: { flex: 1, padding: 16 },
+  titleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  priorityBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, gap: 4 },
+  priorityBadgeText: { color: COLORS.white, fontSize: 11, fontWeight: 'bold' },
+  dateText: { fontSize: 12, color: COLORS.text.muted },
+  incidentTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 8 },
+  statusContainer: { flexDirection: 'row', alignItems: 'center' },
+  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
+  statusText: { fontSize: 14, color: COLORS.accent, fontWeight: '600' },
+
+  card: {
+    backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 16, borderRadius: 16, padding: 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
+    }),
+  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.text.primary },
+
+  infoContainer: {},
+  infoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  infoRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  infoLabel: { fontSize: 14, color: COLORS.text.secondary },
+  infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary, maxWidth: '50%', textAlign: 'right' },
+
+  descriptionText: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22 },
+
+  reporterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 12, padding: 12 },
+  reporterAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  reporterAvatarText: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
+  reporterInfo: { flex: 1, marginLeft: 12 },
+  reporterName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
+  reporterEmail: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
+  reporterActions: { flexDirection: 'row', gap: 8 },
+  reporterActionButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
+
+  commentItem: { backgroundColor: COLORS.background, borderRadius: 12, padding: 12, marginBottom: 10 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
+  commentAvatarText: { color: COLORS.white, fontSize: 13, fontWeight: 'bold' },
+  commentMeta: { marginLeft: 10 },
+  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
+  commentDate: { fontSize: 11, color: COLORS.text.muted },
+  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20 },
+
+  emptyState: { alignItems: 'center', paddingVertical: 24 },
+  emptyStateText: { fontSize: 14, color: COLORS.text.muted, marginTop: 8 },
+
+  imageScroll: { marginBottom: 12 },
+  imageThumb: { marginRight: 10, borderRadius: 12, overflow: 'hidden' },
+  attachmentImage: { width: 120, height: 90, borderRadius: 12 },
+  fileAttachment: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, padding: 12, marginBottom: 8 },
+  fileIconContainer: { width: 36, height: 36, borderRadius: 8, backgroundColor: `${COLORS.accent}20`, justifyContent: 'center', alignItems: 'center' },
+  fileName: { flex: 1, marginLeft: 12, fontSize: 14, color: COLORS.text.primary },
+
+  mapContainer: { height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+  map: { width: '100%', height: '100%' },
+  addressContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  addressText: { fontSize: 13, color: COLORS.text.secondary, flex: 1 },
+
+  timeline: {},
+  timelineItem: { flexDirection: 'row' },
+  timelineLeft: { alignItems: 'center', marginRight: 12 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6 },
+  timelineLine: { width: 2, flex: 1, backgroundColor: COLORS.border, marginVertical: 4 },
+  timelineContent: { flex: 1, paddingBottom: 20 },
+  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  fromBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  fromBadgeText: { fontSize: 12, color: COLORS.error, fontWeight: '600' },
+  toBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  toBadgeText: { fontSize: 12, color: '#059669', fontWeight: '600' },
+  transitionMeta: { fontSize: 12, color: COLORS.text.muted },
+  transitionComment: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, gap: 6 },
+  transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
+
+  updateButton: {
+    position: 'absolute', bottom: 30, left: 20, right: 20,
+    backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
+    alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
+    ...Platform.select({
+      ios: { shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
+      android: { elevation: 8 },
+    }),
+  },
+  updateButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
 });
 
 export default IncidentDetailsScreen;

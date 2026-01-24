@@ -24,6 +24,14 @@
     "success": "Success",
     "failed": "Failed"
   },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "incident": "Incidents",
+    "request": "Requests",
+    "complaint": "Complaints",
+    "query": "Queries",
+    "settings": "Settings"
+  },
   "auth": {
     "login": "Login",
     "logout": "Logout",
@@ -41,9 +49,27 @@
     "title": "Dashboard",
     "totalIncidents": "Total Incidents",
     "incidentsByStatus": "Incidents by Status",
+    "requestsByStatus": "Requests by Status",
+    "complaintsByStatus": "Complaints by Status",
+    "queriesByStatus": "Queries by Status",
     "myIncidents": "My Incidents",
     "assignedToMe": "Assigned to Me",
-    "createdByMe": "Created by Me"
+    "createdByMe": "Created by Me",
+    "noIncidents": "No incidents found",
+    "noRequests": "No requests found",
+    "noComplaints": "No complaints found",
+    "noQueries": "No queries found",
+    "greeting": {
+      "morning": "Good Morning",
+      "afternoon": "Good Afternoon",
+      "evening": "Good Evening"
+    },
+    "stats": {
+      "incidents": "Incidents",
+      "requests": "Requests",
+      "complaints": "Complaints",
+      "queries": "Queries"
+    }
   },
   "incidents": {
     "title": "Incidents",
@@ -71,8 +97,7 @@
     "noIncidentsDesc": "Create your first incident",
     "adjustFilters": "Try adjusting your filters",
     "loadingIncidents": "Loading incidents...",
-    "incidentsFound": "{{count}} incident found",
-    "incidentsFound_plural": "{{count}} incidents found",
+    "incidentsFound": "{{count}} incidents found",
     "filtersApplied": "{{count}} filter applied",
     "filtersApplied_plural": "{{count}} filters applied",
     "page": "Page {{current}} of {{total}}",
@@ -89,6 +114,52 @@
     "noAttachments": "No attachments",
     "updateStatus": "Update Status",
     "selectTransition": "Select Transition"
+  },
+  "requests": {
+    "title": "Requests",
+    "noRequests": "No Requests Found",
+    "noRequestsDesc": "Create your first request"
+  },
+  "complaints": {
+    "title": "Complaints",
+    "noComplaints": "No Complaints Found",
+    "noComplaintsDesc": "Create your first complaint",
+    "channel": "Channel"
+  },
+  "queries": {
+    "title": "Queries",
+    "noQueries": "No Queries Found",
+    "noQueriesDesc": "Create your first query",
+    "channel": "Channel"
+  },
+  "details": {
+    "request": "Request",
+    "complaint": "Complaint",
+    "query": "Query",
+    "classification": "Classification",
+    "status": "Status",
+    "department": "Department",
+    "assignees": "Assignee(s)",
+    "description": "Description",
+    "channel": "Channel",
+    "comments": "Comments",
+    "viewAll": "View all",
+    "noComments": "No comments yet.",
+    "attachments": "Attachments",
+    "noAttachments": "No attachments",
+    "location": "Location",
+    "noLocation": "No Location",
+    "transitionHistory": "Transition History",
+    "noTransitionHistory": "No transition history.",
+    "update": "UPDATE",
+    "statusChanged": "Status changed from",
+    "to": "to",
+    "by": "by",
+    "on": "on",
+    "notFound": "Not found.",
+    "fetchError": "Failed to fetch details",
+    "reporter": "Reporter",
+    "geolocation": "Geolocation"
   },
   "priorities": {
     "critical": "Critical",
@@ -186,6 +257,8 @@
     "unauthorized": "Session expired. Please login again.",
     "notFound": "Resource not found.",
     "validationError": "Please check your input.",
-    "unknownError": "An unknown error occurred."
+    "unknownError": "An unknown error occurred.",
+    "fetchStatsFailed": "Failed to load statistics",
+    "oops": "Oops!"
   }
 }

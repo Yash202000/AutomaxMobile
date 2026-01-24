@@ -24,6 +24,14 @@
     "success": "نجاح",
     "failed": "فشل"
   },
+  "tabs": {
+    "dashboard": "لوحة التحكم",
+    "incident": "الحوادث",
+    "request": "الطلبات",
+    "complaint": "الشكاوى",
+    "query": "الاستفسارات",
+    "settings": "الإعدادات"
+  },
   "auth": {
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",
@@ -41,9 +49,27 @@
     "title": "لوحة التحكم",
     "totalIncidents": "إجمالي الحوادث",
     "incidentsByStatus": "الحوادث حسب الحالة",
+    "requestsByStatus": "الطلبات حسب الحالة",
+    "complaintsByStatus": "الشكاوى حسب الحالة",
+    "queriesByStatus": "الاستفسارات حسب الحالة",
     "myIncidents": "حوادثي",
     "assignedToMe": "المُسندة إليّ",
-    "createdByMe": "التي أنشأتها"
+    "createdByMe": "التي أنشأتها",
+    "noIncidents": "لا توجد حوادث",
+    "noRequests": "لا توجد طلبات",
+    "noComplaints": "لا توجد شكاوى",
+    "noQueries": "لا توجد استفسارات",
+    "greeting": {
+      "morning": "صباح الخير",
+      "afternoon": "مساء الخير",
+      "evening": "مساء الخير"
+    },
+    "stats": {
+      "incidents": "الحوادث",
+      "requests": "الطلبات",
+      "complaints": "الشكاوى",
+      "queries": "الاستفسارات"
+    }
   },
   "incidents": {
     "title": "الحوادث",
@@ -89,6 +115,52 @@
     "noAttachments": "لا توجد مرفقات",
     "updateStatus": "تحديث الحالة",
     "selectTransition": "اختر الانتقال"
+  },
+  "requests": {
+    "title": "الطلبات",
+    "noRequests": "لا توجد طلبات",
+    "noRequestsDesc": "أنشئ طلبك الأول"
+  },
+  "complaints": {
+    "title": "الشكاوى",
+    "noComplaints": "لا توجد شكاوى",
+    "noComplaintsDesc": "أنشئ شكواك الأولى",
+    "channel": "القناة"
+  },
+  "queries": {
+    "title": "الاستفسارات",
+    "noQueries": "لا توجد استفسارات",
+    "noQueriesDesc": "أنشئ استفسارك الأول",
+    "channel": "القناة"
+  },
+  "details": {
+    "request": "طلب",
+    "complaint": "شكوى",
+    "query": "استفسار",
+    "classification": "التصنيف",
+    "status": "الحالة",
+    "department": "القسم",
+    "assignees": "المُسند إليه",
+    "description": "الوصف",
+    "channel": "القناة",
+    "comments": "التعليقات",
+    "viewAll": "عرض الكل",
+    "noComments": "لا توجد تعليقات بعد.",
+    "attachments": "المرفقات",
+    "noAttachments": "لا توجد مرفقات",
+    "location": "الموقع",
+    "noLocation": "لا يوجد موقع",
+    "transitionHistory": "سجل التحويلات",
+    "noTransitionHistory": "لا يوجد سجل تحويلات.",
+    "update": "تحديث",
+    "statusChanged": "تم تغيير الحالة من",
+    "to": "إلى",
+    "by": "بواسطة",
+    "on": "في",
+    "notFound": "غير موجود.",
+    "fetchError": "فشل تحميل التفاصيل",
+    "reporter": "المُبلِّغ",
+    "geolocation": "الموقع الجغرافي"
   },
   "priorities": {
     "critical": "حرج",
@@ -186,6 +258,8 @@
     "unauthorized": "انتهت الجلسة. سجل الدخول مرة أخرى.",
     "notFound": "المورد غير موجود.",
     "validationError": "تحقق من المدخلات.",
-    "unknownError": "حدث خطأ غير معروف."
+    "unknownError": "حدث خطأ غير معروف.",
+    "fetchStatsFailed": "فشل تحميل الإحصائيات",
+    "oops": "عذراً!"
   }
 }

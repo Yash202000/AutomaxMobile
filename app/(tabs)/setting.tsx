@@ -1,13 +1,26 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, ImageBackground, Modal, I18nManager } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, ImageBackground, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Updates from 'expo-updates';
 import { getProfile } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
 import { setLanguage, supportedLanguages, getCurrentLanguage } from '@/src/i18n';
+
+const COLORS = {
+  primary: '#2EC4B6',
+  secondary: '#1A237E',
+  background: '#F5F5F5',
+  card: '#FFFFFF',
+  text: '#333333',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  border: '#F0F0F0',
+  error: '#E74C3C',
+  white: '#FFFFFF',
+};
 
 const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
   label: string;
@@ -18,12 +31,12 @@ const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
 }) => (
   <TouchableOpacity style={styles.option} onPress={onPress}>
     <View style={styles.optionLeft}>
-      {icon && <Ionicons name={icon as any} size={20} color="#1A237E" style={styles.optionIcon} />}
+      {icon && <Ionicons name={icon as any} size={20} color={COLORS.secondary} style={styles.optionIcon} />}
       <Text style={styles.optionLabel}>{label}</Text>
     </View>
     <View style={styles.optionValueContainer}>
       {value && <Text style={styles.optionValue}>{value}</Text>}
-      <FontAwesome name={hasDropdown ? 'chevron-down' : 'chevron-right'} size={16} color="#999" />
+      <Ionicons name={hasDropdown ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.textMuted} />
     </View>
   </TouchableOpacity>
 );
@@ -129,7 +142,7 @@ const SettingsScreen = () => {
                 <Text style={styles.profileEmail}>{user?.email || 'No email'}</Text>
               </View>
             </View>
-            <FontAwesome name="chevron-right" size={16} color="#999" />
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
 
@@ -162,18 +175,18 @@ const SettingsScreen = () => {
         {/* Log Buttons */}
         <View style={styles.logButtonsContainer}>
           <TouchableOpacity style={styles.logButton}>
-            <Ionicons name="share-outline" size={20} color="#1A237E" />
+            <Ionicons name="share-outline" size={20} color={COLORS.secondary} />
             <Text style={styles.logButtonText}>{t('settings.shareLogs')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logButton}>
-            <Ionicons name="trash-outline" size={20} color="#E74C3C" />
-            <Text style={[styles.logButtonText, { color: '#E74C3C' }]}>{t('settings.deleteLogs')}</Text>
+            <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+            <Text style={[styles.logButtonText, { color: COLORS.error }]}>{t('settings.deleteLogs')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#E74C3C" />
+          <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
           <Text style={styles.logoutButtonText}>{t('auth.logout')}</Text>
         </TouchableOpacity>
 
@@ -214,7 +227,7 @@ const SettingsScreen = () => {
                   <Text style={styles.languageNameEn}>{lang.name}</Text>
                 </View>
                 {currentLang === lang.code && (
-                  <Ionicons name="checkmark-circle" size={24} color="#1A237E" />
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.secondary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -234,7 +247,7 @@ const SettingsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1A237E',
+    backgroundColor: COLORS.secondary,
   },
   header: {
     paddingTop: 40,
@@ -244,16 +257,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: 'white',
+    color: COLORS.white,
     fontSize: 22,
     fontWeight: 'bold',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   profileCard: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.card,
     padding: 20,
     margin: 20,
     marginBottom: 10,
@@ -261,11 +274,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   profileInfo: {
     flexDirection: 'row',
@@ -275,45 +294,51 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#1A237E',
+    backgroundColor: COLORS.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
   },
   avatarText: {
-    color: 'white',
+    color: COLORS.white,
     fontSize: 20,
     fontWeight: 'bold',
   },
   profileName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textSecondary,
     marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 10,
     textTransform: 'uppercase',
   },
   optionsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.card,
     marginHorizontal: 20,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   option: {
     padding: 16,
@@ -321,7 +346,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: COLORS.border,
   },
   optionLeft: {
     flexDirection: 'row',
@@ -332,7 +357,7 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.text,
   },
   optionValueContainer: {
     flexDirection: 'row',
@@ -341,7 +366,7 @@ const styles = StyleSheet.create({
   optionValue: {
     marginRight: 10,
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   logButtonsContainer: {
     flexDirection: 'row',
@@ -352,7 +377,7 @@ const styles = StyleSheet.create({
   },
   logButton: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.card,
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -360,19 +385,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   logButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A237E',
+    color: COLORS.secondary,
   },
   logoutButton: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.card,
     padding: 16,
     marginHorizontal: 20,
     marginTop: 20,
@@ -382,17 +413,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: '#E74C3C',
+    borderColor: COLORS.error,
   },
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#E74C3C',
+    color: COLORS.error,
   },
   versionText: {
     textAlign: 'center',
     marginVertical: 30,
-    color: '#999',
+    color: COLORS.textMuted,
     fontSize: 14,
   },
   // Modal styles
@@ -403,7 +434,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
     width: '85%',
@@ -412,7 +443,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -423,12 +454,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     marginBottom: 10,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   languageOptionSelected: {
     backgroundColor: '#E3F2FD',
     borderWidth: 1,
-    borderColor: '#1A237E',
+    borderColor: COLORS.secondary,
   },
   languageInfo: {
     flex: 1,
@@ -436,14 +467,14 @@ const styles = StyleSheet.create({
   languageName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COLORS.text,
   },
   languageNameSelected: {
-    color: '#1A237E',
+    color: COLORS.secondary,
   },
   languageNameEn: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   modalCancelButton: {
@@ -453,7 +484,7 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
 });
