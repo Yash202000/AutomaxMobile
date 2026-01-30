@@ -61,9 +61,14 @@ export const createIncident = async (incidentData: any) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: response.data?.error || 'Invalid response from server' };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    const errorData = error.response?.data;
+    return {
+      success: false,
+      error: errorData?.error || errorData?.message || error.message,
+      details: errorData?.details
+    };
   }
 };
 
@@ -291,9 +296,14 @@ export const createRequest = async (requestData: any) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: response.data?.error || 'Invalid response from server' };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    const errorData = error.response?.data;
+    return {
+      success: false,
+      error: errorData?.error || errorData?.message || error.message,
+      details: errorData?.details // validation error details
+    };
   }
 };
 
@@ -345,10 +355,61 @@ export const createComplaint = async (complaintData: any) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
+    return { success: false, error: response.data?.error || 'Invalid response from server' };
+  } catch (error: any) {
+    const errorData = error.response?.data;
+    return {
+      success: false,
+      error: errorData?.error || errorData?.message || error.message,
+      details: errorData?.details
+    };
+  }
+};
+
+// Upload attachment to a complaint
+export const uploadComplaintAttachment = async (complaintId: string, file: any) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as any);
+
+    const response = await apiClient.post(`/complaints/${complaintId}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
     return { success: false, error: 'Invalid response from server' };
   } catch (error: any) {
     return { success: false, error: error.response?.data?.message || error.message };
   }
+};
+
+// Upload multiple attachments to a complaint
+export const uploadMultipleComplaintAttachments = async (complaintId: string, files: any[]) => {
+  const results: any[] = [];
+  const errors: any[] = [];
+
+  for (const file of files) {
+    const result = await uploadComplaintAttachment(complaintId, file);
+    if (result.success) {
+      results.push(result.data);
+    } else {
+      errors.push({ file: file.name, error: result.error });
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    data: results,
+    errors: errors.length > 0 ? errors : undefined,
+  };
 };
 
 // ==================== QUERIES ====================
@@ -399,8 +460,13 @@ export const createQuery = async (queryData: any) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: response.data?.error || 'Invalid response from server' };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    const errorData = error.response?.data;
+    return {
+      success: false,
+      error: errorData?.error || errorData?.message || error.message,
+      details: errorData?.details
+    };
   }
 };

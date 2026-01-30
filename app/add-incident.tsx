@@ -299,7 +299,7 @@ const AddIncidentScreen = () => {
       const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
         getClassificationsTree(), // Get all classifications
         getLocationsTree(),
-        getWorkflows(true),
+        getWorkflows(true, 'incident'),
         getUsers(),
         getDepartments(),
       ]);

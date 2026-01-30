@@ -7,7 +7,7 @@ import {
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -22,7 +22,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
 
 interface StateDetail {
   id: string;
@@ -58,6 +57,7 @@ const DashboardScreen = () => {
   const router = useRouter();
   const { user } = useAuth();
   const {
+    canTransitionIncidents,
     canCreateIncidents,
     canViewIncidents,
     canViewAllIncidents,
@@ -77,48 +77,51 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      const [incidentRes, requestRes, complaintRes, queryRes] =
-        await Promise.all([
-          getIncidentStats(),
-          getRequestStats(),
-          getComplaintStats(),
-          getQueryStats(),
-        ]);
-
-      if (incidentRes.success) setIncidentStats(incidentRes.data);
-      if (requestRes.success) setRequestStats(requestRes.data);
-      if (complaintRes.success) setComplaintStats(complaintRes.data);
-      if (queryRes.success) setQueryStats(queryRes.data);
-
-      if (
-        !incidentRes.success &&
-        !requestRes.success &&
-        !complaintRes.success &&
-        !queryRes.success
-      ) {
-        setError(t("errors.fetchStatsFailed"));
+  const fetchStats = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    } catch {
-      setError(t("errors.fetchStatsFailed"));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [t]);
+      setError(null);
+
+      try {
+        const [incidentRes, requestRes, complaintRes, queryRes] =
+          await Promise.all([
+            getIncidentStats(),
+            getRequestStats(),
+            getComplaintStats(),
+            getQueryStats(),
+          ]);
+
+        if (incidentRes.success) setIncidentStats(incidentRes.data);
+        if (requestRes.success) setRequestStats(requestRes.data);
+        if (complaintRes.success) setComplaintStats(complaintRes.data);
+        if (queryRes.success) setQueryStats(queryRes.data);
+
+        if (
+          !incidentRes.success &&
+          !requestRes.success &&
+          !complaintRes.success &&
+          !queryRes.success
+        ) {
+          setError(t("errors.fetchStatsFailed"));
+        }
+      } catch {
+        setError(t("errors.fetchStatsFailed"));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [t],
+  );
 
   useFocusEffect(
     useCallback(() => {
       fetchStats();
-    }, [fetchStats])
+    }, [fetchStats]),
   );
 
   const onRefresh = useCallback(() => {
@@ -158,7 +161,7 @@ const DashboardScreen = () => {
   const renderSummaryCard = (
     type: "incident" | "request" | "complaint" | "query",
     stats: Stats | null,
-    canView: boolean
+    canView: boolean,
   ) => {
     if (!canView) return null;
 
@@ -189,7 +192,9 @@ const DashboardScreen = () => {
 
     return (
       <View style={[styles.summaryCard, { backgroundColor: colors.bg }]}>
-        <View style={[styles.summaryIconContainer, { backgroundColor: colors.bg }]}>
+        <View
+          style={[styles.summaryIconContainer, { backgroundColor: colors.bg }]}
+        >
           <Ionicons name={icon} size={24} color={colors.icon} />
         </View>
         <Text style={styles.summaryCardNumber}>{stats?.total || 0}</Text>
@@ -205,31 +210,39 @@ const DashboardScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("dashboard.myIncidents")}</Text>
         <View style={styles.myIncidentsContainer}>
-          <TouchableOpacity
-            style={styles.myIncidentCard}
-            onPress={() =>
-              router.push({
-                pathname: "/my-incidents",
-                params: { type: "assigned" },
-              })
-            }
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.myIncidentIconContainer,
-                { backgroundColor: COLORS.assigned.bg },
-              ]}
+          {canTransitionIncidents() && (
+            <TouchableOpacity
+              style={styles.myIncidentCard}
+              onPress={() =>
+                router.push({
+                  pathname: "/my-incidents",
+                  params: { type: "assigned" },
+                })
+              }
+              activeOpacity={0.7}
             >
+              <View
+                style={[
+                  styles.myIncidentIconContainer,
+                  { backgroundColor: COLORS.assigned.bg },
+                ]}
+              >
+                <Ionicons
+                  name="checkbox-outline"
+                  size={22}
+                  color={COLORS.assigned.icon}
+                />
+              </View>
+              <Text style={styles.myIncidentText}>
+                {t("dashboard.assignedToMe")}
+              </Text>
               <Ionicons
-                name="checkbox-outline"
-                size={22}
-                color={COLORS.assigned.icon}
+                name="chevron-forward"
+                size={18}
+                color={COLORS.text.muted}
               />
-            </View>
-            <Text style={styles.myIncidentText}>{t("dashboard.assignedToMe")}</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.text.muted} />
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
 
           {canCreateIncidents() && (
             <TouchableOpacity
@@ -254,8 +267,14 @@ const DashboardScreen = () => {
                   color={COLORS.created.icon}
                 />
               </View>
-              <Text style={styles.myIncidentText}>{t("dashboard.createdByMe")}</Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.text.muted} />
+              <Text style={styles.myIncidentText}>
+                {t("dashboard.createdByMe")}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={COLORS.text.muted}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -267,7 +286,7 @@ const DashboardScreen = () => {
     type: "incident" | "request" | "complaint" | "query",
     stats: Stats | null,
     canView: boolean,
-    tabPath: string
+    tabPath: string,
   ) => {
     if (!canView) return null;
 
@@ -321,12 +340,20 @@ const DashboardScreen = () => {
                 <Text style={styles.statusName}>{stateDetail.name}</Text>
                 <Text style={styles.statusCount}>{stateDetail.count}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.text.muted} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={COLORS.text.muted}
+              />
             </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyCard}>
-            <Ionicons name="folder-open-outline" size={32} color={COLORS.text.muted} />
+            <Ionicons
+              name="folder-open-outline"
+              size={32}
+              color={COLORS.text.muted}
+            />
             <Text style={styles.emptyText}>{emptyText}</Text>
           </View>
         )}
@@ -351,10 +378,17 @@ const DashboardScreen = () => {
       <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
         <View style={styles.errorContainer}>
-          <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
+          <Ionicons
+            name="cloud-offline-outline"
+            size={64}
+            color={COLORS.text.muted}
+          />
           <Text style={styles.errorTitle}>{t("errors.oops")}</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchStats()}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchStats()}
+          >
             <Ionicons name="refresh" size={20} color={COLORS.white} />
             <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
           </TouchableOpacity>
@@ -366,23 +400,29 @@ const DashboardScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       {renderHeader()}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
-        }
-      >
+      <View style={styles.contentWrapper}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+        >
         {/* Summary Cards */}
         <View style={styles.summaryCardsContainer}>
           {renderSummaryCard("incident", incidentStats, canViewAllIncidents())}
           {renderSummaryCard("request", requestStats, canViewAllRequests())}
-          {renderSummaryCard("complaint", complaintStats, canViewAllComplaints())}
+          {renderSummaryCard(
+            "complaint",
+            complaintStats,
+            canViewAllComplaints(),
+          )}
           {renderSummaryCard("query", queryStats, canViewAllQueries())}
         </View>
 
@@ -390,13 +430,34 @@ const DashboardScreen = () => {
         {renderMyIncidentsSection()}
 
         {/* Status Sections */}
-        {renderStatusSection("incident", incidentStats, canViewIncidents(), "/(tabs)/incident")}
-        {renderStatusSection("request", requestStats, canViewRequests(), "/(tabs)/request")}
-        {renderStatusSection("complaint", complaintStats, canViewComplaints(), "/(tabs)/complaint")}
-        {renderStatusSection("query", queryStats, canViewQueries(), "/(tabs)/query")}
+        {renderStatusSection(
+          "incident",
+          incidentStats,
+          canViewIncidents(),
+          "/(tabs)/incident",
+        )}
+        {renderStatusSection(
+          "request",
+          requestStats,
+          canViewRequests(),
+          "/(tabs)/request",
+        )}
+        {renderStatusSection(
+          "complaint",
+          complaintStats,
+          canViewComplaints(),
+          "/(tabs)/complaint",
+        )}
+        {renderStatusSection(
+          "query",
+          queryStats,
+          canViewQueries(),
+          "/(tabs)/query",
+        )}
 
         <View style={styles.bottomPadding} />
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -427,6 +488,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 4,
   },
+  headerButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   notificationButton: {
     width: 44,
     height: 44,
@@ -435,14 +508,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  content: {
+  contentWrapper: {
     flex: 1,
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginTop: -16,
+    overflow: 'hidden',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
     paddingTop: 24,
     paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,

@@ -160,7 +160,8 @@
     "notFound": "غير موجود.",
     "fetchError": "فشل تحميل التفاصيل",
     "reporter": "المُبلِّغ",
-    "geolocation": "الموقع الجغرافي"
+    "geolocation": "الموقع الجغرافي",
+    "directions": "الاتجاهات"
   },
   "priorities": {
     "critical": "حرج",

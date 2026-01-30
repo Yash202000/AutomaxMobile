@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ActivityInd
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
 import { setLanguage, getCurrentLanguage } from '@/src/i18n';
 import { useAuth } from '@/src/context/AuthContext';
@@ -13,6 +14,7 @@ const LoginScreen = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
@@ -102,14 +104,26 @@ const LoginScreen = () => {
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>{t('auth.password')}</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="*******"
-          placeholderTextColor="#999"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="*******"
+            placeholderTextColor="#999"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={22}
+              color="#666"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -190,6 +204,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
+    color: '#333',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  eyeButton: {
+    padding: 15,
   },
   loginButton: {
     backgroundColor: '#2EC4B6',

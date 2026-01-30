@@ -71,8 +71,8 @@ const RequestDetailsScreen = () => {
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const imageAttachments = attachments.filter(att => att.mime_type.startsWith('image/'));
-  const otherAttachments = attachments.filter(att => !att.mime_type.startsWith('image/'));
+  const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
+  const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/'));
 
   useEffect(() => {
     const fetchToken = async () => {

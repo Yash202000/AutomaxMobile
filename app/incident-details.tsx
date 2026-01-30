@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions, Platform, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ImageView from 'react-native-image-viewing';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Region } from 'react-native-maps';
+import { useAudioPlayer, AudioSource } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
@@ -85,6 +86,65 @@ interface TransitionData {
   transition: { id: string; name: string };
 }
 
+const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_name: string }; token: string }) => {
+  const audioSource: AudioSource = {
+    uri: `${baseURL}/attachments/${attachment.id}`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const player = useAudioPlayer(audioSource);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(player.currentTime);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [player.currentTime]);
+
+  const handlePlayPause = () => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
+  const handleStop = () => {
+    player.pause();
+    player.seekTo(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <View style={styles.audioPlayer}>
+      <View style={styles.audioInfo}>
+        <Ionicons name="musical-notes" size={20} color={COLORS.accent} />
+        <Text style={styles.audioFileName} numberOfLines={1}>{attachment.file_name}</Text>
+      </View>
+      <View style={styles.audioControls}>
+        <TouchableOpacity onPress={handlePlayPause} style={styles.audioButton}>
+          <Ionicons name={player.playing ? 'pause' : 'play'} size={24} color={COLORS.accent} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleStop} style={styles.audioButton}>
+          <Ionicons name="stop" size={24} color={COLORS.text.muted} />
+        </TouchableOpacity>
+        <Text style={styles.audioTime}>
+          {formatTime(currentTime)} / {formatTime(player.duration || 0)}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
 const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { icon: string; label: string; value: string; iconColor?: string }) => (
   <View style={styles.infoRow}>
     <View style={styles.infoRowLeft}>
@@ -114,9 +174,12 @@ const IncidentDetailsScreen = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const mapRef = useRef<MapView>(null);
 
-  const imageAttachments = attachments.filter(att => att.mime_type.startsWith('image/'));
-  const otherAttachments = attachments.filter(att => !att.mime_type.startsWith('image/'));
+  const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
+  const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
+  const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -159,6 +222,49 @@ const IncidentDetailsScreen = () => {
       fetchDetails();
     }, [fetchDetails])
   );
+
+  const handleZoomIn = () => {
+    if (mapRef.current && mapRegion) {
+      const newRegion = {
+        ...mapRegion,
+        latitudeDelta: mapRegion.latitudeDelta / 2,
+        longitudeDelta: mapRegion.longitudeDelta / 2,
+      };
+      mapRef.current.animateToRegion(newRegion, 300);
+      setMapRegion(newRegion);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapRef.current && mapRegion) {
+      const newRegion = {
+        ...mapRegion,
+        latitudeDelta: Math.min(mapRegion.latitudeDelta * 2, 180),
+        longitudeDelta: Math.min(mapRegion.longitudeDelta * 2, 360),
+      };
+      mapRef.current.animateToRegion(newRegion, 300);
+      setMapRegion(newRegion);
+    }
+  };
+
+  const handleOpenDirections = () => {
+    if (incident?.latitude && incident?.longitude) {
+      const destination = `${incident.latitude},${incident.longitude}`;
+      const url = Platform.select({
+        ios: `maps://app?daddr=${destination}`,
+        android: `google.navigation:q=${destination}`,
+      });
+      const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+
+      Linking.canOpenURL(url || webUrl).then((supported) => {
+        if (supported && url) {
+          Linking.openURL(url);
+        } else {
+          Linking.openURL(webUrl);
+        }
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -340,6 +446,9 @@ const IncidentDetailsScreen = () => {
               ))}
             </ScrollView>
           )}
+          {audioAttachments.map(att => (
+            <AudioPlayer key={att.id} attachment={att} token={token || ''} />
+          ))}
           {otherAttachments.map(att => (
             <TouchableOpacity
               key={att.id}
@@ -374,6 +483,7 @@ const IncidentDetailsScreen = () => {
             <SectionHeader title={t('details.geolocation')} icon="navigate" />
             <View style={styles.mapContainer}>
               <MapView
+                ref={mapRef}
                 style={styles.map}
                 initialRegion={{
                   latitude: incident.latitude,
@@ -381,21 +491,46 @@ const IncidentDetailsScreen = () => {
                   latitudeDelta: 0.01,
                   longitudeDelta: 0.01,
                 }}
+                onRegionChangeComplete={(region) => setMapRegion(region)}
+                onMapReady={() => {
+                  setMapRegion({
+                    latitude: incident.latitude!,
+                    longitude: incident.longitude!,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  });
+                }}
               >
                 <Marker
                   coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
                   title={incident.title}
                   description={incident.address || 'Incident Location'}
-                  pinColor={COLORS.accent}
+                  pinColor={COLORS.error}
                 />
               </MapView>
-            </View>
-            {incident.address && (
-              <View style={styles.addressContainer}>
-                <Ionicons name="location" size={16} color={COLORS.error} />
-                <Text style={styles.addressText}>{incident.address}</Text>
+              {/* Zoom Controls */}
+              <View style={styles.mapControls}>
+                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomIn}>
+                  <Ionicons name="add" size={22} color={COLORS.text.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomOut}>
+                  <Ionicons name="remove" size={22} color={COLORS.text.primary} />
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
+            {/* Address and Directions */}
+            <View style={styles.mapFooter}>
+              {incident.address && (
+                <View style={styles.addressContainer}>
+                  <Ionicons name="location" size={16} color={COLORS.error} />
+                  <Text style={styles.addressText}>{incident.address}</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
+                <Ionicons name="navigate" size={18} color={COLORS.white} />
+                <Text style={styles.directionsButtonText}>{t('details.directions') || 'Directions'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -566,10 +701,49 @@ const styles = StyleSheet.create({
   fileIconContainer: { width: 36, height: 36, borderRadius: 8, backgroundColor: `${COLORS.accent}20`, justifyContent: 'center', alignItems: 'center' },
   fileName: { flex: 1, marginLeft: 12, fontSize: 14, color: COLORS.text.primary },
 
-  mapContainer: { height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+  audioPlayer: { backgroundColor: COLORS.background, borderRadius: 10, padding: 12, marginBottom: 8 },
+  audioInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  audioFileName: { flex: 1, marginLeft: 8, fontSize: 14, color: COLORS.text.primary, fontWeight: '500' },
+  audioPlayerControl: { width: '100%', height: 50 },
+  audioControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  audioButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: `${COLORS.accent}20`, justifyContent: 'center', alignItems: 'center' },
+  audioTime: { fontSize: 12, color: COLORS.text.secondary, marginLeft: 'auto' },
+
+  mapContainer: { height: 200, borderRadius: 12, overflow: 'hidden', marginBottom: 12, position: 'relative' },
   map: { width: '100%', height: '100%' },
+  mapControls: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4 },
+      android: { elevation: 4 },
+    }),
+  },
+  mapControlButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  mapFooter: { gap: 12 },
   addressContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addressText: { fontSize: 13, color: COLORS.text.secondary, flex: 1 },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    gap: 8,
+  },
+  directionsButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '600' },
 
   timeline: {},
   timelineItem: { flexDirection: 'row' },

@@ -162,7 +162,7 @@ const MyIncidentsScreen = () => {
   const [activeTab, setActiveTab] = useState<"assigned" | "created">(
     initialType === "created" ? "created" : "assigned",
   );
-  const { canCreateIncidents } = usePermissions();
+  const { canCreateIncidents, canUpdateIncidents } = usePermissions();
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,6 +180,8 @@ const MyIncidentsScreen = () => {
     total_items: 0,
     total_pages: 0,
   });
+
+  console.log(canCreateIncidents(), canUpdateIncidents());
 
   const isLoadingMore = useRef(false);
 
@@ -346,24 +348,26 @@ const MyIncidentsScreen = () => {
       <View style={styles.contentContainer}>
         {/* Tabs */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "assigned" && styles.activeTab]}
-            onPress={() => setActiveTab("assigned")}
-          >
-            <Ionicons
-              name="checkbox-outline"
-              size={18}
-              color={activeTab === "assigned" ? "#1A237E" : "#666"}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "assigned" && styles.activeTabText,
-              ]}
+          {canUpdateIncidents() && (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "assigned" && styles.activeTab]}
+              onPress={() => setActiveTab("assigned")}
             >
-              Assigned to Me
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="checkbox-outline"
+                size={18}
+                color={activeTab === "assigned" ? "#1A237E" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "assigned" && styles.activeTabText,
+                ]}
+              >
+                Assigned to Me
+              </Text>
+            </TouchableOpacity>
+          )}
           {canCreateIncidents() && (
             <TouchableOpacity
               style={[styles.tab, activeTab === "created" && styles.activeTab]}

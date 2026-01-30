@@ -22,7 +22,15 @@
     "refresh": "Refresh",
     "noData": "No data available",
     "success": "Success",
-    "failed": "Failed"
+    "failed": "Failed",
+    "viewDetails": "View Details"
+  },
+  "map": {
+    "incidents": "Incidents Map",
+    "incidentsOnMap": "incidents on map",
+    "requests": "Requests Map",
+    "requestsOnMap": "requests on map",
+    "tapToLoad": "Tap marker to load"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -159,7 +167,8 @@
     "notFound": "Not found.",
     "fetchError": "Failed to fetch details",
     "reporter": "Reporter",
-    "geolocation": "Geolocation"
+    "geolocation": "Geolocation",
+    "directions": "Directions"
   },
   "priorities": {
     "critical": "Critical",

@@ -1,8 +1,18 @@
 import apiClient from './client';
 
-export const getWorkflows = async (activeOnly = true) => {
+export type RecordType = 'incident' | 'request' | 'complaint' | 'query';
+
+export const getWorkflows = async (activeOnly = true, recordType?: RecordType) => {
   try {
-    const url = activeOnly ? '/admin/workflows?active_only=true' : '/admin/workflows';
+    const params = new URLSearchParams();
+    if (activeOnly) {
+      params.append('active_only', 'true');
+    }
+    if (recordType) {
+      params.append('record_type', recordType);
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/admin/workflows?${queryString}` : '/admin/workflows';
     const response = await apiClient.get(url);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };

@@ -2,10 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions, Platform, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ImageView from 'react-native-image-viewing';
 import { useTranslation } from 'react-i18next';
+import { Audio } from 'expo-av';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
@@ -70,9 +71,14 @@ const ComplaintDetailsScreen = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
+  const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
 
-  const imageAttachments = attachments.filter(att => att.mime_type.startsWith('image/'));
-  const otherAttachments = attachments.filter(att => !att.mime_type.startsWith('image/'));
+  const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
+  const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
+  const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/') && !att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -115,6 +121,51 @@ const ComplaintDetailsScreen = () => {
     }, [fetchDetails])
   );
 
+  // Audio playback functions
+  const playAudio = async (audioId: string) => {
+    try {
+      // Stop currently playing audio
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const audioUrl = `${baseURL}/attachments/${audioId}`;
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUrl, headers: { Authorization: `Bearer ${token}` } },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded) {
+            setAudioPosition({ ...audioPosition, [audioId]: status.positionMillis });
+            setAudioDuration({ ...audioDuration, [audioId]: status.durationMillis || 0 });
+            if (status.didJustFinish) {
+              setPlayingAudioId(null);
+            }
+          }
+        }
+      );
+
+      setSound(newSound);
+      setPlayingAudioId(audioId);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      Alert.alert('Error', 'Failed to play audio');
+    }
+  };
+
+  const pauseAudio = async () => {
+    if (sound) {
+      await sound.pauseAsync();
+      setPlayingAudioId(null);
+    }
+  };
+
+  const formatDuration = (millis: number): string => {
+    const seconds = Math.floor(millis / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -147,6 +198,7 @@ const ComplaintDetailsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
       <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -261,6 +313,33 @@ const ComplaintDetailsScreen = () => {
               ))}
             </ScrollView>
           )}
+          {/* Audio Attachments */}
+          {audioAttachments.map(att => (
+            <View key={att.id} style={styles.audioAttachment}>
+              <View style={styles.audioInfo}>
+                <Ionicons name="mic" size={24} color={COLORS.accent} />
+                <View style={styles.audioDetails}>
+                  <Text style={styles.audioName} numberOfLines={1}>{att.file_name}</Text>
+                  {audioDuration[att.id] && (
+                    <Text style={styles.audioDuration}>
+                      {formatDuration(audioPosition[att.id] || 0)} / {formatDuration(audioDuration[att.id])}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => playingAudioId === att.id ? pauseAudio() : playAudio(att.id)}
+                style={styles.playButton}
+              >
+                <Ionicons
+                  name={playingAudioId === att.id ? "pause" : "play"}
+                  size={24}
+                  color={COLORS.white}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {/* Other Attachments */}
           {otherAttachments.map(att => (
             <TouchableOpacity
               key={att.id}
@@ -467,6 +546,28 @@ const styles = StyleSheet.create({
   locationText: { marginLeft: 12, flex: 1 },
   locationName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
   locationAddress: { fontSize: 13, color: COLORS.text.secondary, marginTop: 4 },
+
+  audioAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  audioInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 },
+  audioDetails: { marginLeft: 12, flex: 1 },
+  audioName: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary },
+  audioDuration: { fontSize: 12, color: COLORS.text.muted, marginTop: 2 },
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   timeline: {},
   timelineItem: { flexDirection: 'row' },

@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ImageBackground, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '@/src/hooks/usePermissions';
 
@@ -115,6 +115,9 @@ const ComplaintsScreen = () => {
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 20, total_items: 0, total_pages: 0 });
   const [defaultStatus, setDefaultStatus] = useState<{ id: string; name: string } | null>(null);
   const [statsLoaded, setStatsLoaded] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
 
   useEffect(() => {
@@ -143,6 +146,7 @@ const ComplaintsScreen = () => {
     if (location_id) params.location_id = location_id;
     if (sla_status) params.sla_status = sla_status;
     if (channel) params.channel = channel;
+    if (searchQuery.trim()) params.search = searchQuery.trim();
     return params;
   };
 
@@ -182,8 +186,21 @@ const ComplaintsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       if (statsLoaded) fetchComplaints(1, false);
-    }, [statsLoaded, activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel])
+    }, [statsLoaded, activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel, searchQuery])
   );
+
+  const handleSearchToggle = () => {
+    setShowSearch(!showSearch);
+    if (!showSearch) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    } else {
+      setSearchQuery('');
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    fetchComplaints(1, false);
+  };
 
   const clearFilter = () => router.replace('/(tabs)/complaint');
 
@@ -263,24 +280,53 @@ const ComplaintsScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{headerTitle}</Text>
-        </View>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="search-outline" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
-            onPress={() => router.push({
-              pathname: '/complaint-filter',
-              params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, sla_status, channel }
-            })}
-          >
-            <Ionicons name="filter" size={22} color="white" />
-            {hasManualFilters && <View style={styles.filterDot} />}
-          </TouchableOpacity>
-        </View>
+        {showSearch ? (
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder={t('common.search', 'Search...')}
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearchSubmit}
+                returnKeyType="search"
+                autoCapitalize="none"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity style={styles.searchCancelButton} onPress={handleSearchToggle}>
+              <Text style={styles.searchCancelText}>{t('common.cancel', 'Cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>{headerTitle}</Text>
+            </View>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>
+                <Ionicons name="search-outline" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
+                onPress={() => router.push({
+                  pathname: '/complaint-filter',
+                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, sla_status, channel }
+                })}
+              >
+                <Ionicons name="filter" size={22} color="white" />
+                {hasManualFilters && <View style={styles.filterDot} />}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ImageBackground>
 
       <FilterBadges />
@@ -372,6 +418,12 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: COLORS.text.secondary, marginTop: 8, textAlign: 'center' },
+  searchContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingHorizontal: 12, height: 44 },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 16, color: '#333' },
+  searchCancelButton: { paddingVertical: 8, paddingHorizontal: 4 },
+  searchCancelText: { color: 'white', fontSize: 16, fontWeight: '500' },
 });
 
 export default ComplaintsScreen;

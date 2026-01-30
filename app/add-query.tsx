@@ -282,7 +282,7 @@ const AddQueryScreen = () => {
       const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
         getClassifications(),
         getLocations(),
-        getWorkflows(true),
+        getWorkflows(true, 'query'),
         getUsers(),
         getDepartments(),
       ]);

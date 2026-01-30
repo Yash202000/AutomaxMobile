@@ -11,16 +11,21 @@ import {
   Modal,
   FlatList,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { createRequest } from '@/src/api/incidents';
+import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { getClassifications } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
+import LocationPicker, { LocationData } from '@/src/components/LocationPicker';
 
 interface DropdownOption {
   id: string;
@@ -235,6 +240,7 @@ const findMatchingWorkflow = (
 
 const AddRequestScreen = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -247,6 +253,13 @@ const AddRequestScreen = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
   const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
+
+  // Attachments state
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
+
+  // Geolocation state
+  const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
 
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
@@ -271,7 +284,7 @@ const AddRequestScreen = () => {
       const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
         getClassifications(),
         getLocations(),
-        getWorkflows(true),
+        getWorkflows(true, 'request'),
         getUsers(),
         getDepartments(),
       ]);
@@ -340,8 +353,10 @@ const AddRequestScreen = () => {
     assignee_id: 'Assignee',
     department_id: 'Department',
     location_id: 'Location',
+    geolocation: 'Geolocation',
     reporter_name: 'Reporter Name',
     reporter_email: 'Reporter Email',
+    attachments: 'Attachments',
   };
 
   const validate = (): boolean => {
@@ -356,6 +371,22 @@ const AddRequestScreen = () => {
     }
 
     for (const field of requiredFields) {
+      // Check attachments separately
+      if (field === 'attachments') {
+        if (attachments.length === 0) {
+          newErrors.attachments = 'At least one attachment is required';
+        }
+        continue;
+      }
+
+      // Check geolocation separately
+      if (field === 'geolocation') {
+        if (!locationData) {
+          newErrors.geolocation = 'Geolocation is required';
+        }
+        continue;
+      }
+
       let value: any;
       switch (field) {
         case 'description':
@@ -393,6 +424,129 @@ const AddRequestScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Attachment handling functions
+  const showAttachmentOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Choose File'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleTakePhoto();
+          } else if (buttonIndex === 2) {
+            handlePickFromGallery();
+          } else if (buttonIndex === 3) {
+            handlePickDocument();
+          }
+        }
+      );
+    } else {
+      setAttachmentPickerVisible(true);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newAttachments = result.assets.map(asset => ({
+          uri: asset.uri,
+          name: asset.fileName || `photo_${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          size: asset.fileSize,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        if (errors.attachments) {
+          setErrors(prev => ({ ...prev, attachments: '' }));
+        }
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Gallery permission is required to select photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newAttachments = result.assets.map(asset => ({
+          uri: asset.uri,
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          size: asset.fileSize,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        if (errors.attachments) {
+          setErrors(prev => ({ ...prev, attachments: '' }));
+        }
+      }
+    } catch (error) {
+      console.error('Error picking from gallery:', error);
+      Alert.alert('Error', 'Failed to pick from gallery');
+    }
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newAttachments = result.assets.map(asset => ({
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType || 'application/octet-stream',
+          size: asset.size,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        if (errors.attachments) {
+          setErrors(prev => ({ ...prev, attachments: '' }));
+        }
+      }
+    } catch (error) {
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to pick document');
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleLocationChange = (location: LocationData | undefined) => {
+    setLocationData(location);
+    if (location && errors.geolocation) {
+      setErrors(prev => ({ ...prev, geolocation: '' }));
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
@@ -417,17 +571,35 @@ const AddRequestScreen = () => {
     if (selectedSource) requestData.source = selectedSource.id;
     if (selectedAssignee) requestData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) requestData.department_id = selectedDepartment.id;
+    if (locationData) {
+      requestData.latitude = locationData.latitude;
+      requestData.longitude = locationData.longitude;
+      if (locationData.address) requestData.address = locationData.address;
+      if (locationData.city) requestData.city = locationData.city;
+      if (locationData.state) requestData.state = locationData.state;
+      if (locationData.country) requestData.country = locationData.country;
+      if (locationData.postal_code) requestData.postal_code = locationData.postal_code;
+    }
     if (reporterName.trim()) requestData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) requestData.reporter_email = reporterEmail.trim();
 
     const response = await createRequest(requestData);
-    setSubmitting(false);
 
-    if (response.success) {
+    if (response.success && response.data) {
+      // Upload attachments if any
+      if (attachments.length > 0) {
+        const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
+        if (!uploadResult.success && uploadResult.errors) {
+          console.warn('Some attachments failed to upload:', uploadResult.errors);
+        }
+      }
+
+      setSubmitting(false);
       Alert.alert('Success', 'Request created successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
+      setSubmitting(false);
       Alert.alert('Error', `Failed to create request: ${response.error}`);
     }
   };
@@ -617,10 +789,117 @@ const AddRequestScreen = () => {
             />
             {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
 
+            {/* Attachments - only show if required */}
+            {isFieldRequired('attachments') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Attachments <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError]}>
+                  {attachments.length > 0 && (
+                    <View style={styles.attachmentsList}>
+                      {attachments.map((file, index) => (
+                        <View key={index} style={styles.attachmentItem}>
+                          <View style={styles.attachmentInfo}>
+                            <Ionicons name="document-attach" size={20} color="#9B59B6" />
+                            <Text style={styles.attachmentName} numberOfLines={1}>
+                              {file.name}
+                            </Text>
+                            <Text style={styles.attachmentSize}>
+                              ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
+                            </Text>
+                          </View>
+                          <TouchableOpacity onPress={() => removeAttachment(index)}>
+                            <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
+                    <Ionicons name="cloud-upload-outline" size={24} color="#9B59B6" />
+                    <Text style={styles.attachmentButtonText}>
+                      {attachments.length > 0 ? 'Add more files' : 'Tap to upload files'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
+              </>
+            )}
+
+            {/* Geolocation - only show if required */}
+            {isFieldRequired('geolocation') && (
+              <LocationPicker
+                label="Geolocation"
+                value={locationData}
+                onChange={handleLocationChange}
+                required
+                error={errors.geolocation}
+              />
+            )}
+
             <View style={styles.bottomPadding} />
           </ScrollView>
 
-          <View style={styles.submitContainer}>
+          {/* Attachment Picker Modal (Android) */}
+          <Modal
+            visible={attachmentPickerVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setAttachmentPickerVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.pickerModalOverlay}
+              activeOpacity={1}
+              onPress={() => setAttachmentPickerVisible(false)}
+            >
+              <View style={styles.pickerModalContent}>
+                <Text style={styles.pickerModalTitle}>Add Attachment</Text>
+
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setAttachmentPickerVisible(false);
+                    handleTakePhoto();
+                  }}
+                >
+                  <Ionicons name="camera" size={24} color="#9B59B6" />
+                  <Text style={styles.pickerOptionText}>Take Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setAttachmentPickerVisible(false);
+                    handlePickFromGallery();
+                  }}
+                >
+                  <Ionicons name="images" size={24} color="#9B59B6" />
+                  <Text style={styles.pickerOptionText}>Choose from Gallery</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setAttachmentPickerVisible(false);
+                    handlePickDocument();
+                  }}
+                >
+                  <Ionicons name="document" size={24} color="#9B59B6" />
+                  <Text style={styles.pickerOptionText}>Choose File</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.pickerCancelButton}
+                  onPress={() => setAttachmentPickerVisible(false)}
+                >
+                  <Text style={styles.pickerCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          <View style={[styles.submitContainer, { paddingBottom: 20 + insets.bottom }]}>
             <TouchableOpacity
               style={[styles.submitButton, submitting && styles.disabledButton]}
               onPress={handleSubmit}
@@ -858,6 +1137,104 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#999',
     fontSize: 16,
+  },
+  // Attachment styles
+  attachmentsContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  attachmentsContainerError: {
+    borderColor: '#E74C3C',
+  },
+  attachmentsList: {
+    marginBottom: 12,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  attachmentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  attachmentName: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
+    flex: 1,
+  },
+  attachmentSize: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 4,
+  },
+  attachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#9B59B6',
+    borderRadius: 8,
+  },
+  attachmentButtonText: {
+    color: '#9B59B6',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  // Attachment picker modal styles
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    maxWidth: 300,
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+  },
+  pickerCancelButton: {
+    marginTop: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
+  pickerCancelText: {
+    fontSize: 16,
+    color: '#E74C3C',
+    fontWeight: '600',
   },
 });
 

@@ -18,10 +18,18 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const {
+    canViewIncidents,
     canViewAllIncidents,
+    canCreateIncidents,
+    canViewRequests,
     canViewAllRequests,
+    canCreateRequests,
+    canViewComplaints,
     canViewAllComplaints,
+    canCreateComplaints,
+    canViewQueries,
     canViewAllQueries,
+    canCreateQueries,
   } = usePermissions();
 
   const tabBarHeight = TAB_BAR_HEIGHT + insets.bottom;
@@ -29,7 +37,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: "#1A237E",
         tabBarInactiveTintColor: "#9E9E9E",
         headerShown: false,
         tabBarButton: HapticTab,
@@ -54,8 +62,11 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "500",
+          fontWeight: "600",
           marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 2,
         },
       }}
     >
@@ -83,7 +94,7 @@ export default function TabLayout() {
               color={color}
             />
           ),
-          href: canViewAllIncidents() ? "/(tabs)/incident" : null,
+          href: canViewIncidents() || canViewAllIncidents() || canCreateIncidents() ? "/(tabs)/incident" : null,
         }}
       />
       <Tabs.Screen
@@ -97,7 +108,7 @@ export default function TabLayout() {
               color={color}
             />
           ),
-          href: canViewAllRequests() ? "/(tabs)/request" : null,
+          href: canViewRequests() || canViewAllRequests() || canCreateRequests() ? "/(tabs)/request" : null,
         }}
       />
       <Tabs.Screen
@@ -111,7 +122,7 @@ export default function TabLayout() {
               color={color}
             />
           ),
-          href: canViewAllComplaints() ? "/(tabs)/complaint" : null,
+          href: canViewComplaints() || canViewAllComplaints() || canCreateComplaints() ? "/(tabs)/complaint" : null,
         }}
       />
       <Tabs.Screen
@@ -125,7 +136,7 @@ export default function TabLayout() {
               color={color}
             />
           ),
-          href: canViewAllQueries() ? "/(tabs)/query" : null,
+          href: canViewQueries() || canViewAllQueries() || canCreateQueries() ? "/(tabs)/query" : null,
         }}
       />
       <Tabs.Screen

@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { createComplaint } from '@/src/api/incidents';
+import { Audio } from 'expo-av';
+import { createComplaint, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
 import { getClassifications } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
@@ -272,6 +273,11 @@ const AddComplaintScreen = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Voice recording state
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioFiles, setAudioFiles] = useState<{ uri: string; duration: number }[]>([]);
+
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -282,7 +288,7 @@ const AddComplaintScreen = () => {
       const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
         getClassifications(),
         getLocations(),
-        getWorkflows(true),
+        getWorkflows(true, 'complaint'),
         getUsers(),
         getDepartments(),
       ]);
@@ -354,6 +360,8 @@ const AddComplaintScreen = () => {
     location_id: 'Location',
     reporter_name: 'Reporter Name',
     reporter_email: 'Reporter Email',
+    attachments: 'Voice Recording',
+    attachment: 'Voice Recording',
   };
 
   const validate = (): boolean => {
@@ -397,6 +405,10 @@ const AddComplaintScreen = () => {
         case 'reporter_email':
           value = reporterEmail;
           break;
+        case 'attachments':
+        case 'attachment':
+          value = audioFiles.length > 0;
+          break;
       }
 
       if (!value || (typeof value === 'string' && !value.trim())) {
@@ -406,6 +418,74 @@ const AddComplaintScreen = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Please allow microphone access to record audio');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setRecordingDuration(0);
+
+      // Update duration every second
+      const interval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      // Store interval ID in recording object for cleanup
+      (newRecording as any)._interval = interval;
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      Alert.alert('Error', 'Failed to start recording');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    try {
+      // Clear interval
+      if ((recording as any)._interval) {
+        clearInterval((recording as any)._interval);
+      }
+
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+
+      if (uri) {
+        setAudioFiles(prev => [...prev, { uri, duration: recordingDuration }]);
+      }
+
+      setRecording(null);
+      setRecordingDuration(0);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      Alert.alert('Error', 'Failed to stop recording');
+    }
+  };
+
+  const removeAudio = (index: number) => {
+    setAudioFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSubmit = async () => {
@@ -422,9 +502,15 @@ const AddComplaintScreen = () => {
     const complaintData: any = {
       title: title.trim(),
       workflow_id: matchedWorkflow!.id,
-      priority: parseInt(selectedPriority.id),
-      severity: parseInt(selectedSeverity.id),
     };
+
+    // Only include priority and severity if they're required
+    if (isFieldRequired('priority')) {
+      complaintData.priority = parseInt(selectedPriority.id);
+    }
+    if (isFieldRequired('severity')) {
+      complaintData.severity = parseInt(selectedSeverity.id);
+    }
 
     if (description.trim()) complaintData.description = description.trim();
     if (selectedClassification) complaintData.classification_id = selectedClassification.id;
@@ -437,13 +523,31 @@ const AddComplaintScreen = () => {
     if (reporterEmail.trim()) complaintData.reporter_email = reporterEmail.trim();
 
     const response = await createComplaint(complaintData);
-    setSubmitting(false);
 
     if (response.success) {
+      // Upload audio files if any
+      if (audioFiles.length > 0) {
+        const complaintId = response.data.id;
+        const filesToUpload = audioFiles.map((audio, index) => ({
+          uri: audio.uri,
+          name: `voice-recording-${Date.now()}-${index}.m4a`,
+          type: 'audio/m4a',
+        }));
+
+        const uploadResult = await uploadMultipleComplaintAttachments(complaintId, filesToUpload);
+
+        if (!uploadResult.success) {
+          console.error('Failed to upload some audio files:', uploadResult.errors);
+          // Continue anyway since complaint was created
+        }
+      }
+
+      setSubmitting(false);
       Alert.alert('Success', 'Complaint created successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
+      setSubmitting(false);
       Alert.alert('Error', `Failed to create complaint: ${response.error}`);
     }
   };
@@ -501,57 +605,77 @@ const AddComplaintScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
+            {isFieldRequired('channel') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Channel {isFieldRequired('channel') && <Text style={styles.required}>*</Text>}
+              Channel <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select channel"
               value={selectedChannel?.name || ''}
               options={channelOptions}
               onSelect={setSelectedChannel}
-              required={isFieldRequired('channel')}
+              required={true}
               error={errors.channel}
             />
+            </>
+            )}
 
+            {isFieldRequired('classification_id') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Classification {isFieldRequired('classification_id') && <Text style={styles.required}>*</Text>}
+              Classification <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select classification"
               value={selectedClassification?.name || ''}
               options={classifications}
               onSelect={setSelectedClassification}
-              required={isFieldRequired('classification_id')}
+              required={true}
               error={errors.classification_id}
             />
+            </>
+            )}
 
+            {isFieldRequired('location_id') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Location {isFieldRequired('location_id') && <Text style={styles.required}>*</Text>}
+              Location <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select location"
               value={selectedLocation?.name || ''}
               options={locations}
               onSelect={setSelectedLocation}
-              required={isFieldRequired('location_id')}
+              required={true}
               error={errors.location_id}
             />
+            </>
+            )}
 
+            {isFieldRequired('source') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Source {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+              Source <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select source"
               value={selectedSource?.name || ''}
               options={sourceOptions}
               onSelect={setSelectedSource}
-              required={isFieldRequired('source')}
+              required={true}
               error={errors.source}
             />
+            </>
+            )}
 
+            {(isFieldRequired('priority') || isFieldRequired('severity')) && (
             <View style={styles.row}>
+              {isFieldRequired('priority') && (
               <View style={styles.halfWidth}>
-                <Text style={styles.sectionTitle}>Priority</Text>
+                <Text style={styles.sectionTitle}>
+                  Priority <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
                   label="Select priority"
                   value={selectedPriority.name}
@@ -560,8 +684,12 @@ const AddComplaintScreen = () => {
                   allowClear={false}
                 />
               </View>
+              )}
+              {isFieldRequired('severity') && (
               <View style={styles.halfWidth}>
-                <Text style={styles.sectionTitle}>Severity</Text>
+                <Text style={styles.sectionTitle}>
+                  Severity <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
                   label="Select severity"
                   value={selectedSeverity.name}
@@ -570,34 +698,46 @@ const AddComplaintScreen = () => {
                   allowClear={false}
                 />
               </View>
+              )}
             </View>
+            )}
 
+            {isFieldRequired('assignee_id') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Assignee {isFieldRequired('assignee_id') && <Text style={styles.required}>*</Text>}
+              Assignee <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select assignee"
               value={selectedAssignee?.name || ''}
               options={users}
               onSelect={setSelectedAssignee}
-              required={isFieldRequired('assignee_id')}
+              required={true}
               error={errors.assignee_id}
             />
+            </>
+            )}
 
+            {isFieldRequired('department_id') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Department {isFieldRequired('department_id') && <Text style={styles.required}>*</Text>}
+              Department <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
               label="Select department"
               value={selectedDepartment?.name || ''}
               options={departments}
               onSelect={setSelectedDepartment}
-              required={isFieldRequired('department_id')}
+              required={true}
               error={errors.department_id}
             />
+            </>
+            )}
 
+            {isFieldRequired('description') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Description {isFieldRequired('description') && <Text style={styles.required}>*</Text>}
+              Description <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[styles.descriptionInput, errors.description && styles.inputError]}
@@ -612,9 +752,13 @@ const AddComplaintScreen = () => {
               textAlignVertical="top"
             />
             {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+            </>
+            )}
 
+            {isFieldRequired('reporter_name') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Reporter Name {isFieldRequired('reporter_name') && <Text style={styles.required}>*</Text>}
+              Reporter Name <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, errors.reporter_name && styles.inputError]}
@@ -627,9 +771,13 @@ const AddComplaintScreen = () => {
               placeholderTextColor="#999"
             />
             {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+            </>
+            )}
 
+            {isFieldRequired('reporter_email') && (
+            <>
             <Text style={styles.sectionTitle}>
-              Reporter Email {isFieldRequired('reporter_email') && <Text style={styles.required}>*</Text>}
+              Reporter Email <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, errors.reporter_email && styles.inputError]}
@@ -644,6 +792,59 @@ const AddComplaintScreen = () => {
               autoCapitalize="none"
             />
             {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+            </>
+            )}
+
+            {/* Voice Recording Section */}
+            {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
+            <>
+            <Text style={styles.sectionTitle}>
+              Voice Recording <Text style={styles.required}>*</Text>
+            </Text>
+
+            {/* Recorded Audio Files */}
+            {audioFiles.length > 0 && (
+              <View style={styles.audioList}>
+                {audioFiles.map((audio, index) => (
+                  <View key={index} style={styles.audioItem}>
+                    <View style={styles.audioInfo}>
+                      <Ionicons name="mic" size={20} color="#3B82F6" />
+                      <Text style={styles.audioText}>
+                        Recording {index + 1} ({formatDuration(audio.duration)})
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removeAudio(index)}>
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Recording Button */}
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                recording && styles.recordingButton
+              ]}
+              onPress={recording ? stopRecording : startRecording}
+            >
+              {recording ? (
+                <>
+                  <Ionicons name="stop" size={24} color="#fff" />
+                  <Text style={styles.recordButtonText}>
+                    Stop Recording ({formatDuration(recordingDuration)})
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="mic" size={24} color="#fff" />
+                  <Text style={styles.recordButtonText}>Start Recording</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            </>
+            )}
 
             <View style={styles.bottomPadding} />
           </ScrollView>
@@ -886,6 +1087,45 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#999',
     fontSize: 16,
+  },
+  audioList: {
+    marginBottom: 16,
+  },
+  audioItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  audioInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  audioText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  recordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#3B82F6',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  recordingButton: {
+    backgroundColor: '#EF4444',
+  },
+  recordButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
