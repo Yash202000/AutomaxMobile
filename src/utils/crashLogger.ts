@@ -280,17 +280,37 @@ class CrashLogger {
 
 export const crashLogger = CrashLogger.getInstance();
 
+// Track if we're already logging to prevent infinite loops
+let isCurrentlyLogging = false;
+
 // Global error handler setup
 export const setupGlobalErrorHandlers = () => {
   // Handle JavaScript errors
   const originalConsoleError = console.error;
   console.error = (...args: any[]) => {
+    // Call original console.error FIRST
+    originalConsoleError(...args);
+
+    // Only log if not already in a logging operation (prevent infinite loop)
+    if (isCurrentlyLogging) {
+      return;
+    }
+
     try {
-      // Extract error object if present
-      const errorArg = args.find(arg => arg instanceof Error);
+      isCurrentlyLogging = true;
+
+      // Don't log our own crash logger errors
       const errorMessage = args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
+
+      if (errorMessage.includes('[CrashLogger]') || errorMessage.includes('crashLogger')) {
+        isCurrentlyLogging = false;
+        return;
+      }
+
+      // Extract error object if present
+      const errorArg = args.find(arg => arg instanceof Error);
 
       if (errorArg instanceof Error) {
         crashLogger.logError(errorArg, {
@@ -304,28 +324,43 @@ export const setupGlobalErrorHandlers = () => {
       }
     } catch (loggingError) {
       // Prevent logging errors from crashing the app
+    } finally {
+      isCurrentlyLogging = false;
     }
-
-    // Call original console.error
-    originalConsoleError(...args);
   };
 
   // Handle warnings
   const originalConsoleWarn = console.warn;
   console.warn = (...args: any[]) => {
+    // Call original console.warn FIRST
+    originalConsoleWarn(...args);
+
+    // Don't log if already logging
+    if (isCurrentlyLogging) {
+      return;
+    }
+
     try {
+      isCurrentlyLogging = true;
+
       const warningMessage = args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
+
+      // Don't log our own crash logger warnings
+      if (warningMessage.includes('[CrashLogger]') || warningMessage.includes('crashLogger')) {
+        isCurrentlyLogging = false;
+        return;
+      }
 
       crashLogger.logWarning(warningMessage, {
         context: 'Console Warning',
       }).catch(() => {});
     } catch (loggingError) {
       // Prevent logging errors from crashing the app
+    } finally {
+      isCurrentlyLogging = false;
     }
-
-    originalConsoleWarn(...args);
   };
 
   // Handle unhandled promise rejections
