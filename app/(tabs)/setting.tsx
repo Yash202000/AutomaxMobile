@@ -5,9 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Updates from 'expo-updates';
+import * as Sharing from 'expo-sharing';
 import { getProfile } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
 import { setLanguage, supportedLanguages, getCurrentLanguage } from '@/src/i18n';
+import { crashLogger } from '@/src/utils/crashLogger';
 
 const COLORS = {
   primary: '#2EC4B6',
@@ -49,6 +51,20 @@ const SettingsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+  const [logFileSize, setLogFileSize] = useState<string>('0 KB');
+  const [hasLogs, setHasLogs] = useState(false);
+  const [sharingLogs, setSharingLogs] = useState(false);
+
+  const loadLogInfo = useCallback(async () => {
+    try {
+      const size = await crashLogger.getLogFileSize();
+      const logsExist = await crashLogger.hasLogs();
+      setLogFileSize(size);
+      setHasLogs(logsExist);
+    } catch (error) {
+      console.error('Failed to load log info:', error);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,7 +80,8 @@ const SettingsScreen = () => {
       };
       fetchProfile();
       setCurrentLang(getCurrentLanguage());
-    }, [])
+      loadLogInfo();
+    }, [loadLogInfo])
   );
 
   const handleLogout = async () => {
@@ -116,6 +133,88 @@ const SettingsScreen = () => {
   const getCurrentLanguageName = () => {
     const lang = supportedLanguages.find(l => l.code === currentLang);
     return lang?.nativeName || 'English';
+  };
+
+  const handleShareLogs = async () => {
+    if (!hasLogs) {
+      Alert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      return;
+    }
+
+    setSharingLogs(true);
+
+    try {
+      const logFileUri = await crashLogger.getLogFileUri();
+
+      if (!logFileUri) {
+        Alert.alert(t('common.error'), t('settings.logs.failedToShare'));
+        setSharingLogs(false);
+        return;
+      }
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          t('common.error'),
+          t('settings.logs.sharingNotAvailable')
+        );
+        setSharingLogs(false);
+        return;
+      }
+
+      // Share the log file
+      await Sharing.shareAsync(logFileUri, {
+        mimeType: 'text/plain',
+        dialogTitle: 'Share App Logs',
+        UTI: 'public.plain-text',
+      });
+
+      setSharingLogs(false);
+    } catch (error) {
+      console.error('Failed to share logs:', error);
+      Alert.alert(
+        t('common.error'),
+        t('settings.logs.failedToShare')
+      );
+      setSharingLogs(false);
+    }
+  };
+
+  const handleDeleteLogs = async () => {
+    if (!hasLogs) {
+      Alert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      return;
+    }
+
+    Alert.alert(
+      t('settings.logs.deleteConfirmTitle'),
+      t('settings.logs.deleteConfirmMessage'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await crashLogger.clearLogs();
+              if (success) {
+                Alert.alert(t('common.success'), t('settings.logs.logsDeleted'));
+                await loadLogInfo();
+              } else {
+                Alert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+              }
+            } catch (error) {
+              console.error('Failed to delete logs:', error);
+              Alert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -173,14 +272,45 @@ const SettingsScreen = () => {
         </View>
 
         {/* Log Buttons */}
+        <Text style={styles.sectionTitle}>{t('settings.diagnostics')}</Text>
+        <View style={styles.logInfoContainer}>
+          <View style={styles.logInfoRow}>
+            <Ionicons name="document-text-outline" size={18} color={COLORS.textSecondary} />
+            <Text style={styles.logInfoLabel}>{t('settings.logs.fileSize')}</Text>
+            <Text style={styles.logInfoValue}>{logFileSize}</Text>
+          </View>
+          <View style={styles.logInfoRow}>
+            <Ionicons name="albums-outline" size={18} color={COLORS.textSecondary} />
+            <Text style={styles.logInfoLabel}>{t('settings.logs.status')}</Text>
+            <Text style={[styles.logInfoValue, { color: hasLogs ? COLORS.primary : COLORS.textMuted }]}>
+              {hasLogs ? t('settings.logs.available') : t('settings.logs.empty')}
+            </Text>
+          </View>
+        </View>
         <View style={styles.logButtonsContainer}>
-          <TouchableOpacity style={styles.logButton}>
-            <Ionicons name="share-outline" size={20} color={COLORS.secondary} />
-            <Text style={styles.logButtonText}>{t('settings.shareLogs')}</Text>
+          <TouchableOpacity
+            style={[styles.logButton, (!hasLogs || sharingLogs) && styles.logButtonDisabled]}
+            onPress={handleShareLogs}
+            disabled={!hasLogs || sharingLogs}
+          >
+            {sharingLogs ? (
+              <ActivityIndicator size="small" color={COLORS.secondary} />
+            ) : (
+              <Ionicons name="share-outline" size={20} color={hasLogs ? COLORS.secondary : COLORS.textMuted} />
+            )}
+            <Text style={[styles.logButtonText, (!hasLogs || sharingLogs) && styles.logButtonTextDisabled]}>
+              {t('settings.shareLogs')}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.logButton}>
-            <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-            <Text style={[styles.logButtonText, { color: COLORS.error }]}>{t('settings.deleteLogs')}</Text>
+          <TouchableOpacity
+            style={[styles.logButton, !hasLogs && styles.logButtonDisabled]}
+            onPress={handleDeleteLogs}
+            disabled={!hasLogs}
+          >
+            <Ionicons name="trash-outline" size={20} color={hasLogs ? COLORS.error : COLORS.textMuted} />
+            <Text style={[styles.logButtonText, { color: hasLogs ? COLORS.error : COLORS.textMuted }]}>
+              {t('settings.deleteLogs')}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -368,11 +498,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
   },
+  logInfoContainer: {
+    backgroundColor: COLORS.card,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    borderRadius: 12,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  logInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  logInfoLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginLeft: 12,
+  },
+  logInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
   logButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginHorizontal: 20,
-    marginTop: 30,
     gap: 15,
   },
   logButton: {
@@ -397,10 +560,16 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  logButtonDisabled: {
+    opacity: 0.5,
+  },
   logButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.secondary,
+  },
+  logButtonTextDisabled: {
+    color: COLORS.textMuted,
   },
   logoutButton: {
     backgroundColor: COLORS.card,

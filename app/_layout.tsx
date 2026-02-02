@@ -8,6 +8,8 @@ import '@/src/i18n';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import ErrorBoundary from '@/src/components/ErrorBoundary';
+import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -60,9 +62,26 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Initialize crash logger and global error handlers
+    const initializeCrashLogger = async () => {
+      try {
+        await crashLogger.initialize();
+        setupGlobalErrorHandlers();
+        console.log('[App] Crash logger initialized');
+      } catch (error) {
+        console.error('[App] Failed to initialize crash logger:', error);
+      }
+    };
+
+    initializeCrashLogger();
+  }, []);
+
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

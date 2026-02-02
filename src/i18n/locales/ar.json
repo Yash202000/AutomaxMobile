@@ -191,9 +191,24 @@
     "language": "اللغة",
     "english": "الإنجليزية",
     "arabic": "العربية",
+    "diagnostics": "التشخيصات",
     "shareLogs": "مشاركة السجلات",
     "deleteLogs": "حذف السجلات",
-    "version": "الإصدار"
+    "version": "الإصدار",
+    "logs": {
+      "fileSize": "حجم ملف السجل",
+      "status": "الحالة",
+      "available": "متاح",
+      "empty": "فارغ",
+      "noLogs": "لا توجد سجلات متاحة",
+      "noLogsDescription": "لا توجد سجلات أعطال للمشاركة. سيتم إنشاء السجلات عند حدوث أخطاء.",
+      "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز.",
+      "failedToShare": "فشل مشاركة السجلات. يرجى المحاولة مرة أخرى.",
+      "deleteConfirmTitle": "حذف السجلات؟",
+      "deleteConfirmMessage": "هل أنت متأكد من حذف جميع سجلات الأعطال؟ لا يمكن التراجع عن هذا الإجراء.",
+      "logsDeleted": "تم حذف سجلات الأعطال بنجاح.",
+      "failedToDelete": "فشل حذف السجلات. يرجى المحاولة مرة أخرى."
+    }
   },
   "profile": {
     "firstName": "الاسم الأول",

@@ -162,6 +162,7 @@ const DashboardScreen = () => {
     type: "incident" | "request" | "complaint" | "query",
     stats: Stats | null,
     canView: boolean,
+    tabPath: string,
   ) => {
     if (!canView) return null;
 
@@ -191,7 +192,11 @@ const DashboardScreen = () => {
     const { icon, label, colors } = config[type];
 
     return (
-      <View style={[styles.summaryCard, { backgroundColor: colors.bg }]}>
+      <TouchableOpacity
+        style={[styles.summaryCard, { backgroundColor: colors.bg }]}
+        onPress={() => router.push(tabPath as any)}
+        activeOpacity={0.7}
+      >
         <View
           style={[styles.summaryIconContainer, { backgroundColor: colors.bg }]}
         >
@@ -199,7 +204,7 @@ const DashboardScreen = () => {
         </View>
         <Text style={styles.summaryCardNumber}>{stats?.total || 0}</Text>
         <Text style={styles.summaryCardLabel}>{label}</Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -416,14 +421,15 @@ const DashboardScreen = () => {
         >
         {/* Summary Cards */}
         <View style={styles.summaryCardsContainer}>
-          {renderSummaryCard("incident", incidentStats, canViewAllIncidents())}
-          {renderSummaryCard("request", requestStats, canViewAllRequests())}
+          {renderSummaryCard("incident", incidentStats, canViewAllIncidents(), "/(tabs)/incident")}
+          {renderSummaryCard("request", requestStats, canViewAllRequests(), "/(tabs)/request")}
           {renderSummaryCard(
             "complaint",
             complaintStats,
             canViewAllComplaints(),
+            "/(tabs)/complaint",
           )}
-          {renderSummaryCard("query", queryStats, canViewAllQueries())}
+          {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
         </View>
 
         {/* My Incidents */}

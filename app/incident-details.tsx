@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
+import { crashLogger } from '@/src/utils/crashLogger';
 
 const COLORS = {
   primary: '#1A237E',
@@ -194,27 +195,55 @@ const IncidentDetailsScreen = () => {
     if (!incidentId) return;
 
     setLoading(true);
-    const [detailsResponse, transitionsResponse] = await Promise.all([
-      getIncidentById(incidentId),
-      getAvailableTransitions(incidentId),
-    ]);
 
-    if (detailsResponse.success) {
-      setIncident(detailsResponse.data);
-      setAttachments(detailsResponse.data.attachments || []);
-    } else {
-      setError(detailsResponse.error);
-      Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+    try {
+      const [detailsResponse, transitionsResponse] = await Promise.all([
+        getIncidentById(incidentId),
+        getAvailableTransitions(incidentId),
+      ]);
+
+      if (detailsResponse.success) {
+        setIncident(detailsResponse.data);
+        setAttachments(detailsResponse.data.attachments || []);
+      } else {
+        setError(detailsResponse.error);
+
+        // Log failed API response
+        crashLogger.logWarning('Failed to fetch incident details', {
+          screen: 'IncidentDetailsScreen',
+          action: 'fetchDetails',
+          incidentId: incidentId,
+          error: detailsResponse.error,
+        }).catch(err => console.error('Failed to log warning:', err));
+
+        Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      }
+
+      if (transitionsResponse.success) {
+        const executableTransitions = transitionsResponse.data.filter((t: TransitionData) => t.can_execute);
+        setAvailableTransitions(executableTransitions);
+      } else {
+        setAvailableTransitions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching incident details:', error);
+
+      // Log unexpected error
+      crashLogger.logError(error as Error, {
+        screen: 'IncidentDetailsScreen',
+        action: 'fetchDetails',
+        incidentId: incidentId,
+        context: 'Unexpected error while fetching incident details',
+      }).catch(err => console.error('Failed to log error:', err));
+
+      setError('Failed to load incident details');
+      Alert.alert(
+        t('common.error'),
+        'An unexpected error occurred while loading incident details. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
-
-    if (transitionsResponse.success) {
-      const executableTransitions = transitionsResponse.data.filter((t: TransitionData) => t.can_execute);
-      setAvailableTransitions(executableTransitions);
-    } else {
-      setAvailableTransitions([]);
-    }
-
-    setLoading(false);
   }, [id, t]);
 
   useFocusEffect(
@@ -256,13 +285,32 @@ const IncidentDetailsScreen = () => {
       });
       const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 
-      Linking.canOpenURL(url || webUrl).then((supported) => {
-        if (supported && url) {
-          Linking.openURL(url);
-        } else {
-          Linking.openURL(webUrl);
-        }
-      });
+      Linking.canOpenURL(url || webUrl)
+        .then((supported) => {
+          if (supported && url) {
+            return Linking.openURL(url);
+          } else {
+            return Linking.openURL(webUrl);
+          }
+        })
+        .catch((error) => {
+          console.error('Error opening directions:', error);
+
+          // Log error
+          crashLogger.logError(error as Error, {
+            screen: 'IncidentDetailsScreen',
+            action: 'openDirections',
+            incidentId: incident?.id,
+            latitude: incident?.latitude,
+            longitude: incident?.longitude,
+            context: 'Failed to open maps directions',
+          }).catch(err => console.error('Failed to log error:', err));
+
+          Alert.alert(
+            t('common.error'),
+            'Failed to open maps. Please check if you have a maps app installed.'
+          );
+        });
     }
   };
 

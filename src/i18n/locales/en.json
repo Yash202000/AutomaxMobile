@@ -198,9 +198,24 @@
     "language": "Language",
     "english": "English",
     "arabic": "Arabic",
-    "shareLogs": "Share logs",
-    "deleteLogs": "Delete logs",
-    "version": "Version"
+    "diagnostics": "Diagnostics",
+    "shareLogs": "Share Logs",
+    "deleteLogs": "Delete Logs",
+    "version": "Version",
+    "logs": {
+      "fileSize": "Log File Size",
+      "status": "Status",
+      "available": "Available",
+      "empty": "Empty",
+      "noLogs": "No Logs Available",
+      "noLogsDescription": "There are no crash logs to share. Logs will be created when errors occur.",
+      "sharingNotAvailable": "Sharing is not available on this device.",
+      "failedToShare": "Failed to share logs. Please try again.",
+      "deleteConfirmTitle": "Delete Logs?",
+      "deleteConfirmMessage": "Are you sure you want to delete all crash logs? This action cannot be undone.",
+      "logsDeleted": "Crash logs deleted successfully.",
+      "failedToDelete": "Failed to delete logs. Please try again."
+    }
   },
   "profile": {
     "firstName": "First Name",

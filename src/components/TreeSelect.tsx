@@ -51,7 +51,12 @@ const TreeItem: React.FC<TreeItemProps> = ({
   leafOnly,
   selectedId,
 }) => {
-  const hasChildren = node.children && node.children.length > 0;
+  // Safety checks for malformed node data
+  if (!node || !node.id || !node.name) {
+    return null;
+  }
+
+  const hasChildren = node.children && Array.isArray(node.children) && node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const isLeaf = !hasChildren;
   const isSelected = selectedId === node.id;
@@ -151,9 +156,10 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   // Find node by value (name) to get its ID
   const findNodeByName = useCallback(
     (nodes: TreeNode[], name: string): TreeNode | null => {
+      if (!name) return null;
       for (const node of nodes) {
-        if (node.name === name) return node;
-        if (node.children) {
+        if (node?.name && node.name === name) return node;
+        if (node?.children && Array.isArray(node.children)) {
           const found = findNodeByName(node.children, name);
           if (found) return found;
         }
@@ -245,8 +251,9 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   const expandAll = useCallback(() => {
     const getAllIds = (nodes: TreeNode[]): string[] => {
       let ids: string[] = [];
+      if (!Array.isArray(nodes)) return ids;
       for (const node of nodes) {
-        if (node.children && node.children.length > 0) {
+        if (node && node.id && node.children && Array.isArray(node.children) && node.children.length > 0) {
           ids.push(node.id);
           ids = ids.concat(getAllIds(node.children));
         }

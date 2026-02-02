@@ -27,6 +27,7 @@ import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import LocationPicker, { LocationData } from '@/src/components/LocationPicker';
+import { crashLogger } from '@/src/utils/crashLogger';
 
 interface DropdownOption {
   id: string;
@@ -296,14 +297,15 @@ const AddIncidentScreen = () => {
     setLoadingData(true);
     try {
       // First try to get all classifications without type filter (most reliable)
-      const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
-        getClassificationsTree(), // Get all classifications
-        getLocationsTree(),
-        getWorkflows(true, 'incident'),
-        getUsers(),
-        getDepartments(),
+      const results = await Promise.all([
+        getClassificationsTree().catch(err => ({ success: false, error: err.message })), // Get all classifications
+        getLocationsTree().catch(err => ({ success: false, error: err.message })),
+        getWorkflows(true, 'incident').catch(err => ({ success: false, error: err.message })),
+        getUsers().catch(err => ({ success: false, error: err.message })),
+        getDepartments().catch(err => ({ success: false, error: err.message })),
       ]);
 
+      const [classRes, locRes, workflowRes, userRes, deptRes] = results;
 
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
         // Filter to only show classifications that can be used for incidents
@@ -368,8 +370,36 @@ const AddIncidentScreen = () => {
       if (deptRes.success && deptRes.data) {
         setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
       }
+
+      // Check if critical workflow data failed to load
+      if (!workflowRes.success || !workflowRes.data || workflowRes.data.length === 0) {
+        Alert.alert(
+          'Warning',
+          'Failed to load workflows. You may not be able to create incidents until workflows are available.',
+          [
+            { text: 'Retry', onPress: () => fetchAllData() },
+            { text: 'Go Back', onPress: () => router.back() }
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+
+      // Log to crash logger with context
+      crashLogger.logError(error as Error, {
+        screen: 'AddIncidentScreen',
+        action: 'fetchAllData',
+        context: 'Failed to load classifications, locations, workflows, users, or departments',
+      }).catch(err => console.error('Failed to log error:', err));
+
+      Alert.alert(
+        'Error',
+        'Failed to load required data. Please check your connection and try again.',
+        [
+          { text: 'Retry', onPress: () => fetchAllData() },
+          { text: 'Go Back', onPress: () => router.back() }
+        ]
+      );
     }
     setLoadingData(false);
   };
@@ -544,6 +574,11 @@ const AddIncidentScreen = () => {
       }
     } catch (error) {
       console.error('Error taking photo:', error);
+      crashLogger.logError(error as Error, {
+        screen: 'AddIncidentScreen',
+        action: 'takePhoto',
+        context: 'Failed to take photo with camera',
+      }).catch(err => console.error('Failed to log error:', err));
       Alert.alert('Error', 'Failed to take photo');
     }
   };
@@ -576,6 +611,11 @@ const AddIncidentScreen = () => {
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
+      crashLogger.logError(error as Error, {
+        screen: 'AddIncidentScreen',
+        action: 'pickFromGallery',
+        context: 'Failed to pick image from gallery',
+      }).catch(err => console.error('Failed to log error:', err));
       Alert.alert('Error', 'Failed to pick from gallery');
     }
   };
@@ -601,6 +641,11 @@ const AddIncidentScreen = () => {
       }
     } catch (error) {
       console.error('Error picking document:', error);
+      crashLogger.logError(error as Error, {
+        screen: 'AddIncidentScreen',
+        action: 'pickDocument',
+        context: 'Failed to pick document',
+      }).catch(err => console.error('Failed to log error:', err));
       Alert.alert('Error', 'Failed to pick document');
     }
   };
@@ -628,12 +673,29 @@ const AddIncidentScreen = () => {
 
     setSubmitting(true);
 
-    const incidentData: any = {
-      title: title.trim(),
-      workflow_id: matchedWorkflow!.id,
-      priority: parseInt(selectedPriority.id),
-      severity: parseInt(selectedSeverity.id),
-    };
+    try {
+      // Double-check matchedWorkflow exists with valid id
+      if (!matchedWorkflow || !matchedWorkflow.id) {
+        setSubmitting(false);
+        Alert.alert('Error', 'No workflow matched. Please select classification, location, or source.');
+        return;
+      }
+
+      // Validate priority and severity are valid numbers
+      const priorityNum = parseInt(selectedPriority.id);
+      const severityNum = parseInt(selectedSeverity.id);
+      if (isNaN(priorityNum) || isNaN(severityNum)) {
+        setSubmitting(false);
+        Alert.alert('Error', 'Invalid priority or severity selected.');
+        return;
+      }
+
+      const incidentData: any = {
+        title: title.trim(),
+        workflow_id: matchedWorkflow.id,
+        priority: priorityNum,
+        severity: severityNum,
+      };
 
     if (description.trim()) incidentData.description = description.trim();
     if (selectedClassification) incidentData.classification_id = selectedClassification.id;
@@ -655,22 +717,75 @@ const AddIncidentScreen = () => {
 
     const response = await createIncident(incidentData);
 
-    if (response.success && response.data) {
-      // Upload attachments if any
-      if (attachments.length > 0) {
-        const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
-        if (!uploadResult.success && uploadResult.errors) {
-          console.warn('Some attachments failed to upload:', uploadResult.errors);
+      if (response.success && response.data && response.data.id) {
+        // Upload attachments if any
+        if (attachments.length > 0) {
+          try {
+            const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
+            if (!uploadResult.success && uploadResult.errors) {
+              console.warn('Some attachments failed to upload:', uploadResult.errors);
+              Alert.alert(
+                'Partial Success',
+                'Incident created but some attachments failed to upload.',
+                [{ text: 'OK', onPress: () => router.back() }]
+              );
+              setSubmitting(false);
+              return;
+            }
+          } catch (uploadError) {
+            console.error('Attachment upload error:', uploadError);
+
+            // Log attachment upload error with context
+            crashLogger.logError(uploadError as Error, {
+              screen: 'AddIncidentScreen',
+              action: 'uploadAttachments',
+              incidentId: response.data.id,
+              attachmentCount: attachments.length,
+              context: 'Incident created but attachment upload failed',
+            }).catch(err => console.error('Failed to log error:', err));
+
+            Alert.alert(
+              'Partial Success',
+              'Incident created but attachment upload failed.',
+              [{ text: 'OK', onPress: () => router.back() }]
+            );
+            setSubmitting(false);
+            return;
+          }
         }
+
+        setSubmitting(false);
+        Alert.alert('Success', 'Incident created successfully.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        setSubmitting(false);
+        const errorMsg = response.error || 'Unknown error occurred';
+        Alert.alert('Error', `Failed to create incident: ${errorMsg}`);
       }
+    } catch (error) {
+      console.error('Unexpected error during incident creation:', error);
+
+      // Log incident creation error with full context
+      crashLogger.logError(error as Error, {
+        screen: 'AddIncidentScreen',
+        action: 'createIncident',
+        title: title,
+        workflowId: matchedWorkflow?.id,
+        priority: selectedPriority?.id,
+        severity: selectedSeverity?.id,
+        classificationId: selectedClassification?.id,
+        locationId: selectedLocation?.id,
+        sourceId: selectedSource?.id,
+        hasAttachments: attachments.length > 0,
+        context: 'Failed to create incident',
+      }).catch(err => console.error('Failed to log error:', err));
 
       setSubmitting(false);
-      Alert.alert('Success', 'Incident created successfully.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } else {
-      setSubmitting(false);
-      Alert.alert('Error', `Failed to create incident: ${response.error}`);
+      Alert.alert(
+        'Error',
+        `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+      );
     }
   };
 

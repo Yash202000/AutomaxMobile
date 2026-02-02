@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
+import { crashLogger } from '@/src/utils/crashLogger';
 
 export const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.31.107:8080/api/v1';
 
@@ -71,6 +72,17 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    // Log request interceptor errors (except expected ones)
+    if (!isLoggingOut && !(error as any).isLogoutCancel && !(error as any).isNoToken) {
+      crashLogger.logError(
+        error,
+        {
+          type: 'RequestInterceptorError',
+          context: 'Error in API request interceptor',
+          errorMessage: error.message,
+        }
+      ).catch(() => {});
+    }
     return Promise.reject(error);
   }
 );
@@ -80,6 +92,77 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Log ALL API errors (except during logout or specific cancellation scenarios)
+    const shouldLogError =
+      !isLoggingOut &&
+      !(error as any).isLogoutCancel &&
+      !(error as any).isNoToken &&
+      // Don't log 401s as errors since they're handled by token refresh
+      error.response?.status !== 401;
+
+    if (shouldLogError) {
+      const errorDetails: Record<string, any> = {
+        method: originalRequest?.method?.toUpperCase(),
+        url: originalRequest?.url,
+        baseURL: originalRequest?.baseURL,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorMessage: error.message,
+      };
+
+      // Add response data if available
+      if (error.response?.data) {
+        errorDetails.responseData = typeof error.response.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response.data).substring(0, 500); // Limit size
+      }
+
+      // Add request data if available (limit size to avoid huge logs)
+      if (originalRequest?.data) {
+        try {
+          const dataStr = typeof originalRequest.data === 'string'
+            ? originalRequest.data
+            : JSON.stringify(originalRequest.data);
+          errorDetails.requestData = dataStr.substring(0, 500); // Limit to 500 chars
+        } catch (e) {
+          errorDetails.requestData = 'Unable to stringify request data';
+        }
+      }
+
+      // Log based on error type
+      if (!error.response) {
+        // Network error (no response from server)
+        crashLogger.logError(
+          new Error(`Network Error: ${error.message}`),
+          {
+            type: 'NetworkError',
+            ...errorDetails,
+            context: 'Failed to reach server - check internet connection',
+          }
+        ).catch(() => {});
+      } else if (error.response.status >= 500) {
+        // Server error (5xx)
+        crashLogger.logError(
+          new Error(`Server Error: ${error.response.status} - ${error.response.statusText}`),
+          {
+            type: 'ServerError',
+            ...errorDetails,
+            context: 'Server returned 5xx error',
+          }
+        ).catch(() => {});
+      } else if (error.response.status >= 400 && error.response.status < 500) {
+        // Client error (4xx) - log as warning since these are often expected
+        crashLogger.logWarning(
+          `Client Error: ${error.response.status} - ${error.response.statusText}`,
+          {
+            type: 'ClientError',
+            ...errorDetails,
+            context: 'Client request error (4xx)',
+          }
+        ).catch(() => {});
+      }
+    }
 
     // If no config or error is not 401 or request already retried, reject
     if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
@@ -123,6 +206,16 @@ apiClient.interceptors.response.use(
 
     if (!refreshToken) {
       isRefreshing = false;
+
+      // Log missing refresh token
+      crashLogger.logWarning(
+        'No refresh token available - redirecting to login',
+        {
+          type: 'MissingRefreshToken',
+          context: 'User session expired or refresh token was deleted',
+        }
+      ).catch(() => {});
+
       await redirectToLogin();
       return Promise.reject(error);
     }
@@ -144,7 +237,18 @@ apiClient.interceptors.response.use(
       processQueue(null, token);
 
       return apiClient(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
+      // Log token refresh failure
+      crashLogger.logWarning(
+        'Token refresh failed - user will be redirected to login',
+        {
+          type: 'TokenRefreshError',
+          errorMessage: refreshError?.message,
+          status: refreshError?.response?.status,
+          context: 'Refresh token expired or invalid',
+        }
+      ).catch(() => {});
+
       processQueue(refreshError, null);
       await redirectToLogin();
       return Promise.reject(refreshError);
