@@ -66,7 +66,6 @@ const MapViewScreen = () => {
             !isNaN(inc.longitude)
         );
         setIncidents(incidentsWithLocation);
-        console.log('✅ [MapView OSM] Loaded', incidentsWithLocation.length, 'incidents with location');
 
         // Update map markers
         if (mapReady && incidentsWithLocation.length > 0) {
@@ -114,13 +113,11 @@ const MapViewScreen = () => {
       const data = JSON.parse(event.nativeEvent.data);
 
       if (data.type === 'mapReady') {
-        console.log('✅ [MapView OSM] Map ready');
         setMapReady(true);
         if (incidents.length > 0) {
           updateMapMarkers(incidents);
         }
       } else if (data.type === 'markerClicked') {
-        console.log('📍 [MapView OSM] Marker clicked:', data.id);
         const detailsPage = recordType === 'request' ? '/request-details' : '/incident-details';
         router.push(`${detailsPage}?id=${data.id}`);
       }
