@@ -433,6 +433,7 @@ const ComplaintDetailsScreen = () => {
             pathname: '/update-status',
             params: {
               id: complaint.id,
+              type: 'complaint',
               transitions: JSON.stringify(availableTransitions),
               incident: JSON.stringify({
                 id: complaint.id,

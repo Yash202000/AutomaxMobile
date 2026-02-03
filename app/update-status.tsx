@@ -4,12 +4,15 @@ import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
 
 const UpdateStatusModal = () => {
   const router = useRouter();
-  const { id, transitions, incident: incidentParam } = useLocalSearchParams();
+  const { t } = useTranslation();
+  const { id, type, transitions, incident: incidentParam } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
+  const ticketType = Array.isArray(type) ? type[0] : (type || 'incident');
 
   // Safely parse JSON with error handling to prevent crashes
   let availableTransitions = [];
@@ -232,8 +235,20 @@ const UpdateStatusModal = () => {
     setUploadProgress('');
 
     if (response.success) {
-      Alert.alert('Success', 'Incident status updated successfully.', [
-        { text: 'OK', onPress: () => {
+      // Get appropriate success message based on ticket type
+      let successMessage = t('common.statusUpdated');
+      if (ticketType === 'incident') {
+        successMessage = t('common.incidentStatusUpdated');
+      } else if (ticketType === 'request') {
+        successMessage = t('common.requestStatusUpdated');
+      } else if (ticketType === 'complaint') {
+        successMessage = t('common.complaintStatusUpdated');
+      } else if (ticketType === 'query') {
+        successMessage = t('common.queryStatusUpdated');
+      }
+
+      Alert.alert(t('common.success'), successMessage, [
+        { text: t('common.ok'), onPress: () => {
           router.back();
         }},
       ]);
@@ -259,7 +274,7 @@ const UpdateStatusModal = () => {
       <View style={styles.modalContainer}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Update the status</Text>
+          <Text style={styles.headerTitle}>{t('incidents.updateTheStatus')}</Text>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="close-circle" size={28} color="#E74C3C" />
           </TouchableOpacity>
@@ -267,10 +282,10 @@ const UpdateStatusModal = () => {
 
         <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
           {/* Status/Transition Picker */}
-          <Text style={styles.label}>Select Status</Text>
+          <Text style={styles.label}>{t('incidents.selectStatus')}</Text>
           <TouchableOpacity style={styles.dropdown} onPress={() => setShowPicker(true)}>
             <Text style={[styles.dropdownText, !selectedTransition && styles.placeholder]}>
-              {selectedTransition ? selectedTransition.transition.name : "Select the status"}
+              {selectedTransition ? selectedTransition.transition.name : t('incidents.selectTheStatus')}
             </Text>
             <FontAwesome name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>
@@ -282,7 +297,7 @@ const UpdateStatusModal = () => {
           >
             <Pressable style={styles.pickerOverlay} onPress={() => setShowPicker(false)}>
               <View style={styles.pickerContainer}>
-                <Text style={styles.pickerTitle}>Select Status</Text>
+                <Text style={styles.pickerTitle}>{t('incidents.selectStatus')}</Text>
                 {availableTransitions.map((trans, index) => (
                   <TouchableOpacity
                     key={trans.transition.id}
@@ -312,7 +327,7 @@ const UpdateStatusModal = () => {
           {/* User Assignment Picker - only show if manual selection is needed */}
           {needsManualUserSelection && (
             <>
-              <Text style={styles.label}>Assign to User</Text>
+              <Text style={styles.label}>{t('incidents.assignToUser')}</Text>
               {loadingUsers ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#2EC4B6" />
@@ -322,7 +337,7 @@ const UpdateStatusModal = () => {
                 <>
                   <TouchableOpacity style={styles.dropdown} onPress={() => setShowUserPicker(true)}>
                     <Text style={[styles.dropdownText, !selectedUser && styles.placeholder]}>
-                      {selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : "Select a user"}
+                      {selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : t('incidents.selectAUser')}
                     </Text>
                     <FontAwesome name="chevron-down" size={16} color="#666" />
                   </TouchableOpacity>
@@ -377,11 +392,11 @@ const UpdateStatusModal = () => {
           {(showCommentField || selectedTransition) && (
             <>
               <Text style={styles.label}>
-                {transitionRequiresComment ? 'Comment (Required)' : 'Comment (Optional)'}
+                {transitionRequiresComment ? t('incidents.commentRequired') : t('incidents.commentOptional')}
               </Text>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Add a comment..."
+                placeholder={t('incidents.addCommentPlaceholder')}
                 placeholderTextColor="#999"
                 multiline
                 value={comment}
@@ -394,7 +409,7 @@ const UpdateStatusModal = () => {
           {showFeedbackField && (
             <>
               <Text style={styles.label}>
-                {transitionRequiresFeedback ? 'Feedback Rating (Required)' : 'Feedback Rating (Optional)'}
+                {transitionRequiresFeedback ? t('incidents.feedbackRatingRequired') : t('incidents.feedbackRatingOptional')}
               </Text>
               <View style={styles.starRatingContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -413,11 +428,11 @@ const UpdateStatusModal = () => {
               </View>
               {feedbackRating > 0 && (
                 <Text style={styles.ratingText}>
-                  {feedbackRating === 1 && 'Poor'}
-                  {feedbackRating === 2 && 'Fair'}
-                  {feedbackRating === 3 && 'Good'}
-                  {feedbackRating === 4 && 'Very Good'}
-                  {feedbackRating === 5 && 'Excellent'}
+                  {feedbackRating === 1 && t('incidents.ratingPoor')}
+                  {feedbackRating === 2 && t('incidents.ratingFair')}
+                  {feedbackRating === 3 && t('incidents.ratingGood')}
+                  {feedbackRating === 4 && t('incidents.ratingVeryGood')}
+                  {feedbackRating === 5 && t('incidents.ratingExcellent')}
                 </Text>
               )}
             </>
@@ -427,7 +442,7 @@ const UpdateStatusModal = () => {
           {(transitionRequiresAttachment || selectedTransition) && (
             <>
               <Text style={styles.label}>
-                {transitionRequiresAttachment ? 'Attachments (Required)' : 'Attachments (Optional)'}
+                {transitionRequiresAttachment ? t('incidents.attachmentsRequired') : t('incidents.attachmentsOptional')}
               </Text>
 
               {/* Attachment Preview */}

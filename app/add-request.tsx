@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -242,6 +243,7 @@ const findMatchingWorkflow = (
 const AddRequestScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -696,7 +698,7 @@ const AddRequestScreen = () => {
             </Text>
             <TextInput
               style={[styles.input, errors.title && styles.inputError]}
-              placeholder="A brief title for the request"
+              placeholder={t('addRequest.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
@@ -713,7 +715,7 @@ const AddRequestScreen = () => {
                   Classification <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select classification"
+                  label={t('addRequest.selectClassification')}
                   value={selectedClassification?.name || ''}
                   options={classifications}
                   onSelect={setSelectedClassification}
@@ -730,7 +732,7 @@ const AddRequestScreen = () => {
                   Location <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select location"
+                  label={t('addRequest.selectLocation')}
                   value={selectedLocation?.name || ''}
                   options={locations}
                   onSelect={setSelectedLocation}
@@ -747,7 +749,7 @@ const AddRequestScreen = () => {
                   Source <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select source"
+                  label={t('addRequest.selectSource')}
                   value={selectedSource?.name || ''}
                   options={sourceOptions}
                   onSelect={setSelectedSource}
@@ -798,7 +800,7 @@ const AddRequestScreen = () => {
                       Priority <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select priority"
+                      label={t('addRequest.selectPriority')}
                       value={selectedPriority.name}
                       options={priorityOptions}
                       onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -812,7 +814,7 @@ const AddRequestScreen = () => {
                       Severity <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select severity"
+                      label={t('addRequest.selectSeverity')}
                       value={selectedSeverity.name}
                       options={severityOptions}
                       onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -830,7 +832,7 @@ const AddRequestScreen = () => {
                   Assignee <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select assignee"
+                  label={t('addRequest.selectAssignee')}
                   value={selectedAssignee?.name || ''}
                   options={users}
                   onSelect={setSelectedAssignee}
@@ -847,7 +849,7 @@ const AddRequestScreen = () => {
                   Department <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select department"
+                  label={t('addRequest.selectDepartment')}
                   value={selectedDepartment?.name || ''}
                   options={departments}
                   onSelect={setSelectedDepartment}
@@ -865,7 +867,7 @@ const AddRequestScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError]}
-                  placeholder="Describe the request in detail..."
+                  placeholder={t('addRequest.descriptionPlaceholder')}
                   multiline
                   value={description}
                   onChangeText={(text) => {
@@ -887,7 +889,7 @@ const AddRequestScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError]}
-                  placeholder="Reporter's name"
+                  placeholder={t('addRequest.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
                     setReporterName(text);
@@ -907,7 +909,7 @@ const AddRequestScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError]}
-                  placeholder="Reporter's email"
+                  placeholder={t('addRequest.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {
                     setReporterEmail(text);
@@ -962,7 +964,7 @@ const AddRequestScreen = () => {
             {/* Geolocation - only show if required */}
             {isFieldRequired('geolocation') && (
               <LocationPicker
-                label="Geolocation"
+                label={t('details.geolocation')}
                 value={locationData}
                 onChange={handleLocationChange}
                 required
@@ -1040,7 +1042,7 @@ const AddRequestScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>CREATE REQUEST</Text>
+                <Text style={styles.submitButtonText}>{t('addRequest.createButton')}</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -44,7 +44,6 @@ class CrashLogger {
       }
 
       this.isInitialized = true;
-      console.log('[CrashLogger] Initialized successfully');
     } catch (error) {
       console.error('[CrashLogger] Failed to initialize:', error);
     }
@@ -255,8 +254,6 @@ class CrashLogger {
         `=== App Crash Log File ===\nCreated: ${new Date().toISOString()}\nPlatform: ${Platform.OS}\n\n`,
         { encoding: FileSystem.EncodingType.UTF8 }
       );
-
-      console.log('[CrashLogger] Logs cleared successfully');
       return true;
     } catch (error) {
       console.error('[CrashLogger] Failed to clear logs:', error);
@@ -395,6 +392,4 @@ export const setupGlobalErrorHandlers = () => {
       }
     });
   }
-
-  console.log('[CrashLogger] Global error handlers setup complete');
 };

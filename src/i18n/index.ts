@@ -40,9 +40,9 @@ export const setLanguage = async (lang: string): Promise<void> => {
     await AsyncStorage.setItem(LANGUAGE_KEY, lang);
     const isRTL = lang === 'ar';
 
-    // Update RTL
+    // Update RTL - Always allow RTL capability, force only for Arabic
     if (I18nManager.isRTL !== isRTL) {
-      I18nManager.allowRTL(isRTL);
+      I18nManager.allowRTL(true);
       I18nManager.forceRTL(isRTL);
     }
 
@@ -67,9 +67,9 @@ const initI18n = async () => {
   const lang = await getStoredLanguage();
   const isRTLLang = lang === 'ar';
 
-  // Set RTL on app start
-  I18nManager.allowRTL(isRTLLang);
-  I18nManager.forceRTL(isRTLLang);
+  // Set RTL on app start - Must be done before any views are rendered
+  I18nManager.allowRTL(true); // Always allow RTL capability
+  I18nManager.forceRTL(isRTLLang); // Apply RTL only for Arabic
 
   await i18n
     .use(initReactI18next)

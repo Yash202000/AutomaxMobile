@@ -18,13 +18,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
-const priorityMap: Record<number, { text: string; color: string }> = {
-  1: { text: "Critical", color: "#E74C3C" },
-  2: { text: "High", color: "#E67E22" },
-  3: { text: "Medium", color: "#F1C40F" },
-  4: { text: "Low", color: "#3498DB" },
-  5: { text: "Very Low", color: "#2ECC71" },
+const priorityMap: Record<number, { key: string; color: string }> = {
+  1: { key: "critical", color: "#E74C3C" },
+  2: { key: "high", color: "#E67E22" },
+  3: { key: "medium", color: "#F1C40F" },
+  4: { key: "low", color: "#3498DB" },
+  5: { key: "veryLow", color: "#2ECC71" },
 };
 
 interface Incident {
@@ -58,10 +59,12 @@ const IncidentCard = ({
   ticketType: "incident" | "request" | "complaint" | "query";
 }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const priority = priorityMap[incident.priority] || {
-    text: "Unknown",
+    key: "unknown",
     color: "#95A5A6",
   };
+  const priorityText = t(`priorities.${priority.key}`);
 
   // Determine the correct detail page based on ticket type
   const getDetailRoute = () => {
@@ -108,7 +111,7 @@ const IncidentCard = ({
             <Text
               style={[styles.incidentTag, { backgroundColor: priority.color }]}
             >
-              {priority.text}
+              {priorityText}
             </Text>
           </View>
         </View>
@@ -176,6 +179,7 @@ const IncidentCard = ({
 
 const MyIncidentsScreen = () => {
   const router = useRouter();
+  const { t } = useTranslation();
   const { type: initialType } = useLocalSearchParams<{ type?: string }>();
   const [activeTab, setActiveTab] = useState<"assigned" | "created">(
     initialType === "created" ? "created" : "assigned",
@@ -250,9 +254,9 @@ const MyIncidentsScreen = () => {
         total_pages: Math.ceil(filteredData.length / 20),
       });
     } else {
-      setError(response.error || "Failed to fetch tickets");
+      setError(response.error || t('myIncidents.fetchFailed'));
       if (!append) {
-        Alert.alert("Error", response.error || "Failed to fetch tickets.");
+        Alert.alert(t('common.error'), response.error || t('myIncidents.fetchFailed'));
       }
     }
 
@@ -285,7 +289,7 @@ const MyIncidentsScreen = () => {
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color="#1A237E" />
-        <Text style={styles.footerLoaderText}>Loading more...</Text>
+        <Text style={styles.footerLoaderText}>{t('myIncidents.loadingMore')}</Text>
       </View>
     );
   };
@@ -293,9 +297,26 @@ const MyIncidentsScreen = () => {
   const renderEmpty = () => {
     if (loading) return null;
 
-    const ticketTypeLabel = ticketType === "incident" ? "Incidents" :
-                           ticketType === "request" ? "Requests" :
-                           ticketType === "complaint" ? "Complaints" : "Queries";
+    // Get the translation key based on ticket type and tab
+    const getTitleKey = () => {
+      if (activeTab === "assigned") {
+        if (ticketType === "incident") return 'myIncidents.noAssignedIncidents';
+        if (ticketType === "request") return 'myIncidents.noAssignedRequests';
+        if (ticketType === "complaint") return 'myIncidents.noAssignedComplaints';
+        return 'myIncidents.noAssignedQueries';
+      } else {
+        if (ticketType === "incident") return 'myIncidents.noCreatedIncidents';
+        if (ticketType === "request") return 'myIncidents.noCreatedRequests';
+        if (ticketType === "complaint") return 'myIncidents.noCreatedComplaints';
+        return 'myIncidents.noCreatedQueries';
+      }
+    };
+
+    // Get the ticket type name for description
+    const ticketTypeName = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
+                           ticketType === "request" ? t('tabs.request').toLowerCase() :
+                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
+                           t('tabs.query').toLowerCase();
 
     return (
       <View style={styles.emptyContainer}>
@@ -309,34 +330,33 @@ const MyIncidentsScreen = () => {
           />
         </View>
         <Text style={styles.emptyTitle}>
-          {activeTab === "assigned"
-            ? `No Assigned ${ticketTypeLabel}`
-            : `No Created ${ticketTypeLabel}`}
+          {t(getTitleKey())}
         </Text>
         <Text style={styles.emptySubtitle}>
           {activeTab === "assigned"
-            ? `No ${ticketTypeLabel.toLowerCase()} are currently assigned to you`
-            : `You have not created any ${ticketTypeLabel.toLowerCase()} yet`}
+            ? t('myIncidents.noAssignedDesc', { type: ticketTypeName })
+            : t('myIncidents.noCreatedDesc', { type: ticketTypeName })}
         </Text>
       </View>
     );
   };
 
   const renderHeader = () => {
-    const ticketTypeLabel = ticketType === "incident" ? "incident" :
-                           ticketType === "request" ? "request" :
-                           ticketType === "complaint" ? "complaint" : "query";
+    const ticketTypeLabel = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
+                           ticketType === "request" ? t('tabs.request').toLowerCase() :
+                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
+                           t('tabs.query').toLowerCase();
+
+    const statusLabel = activeTab === "assigned" ? t('myIncidents.assigned') : t('myIncidents.created');
 
     return (
       <View style={styles.listHeader}>
         <Text style={styles.incidentsFoundText}>
-          {pagination.total_items}{" "}
-          {activeTab === "assigned" ? "assigned" : "created"} {ticketTypeLabel}
-          {pagination.total_items !== 1 ? "s" : ""}
+          {pagination.total_items} {statusLabel} {ticketTypeLabel}
         </Text>
         {pagination.total_pages > 1 && (
           <Text style={styles.paginationText}>
-            Page {pagination.page} of {pagination.total_pages}
+            {t('myIncidents.page')} {pagination.page} {t('myIncidents.of')} {pagination.total_pages}
           </Text>
         )}
       </View>
@@ -364,10 +384,10 @@ const MyIncidentsScreen = () => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>My Tickets</Text>
+          <Text style={styles.headerTitle}>{t('myIncidents.title')}</Text>
           {currentUser && (
             <Text style={styles.headerSubtitle}>
-              Logged in as: {currentUser.email}
+              {t('myIncidents.loggedInAs')} {currentUser.email}
             </Text>
           )}
         </View>
@@ -400,7 +420,7 @@ const MyIncidentsScreen = () => {
                   activeTab === "assigned" && styles.activeTabText,
                 ]}
               >
-                Assigned to Me
+                {t('myIncidents.assignedToMe')}
               </Text>
             </TouchableOpacity>
           )}
@@ -420,7 +440,7 @@ const MyIncidentsScreen = () => {
                   activeTab === "created" && styles.activeTabText,
                 ]}
               >
-                Created by Me
+                {t('myIncidents.createdByMe')}
               </Text>
             </TouchableOpacity>
           )}
@@ -433,7 +453,7 @@ const MyIncidentsScreen = () => {
             onPress={() => setTicketType("incident")}
           >
             <Text style={[styles.ticketTypeText, ticketType === "incident" && styles.activeTicketTypeText]}>
-              Incidents
+              {t('tabs.incident')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -441,7 +461,7 @@ const MyIncidentsScreen = () => {
             onPress={() => setTicketType("request")}
           >
             <Text style={[styles.ticketTypeText, ticketType === "request" && styles.activeTicketTypeText]}>
-              Requests
+              {t('tabs.request')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -449,7 +469,7 @@ const MyIncidentsScreen = () => {
             onPress={() => setTicketType("complaint")}
           >
             <Text style={[styles.ticketTypeText, ticketType === "complaint" && styles.activeTicketTypeText]}>
-              Complaints
+              {t('tabs.complaint')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -457,7 +477,7 @@ const MyIncidentsScreen = () => {
             onPress={() => setTicketType("query")}
           >
             <Text style={[styles.ticketTypeText, ticketType === "query" && styles.activeTicketTypeText]}>
-              Queries
+              {t('tabs.query')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -467,7 +487,7 @@ const MyIncidentsScreen = () => {
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{pagination.total_items}</Text>
-              <Text style={styles.statLabel}>Total</Text>
+              <Text style={styles.statLabel}>{t('myIncidents.total')}</Text>
             </View>
             <View style={styles.statDivider} />
 
@@ -477,7 +497,7 @@ const MyIncidentsScreen = () => {
                   <Text style={[styles.statNumber, { color: "#F1C40F" }]}>
                     {openCount}
                   </Text>
-                  <Text style={styles.statLabel}>Open</Text>
+                  <Text style={styles.statLabel}>{t('myIncidents.open')}</Text>
                 </View>
                 <View style={styles.statDivider} />
               </>
@@ -486,7 +506,7 @@ const MyIncidentsScreen = () => {
               <Text style={[styles.statNumber, { color: "#E74C3C" }]}>
                 {breachedCount}
               </Text>
-              <Text style={styles.statLabel}>SLA Breached</Text>
+              <Text style={styles.statLabel}>{t('myIncidents.slaBreached')}</Text>
             </View>
           </View>
         )}
@@ -495,7 +515,7 @@ const MyIncidentsScreen = () => {
           <View style={styles.loadingContainer}>
             <View style={styles.loaderCard}>
               <ActivityIndicator size="large" color="#1A237E" />
-              <Text style={styles.loadingText}>Loading tickets...</Text>
+              <Text style={styles.loadingText}>{t('myIncidents.loadingTickets')}</Text>
             </View>
           </View>
         ) : error ? (

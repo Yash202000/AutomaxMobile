@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { createQuery } from '@/src/api/incidents';
 import { getClassifications } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
@@ -246,6 +247,7 @@ const findMatchingWorkflow = (
 
 const AddQueryScreen = () => {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -503,7 +505,7 @@ const AddQueryScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Query</Text>
+        <Text style={styles.headerTitle}>{t('addQuery.title')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -512,7 +514,7 @@ const AddQueryScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3498DB" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
@@ -540,7 +542,7 @@ const AddQueryScreen = () => {
             </Text>
             <TextInput
               style={[styles.input, errors.title && styles.inputError]}
-              placeholder="A brief title for the query"
+              placeholder={t('addQuery.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
@@ -554,7 +556,7 @@ const AddQueryScreen = () => {
               Channel {isFieldRequired('channel') && <Text style={styles.required}>*</Text>}
             </Text>
             <Dropdown
-              label="Select channel"
+              label={t('addQuery.selectChannel')}
               value={selectedChannel?.name || ''}
               options={channelOptions}
               onSelect={setSelectedChannel}
@@ -569,7 +571,7 @@ const AddQueryScreen = () => {
                   Classification <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select classification"
+                  label={t('addQuery.selectClassification')}
                   value={selectedClassification?.name || ''}
                   options={classifications}
                   onSelect={setSelectedClassification}
@@ -586,7 +588,7 @@ const AddQueryScreen = () => {
                   Location <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select location"
+                  label={t('addQuery.selectLocation')}
                   value={selectedLocation?.name || ''}
                   options={locations}
                   onSelect={setSelectedLocation}
@@ -603,7 +605,7 @@ const AddQueryScreen = () => {
                   Source <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select source"
+                  label={t('addQuery.selectSource')}
                   value={selectedSource?.name || ''}
                   options={sourceOptions}
                   onSelect={setSelectedSource}
@@ -654,7 +656,7 @@ const AddQueryScreen = () => {
                       Priority <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select priority"
+                      label={t('addQuery.selectPriority')}
                       value={selectedPriority.name}
                       options={priorityOptions}
                       onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -668,7 +670,7 @@ const AddQueryScreen = () => {
                       Severity <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select severity"
+                      label={t('addQuery.selectSeverity')}
                       value={selectedSeverity.name}
                       options={severityOptions}
                       onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -686,7 +688,7 @@ const AddQueryScreen = () => {
                   Assignee <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select assignee"
+                  label={t('addQuery.selectAssignee')}
                   value={selectedAssignee?.name || ''}
                   options={users}
                   onSelect={setSelectedAssignee}
@@ -703,7 +705,7 @@ const AddQueryScreen = () => {
                   Department <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select department"
+                  label={t('addQuery.selectDepartment')}
                   value={selectedDepartment?.name || ''}
                   options={departments}
                   onSelect={setSelectedDepartment}
@@ -721,7 +723,7 @@ const AddQueryScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError]}
-                  placeholder="Describe your query in detail..."
+                  placeholder={t('addQuery.descriptionPlaceholder')}
                   multiline
                   value={description}
                   onChangeText={(text) => {
@@ -743,7 +745,7 @@ const AddQueryScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError]}
-                  placeholder="Reporter's name"
+                  placeholder={t('addQuery.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
                     setReporterName(text);
@@ -763,7 +765,7 @@ const AddQueryScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError]}
-                  placeholder="Reporter's email"
+                  placeholder={t('addQuery.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {
                     setReporterEmail(text);
@@ -789,7 +791,7 @@ const AddQueryScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>CREATE QUERY</Text>
+                <Text style={styles.submitButtonText}>{t('addQuery.createButton')}</Text>
               )}
             </TouchableOpacity>
           </View>

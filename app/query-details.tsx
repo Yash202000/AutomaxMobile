@@ -405,6 +405,7 @@ const QueryDetailsScreen = () => {
             pathname: '/update-status',
             params: {
               id: query.id,
+              type: 'query',
               transitions: JSON.stringify(availableTransitions),
               incident: JSON.stringify({
                 id: query.id,

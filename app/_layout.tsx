@@ -78,7 +78,6 @@ export default function RootLayout() {
       try {
         await crashLogger.initialize();
         setupGlobalErrorHandlers();
-        console.log('[App] Crash logger initialized');
       } catch (error) {
         console.error('[App] Failed to initialize crash logger:', error);
       }

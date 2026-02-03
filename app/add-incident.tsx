@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { createIncident, uploadMultipleAttachments } from '@/src/api/incidents';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -251,6 +252,7 @@ const findMatchingWorkflow = (
 const AddIncidentScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   // Form state
   const [title, setTitle] = useState('');
@@ -879,11 +881,11 @@ const AddIncidentScreen = () => {
 
             {/* Title */}
             <Text style={styles.sectionTitle}>
-              Title <Text style={styles.required}>*</Text>
+              {t('addIncident.incidentTitle')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, errors.title && styles.inputError]}
-              placeholder="A brief title for the incident"
+              placeholder={t('addIncident.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
@@ -897,17 +899,17 @@ const AddIncidentScreen = () => {
             {isFieldRequired('classification_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Classification <Text style={styles.required}>*</Text>
+                  {t('incidents.classification')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TreeSelect
-                  label="Select classification"
+                  label={t('addIncident.selectClassification')}
                   value={selectedClassification?.name || ''}
                   data={classifications}
                   onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
                   required={true}
                   error={errors.classification_id}
                   leafOnly={true}
-                  placeholder="Select classification"
+                  placeholder={t('addIncident.selectClassification')}
                 />
               </>
             )}
@@ -916,17 +918,17 @@ const AddIncidentScreen = () => {
             {isFieldRequired('location_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Location <Text style={styles.required}>*</Text>
+                  {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TreeSelect
-                  label="Select location"
+                  label={t('addIncident.selectLocation')}
                   value={selectedLocation?.name || ''}
                   data={locations}
                   onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
                   leafOnly={true}
-                  placeholder="Select location"
+                  placeholder={t('addIncident.selectLocation')}
                 />
               </>
             )}
@@ -935,10 +937,10 @@ const AddIncidentScreen = () => {
             {isFieldRequired('source') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Source <Text style={styles.required}>*</Text>
+                  {t('addIncident.source')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select source"
+                  label={t('addIncident.selectSource')}
                   value={selectedSource?.name || ''}
                   options={sourceOptions}
                   onSelect={setSelectedSource}
@@ -986,10 +988,10 @@ const AddIncidentScreen = () => {
                 {isFieldRequired('priority') && (
                   <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Priority <Text style={styles.required}>*</Text>
+                      {t('incidents.priority')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select priority"
+                      label={t('addIncident.selectPriority')}
                       value={selectedPriority.name}
                       options={priorityOptions}
                       onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -1000,10 +1002,10 @@ const AddIncidentScreen = () => {
                 {isFieldRequired('severity') && (
                   <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Severity <Text style={styles.required}>*</Text>
+                      {t('incidents.severity')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label="Select severity"
+                      label={t('addIncident.selectSeverity')}
                       value={selectedSeverity.name}
                       options={severityOptions}
                       onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -1018,10 +1020,10 @@ const AddIncidentScreen = () => {
             {isFieldRequired('assignee_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Assignee <Text style={styles.required}>*</Text>
+                  {t('incidents.assignee')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select assignee"
+                  label={t('addIncident.selectAssignee')}
                   value={selectedAssignee?.name || ''}
                   options={users}
                   onSelect={setSelectedAssignee}
@@ -1035,10 +1037,10 @@ const AddIncidentScreen = () => {
             {isFieldRequired('department_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Department <Text style={styles.required}>*</Text>
+                  {t('incidents.department')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select department"
+                  label={t('addIncident.selectDepartment')}
                   value={selectedDepartment?.name || ''}
                   options={departments}
                   onSelect={setSelectedDepartment}
@@ -1052,11 +1054,11 @@ const AddIncidentScreen = () => {
             {isFieldRequired('description') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Description <Text style={styles.required}>*</Text>
+                  {t('incidents.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError]}
-                  placeholder="Describe the incident in detail..."
+                  placeholder={t('addIncident.descriptionPlaceholder')}
                   multiline
                   value={description}
                   onChangeText={(text) => {
@@ -1074,11 +1076,11 @@ const AddIncidentScreen = () => {
             {isFieldRequired('reporter_name') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Name <Text style={styles.required}>*</Text>
+                  {t('addIncident.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError]}
-                  placeholder="Reporter's name"
+                  placeholder={t('addIncident.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
                     setReporterName(text);
@@ -1094,11 +1096,11 @@ const AddIncidentScreen = () => {
             {isFieldRequired('reporter_email') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Email <Text style={styles.required}>*</Text>
+                  {t('addIncident.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError]}
-                  placeholder="Reporter's email"
+                  placeholder={t('addIncident.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {
                     setReporterEmail(text);
@@ -1115,7 +1117,7 @@ const AddIncidentScreen = () => {
             {/* Geolocation - only show if required */}
             {isFieldRequired('geolocation') && (
               <LocationPicker
-                label="Geolocation"
+                label={t('details.geolocation')}
                 value={locationData}
                 onChange={handleLocationChange}
                 required
@@ -1127,7 +1129,7 @@ const AddIncidentScreen = () => {
             {isFieldRequired('attachments') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Attachments <Text style={styles.required}>*</Text>
+                  {t('incidents.attachments')} <Text style={styles.required}>*</Text>
                 </Text>
                 <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError]}>
                   {attachments.length > 0 && (
@@ -1153,7 +1155,7 @@ const AddIncidentScreen = () => {
                   <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
                     <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
                     <Text style={styles.attachmentButtonText}>
-                      {attachments.length > 0 ? 'Add more files' : 'Tap to upload files'}
+                      {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1231,7 +1233,7 @@ const AddIncidentScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>CREATE INCIDENT</Text>
+                <Text style={styles.submitButtonText}>{t('addIncident.createButton')}</Text>
               )}
             </TouchableOpacity>
           </View>

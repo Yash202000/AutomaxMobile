@@ -15,6 +15,7 @@
     "android": {
       "package": "com.automax.mobile",
       "versionCode": 1,
+      "supportsRTL": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

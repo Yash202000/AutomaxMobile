@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Audio } from 'expo-av';
 import { createComplaint, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
 import { getClassifications } from '@/src/api/classifications';
@@ -247,6 +248,7 @@ const findMatchingWorkflow = (
 
 const AddComplaintScreen = () => {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -607,7 +609,7 @@ const AddComplaintScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Complaint</Text>
+        <Text style={styles.headerTitle}>{t('addComplaint.title')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -616,7 +618,7 @@ const AddComplaintScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E74C3C" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
@@ -644,7 +646,7 @@ const AddComplaintScreen = () => {
             </Text>
             <TextInput
               style={[styles.input, errors.title && styles.inputError]}
-              placeholder="A brief title for the complaint"
+              placeholder={t('addComplaint.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
@@ -660,7 +662,7 @@ const AddComplaintScreen = () => {
               Channel <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select channel"
+              label={t('addComplaint.selectChannel')}
               value={selectedChannel?.name || ''}
               options={channelOptions}
               onSelect={setSelectedChannel}
@@ -676,7 +678,7 @@ const AddComplaintScreen = () => {
               Classification <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select classification"
+              label={t('addComplaint.selectClassification')}
               value={selectedClassification?.name || ''}
               options={classifications}
               onSelect={setSelectedClassification}
@@ -692,7 +694,7 @@ const AddComplaintScreen = () => {
               Location <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select location"
+              label={t('addComplaint.selectLocation')}
               value={selectedLocation?.name || ''}
               options={locations}
               onSelect={setSelectedLocation}
@@ -708,7 +710,7 @@ const AddComplaintScreen = () => {
               Source <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select source"
+              label={t('addComplaint.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
               onSelect={setSelectedSource}
@@ -758,7 +760,7 @@ const AddComplaintScreen = () => {
                   Priority <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select priority"
+                  label={t('addComplaint.selectPriority')}
                   value={selectedPriority.name}
                   options={priorityOptions}
                   onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -772,7 +774,7 @@ const AddComplaintScreen = () => {
                   Severity <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
-                  label="Select severity"
+                  label={t('addComplaint.selectSeverity')}
                   value={selectedSeverity.name}
                   options={severityOptions}
                   onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -789,7 +791,7 @@ const AddComplaintScreen = () => {
               Assignee <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select assignee"
+              label={t('addComplaint.selectAssignee')}
               value={selectedAssignee?.name || ''}
               options={users}
               onSelect={setSelectedAssignee}
@@ -805,7 +807,7 @@ const AddComplaintScreen = () => {
               Department <Text style={styles.required}>*</Text>
             </Text>
             <Dropdown
-              label="Select department"
+              label={t('addComplaint.selectDepartment')}
               value={selectedDepartment?.name || ''}
               options={departments}
               onSelect={setSelectedDepartment}
@@ -822,7 +824,7 @@ const AddComplaintScreen = () => {
             </Text>
             <TextInput
               style={[styles.descriptionInput, errors.description && styles.inputError]}
-              placeholder="Describe the complaint in detail..."
+              placeholder={t('addComplaint.descriptionPlaceholder')}
               multiline
               value={description}
               onChangeText={(text) => {
@@ -843,7 +845,7 @@ const AddComplaintScreen = () => {
             </Text>
             <TextInput
               style={[styles.input, errors.reporter_name && styles.inputError]}
-              placeholder="Reporter's name"
+              placeholder={t('addComplaint.reporterNamePlaceholder')}
               value={reporterName}
               onChangeText={(text) => {
                 setReporterName(text);
@@ -862,7 +864,7 @@ const AddComplaintScreen = () => {
             </Text>
             <TextInput
               style={[styles.input, errors.reporter_email && styles.inputError]}
-              placeholder="Reporter's email"
+              placeholder={t('addComplaint.reporterEmailPlaceholder')}
               value={reporterEmail}
               onChangeText={(text) => {
                 setReporterEmail(text);
@@ -939,7 +941,7 @@ const AddComplaintScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>CREATE COMPLAINT</Text>
+                <Text style={styles.submitButtonText}>{t('addComplaint.createButton')}</Text>
               )}
             </TouchableOpacity>
           </View>

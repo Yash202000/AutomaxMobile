@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const StartScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -15,7 +17,7 @@ const StartScreen = () => {
         style={[styles.button, { paddingBottom: 20 + insets.bottom }]}
         onPress={() => router.push('/login')}
       >
-        <Text style={styles.buttonText}>GET STARTED</Text>
+        <Text style={styles.buttonText}>{t('auth.getStarted')}</Text>
       </TouchableOpacity>
     </View>
   );

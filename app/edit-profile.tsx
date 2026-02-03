@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, I18nManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { getProfile, updateProfile } from '@/src/api/user';
 
-const CustomInput = ({ label, value, onChangeText, editable = true }) => (
-    <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <TextInput
-            style={[styles.textInput, !editable && styles.disabledInput]}
-            value={value}
-            onChangeText={onChangeText}
-            editable={editable}
-        />
-    </View>
-);
+const CustomInput = ({ label, value, onChangeText, editable = true }) => {
+    const isRTL = I18nManager.isRTL;
+    return (
+        <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, isRTL && styles.textRTL]}>{label}</Text>
+            <TextInput
+                style={[
+                    styles.textInput,
+                    !editable && styles.disabledInput,
+                    isRTL && styles.textRTL
+                ]}
+                value={value}
+                onChangeText={onChangeText}
+                editable={editable}
+            />
+        </View>
+    );
+};
 
 
 const EditProfileScreen = () => {
   const router = useRouter();
+  const { t } = useTranslation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,7 +50,7 @@ const EditProfileScreen = () => {
                 setRoles(userRoles.map(role => role.name).join(', '));
             }
         } else {
-            Alert.alert('Error', 'Failed to fetch profile data.');
+            Alert.alert(t('common.error'), t('profile.fetchProfileFailed'));
         }
         setLoading(false);
     };
@@ -54,11 +63,11 @@ const EditProfileScreen = () => {
     const response = await updateProfile(profileData);
     setSaving(false);
     if (response.success) {
-        Alert.alert('Success', 'Profile updated successfully.', [
-            { text: 'OK', onPress: () => router.back() }
+        Alert.alert(t('common.success'), t('profile.profileUpdated'), [
+            { text: t('common.ok'), onPress: () => router.back() }
         ]);
     } else {
-        Alert.alert('Error', `Failed to update profile: ${response.error}`);
+        Alert.alert(t('common.error'), `${t('profile.updateProfileFailed')}: ${response.error}`);
     }
   };
 
@@ -70,15 +79,15 @@ const EditProfileScreen = () => {
     <SafeAreaView style={styles.container}>
         <ScrollView>
             <View style={styles.form}>
-                <CustomInput label="First Name" value={firstName} onChangeText={setFirstName} />
-                <CustomInput label="Last Name" value={lastName} onChangeText={setLastName} />
-                <CustomInput label="Enter your email" value={email} editable={false} />
-                <CustomInput label="Mobile No." value={phone} onChangeText={setPhone} />
-                <CustomInput label="Roles" value={roles} editable={false} />
+                <CustomInput label={t('profile.firstName')} value={firstName} onChangeText={setFirstName} />
+                <CustomInput label={t('profile.lastName')} value={lastName} onChangeText={setLastName} />
+                <CustomInput label={t('profile.enterYourEmail')} value={email} editable={false} />
+                <CustomInput label={t('profile.mobileNo')} value={phone} onChangeText={setPhone} />
+                <CustomInput label={t('profile.roles')} value={roles} editable={false} />
             </View>
         </ScrollView>
         <TouchableOpacity style={[styles.saveButton, saving && styles.disabledButton]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>SAVE</Text>}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{t('profile.save')}</Text>}
         </TouchableOpacity>
     </SafeAreaView>
   );
@@ -107,11 +116,17 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#999',
         marginBottom: 5,
+        textAlign: 'left',
     },
     textInput: {
         fontSize: 16,
         color: '#333',
         fontWeight: 'bold',
+        textAlign: 'left',
+    },
+    textRTL: {
+        textAlign: 'right',
+        writingDirection: 'rtl',
     },
     disabledInput: {
         color: '#999',

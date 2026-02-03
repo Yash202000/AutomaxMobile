@@ -589,8 +589,6 @@ const IncidentDetailsScreen = () => {
       \`);
 
     map.whenReady(function() {
-      console.log('✅ [IncidentDetails OSM] Map loaded successfully!');
-      console.log('📍 [IncidentDetails OSM] Showing location:', lat, lng);
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'mapReady'
       }));
@@ -607,7 +605,7 @@ const IncidentDetailsScreen = () => {
                   try {
                     const data = JSON.parse(event.nativeEvent.data);
                     if (data.type === 'mapReady') {
-                      console.log('✅ [IncidentDetails OSM] Map ready');
+                      // Map is ready
                     }
                   } catch (error) {
                     console.error('❌ [IncidentDetails OSM] Error handling message:', error);
@@ -693,6 +691,7 @@ const IncidentDetailsScreen = () => {
             pathname: '/update-status',
             params: {
               id: incident.id,
+              type: 'incident',
               transitions: JSON.stringify(availableTransitions),
               incident: JSON.stringify({
                 id: incident.id,

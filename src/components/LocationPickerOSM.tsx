@@ -10,6 +10,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 export interface LocationData {
   latitude: number;
@@ -33,6 +34,7 @@ const DEFAULT_LAT = 25.276987; // Dubai
 const DEFAULT_LNG = 55.296249;
 
 export function LocationPickerOSM({ value, onChange, required, error, label }: LocationPickerProps) {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const webViewRef = useRef<WebView>(null);
@@ -290,7 +292,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
             <Ionicons name="navigate" size={20} color="#2EC4B6" />
           )}
           <Text style={styles.locationButtonText}>
-            {isLoading ? 'Getting location...' : 'Get Current Location'}
+            {isLoading ? t('addIncident.fetchingLocation') : t('addIncident.getCurrentLocation')}
           </Text>
         </TouchableOpacity>
 
@@ -337,7 +339,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
           {value.address ? (
             <Text style={styles.address}>{value.address}</Text>
           ) : isLoading ? (
-            <Text style={styles.addressLoading}>Fetching address...</Text>
+            <Text style={styles.addressLoading}>{t('addIncident.fetchingLocation')}</Text>
           ) : (
             <Text style={styles.addressUnavailable}>Address unavailable (coordinates saved)</Text>
           )}

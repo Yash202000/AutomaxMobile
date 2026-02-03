@@ -351,6 +351,7 @@ const RequestDetailsScreen = () => {
             pathname: '/update-status',
             params: {
               id: request.id,
+              type: 'request',
               transitions: JSON.stringify(availableTransitions),
               incident: JSON.stringify({
                 id: request.id,

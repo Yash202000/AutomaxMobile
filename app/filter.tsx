@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { getAllStates } from '@/src/api/workflow';
 import { getDepartments } from '@/src/api/departments';
 import { getUsers } from '@/src/api/users';
@@ -25,29 +26,30 @@ interface FilterState {
 }
 
 const priorities = [
-  { value: 1, label: 'Critical', color: '#E74C3C' },
-  { value: 2, label: 'High', color: '#E67E22' },
-  { value: 3, label: 'Medium', color: '#F1C40F' },
-  { value: 4, label: 'Low', color: '#3498DB' },
-  { value: 5, label: 'Very Low', color: '#2ECC71' },
+  { value: 1, key: 'critical', color: '#E74C3C' },
+  { value: 2, key: 'high', color: '#E67E22' },
+  { value: 3, key: 'medium', color: '#F1C40F' },
+  { value: 4, key: 'low', color: '#3498DB' },
+  { value: 5, key: 'veryLow', color: '#2ECC71' },
 ];
 
 const severities = [
-  { value: 1, label: 'Critical', color: '#E74C3C' },
-  { value: 2, label: 'Major', color: '#E67E22' },
-  { value: 3, label: 'Moderate', color: '#F1C40F' },
-  { value: 4, label: 'Minor', color: '#3498DB' },
-  { value: 5, label: 'Cosmetic', color: '#2ECC71' },
+  { value: 1, key: 'critical', color: '#E74C3C' },
+  { value: 2, key: 'major', color: '#E67E22' },
+  { value: 3, key: 'moderate', color: '#F1C40F' },
+  { value: 4, key: 'minor', color: '#3498DB' },
+  { value: 5, key: 'cosmetic', color: '#2ECC71' },
 ];
 
 const slaStatuses = [
-  { value: 'on_track', label: 'On Track', color: '#2ECC71' },
-  { value: 'at_risk', label: 'At Risk', color: '#F1C40F' },
-  { value: 'breached', label: 'Breached', color: '#E74C3C' },
+  { value: 'on_track', key: 'onTrack', color: '#2ECC71' },
+  { value: 'at_risk', key: 'atRisk', color: '#F1C40F' },
+  { value: 'breached', key: 'breached', color: '#E74C3C' },
 ];
 
 const FilterScreen = () => {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
@@ -282,49 +284,52 @@ const FilterScreen = () => {
     filters.location_id || filters.sla_status;
 
   const getSelectedStateName = () => {
-    if (!filters.state_id) return 'All';
-    return filters.state_name || 'Selected';
+    if (!filters.state_id) return t('filter.all');
+    return filters.state_name || t('filter.selected');
   };
 
   const getSelectedPriorityLabel = () => {
-    if (!filters.priority) return 'All';
-    return priorities.find(p => p.value === filters.priority)?.label || 'Selected';
+    if (!filters.priority) return t('filter.all');
+    const priority = priorities.find(p => p.value === filters.priority);
+    return priority ? t(`priorities.${priority.key}`) : t('filter.selected');
   };
 
   const getSelectedSeverityLabel = () => {
-    if (!filters.severity) return 'All';
-    return severities.find(s => s.value === filters.severity)?.label || 'Selected';
+    if (!filters.severity) return t('filter.all');
+    const severity = severities.find(s => s.value === filters.severity);
+    return severity ? t(`severities.${severity.key}`) : t('filter.selected');
   };
 
   const getSelectedAssigneeName = () => {
-    if (!filters.assignee_id) return 'All';
-    return filters.assignee_name || 'Selected';
+    if (!filters.assignee_id) return t('filter.all');
+    return filters.assignee_name || t('filter.selected');
   };
 
   const getSelectedDepartmentName = () => {
-    if (!filters.department_id) return 'All';
-    return filters.department_name || 'Selected';
+    if (!filters.department_id) return t('filter.all');
+    return filters.department_name || t('filter.selected');
   };
 
   const getSelectedClassificationName = () => {
-    if (!filters.classification_id) return 'All';
-    return filters.classification_name || 'Selected';
+    if (!filters.classification_id) return t('filter.all');
+    return filters.classification_name || t('filter.selected');
   };
 
   const getSelectedLocationName = () => {
-    if (!filters.location_id) return 'All';
-    return filters.location_name || 'Selected';
+    if (!filters.location_id) return t('filter.all');
+    return filters.location_name || t('filter.selected');
   };
 
   const getSelectedSlaStatusLabel = () => {
-    if (!filters.sla_status) return 'All';
-    return slaStatuses.find(s => s.value === filters.sla_status)?.label || 'Selected';
+    if (!filters.sla_status) return t('filter.all');
+    const status = slaStatuses.find(s => s.value === filters.sla_status);
+    return status ? t(`sla.${status.key}`) : t('filter.selected');
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Filter Incidents</Text>
+        <Text style={styles.headerTitle}>{t('filter.title')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -339,7 +344,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="flag-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Status</Text>
+              <Text style={styles.filterLabel}>{t('filter.status')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.state_id && styles.filterValueActive]}>
@@ -364,7 +369,7 @@ const FilterScreen = () => {
                     onPress={() => setFilters({ ...filters, state_id: null, state_name: null })}
                   >
                     <Text style={[styles.filterOptionText, !filters.state_id && styles.filterOptionTextSelected]}>
-                      All Statuses
+                      {t('filter.allStatuses')}
                     </Text>
                     {!filters.state_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
@@ -397,7 +402,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="alert-circle-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Priority</Text>
+              <Text style={styles.filterLabel}>{t('filter.priority')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.priority && styles.filterValueActive]}>
@@ -418,7 +423,7 @@ const FilterScreen = () => {
                 onPress={() => setFilters({ ...filters, priority: null })}
               >
                 <Text style={[styles.filterOptionText, !filters.priority && styles.filterOptionTextSelected]}>
-                  All Priorities
+                  {t('filter.allPriorities')}
                 </Text>
                 {!filters.priority && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
@@ -431,7 +436,7 @@ const FilterScreen = () => {
                   <View style={styles.priorityOption}>
                     <View style={[styles.priorityDot, { backgroundColor: priority.color }]} />
                     <Text style={[styles.filterOptionText, filters.priority === priority.value && styles.filterOptionTextSelected]}>
-                      {priority.label}
+                      {t(`priorities.${priority.key}`)}
                     </Text>
                   </View>
                   {filters.priority === priority.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
@@ -449,7 +454,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="warning-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Severity</Text>
+              <Text style={styles.filterLabel}>{t('filter.severity')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.severity && styles.filterValueActive]}>
@@ -470,7 +475,7 @@ const FilterScreen = () => {
                 onPress={() => setFilters({ ...filters, severity: null })}
               >
                 <Text style={[styles.filterOptionText, !filters.severity && styles.filterOptionTextSelected]}>
-                  All Severities
+                  {t('filter.allSeverities')}
                 </Text>
                 {!filters.severity && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
@@ -483,7 +488,7 @@ const FilterScreen = () => {
                   <View style={styles.priorityOption}>
                     <View style={[styles.priorityDot, { backgroundColor: severity.color }]} />
                     <Text style={[styles.filterOptionText, filters.severity === severity.value && styles.filterOptionTextSelected]}>
-                      {severity.label}
+                      {t(`severities.${severity.key}`)}
                     </Text>
                   </View>
                   {filters.severity === severity.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
@@ -501,7 +506,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="folder-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Classification</Text>
+              <Text style={styles.filterLabel}>{t('filter.classification')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.classification_id && styles.filterValueActive]}>
@@ -526,7 +531,7 @@ const FilterScreen = () => {
                     onPress={() => setFilters({ ...filters, classification_id: null, classification_name: null })}
                   >
                     <Text style={[styles.filterOptionText, !filters.classification_id && styles.filterOptionTextSelected]}>
-                      All Classifications
+                      {t('filter.allClassifications')}
                     </Text>
                     {!filters.classification_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
@@ -556,7 +561,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="location-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Location</Text>
+              <Text style={styles.filterLabel}>{t('filter.location')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.location_id && styles.filterValueActive]}>
@@ -581,7 +586,7 @@ const FilterScreen = () => {
                     onPress={() => setFilters({ ...filters, location_id: null, location_name: null })}
                   >
                     <Text style={[styles.filterOptionText, !filters.location_id && styles.filterOptionTextSelected]}>
-                      All Locations
+                      {t('filter.allLocations')}
                     </Text>
                     {!filters.location_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
@@ -611,7 +616,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="person-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Assignee</Text>
+              <Text style={styles.filterLabel}>{t('filter.assignee')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.assignee_id && styles.filterValueActive]}>
@@ -636,7 +641,7 @@ const FilterScreen = () => {
                     onPress={() => setFilters({ ...filters, assignee_id: null, assignee_name: null })}
                   >
                     <Text style={[styles.filterOptionText, !filters.assignee_id && styles.filterOptionTextSelected]}>
-                      All Assignees
+                      {t('filter.allAssignees')}
                     </Text>
                     {!filters.assignee_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
@@ -673,7 +678,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="business-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>Department</Text>
+              <Text style={styles.filterLabel}>{t('filter.department')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.department_id && styles.filterValueActive]}>
@@ -698,7 +703,7 @@ const FilterScreen = () => {
                     onPress={() => setFilters({ ...filters, department_id: null, department_name: null })}
                   >
                     <Text style={[styles.filterOptionText, !filters.department_id && styles.filterOptionTextSelected]}>
-                      All Departments
+                      {t('filter.allDepartments')}
                     </Text>
                     {!filters.department_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
@@ -728,7 +733,7 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="time-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>SLA Status</Text>
+              <Text style={styles.filterLabel}>{t('filter.slaStatus')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.sla_status && styles.filterValueActive]}>
@@ -749,7 +754,7 @@ const FilterScreen = () => {
                 onPress={() => setFilters({ ...filters, sla_status: null })}
               >
                 <Text style={[styles.filterOptionText, !filters.sla_status && styles.filterOptionTextSelected]}>
-                  All SLA Statuses
+                  {t('filter.allSlaStatuses')}
                 </Text>
                 {!filters.sla_status && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
@@ -762,7 +767,7 @@ const FilterScreen = () => {
                   <View style={styles.priorityOption}>
                     <View style={[styles.priorityDot, { backgroundColor: status.color }]} />
                     <Text style={[styles.filterOptionText, filters.sla_status === status.value && styles.filterOptionTextSelected]}>
-                      {status.label}
+                      {t(`sla.${status.key}`)}
                     </Text>
                   </View>
                   {filters.sla_status === status.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
@@ -783,11 +788,11 @@ const FilterScreen = () => {
           disabled={!hasActiveFilters}
         >
           <Text style={[styles.resetButtonText, !hasActiveFilters && styles.resetButtonTextDisabled]}>
-            Reset
+            {t('filter.reset')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterButton} onPress={applyFilters}>
-          <Text style={styles.filterButtonText}>APPLY FILTERS</Text>
+          <Text style={styles.filterButtonText}>{t('filter.applyFilters')}</Text>
         </TouchableOpacity>
       </View>
     </View>
