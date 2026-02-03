@@ -10,8 +10,24 @@ const UpdateStatusModal = () => {
   const router = useRouter();
   const { id, transitions, incident: incidentParam } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
-  const availableTransitions = transitions ? JSON.parse(transitions as string) : [];
-  const incident = incidentParam ? JSON.parse(incidentParam as string) : null;
+
+  // Safely parse JSON with error handling to prevent crashes
+  let availableTransitions = [];
+  let incident = null;
+
+  try {
+    availableTransitions = transitions ? JSON.parse(transitions as string) : [];
+  } catch (error) {
+    console.error('[UpdateStatus] Failed to parse transitions:', error);
+    availableTransitions = [];
+  }
+
+  try {
+    incident = incidentParam ? JSON.parse(incidentParam as string) : null;
+  } catch (error) {
+    console.error('[UpdateStatus] Failed to parse incident:', error);
+    incident = null;
+  }
 
   const [selectedTransition, setSelectedTransition] = useState(null);
   const [comment, setComment] = useState('');

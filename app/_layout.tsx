@@ -49,10 +49,20 @@ function RootLayoutNav() {
         <Stack.Screen name="incident-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-incident" options={{ headerShown: false }} />
         <Stack.Screen name="my-incidents" options={{ headerShown: false }} />
+        <Stack.Screen name="map-view" options={{ headerShown: false }} />
+        <Stack.Screen name="request-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-request" options={{ headerShown: false }} />
+        <Stack.Screen name="complaint-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
+        <Stack.Screen name="query-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-query" options={{ headerShown: false }} />
         <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />
         <Stack.Screen name="change-password" options={{ title: 'Change Password' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="complaint-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

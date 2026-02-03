@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,15 +36,34 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const webViewRef = useRef<WebView>(null);
+  const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (geocodingTimerRef.current) {
+        clearTimeout(geocodingTimerRef.current);
+      }
+    };
+  }, []);
 
   const reverseGeocode = async (latitude: number, longitude: number): Promise<Partial<LocationData>> => {
     try {
+      // Reduce timeout from 10s to 5s to prevent long waits
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Geocoding timeout')), 10000);
+        setTimeout(() => reject(new Error('Geocoding timeout')), 5000);
       });
 
       const geocodePromise = Location.reverseGeocodeAsync({ latitude, longitude });
       const results = await Promise.race([geocodePromise, timeoutPromise]);
+
+      // Check if component is still mounted
+      if (!isMountedRef.current) {
+        return {};
+      }
 
       if (results && results.length > 0) {
         const result = results[0];
@@ -104,10 +123,10 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
 
       setIsLoading(false);
 
-      // Get address in background
+      // Get address in background (non-blocking)
       try {
         const addressData = await reverseGeocode(latitude, longitude);
-        if (Object.keys(addressData).length > 0) {
+        if (isMountedRef.current && Object.keys(addressData).length > 0) {
           console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
           onChange({ ...locationData, ...addressData });
         }
@@ -145,16 +164,23 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
 
         onChange(locationData);
 
-        // Get address in background
-        try {
-          const addressData = await reverseGeocode(data.lat, data.lng);
-          if (Object.keys(addressData).length > 0) {
-            console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
-            onChange({ ...locationData, ...addressData });
-          }
-        } catch (error) {
-          console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
+        // Clear any pending geocoding request
+        if (geocodingTimerRef.current) {
+          clearTimeout(geocodingTimerRef.current);
         }
+
+        // Debounce geocoding to prevent multiple rapid requests (wait 500ms)
+        geocodingTimerRef.current = setTimeout(async () => {
+          try {
+            const addressData = await reverseGeocode(data.lat, data.lng);
+            if (isMountedRef.current && Object.keys(addressData).length > 0) {
+              console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
+              onChange({ ...locationData, ...addressData });
+            }
+          } catch (error) {
+            console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
+          }
+        }, 500);
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Error handling message:', error);

@@ -101,25 +101,41 @@ class CrashLogger {
 
     this.isWriting = true;
 
-    while (this.logQueue.length > 0) {
-      const currentEntry = this.logQueue.shift();
-      if (!currentEntry) continue;
+    // Process logs in batches to avoid blocking UI
+    const processBatch = async () => {
+      const BATCH_SIZE = 10;
+      let processedCount = 0;
 
-      try {
-        await this.rotateLogIfNeeded();
+      while (this.logQueue.length > 0 && processedCount < BATCH_SIZE) {
+        const currentEntry = this.logQueue.shift();
+        if (!currentEntry) continue;
 
-        const formattedLog = this.formatLogEntry(currentEntry);
+        try {
+          await this.rotateLogIfNeeded();
 
-        await FileSystem.writeAsStringAsync(LOG_FILE_PATH, formattedLog, {
-          encoding: FileSystem.EncodingType.UTF8,
-          append: true,
-        });
-      } catch (error) {
-        console.error('[CrashLogger] Failed to write log:', error);
+          const formattedLog = this.formatLogEntry(currentEntry);
+
+          await FileSystem.writeAsStringAsync(LOG_FILE_PATH, formattedLog, {
+            encoding: FileSystem.EncodingType.UTF8,
+            append: true,
+          });
+
+          processedCount++;
+        } catch (error) {
+          console.error('[CrashLogger] Failed to write log:', error);
+        }
       }
-    }
 
-    this.isWriting = false;
+      // If more logs in queue, schedule next batch (non-blocking)
+      if (this.logQueue.length > 0) {
+        setTimeout(() => processBatch(), 100); // Yield to UI thread
+      } else {
+        this.isWriting = false;
+      }
+    };
+
+    // Start processing batches
+    await processBatch();
   }
 
   async logError(error: Error, metadata?: Record<string, any>) {

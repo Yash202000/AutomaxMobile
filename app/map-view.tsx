@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import MapView, { Marker, Callout, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { getIncidents, getRequests, getIncidentById, getRequestById } from '@/src/api/incidents';
-import { baseURL } from '@/src/api/client';
-import * as SecureStore from 'expo-secure-store';
+import { getIncidents, getRequests } from '@/src/api/incidents';
 
 const COLORS = {
   primary: '#1A237E',
@@ -31,8 +28,6 @@ interface IncidentMarker {
   longitude: number;
   priority?: number;
   current_state?: { name: string };
-  attachments_count?: number;
-  attachments?: Array<{ id: string; file_name: string; mime_type: string; url?: string }>;
 }
 
 const MapViewScreen = () => {
@@ -40,27 +35,11 @@ const MapViewScreen = () => {
   const router = useRouter();
   const { type } = useLocalSearchParams<{ type?: string }>();
   const recordType = type || 'incident';
-  const mapRef = useRef<MapView>(null);
+  const webViewRef = useRef<WebView>(null);
 
   const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
-  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
-  const [mapRegion, setMapRegion] = useState<Region>({
-    latitude: 24.7136,
-    longitude: 46.6753,
-    latitudeDelta: 0.5,
-    longitudeDelta: 0.5,
-  });
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      const storedToken = await SecureStore.getItemAsync('authToken');
-      setToken(storedToken);
-      console.log('Auth token retrieved:', storedToken ? 'Token exists' : 'No token found');
-    };
-    fetchToken();
-  }, []);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     fetchIncidentsWithLocation();
@@ -87,85 +66,205 @@ const MapViewScreen = () => {
             !isNaN(inc.longitude)
         );
         setIncidents(incidentsWithLocation);
+        console.log('✅ [MapView OSM] Loaded', incidentsWithLocation.length, 'incidents with location');
 
-        // Center map on first incident or use default location
-        if (incidentsWithLocation.length > 0) {
-          const firstIncident = incidentsWithLocation[0];
-          setMapRegion({
-            latitude: parseFloat(firstIncident.latitude),
-            longitude: parseFloat(firstIncident.longitude),
-            latitudeDelta: 0.5,
-            longitudeDelta: 0.5,
-          });
+        // Update map markers
+        if (mapReady && incidentsWithLocation.length > 0) {
+          updateMapMarkers(incidentsWithLocation);
         }
       }
     } catch (error) {
-      console.error('Error fetching incidents:', error);
+      console.error('❌ [MapView OSM] Error fetching incidents:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const updateMapMarkers = (incidentList: IncidentMarker[]) => {
+    const markersData = incidentList.map(inc => ({
+      id: inc.id,
+      lat: parseFloat(String(inc.latitude)),
+      lng: parseFloat(String(inc.longitude)),
+      title: inc.title,
+      number: inc.incident_number,
+      priority: inc.priority || 0,
+      state: inc.current_state?.name || 'N/A',
+    }));
+
+    const markersJson = JSON.stringify(markersData);
+    webViewRef.current?.injectJavaScript(`
+      updateMarkers(${markersJson});
+      true;
+    `);
+  };
+
   const getMarkerColor = (priority?: number) => {
     switch (priority) {
-      case 1: return '#DC2626'; // Critical
-      case 2: return '#EA580C'; // High
-      case 3: return '#F59E0B'; // Medium
-      case 4: return '#3B82F6'; // Low
-      case 5: return '#22C55E'; // Very Low
-      default: return COLORS.accent;
+      case 1: return '#DC2626'; // Critical - Red
+      case 2: return '#EA580C'; // High - Orange
+      case 3: return '#F59E0B'; // Medium - Yellow
+      case 4: return '#3B82F6'; // Low - Blue
+      case 5: return '#22C55E'; // Very Low - Green
+      default: return '#2EC4B6'; // Default - Teal
     }
   };
 
-  const getFirstImageAttachment = (attachments?: Array<{ id: string; mime_type: string }>) => {
-    if (!attachments) return null;
-    return attachments.find(att => att.mime_type?.startsWith('image/'));
-  };
-
-
-  const handleMarkerPress = async (incident: IncidentMarker) => {
-    console.log('Marker pressed for incident:', incident.id);
-
-    // Center map on the selected marker
-    mapRef.current?.animateToRegion({
-      latitude: incident.latitude,
-      longitude: incident.longitude,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    }, 1000);
-
-    // Fetch full incident details with attachments
-    setSelectedIncidentId(incident.id);
+  const handleMessage = (event: any) => {
     try {
-      const fetchFunction = recordType === 'request' ? getRequestById : getIncidentById;
-      console.log('Fetching details for:', incident.id, 'Type:', recordType);
-      const response = await fetchFunction(incident.id);
-      console.log('Details response:', response);
+      const data = JSON.parse(event.nativeEvent.data);
 
-      if (response.success && response.data) {
-        console.log('Attachments in response:', response.data.attachments);
-        console.log('Attachments count:', response.data.attachments?.length);
-
-        // Update the incident in the list with full details including attachments
-        setIncidents(prevIncidents =>
-          prevIncidents.map(inc =>
-            inc.id === incident.id
-              ? { ...inc, attachments: response.data.attachments }
-              : inc
-          )
-        );
-
-        console.log('Updated incident with attachments');
+      if (data.type === 'mapReady') {
+        console.log('✅ [MapView OSM] Map ready');
+        setMapReady(true);
+        if (incidents.length > 0) {
+          updateMapMarkers(incidents);
+        }
+      } else if (data.type === 'markerClicked') {
+        console.log('📍 [MapView OSM] Marker clicked:', data.id);
+        const detailsPage = recordType === 'request' ? '/request-details' : '/incident-details';
+        router.push(`${detailsPage}?id=${data.id}`);
       }
     } catch (error) {
-      console.error('Error fetching incident details:', error);
+      console.error('❌ [MapView OSM] Error handling message:', error);
     }
   };
 
-  const handleCalloutPress = (incidentId: string) => {
-    const detailsPage = recordType === 'request' ? '/request-details' : '/incident-details';
-    router.push(`${detailsPage}?id=${incidentId}`);
-  };
+  const mapHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+    .custom-marker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .custom-marker::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    // Initialize map centered on Dubai/Riyadh
+    const map = L.map('map').setView([24.7136, 46.6753], 10);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    let markers = [];
+
+    // Update markers function
+    window.updateMarkers = function(incidentsData) {
+      // Clear existing markers
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+
+      if (!incidentsData || incidentsData.length === 0) {
+        console.log('No incidents to display');
+        return;
+      }
+
+      console.log('Adding', incidentsData.length, 'markers to map');
+
+      // Get priority colors
+      const getPriorityColor = (priority) => {
+        switch (priority) {
+          case 1: return '#DC2626'; // Critical
+          case 2: return '#EA580C'; // High
+          case 3: return '#F59E0B'; // Medium
+          case 4: return '#3B82F6'; // Low
+          case 5: return '#22C55E'; // Very Low
+          default: return '#2EC4B6';
+        }
+      };
+
+      // Add markers
+      incidentsData.forEach(incident => {
+        const color = getPriorityColor(incident.priority);
+
+        // Create custom marker
+        const markerHtml = '<div class="custom-marker" style="background-color: ' + color + ';"></div>';
+        const customIcon = L.divIcon({
+          html: markerHtml,
+          className: 'custom-div-icon',
+          iconSize: [30, 30],
+          iconAnchor: [15, 30],
+          popupAnchor: [0, -30]
+        });
+
+        const marker = L.marker([incident.lat, incident.lng], { icon: customIcon })
+          .addTo(map)
+          .bindPopup(\`
+            <div style="min-width: 200px;">
+              <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
+              <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">Status: \${incident.state}</span><br/>
+              <button onclick="handleMarkerClick('\${incident.id}')" style="
+                margin-top: 8px;
+                padding: 6px 12px;
+                background: #2EC4B6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 600;
+              ">View Details</button>
+            </div>
+          \`);
+
+        markers.push(marker);
+      });
+
+      // Fit map to show all markers
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+
+      console.log('Markers added successfully');
+    };
+
+    // Handle marker click
+    window.handleMarkerClick = function(incidentId) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'markerClicked',
+        id: incidentId
+      }));
+    };
+
+    // Notify React Native that map is ready
+    map.whenReady(function() {
+      console.log('Map initialized');
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapReady'
+      }));
+    });
+  </script>
+</body>
+</html>
+  `;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -182,121 +281,22 @@ const MapViewScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !mapReady ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
-          <MapView
-            ref={mapRef}
-            provider={PROVIDER_DEFAULT}
+          <WebView
+            ref={webViewRef}
+            source={{ html: mapHtml }}
             style={styles.map}
-            initialRegion={mapRegion}
-            showsUserLocation
-            showsMyLocationButton
-            loadingEnabled={true}
-            loadingIndicatorColor={COLORS.accent}
-            onMapReady={() => {
-              console.log('✅ [MapView] Map loaded successfully!');
-              console.log('📍 [MapView] Showing', incidents.length, 'incidents');
-            }}
-            onError={(error) => {
-              console.error('❌ [MapView] Map error:', error);
-              console.error('❌ [MapView] Error details:', JSON.stringify(error));
-            }}
-            onLayout={() => console.log('📐 [MapView] MapView layout completed')}
-          >
-            {incidents.map((incident) => {
-              // Double-check coordinates are valid before rendering
-              if (
-                !incident.latitude ||
-                !incident.longitude ||
-                isNaN(incident.latitude) ||
-                isNaN(incident.longitude)
-              ) {
-                return null;
-              }
-
-              const imageAttachment = getFirstImageAttachment(incident.attachments);
-              const hasAttachmentsCount = incident.attachments_count && incident.attachments_count > 0;
-              const hasLoadedAttachments = incident.attachments && incident.attachments.length > 0;
-
-              if (incident.attachments) {
-                console.log('Rendering marker with attachments for:', incident.id, incident.attachments.length);
-                console.log('First image attachment:', imageAttachment);
-                if (imageAttachment) {
-                  console.log('Pre-signed URL from API:', imageAttachment.url);
-                  console.log('Using backend URL instead:', `${baseURL}/attachments/${imageAttachment.id}`);
-                }
-              }
-
-              return (
-                <Marker
-                  key={`${incident.id}-${incident.attachments?.length || 0}`}
-                  coordinate={{
-                    latitude: parseFloat(String(incident.latitude)),
-                    longitude: parseFloat(String(incident.longitude)),
-                  }}
-                  pinColor={getMarkerColor(incident.priority)}
-                  onPress={() => handleMarkerPress(incident)}
-                >
-                  <Callout
-                    tooltip={false}
-                    onPress={() => handleCalloutPress(incident.id)}
-                  >
-                    <View style={styles.calloutContainer}>
-                      <View style={styles.calloutHeader}>
-                        <Text style={styles.calloutNumber}>{incident.incident_number}</Text>
-                        <View style={[styles.priorityDot, { backgroundColor: getMarkerColor(incident.priority) }]} />
-                      </View>
-                      <Text style={styles.calloutTitle} numberOfLines={2}>
-                        {incident.title}
-                      </Text>
-                      <Text style={styles.calloutStatus}>
-                        {incident.current_state?.name || 'N/A'}
-                      </Text>
-                      {imageAttachment ? (
-                        <Image
-                          source={{
-                            uri: `${baseURL}/attachments/${imageAttachment.id}`,
-                            headers: { Authorization: `Bearer ${token}` }
-                          }}
-                          style={styles.calloutImage}
-                          contentFit="cover"
-                          onLoad={() => console.log('Image loaded successfully for:', incident.id)}
-                          onError={(error) => console.log('Image load error:', error, 'URL:', `${baseURL}/attachments/${imageAttachment.id}`)}
-                        />
-                      ) : hasLoadedAttachments ? (
-                        <View style={styles.attachmentPlaceholder}>
-                          <Ionicons name="document-attach" size={32} color={COLORS.accent} />
-                          <Text style={styles.attachmentText}>
-                            {incident.attachments.length} {incident.attachments.length === 1 ? t('details.attachment', 'Attachment') : t('details.attachments', 'Attachments')}
-                          </Text>
-                        </View>
-                      ) : hasAttachmentsCount ? (
-                        <View style={styles.attachmentPlaceholder}>
-                          <Ionicons name="images" size={32} color={COLORS.text.muted} />
-                          <Text style={styles.attachmentText}>
-                            {incident.attachments_count} {incident.attachments_count === 1 ? t('details.attachment', 'Attachment') : t('details.attachments', 'Attachments')}
-                          </Text>
-                          <Text style={styles.tapToLoadText}>{t('map.tapToLoad', 'Tap marker to load')}</Text>
-                        </View>
-                      ) : null}
-                      <TouchableOpacity
-                        style={styles.viewButton}
-                        onPress={() => handleCalloutPress(incident.id)}
-                      >
-                        <Text style={styles.viewButtonText}>{t('common.viewDetails', 'View Details')}</Text>
-                        <Ionicons name="arrow-forward" size={16} color={COLORS.accent} />
-                      </TouchableOpacity>
-                    </View>
-                  </Callout>
-                </Marker>
-              );
-            })}
-          </MapView>
+            onMessage={handleMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={false}
+          />
 
           {/* Info Badge */}
           <View style={styles.infoBadge}>
@@ -305,6 +305,13 @@ const MapViewScreen = () => {
               {incidents.length} {recordType === 'request' ? t('map.requestsOnMap', 'requests on map') : t('map.incidentsOnMap', 'incidents on map')}
             </Text>
           </View>
+
+          {/* Loading overlay for refresh */}
+          {loading && mapReady && (
+            <View style={styles.refreshOverlay}>
+              <ActivityIndicator size="small" color={COLORS.white} />
+            </View>
+          )}
         </>
       )}
     </SafeAreaView>
@@ -350,81 +357,6 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  calloutContainer: {
-    width: 250,
-    padding: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-  },
-  calloutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  calloutNumber: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  priorityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  calloutTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text.primary,
-    marginBottom: 4,
-  },
-  calloutStatus: {
-    fontSize: 12,
-    color: COLORS.text.secondary,
-    marginBottom: 8,
-  },
-  calloutImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  attachmentPlaceholder: {
-    width: '100%',
-    height: 80,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  attachmentText: {
-    fontSize: 12,
-    color: COLORS.text.muted,
-    fontWeight: '500',
-  },
-  tapToLoadText: {
-    fontSize: 10,
-    color: COLORS.text.muted,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.accent}20`,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 4,
-  },
-  viewButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.accent,
-  },
   infoBadge: {
     position: 'absolute',
     top: 80,
@@ -446,6 +378,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.text.primary,
+  },
+  refreshOverlay: {
+    position: 'absolute',
+    top: 80,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
 });
 

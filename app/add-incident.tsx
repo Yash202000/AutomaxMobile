@@ -364,7 +364,7 @@ const AddIncidentScreen = () => {
       if (userRes.success && userRes.data) {
         setUsers(userRes.data.map((u: any) => ({
           id: u.id,
-          name: `${u.first_name} ${u.last_name}`.trim() || u.email
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'Unknown User'
         })));
       }
       if (deptRes.success && deptRes.data) {
@@ -560,7 +560,7 @@ const AddIncidentScreen = () => {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets) {
+      if (!result.canceled && result.assets && Array.isArray(result.assets)) {
         const newAttachments = result.assets.map(asset => ({
           uri: asset.uri,
           name: asset.fileName || `photo_${Date.now()}.jpg`,
@@ -597,7 +597,7 @@ const AddIncidentScreen = () => {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets) {
+      if (!result.canceled && result.assets && Array.isArray(result.assets)) {
         const newAttachments = result.assets.map(asset => ({
           uri: asset.uri,
           name: asset.fileName || `image_${Date.now()}.jpg`,

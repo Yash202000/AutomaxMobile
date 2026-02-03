@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ImageView from 'react-native-image-viewing';
-import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { useAudioPlayer, AudioSource } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
 import { getIncidentById, getAvailableTransitions, downloadIncidentReport } from '@/src/api/incidents';
@@ -179,9 +179,9 @@ const IncidentDetailsScreen = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [mapZoom, setMapZoom] = useState<number>(15);
   const [downloadingReport, setDownloadingReport] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebView>(null);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
@@ -258,27 +258,21 @@ const IncidentDetailsScreen = () => {
   );
 
   const handleZoomIn = () => {
-    if (mapRef.current && mapRegion) {
-      const newRegion = {
-        ...mapRegion,
-        latitudeDelta: mapRegion.latitudeDelta / 2,
-        longitudeDelta: mapRegion.longitudeDelta / 2,
-      };
-      mapRef.current.animateToRegion(newRegion, 300);
-      setMapRegion(newRegion);
-    }
+    const newZoom = Math.min(mapZoom + 1, 19);
+    setMapZoom(newZoom);
+    mapRef.current?.injectJavaScript(`
+      map.setZoom(${newZoom});
+      true;
+    `);
   };
 
   const handleZoomOut = () => {
-    if (mapRef.current && mapRegion) {
-      const newRegion = {
-        ...mapRegion,
-        latitudeDelta: Math.min(mapRegion.latitudeDelta * 2, 180),
-        longitudeDelta: Math.min(mapRegion.longitudeDelta * 2, 360),
-      };
-      mapRef.current.animateToRegion(newRegion, 300);
-      setMapRegion(newRegion);
-    }
+    const newZoom = Math.max(mapZoom - 1, 1);
+    setMapZoom(newZoom);
+    mapRef.current?.injectJavaScript(`
+      map.setZoom(${newZoom});
+      true;
+    `);
   };
 
   const handleDownloadReport = async () => {
@@ -296,22 +290,28 @@ const IncidentDetailsScreen = () => {
         const reader = new FileReader();
         reader.readAsDataURL(result.data);
         reader.onloadend = async () => {
-          const base64data = reader.result?.toString().split(',')[1];
-          if (base64data) {
-            // Save PDF to file
-            await FileSystem.writeAsStringAsync(fileUri, base64data, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-
-            // Share the file
-            if (await Sharing.isAvailableAsync()) {
-              await Sharing.shareAsync(fileUri, {
-                mimeType: 'application/pdf',
-                dialogTitle: t('details.shareReport', 'Share Incident Report'),
+          try {
+            const base64data = reader.result?.toString().split(',')[1];
+            if (base64data) {
+              // Save PDF to file with error handling
+              await FileSystem.writeAsStringAsync(fileUri, base64data, {
+                encoding: FileSystem.EncodingType.Base64,
               });
-            } else {
-              Alert.alert(t('common.success'), t('details.reportSaved', 'Report saved to') + `: ${fileUri}`);
+
+              // Share the file
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(fileUri, {
+                  mimeType: 'application/pdf',
+                  dialogTitle: t('details.shareReport', 'Share Incident Report'),
+                });
+              } else {
+                Alert.alert(t('common.success'), t('details.reportSaved', 'Report saved to') + `: ${fileUri}`);
+              }
             }
+          } catch (fileError) {
+            console.error('File operation error:', fileError);
+            Alert.alert(t('common.error'), 'Failed to save or share report file');
+            setDownloadingReport(false);
           }
         };
       } else {
@@ -579,42 +579,96 @@ const IncidentDetailsScreen = () => {
           <View style={styles.card}>
             <SectionHeader title={t('details.geolocation')} icon="navigate" />
             <View style={styles.mapContainer}>
-              <MapView
+              <WebView
                 ref={mapRef}
-                provider={PROVIDER_DEFAULT}
+                source={{ html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+    .custom-marker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background-color: ${COLORS.error};
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .custom-marker::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const lat = ${incident.latitude};
+    const lng = ${incident.longitude};
+    const map = L.map('map').setView([lat, lng], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const markerHtml = '<div class="custom-marker"></div>';
+    const customIcon = L.divIcon({
+      html: markerHtml,
+      className: 'custom-div-icon',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30]
+    });
+
+    const marker = L.marker([lat, lng], { icon: customIcon })
+      .addTo(map)
+      .bindPopup(\`
+        <div style="min-width: 150px;">
+          <strong style="font-size: 13px;">${incident.title.replace(/'/g, "\\'")}</strong><br/>
+          <span style="font-size: 11px; color: #64748B;">${(incident.address || 'Incident Location').replace(/'/g, "\\'")}</span>
+        </div>
+      \`);
+
+    map.whenReady(function() {
+      console.log('✅ [IncidentDetails OSM] Map loaded successfully!');
+      console.log('📍 [IncidentDetails OSM] Showing location:', lat, lng);
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapReady'
+      }));
+    });
+  </script>
+</body>
+</html>
+                ` }}
                 style={styles.map}
-                initialRegion={{
-                  latitude: incident.latitude,
-                  longitude: incident.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                startInLoadingState={false}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'mapReady') {
+                      console.log('✅ [IncidentDetails OSM] Map ready');
+                    }
+                  } catch (error) {
+                    console.error('❌ [IncidentDetails OSM] Error handling message:', error);
+                  }
                 }}
-                onRegionChangeComplete={(region) => setMapRegion(region)}
-                onMapReady={() => {
-                  console.log('✅ [IncidentDetails] Map loaded successfully!');
-                  console.log('📍 [IncidentDetails] Showing location:', incident.latitude, incident.longitude);
-                  setMapRegion({
-                    latitude: incident.latitude!,
-                    longitude: incident.longitude!,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  });
-                }}
-                onError={(error) => {
-                  console.error('❌ [IncidentDetails] Map error:', error);
-                  console.error('❌ [IncidentDetails] Error details:', JSON.stringify(error));
-                }}
-                onLayout={() => console.log('📐 [IncidentDetails] MapView layout completed')}
-                loadingEnabled={true}
-                loadingIndicatorColor={COLORS.accent}
-              >
-                <Marker
-                  coordinate={{ latitude: incident.latitude, longitude: incident.longitude }}
-                  title={incident.title}
-                  description={incident.address || 'Incident Location'}
-                  pinColor={COLORS.error}
-                />
-              </MapView>
+              />
               {/* Zoom Controls */}
               <View style={styles.mapControls}>
                 <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomIn}>

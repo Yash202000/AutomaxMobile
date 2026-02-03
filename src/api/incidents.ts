@@ -28,12 +28,12 @@ export const getIncidents = async (params: Record<string, any> = {}): Promise<In
     if (response.data && response.data.success) {
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data || [],
         pagination: {
-          page: response.data.page,
-          limit: response.data.limit,
-          total_items: response.data.total_items,
-          total_pages: response.data.total_pages,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          total_items: response.data.total_items || 0,
+          total_pages: response.data.total_pages || 0,
         },
       };
     }
@@ -263,12 +263,12 @@ export const getRequests = async (params: Record<string, any> = {}): Promise<Inc
     if (response.data && response.data.success) {
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data || [],
         pagination: {
-          page: response.data.page,
-          limit: response.data.limit,
-          total_items: response.data.total_items,
-          total_pages: response.data.total_pages,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          total_items: response.data.total_items || 0,
+          total_pages: response.data.total_pages || 0,
         },
       };
     }
@@ -322,12 +322,12 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
     if (response.data && response.data.success) {
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data || [],
         pagination: {
-          page: response.data.page,
-          limit: response.data.limit,
-          total_items: response.data.total_items,
-          total_pages: response.data.total_pages,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          total_items: response.data.total_items || 0,
+          total_pages: response.data.total_pages || 0,
         },
       };
     }
@@ -427,12 +427,12 @@ export const getQueries = async (params: Record<string, any> = {}): Promise<Inci
     if (response.data && response.data.success) {
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data || [],
         pagination: {
-          page: response.data.page,
-          limit: response.data.limit,
-          total_items: response.data.total_items,
-          total_pages: response.data.total_pages,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          total_items: response.data.total_items || 0,
+          total_pages: response.data.total_pages || 0,
         },
       };
     }

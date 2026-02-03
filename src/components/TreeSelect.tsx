@@ -247,20 +247,31 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     setModalVisible(false);
   }, [onSelect]);
 
-  // Expand all nodes initially for better UX
+  // Expand all nodes initially for better UX (with depth limit to prevent freeze)
   const expandAll = useCallback(() => {
-    const getAllIds = (nodes: TreeNode[]): string[] => {
+    const getAllIds = (nodes: TreeNode[], depth = 0, maxDepth = 10): string[] => {
       let ids: string[] = [];
-      if (!Array.isArray(nodes)) return ids;
+      if (!Array.isArray(nodes) || depth >= maxDepth) return ids;
       for (const node of nodes) {
         if (node && node.id && node.children && Array.isArray(node.children) && node.children.length > 0) {
           ids.push(node.id);
-          ids = ids.concat(getAllIds(node.children));
+          // Limit recursion depth to prevent UI freeze with large trees
+          if (depth < maxDepth - 1) {
+            ids = ids.concat(getAllIds(node.children, depth + 1, maxDepth));
+          }
         }
       }
       return ids;
     };
-    setExpandedIds(new Set(getAllIds(data)));
+
+    // Batch the state update to prevent blocking
+    const allIds = getAllIds(data);
+    if (allIds.length > 500) {
+      console.warn('[TreeSelect] Large tree detected, limiting expansion to first 500 nodes');
+      setExpandedIds(new Set(allIds.slice(0, 500)));
+    } else {
+      setExpandedIds(new Set(allIds));
+    }
   }, [data]);
 
   const collapseAll = useCallback(() => {
