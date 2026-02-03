@@ -207,6 +207,7 @@ export const uploadMultipleAttachments = async (incidentId: string, files: any[]
 // Get incidents assigned to current user
 export const getMyAssignedIncidents = async (page = 1, limit = 20): Promise<IncidentListResponse> => {
   try {
+    // Get ALL assigned tickets (incidents, requests, complaints, queries)
     const response = await apiClient.get(`/incidents/my-assigned?page=${page}&limit=${limit}`);
     if (response.data && response.data.success) {
       return {
@@ -226,19 +227,20 @@ export const getMyAssignedIncidents = async (page = 1, limit = 20): Promise<Inci
   }
 };
 
-// Get incidents created/reported by current user
+// Get tickets created/reported by current user (all types)
 export const getMyReportedIncidents = async (page = 1, limit = 20): Promise<IncidentListResponse> => {
   try {
+    // Get ALL created tickets (incidents, requests, complaints, queries)
     const response = await apiClient.get(`/incidents/my-reported?page=${page}&limit=${limit}`);
     if (response.data && response.data.success) {
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data || [],
         pagination: {
-          page: response.data.page,
-          limit: response.data.limit,
-          total_items: response.data.total_items,
-          total_pages: response.data.total_pages,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          total_items: response.data.total_items || 0,
+          total_pages: response.data.total_pages || 0,
         },
       };
     }

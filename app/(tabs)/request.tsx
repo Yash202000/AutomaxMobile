@@ -106,27 +106,14 @@ const RequestsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 20, total_items: 0, total_pages: 0 });
-  const [defaultStatus, setDefaultStatus] = useState<{ id: string; name: string } | null>(null);
-  const [statsLoaded, setStatsLoaded] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
 
-  useEffect(() => {
-    const fetchDefaultStatus = async () => {
-      const response = await getRequestStats();
-      if (response.success && response.data?.by_state_details?.length > 0) {
-        const firstState = response.data.by_state_details[0];
-        setDefaultStatus({ id: firstState.id, name: firstState.name });
-      }
-      setStatsLoaded(true);
-    };
-    fetchDefaultStatus();
-  }, []);
-
-  const activeStateId = state_id || (statsLoaded && !state_id && defaultStatus ? defaultStatus.id : undefined);
-  const activeStateName = state_name || (statsLoaded && !state_id && defaultStatus ? defaultStatus.name : undefined);
+  // Don't apply default status filter - show ALL requests unless explicitly filtered
+  const activeStateId = state_id;
+  const activeStateName = state_name;
 
   const buildParams = (page: number) => {
     const params: Record<string, any> = { page, limit: 20 };
@@ -177,8 +164,8 @@ const RequestsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (statsLoaded) fetchRequests(1, false);
-    }, [statsLoaded, activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, searchQuery])
+      fetchRequests(1, false);
+    }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, searchQuery])
   );
 
   const handleSearchToggle = () => {
@@ -325,7 +312,7 @@ const RequestsScreen = () => {
 
       <FilterBadges />
 
-      {(loading || !statsLoaded) ? (
+      {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>

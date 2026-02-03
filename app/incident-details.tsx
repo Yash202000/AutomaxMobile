@@ -8,13 +8,10 @@ import ImageView from 'react-native-image-viewing';
 import { WebView } from 'react-native-webview';
 import { useAudioPlayer, AudioSource } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
-import { getIncidentById, getAvailableTransitions, downloadIncidentReport } from '@/src/api/incidents';
+import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 import { crashLogger } from '@/src/utils/crashLogger';
-import { usePermissions } from '@/src/hooks/usePermissions';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 const COLORS = {
   primary: '#1A237E',
@@ -170,7 +167,6 @@ const IncidentDetailsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { canViewReports } = usePermissions();
   const [incident, setIncident] = useState<IncidentData | null>(null);
   const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
   const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; mime_type: string }>>([]);
@@ -180,7 +176,6 @@ const IncidentDetailsScreen = () => {
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [mapZoom, setMapZoom] = useState<number>(15);
-  const [downloadingReport, setDownloadingReport] = useState(false);
   const mapRef = useRef<WebView>(null);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
@@ -273,56 +268,6 @@ const IncidentDetailsScreen = () => {
       map.setZoom(${newZoom});
       true;
     `);
-  };
-
-  const handleDownloadReport = async () => {
-    if (!incident) return;
-
-    try {
-      setDownloadingReport(true);
-      const result = await downloadIncidentReport(incident.id, 'pdf');
-
-      if (result.success && result.data) {
-        const fileName = `incident_${incident.incident_number}_${new Date().toISOString().split('T')[0]}.pdf`;
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-
-        // Convert blob to base64 for React Native
-        const reader = new FileReader();
-        reader.readAsDataURL(result.data);
-        reader.onloadend = async () => {
-          try {
-            const base64data = reader.result?.toString().split(',')[1];
-            if (base64data) {
-              // Save PDF to file with error handling
-              await FileSystem.writeAsStringAsync(fileUri, base64data, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-
-              // Share the file
-              if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(fileUri, {
-                  mimeType: 'application/pdf',
-                  dialogTitle: t('details.shareReport', 'Share Incident Report'),
-                });
-              } else {
-                Alert.alert(t('common.success'), t('details.reportSaved', 'Report saved to') + `: ${fileUri}`);
-              }
-            }
-          } catch (fileError) {
-            console.error('File operation error:', fileError);
-            Alert.alert(t('common.error'), 'Failed to save or share report file');
-            setDownloadingReport(false);
-          }
-        };
-      } else {
-        Alert.alert(t('common.error'), result.error || t('details.reportDownloadFailed', 'Failed to download report'));
-      }
-    } catch (error) {
-      console.error('Download report error:', error);
-      Alert.alert(t('common.error'), t('details.reportDownloadFailed', 'Failed to download report'));
-    } finally {
-      setDownloadingReport(false);
-    }
   };
 
   const handleOpenDirections = () => {
@@ -740,24 +685,6 @@ const IncidentDetailsScreen = () => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtonsContainer}>
-        {/* Download Report Button */}
-        {canViewReports() && (
-          <TouchableOpacity
-            style={[styles.reportButton, downloadingReport && styles.disabledButton]}
-            onPress={handleDownloadReport}
-            disabled={downloadingReport}
-          >
-            {downloadingReport ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <Ionicons name="download-outline" size={20} color={COLORS.white} />
-            )}
-            <Text style={styles.reportButtonText}>
-              {downloadingReport ? t('details.downloading', 'Downloading...') : t('details.downloadReport', 'Download Report')}
-            </Text>
-          </TouchableOpacity>
-        )}
-
         {/* Update Status Button */}
         {availableTransitions.length > 0 && (
           <TouchableOpacity
@@ -949,22 +876,6 @@ const styles = StyleSheet.create({
     right: 16,
     gap: 10,
   },
-  reportButton: {
-    backgroundColor: '#8B5CF6',
-    paddingVertical: 14,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
-      android: { elevation: 4 },
-    }),
-  },
-  reportButtonText: { fontSize: 15, fontWeight: '600', color: COLORS.white },
-  disabledButton: { opacity: 0.6 },
-
   updateButton: {
     position: 'absolute', bottom: 30, left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',

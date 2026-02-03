@@ -208,12 +208,12 @@ const DashboardScreen = () => {
     );
   };
 
-  const renderMyIncidentsSection = () => {
+  const renderMyTicketsSection = () => {
     if (!canViewIncidents()) return null;
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("dashboard.myIncidents")}</Text>
+        <Text style={styles.sectionTitle}>{t("dashboard.myTickets", "My Tickets")}</Text>
         <View style={styles.myIncidentsContainer}>
           {canTransitionIncidents() && (
             <TouchableOpacity
@@ -432,8 +432,8 @@ const DashboardScreen = () => {
           {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
         </View>
 
-        {/* My Incidents */}
-        {renderMyIncidentsSection()}
+        {/* My Tickets */}
+        {renderMyTicketsSection()}
 
         {/* Status Sections */}
         {renderStatusSection(
