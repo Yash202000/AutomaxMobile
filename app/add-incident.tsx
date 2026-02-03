@@ -25,6 +25,7 @@ import { getLocationsTree } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
+import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import { crashLogger } from '@/src/utils/crashLogger';
@@ -280,6 +281,8 @@ const AddIncidentScreen = () => {
   const [locations, setLocations] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
 
   // Loading state
   const [loadingData, setLoadingData] = useState(true);
@@ -303,9 +306,10 @@ const AddIncidentScreen = () => {
         getWorkflows(true, 'incident').catch(err => ({ success: false, error: err.message })),
         getUsers().catch(err => ({ success: false, error: err.message })),
         getDepartments().catch(err => ({ success: false, error: err.message })),
+        getLookupCategories().catch(err => ({ success: false, error: err.message })),
       ]);
 
-      const [classRes, locRes, workflowRes, userRes, deptRes] = results;
+      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = results;
 
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
         // Filter to only show classifications that can be used for incidents
@@ -369,6 +373,11 @@ const AddIncidentScreen = () => {
       }
       if (deptRes.success && deptRes.data) {
         setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+      }
+      if (lookupRes.success && lookupRes.data) {
+        // Filter to only show categories that should be added to incident form
+        const incidentCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        setLookupCategories(incidentCategories);
       }
 
       // Check if critical workflow data failed to load
@@ -465,6 +474,16 @@ const AddIncidentScreen = () => {
 
     // Validate workflow-specific required fields
     for (const field of requiredFields) {
+      // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
+      if (field.startsWith('lookup:')) {
+        const categoryCode = field.replace('lookup:', '');
+        const category = lookupCategories.find(c => c.code === categoryCode);
+        if (category && !lookupValues[category.id]) {
+          newErrors[field] = `${category.name} is required`;
+        }
+        continue;
+      }
+
       if (field === 'attachments') {
         // Check attachments separately
         if (attachments.length === 0) {
@@ -661,6 +680,30 @@ const AddIncidentScreen = () => {
     }
   };
 
+  const handleLookupChange = (categoryId: string, valueId: string) => {
+    setLookupValues(prev => {
+      if (!valueId) {
+        const newValues = { ...prev };
+        delete newValues[categoryId];
+        return newValues;
+      }
+      return { ...prev, [categoryId]: valueId };
+    });
+
+    // Clear error for this lookup field if it exists
+    const category = lookupCategories.find(c => c.id === categoryId);
+    if (category) {
+      const errorKey = `lookup:${category.code}`;
+      if (errors[errorKey]) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       // Show first error
@@ -714,6 +757,12 @@ const AddIncidentScreen = () => {
     }
     if (reporterName.trim()) incidentData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) incidentData.reporter_email = reporterEmail.trim();
+
+    // Add lookup values if any selected
+    const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
+    if (selectedLookupIds.length > 0) {
+      incidentData.lookup_value_ids = selectedLookupIds;
+    }
 
     const response = await createIncident(incidentData);
 
@@ -898,6 +947,38 @@ const AddIncidentScreen = () => {
                 />
               </>
             )}
+
+            {/* Lookup Fields - Dynamic master data fields */}
+            {lookupCategories.map(category => {
+              const lookupFieldKey = `lookup:${category.code}`;
+              const isRequired = requiredFields.includes(lookupFieldKey);
+
+              // Only show if required by workflow
+              if (!isRequired) return null;
+
+              const options = (category.values || [])
+                .filter(v => v.is_active)
+                .map(v => ({
+                  id: v.id,
+                  name: v.name
+                }));
+
+              return (
+                <View key={category.id}>
+                  <Text style={styles.sectionTitle}>
+                    {category.name} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={`Select ${category.name.toLowerCase()}`}
+                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                    options={options}
+                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                    required={isRequired}
+                    error={errors[lookupFieldKey]}
+                  />
+                </View>
+              );
+            })}
 
             {/* Priority & Severity - only show if either is required */}
             {(isFieldRequired('priority') || isFieldRequired('severity')) && (

@@ -22,6 +22,7 @@ import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
+import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
 
 interface DropdownOption {
   id: string;
@@ -267,6 +268,8 @@ const AddComplaintScreen = () => {
   const [locations, setLocations] = useState<DropdownOption[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
 
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -285,12 +288,13 @@ const AddComplaintScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
+      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
         getClassifications(),
         getLocations(),
         getWorkflows(true, 'complaint'),
         getUsers(),
         getDepartments(),
+        getLookupCategories().catch(err => ({ success: false, error: err.message })),
       ]);
 
       if (classRes.success && classRes.data) {
@@ -310,6 +314,11 @@ const AddComplaintScreen = () => {
       }
       if (deptRes.success && deptRes.data) {
         setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+      }
+      if (lookupRes.success && lookupRes.data) {
+        // Filter to only show categories that should be added to complaint form
+        const complaintCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        setLookupCategories(complaintCategories);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -376,6 +385,16 @@ const AddComplaintScreen = () => {
     }
 
     for (const field of requiredFields) {
+      // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
+      if (field.startsWith('lookup:')) {
+        const categoryCode = field.replace('lookup:', '');
+        const category = lookupCategories.find(c => c.code === categoryCode);
+        if (category && !lookupValues[category.id]) {
+          newErrors[field] = `${category.name} is required`;
+        }
+        continue;
+      }
+
       let value: any;
       switch (field) {
         case 'description':
@@ -488,6 +507,30 @@ const AddComplaintScreen = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleLookupChange = (categoryId: string, valueId: string) => {
+    setLookupValues(prev => {
+      if (!valueId) {
+        const newValues = { ...prev };
+        delete newValues[categoryId];
+        return newValues;
+      }
+      return { ...prev, [categoryId]: valueId };
+    });
+
+    // Clear error for this lookup field if it exists
+    const category = lookupCategories.find(c => c.id === categoryId);
+    if (category) {
+      const errorKey = `lookup:${category.code}`;
+      if (errors[errorKey]) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
@@ -521,6 +564,12 @@ const AddComplaintScreen = () => {
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
     if (reporterName.trim()) complaintData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) complaintData.reporter_email = reporterEmail.trim();
+
+    // Add lookup values if any selected
+    const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
+    if (selectedLookupIds.length > 0) {
+      complaintData.lookup_value_ids = selectedLookupIds;
+    }
 
     const response = await createComplaint(complaintData);
 
@@ -669,10 +718,42 @@ const AddComplaintScreen = () => {
             </>
             )}
 
+            {/* Lookup Fields - Dynamic master data fields */}
+            {lookupCategories.map(category => {
+              const lookupFieldKey = `lookup:${category.code}`;
+              const isRequired = requiredFields.includes(lookupFieldKey);
+
+              // Only show if required by workflow
+              if (!isRequired) return null;
+
+              const options = (category.values || [])
+                .filter(v => v.is_active)
+                .map(v => ({
+                  id: v.id,
+                  name: v.name
+                }));
+
+              return (
+                <View key={category.id}>
+                  <Text style={styles.sectionTitle}>
+                    {category.name} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={`Select ${category.name.toLowerCase()}`}
+                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                    options={options}
+                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                    required={isRequired}
+                    error={errors[lookupFieldKey]}
+                  />
+                </View>
+              );
+            })}
+
             {(isFieldRequired('priority') || isFieldRequired('severity')) && (
             <View style={styles.row}>
               {isFieldRequired('priority') && (
-              <View style={styles.halfWidth}>
+              <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
                 <Text style={styles.sectionTitle}>
                   Priority <Text style={styles.required}>*</Text>
                 </Text>
@@ -686,7 +767,7 @@ const AddComplaintScreen = () => {
               </View>
               )}
               {isFieldRequired('severity') && (
-              <View style={styles.halfWidth}>
+              <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
                 <Text style={styles.sectionTitle}>
                   Severity <Text style={styles.required}>*</Text>
                 </Text>
@@ -986,6 +1067,9 @@ const styles = StyleSheet.create({
   },
   halfWidth: {
     width: '48%',
+  },
+  fullWidth: {
+    width: '100%',
   },
   descriptionInput: {
     backgroundColor: 'white',

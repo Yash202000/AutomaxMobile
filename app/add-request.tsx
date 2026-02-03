@@ -25,6 +25,7 @@ import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
+import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 
 interface DropdownOption {
@@ -268,6 +269,8 @@ const AddRequestScreen = () => {
   const [locations, setLocations] = useState<DropdownOption[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
 
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -281,12 +284,13 @@ const AddRequestScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      const [classRes, locRes, workflowRes, userRes, deptRes] = await Promise.all([
+      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
         getClassifications(),
         getLocations(),
         getWorkflows(true, 'request'),
         getUsers(),
         getDepartments(),
+        getLookupCategories().catch(err => ({ success: false, error: err.message })),
       ]);
 
       if (classRes.success && classRes.data) {
@@ -306,6 +310,11 @@ const AddRequestScreen = () => {
       }
       if (deptRes.success && deptRes.data) {
         setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+      }
+      if (lookupRes.success && lookupRes.data) {
+        // Filter to only show categories that should be added to request form
+        const requestCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        setLookupCategories(requestCategories);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -371,6 +380,16 @@ const AddRequestScreen = () => {
     }
 
     for (const field of requiredFields) {
+      // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
+      if (field.startsWith('lookup:')) {
+        const categoryCode = field.replace('lookup:', '');
+        const category = lookupCategories.find(c => c.code === categoryCode);
+        if (category && !lookupValues[category.id]) {
+          newErrors[field] = `${category.name} is required`;
+        }
+        continue;
+      }
+
       // Check attachments separately
       if (field === 'attachments') {
         if (attachments.length === 0) {
@@ -547,6 +566,30 @@ const AddRequestScreen = () => {
     }
   };
 
+  const handleLookupChange = (categoryId: string, valueId: string) => {
+    setLookupValues(prev => {
+      if (!valueId) {
+        const newValues = { ...prev };
+        delete newValues[categoryId];
+        return newValues;
+      }
+      return { ...prev, [categoryId]: valueId };
+    });
+
+    // Clear error for this lookup field if it exists
+    const category = lookupCategories.find(c => c.id === categoryId);
+    if (category) {
+      const errorKey = `lookup:${category.code}`;
+      if (errors[errorKey]) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
@@ -582,6 +625,12 @@ const AddRequestScreen = () => {
     }
     if (reporterName.trim()) requestData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) requestData.reporter_email = reporterEmail.trim();
+
+    // Add lookup values if any selected
+    const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
+    if (selectedLookupIds.length > 0) {
+      requestData.lookup_value_ids = selectedLookupIds;
+    }
 
     const response = await createRequest(requestData);
 
@@ -657,137 +706,220 @@ const AddRequestScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            <Text style={styles.sectionTitle}>
-              Classification {isFieldRequired('classification_id') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label="Select classification"
-              value={selectedClassification?.name || ''}
-              options={classifications}
-              onSelect={setSelectedClassification}
-              required={isFieldRequired('classification_id')}
-              error={errors.classification_id}
-            />
-
-            <Text style={styles.sectionTitle}>
-              Location {isFieldRequired('location_id') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label="Select location"
-              value={selectedLocation?.name || ''}
-              options={locations}
-              onSelect={setSelectedLocation}
-              required={isFieldRequired('location_id')}
-              error={errors.location_id}
-            />
-
-            <Text style={styles.sectionTitle}>
-              Source {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label="Select source"
-              value={selectedSource?.name || ''}
-              options={sourceOptions}
-              onSelect={setSelectedSource}
-              required={isFieldRequired('source')}
-              error={errors.source}
-            />
-
-            <View style={styles.row}>
-              <View style={styles.halfWidth}>
-                <Text style={styles.sectionTitle}>Priority</Text>
+            {/* Classification - only show if required */}
+            {isFieldRequired('classification_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Classification <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
-                  label="Select priority"
-                  value={selectedPriority.name}
-                  options={priorityOptions}
-                  onSelect={(opt) => opt && setSelectedPriority(opt)}
-                  allowClear={false}
+                  label="Select classification"
+                  value={selectedClassification?.name || ''}
+                  options={classifications}
+                  onSelect={setSelectedClassification}
+                  required={true}
+                  error={errors.classification_id}
                 />
-              </View>
-              <View style={styles.halfWidth}>
-                <Text style={styles.sectionTitle}>Severity</Text>
+              </>
+            )}
+
+            {/* Location - only show if required */}
+            {isFieldRequired('location_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Location <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
-                  label="Select severity"
-                  value={selectedSeverity.name}
-                  options={severityOptions}
-                  onSelect={(opt) => opt && setSelectedSeverity(opt)}
-                  allowClear={false}
+                  label="Select location"
+                  value={selectedLocation?.name || ''}
+                  options={locations}
+                  onSelect={setSelectedLocation}
+                  required={true}
+                  error={errors.location_id}
                 />
+              </>
+            )}
+
+            {/* Source - only show if required */}
+            {isFieldRequired('source') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Source <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label="Select source"
+                  value={selectedSource?.name || ''}
+                  options={sourceOptions}
+                  onSelect={setSelectedSource}
+                  required={true}
+                  error={errors.source}
+                />
+              </>
+            )}
+
+            {/* Lookup Fields - Dynamic master data fields */}
+            {lookupCategories.map(category => {
+              const lookupFieldKey = `lookup:${category.code}`;
+              const isRequired = requiredFields.includes(lookupFieldKey);
+
+              // Only show if required by workflow
+              if (!isRequired) return null;
+
+              const options = (category.values || [])
+                .filter(v => v.is_active)
+                .map(v => ({
+                  id: v.id,
+                  name: v.name
+                }));
+
+              return (
+                <View key={category.id}>
+                  <Text style={styles.sectionTitle}>
+                    {category.name} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={`Select ${category.name.toLowerCase()}`}
+                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                    options={options}
+                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                    required={isRequired}
+                    error={errors[lookupFieldKey]}
+                  />
+                </View>
+              );
+            })}
+
+            {/* Priority & Severity - only show if either is required */}
+            {(isFieldRequired('priority') || isFieldRequired('severity')) && (
+              <View style={styles.row}>
+                {isFieldRequired('priority') && (
+                  <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                    <Text style={styles.sectionTitle}>
+                      Priority <Text style={styles.required}>*</Text>
+                    </Text>
+                    <Dropdown
+                      label="Select priority"
+                      value={selectedPriority.name}
+                      options={priorityOptions}
+                      onSelect={(opt) => opt && setSelectedPriority(opt)}
+                      allowClear={false}
+                    />
+                  </View>
+                )}
+                {isFieldRequired('severity') && (
+                  <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                    <Text style={styles.sectionTitle}>
+                      Severity <Text style={styles.required}>*</Text>
+                    </Text>
+                    <Dropdown
+                      label="Select severity"
+                      value={selectedSeverity.name}
+                      options={severityOptions}
+                      onSelect={(opt) => opt && setSelectedSeverity(opt)}
+                      allowClear={false}
+                    />
+                  </View>
+                )}
               </View>
-            </View>
+            )}
 
-            <Text style={styles.sectionTitle}>
-              Assignee {isFieldRequired('assignee_id') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label="Select assignee"
-              value={selectedAssignee?.name || ''}
-              options={users}
-              onSelect={setSelectedAssignee}
-              required={isFieldRequired('assignee_id')}
-              error={errors.assignee_id}
-            />
+            {/* Assignee - only show if required */}
+            {isFieldRequired('assignee_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Assignee <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label="Select assignee"
+                  value={selectedAssignee?.name || ''}
+                  options={users}
+                  onSelect={setSelectedAssignee}
+                  required={true}
+                  error={errors.assignee_id}
+                />
+              </>
+            )}
 
-            <Text style={styles.sectionTitle}>
-              Department {isFieldRequired('department_id') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label="Select department"
-              value={selectedDepartment?.name || ''}
-              options={departments}
-              onSelect={setSelectedDepartment}
-              required={isFieldRequired('department_id')}
-              error={errors.department_id}
-            />
+            {/* Department - only show if required */}
+            {isFieldRequired('department_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Department <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label="Select department"
+                  value={selectedDepartment?.name || ''}
+                  options={departments}
+                  onSelect={setSelectedDepartment}
+                  required={true}
+                  error={errors.department_id}
+                />
+              </>
+            )}
 
-            <Text style={styles.sectionTitle}>
-              Description {isFieldRequired('description') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <TextInput
-              style={[styles.descriptionInput, errors.description && styles.inputError]}
-              placeholder="Describe the request in detail..."
-              multiline
-              value={description}
-              onChangeText={(text) => {
-                setDescription(text);
-                if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-              }}
-              placeholderTextColor="#999"
-              textAlignVertical="top"
-            />
-            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+            {/* Description - only show if required */}
+            {isFieldRequired('description') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Description <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  placeholder="Describe the request in detail..."
+                  multiline
+                  value={description}
+                  onChangeText={(text) => {
+                    setDescription(text);
+                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                  textAlignVertical="top"
+                />
+                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+              </>
+            )}
 
-            <Text style={styles.sectionTitle}>
-              Reporter Name {isFieldRequired('reporter_name') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <TextInput
-              style={[styles.input, errors.reporter_name && styles.inputError]}
-              placeholder="Reporter's name"
-              value={reporterName}
-              onChangeText={(text) => {
-                setReporterName(text);
-                if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
-              }}
-              placeholderTextColor="#999"
-            />
-            {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+            {/* Reporter Name - only show if required */}
+            {isFieldRequired('reporter_name') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Reporter Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  placeholder="Reporter's name"
+                  value={reporterName}
+                  onChangeText={(text) => {
+                    setReporterName(text);
+                    if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                />
+                {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+              </>
+            )}
 
-            <Text style={styles.sectionTitle}>
-              Reporter Email {isFieldRequired('reporter_email') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <TextInput
-              style={[styles.input, errors.reporter_email && styles.inputError]}
-              placeholder="Reporter's email"
-              value={reporterEmail}
-              onChangeText={(text) => {
-                setReporterEmail(text);
-                if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
-              }}
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+            {/* Reporter Email - only show if required */}
+            {isFieldRequired('reporter_email') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Reporter Email <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  placeholder="Reporter's email"
+                  value={reporterEmail}
+                  onChangeText={(text) => {
+                    setReporterEmail(text);
+                    if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+              </>
+            )}
 
             {/* Attachments - only show if required */}
             {isFieldRequired('attachments') && (
@@ -1036,6 +1168,9 @@ const styles = StyleSheet.create({
   },
   halfWidth: {
     width: '48%',
+  },
+  fullWidth: {
+    width: '100%',
   },
   descriptionInput: {
     backgroundColor: 'white',
