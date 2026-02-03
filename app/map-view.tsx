@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import MapView, { Marker, Callout, Region } from 'react-native-maps';
+import MapView, { Marker, Callout, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -191,10 +191,22 @@ const MapViewScreen = () => {
         <>
           <MapView
             ref={mapRef}
+            provider={PROVIDER_DEFAULT}
             style={styles.map}
             initialRegion={mapRegion}
             showsUserLocation
             showsMyLocationButton
+            loadingEnabled={true}
+            loadingIndicatorColor={COLORS.accent}
+            onMapReady={() => {
+              console.log('✅ [MapView] Map loaded successfully!');
+              console.log('📍 [MapView] Showing', incidents.length, 'incidents');
+            }}
+            onError={(error) => {
+              console.error('❌ [MapView] Map error:', error);
+              console.error('❌ [MapView] Error details:', JSON.stringify(error));
+            }}
+            onLayout={() => console.log('📐 [MapView] MapView layout completed')}
           >
             {incidents.map((incident) => {
               // Double-check coordinates are valid before rendering

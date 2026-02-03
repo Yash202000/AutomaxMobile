@@ -25,7 +25,7 @@ import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
-import LocationPicker, { LocationData } from '@/src/components/LocationPicker';
+import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 
 interface DropdownOption {
   id: string;

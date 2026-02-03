@@ -26,7 +26,7 @@ import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import LocationPicker, { LocationData } from '@/src/components/LocationPicker';
+import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import { crashLogger } from '@/src/utils/crashLogger';
 
 interface DropdownOption {
@@ -1031,6 +1031,17 @@ const AddIncidentScreen = () => {
               </>
             )}
 
+            {/* Geolocation - only show if required */}
+            {isFieldRequired('geolocation') && (
+              <LocationPicker
+                label="Geolocation"
+                value={locationData}
+                onChange={handleLocationChange}
+                required
+                error={errors.geolocation}
+              />
+            )}
+
             {/* Attachments - only show if required */}
             {isFieldRequired('attachments') && (
               <>
@@ -1067,17 +1078,6 @@ const AddIncidentScreen = () => {
                 </View>
                 {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
               </>
-            )}
-
-            {/* Geolocation - only show if required */}
-            {isFieldRequired('geolocation') && (
-              <LocationPicker
-                label="Geolocation"
-                value={locationData}
-                onChange={handleLocationChange}
-                required
-                error={errors.geolocation}
-              />
             )}
 
             <View style={styles.bottomPadding} />

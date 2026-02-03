@@ -470,3 +470,15 @@ export const createQuery = async (queryData: any) => {
     };
   }
 };
+
+export const downloadIncidentReport = async (id: string, format: 'pdf' | 'json' | 'txt' = 'pdf') => {
+  try {
+    const response = await apiClient.get(`/incidents/${id}/report`, {
+      params: { format },
+      responseType: 'blob',
+    });
+    return { success: true, data: response.data };
+  } catch (error: any) {
+    return { success: false, data: null, error: error.response?.data?.message || error.message };
+  }
+};

@@ -180,17 +180,18 @@ if (status !== 'granted') {
 
 ### **5. Maps/Location Not Configured**
 **Symptoms**: Crash when opening location picker
-**Error**: `Google Play Services not available`
+**Error**: `WebView not available`
 
 **Solution**: Test without maps first:
 1. Make location field optional in workflow
 2. Create incident without location
 3. If it works, the issue is maps-related
 
-**Fix Maps**:
+**Note**: App now uses OpenStreetMap (no API key needed). Requires react-native-webview:
 ```bash
-# Ensure Google Play Services is installed on device
-# Ensure API key is set (if using Google Maps)
+# Ensure webview is installed
+npm install react-native-webview
+npx expo prebuild --clean
 ```
 
 ### **6. API URL Issues**

@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Dimensions,
-  Platform,
 } from 'react-native';
-import MapView, { Marker, MapPressEvent, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,33 +29,21 @@ interface LocationPickerProps {
   label?: string;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DEFAULT_LAT = 25.276987; // Dubai
+const DEFAULT_LNG = 55.296249;
 
-export function LocationPicker({ value, onChange, required, error, label }: LocationPickerProps) {
+export function LocationPickerOSM({ value, onChange, required, error, label }: LocationPickerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [tilesLoading, setTilesLoading] = useState(true);
-  const mapRef = useRef<MapView>(null);
-
-  // Default region (Dubai)
-  const defaultRegion: Region = {
-    latitude: 25.276987,
-    longitude: 55.296249,
-    latitudeDelta: 0.1,
-    longitudeDelta: 0.1,
-  };
-
-  console.log('[LocationPicker] Component rendered, mapLoaded:', mapLoaded, 'tilesLoading:', tilesLoading);
+  const webViewRef = useRef<WebView>(null);
 
   const reverseGeocode = async (latitude: number, longitude: number): Promise<Partial<LocationData>> => {
     try {
-      // Add timeout to prevent hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Geocoding timeout')), 10000); // 10 second timeout
+        setTimeout(() => reject(new Error('Geocoding timeout')), 10000);
       });
 
       const geocodePromise = Location.reverseGeocodeAsync({ latitude, longitude });
-
       const results = await Promise.race([geocodePromise, timeoutPromise]);
 
       if (results && results.length > 0) {
@@ -79,111 +65,183 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
       }
       return {};
     } catch (error) {
-      // Silently fail - coordinates are more important than address
-      console.warn('Reverse geocoding failed (using coordinates only):', error instanceof Error ? error.message : 'Unknown error');
+      console.warn('Reverse geocoding failed:', error instanceof Error ? error.message : 'Unknown error');
       return {};
     }
   };
 
   const handleGetCurrentLocation = useCallback(async () => {
     try {
-      console.log('🎯 [LocationPicker] Getting current location...');
+      console.log('🎯 [LocationPicker OSM] Getting current location...');
       setIsLoading(true);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('🔐 [LocationPicker] Permission status:', status);
+      console.log('🔐 [LocationPicker OSM] Permission status:', status);
 
       if (status !== 'granted') {
-        console.warn('⚠️ [LocationPicker] Location permission denied');
+        console.warn('⚠️ [LocationPicker OSM] Location permission denied');
         Alert.alert('Permission Required', 'Location permission is required to get your current location.');
         setIsLoading(false);
         return;
       }
 
-      console.log('📡 [LocationPicker] Requesting GPS position...');
+      console.log('📡 [LocationPicker OSM] Requesting GPS position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = location.coords;
-      console.log('✅ [LocationPicker] Got GPS position:', latitude, longitude);
+      console.log('✅ [LocationPicker OSM] Got GPS position:', latitude, longitude);
 
-      // Immediately set location with coordinates
-      const locationData: LocationData = {
-        latitude,
-        longitude,
-      };
-
+      const locationData: LocationData = { latitude, longitude };
       onChange(locationData);
 
-      // Animate map to new location
-      mapRef.current?.animateToRegion({
-        latitude,
-        longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 500);
+      // Move map to location
+      webViewRef.current?.injectJavaScript(`
+        setMarker(${latitude}, ${longitude});
+        true;
+      `);
 
-      setIsLoading(false); // Clear loading IMMEDIATELY after setting location
+      setIsLoading(false);
 
-      // Try to get address in background (non-blocking)
+      // Get address in background
       try {
         const addressData = await reverseGeocode(latitude, longitude);
-
-        // Update with address if we got one
         if (Object.keys(addressData).length > 0) {
-          console.log('📮 [LocationPicker] Address fetched:', addressData.address);
-          onChange({
-            ...locationData,
-            ...addressData,
-          });
-        } else {
-          console.log('⚠️ [LocationPicker] No address found');
+          console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
+          onChange({ ...locationData, ...addressData });
         }
       } catch (error) {
-        console.warn('⚠️ [LocationPicker] Could not fetch address, using coordinates only');
+        console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
       }
-
     } catch (error) {
-      console.error('❌ [LocationPicker] Error getting location:', error);
+      console.error('❌ [LocationPicker OSM] Error getting location:', error);
       Alert.alert('Error', 'Failed to get current location. Please check your GPS is enabled.');
       setIsLoading(false);
     }
   }, [onChange]);
 
-  const handleMapPress = useCallback(async (event: MapPressEvent) => {
-    console.log('🗺️ [LocationPicker] Map tapped');
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    console.log('📍 [LocationPicker] Coordinates:', latitude, longitude);
-
-    // Immediately set location with coordinates (don't wait for address)
-    const locationData: LocationData = {
-      latitude,
-      longitude,
-    };
-
-    onChange(locationData);
-
-    // Try to get address in background (non-blocking) - DON'T show loading for this
+  const handleMessage = useCallback(async (event: any) => {
     try {
-      const addressData = await reverseGeocode(latitude, longitude);
+      const data = JSON.parse(event.nativeEvent.data);
 
-      // Update with address if we got one
-      if (Object.keys(addressData).length > 0) {
-        console.log('📮 [LocationPicker] Address fetched for tap:', addressData.address);
-        onChange({
-          ...locationData,
-          ...addressData,
-        });
+      if (data.type === 'mapReady') {
+        console.log('✅ [LocationPicker OSM] Map ready');
+        setMapLoaded(true);
+
+        // Set initial marker if value exists
+        if (value) {
+          webViewRef.current?.injectJavaScript(`
+            setMarker(${value.latitude}, ${value.longitude});
+            true;
+          `);
+        }
+      } else if (data.type === 'locationSelected') {
+        console.log('📍 [LocationPicker OSM] Location selected:', data.lat, data.lng);
+        const locationData: LocationData = {
+          latitude: data.lat,
+          longitude: data.lng,
+        };
+
+        onChange(locationData);
+
+        // Get address in background
+        try {
+          const addressData = await reverseGeocode(data.lat, data.lng);
+          if (Object.keys(addressData).length > 0) {
+            console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
+            onChange({ ...locationData, ...addressData });
+          }
+        } catch (error) {
+          console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
+        }
       }
     } catch (error) {
-      console.warn('⚠️ [LocationPicker] Could not fetch address for tap');
+      console.error('❌ [LocationPicker OSM] Error handling message:', error);
     }
-  }, [onChange]);
+  }, [onChange, value]);
 
   const handleClear = useCallback(() => {
     onChange(undefined);
+    webViewRef.current?.injectJavaScript(`
+      clearMarker();
+      true;
+    `);
   }, [onChange]);
+
+  const mapHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([${value?.latitude || DEFAULT_LAT}, ${value?.longitude || DEFAULT_LNG}], ${value ? 15 : 11});
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    let marker = null;
+
+    // Set marker function
+    window.setMarker = function(lat, lng) {
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+      } else {
+        marker = L.marker([lat, lng]).addTo(map);
+      }
+      map.setView([lat, lng], 15);
+    };
+
+    // Clear marker function
+    window.clearMarker = function() {
+      if (marker) {
+        map.removeLayer(marker);
+        marker = null;
+      }
+      map.setView([${DEFAULT_LAT}, ${DEFAULT_LNG}], 11);
+    };
+
+    // Handle map clicks
+    map.on('click', function(e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+      } else {
+        marker = L.marker([lat, lng]).addTo(map);
+      }
+
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'locationSelected',
+        lat: lat,
+        lng: lng
+      }));
+    });
+
+    // Notify React Native that map is ready
+    map.whenReady(function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapReady'
+      }));
+    });
+  </script>
+</body>
+</html>
+  `;
 
   return (
     <View style={styles.container}>
@@ -219,68 +277,21 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
 
       {/* Map */}
       <View style={[styles.mapContainer, error && styles.mapContainerError]}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_DEFAULT}
+        <WebView
+          ref={webViewRef}
+          source={{ html: mapHtml }}
           style={styles.map}
-          initialRegion={value ? {
-            latitude: value.latitude,
-            longitude: value.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          } : defaultRegion}
-          onPress={handleMapPress}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          loadingEnabled={true}
-          loadingIndicatorColor="#2EC4B6"
-          loadingBackgroundColor="#ffffff"
-          onMapReady={() => {
-            console.log('✅ [LocationPicker] Map loaded successfully!');
-            setMapLoaded(true);
-            setTilesLoading(false); // Hide loading immediately when map is ready
-          }}
-          onError={(error) => {
-            console.error('❌ [LocationPicker] Map error:', error);
-            console.error('❌ [LocationPicker] Error details:', JSON.stringify(error));
-            setMapLoaded(true); // Consider map loaded even on error
-            setTilesLoading(false);
-          }}
-          onLayout={() => {
-            console.log('📐 [LocationPicker] MapView layout completed');
-            // Hide loading after layout if map hasn't called onMapReady yet
-            setTimeout(() => {
-              if (tilesLoading) {
-                console.log('⏱️ [LocationPicker] Forcing tiles loaded after timeout');
-                setTilesLoading(false);
-              }
-            }, 3000);
-          }}
-        >
-          {value && (
-            <Marker
-              coordinate={{
-                latitude: value.latitude,
-                longitude: value.longitude,
-              }}
-              pinColor="#2EC4B6"
-            />
+          onMessage={handleMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#2EC4B6" />
+              <Text style={styles.loadingText}>Loading map...</Text>
+            </View>
           )}
-        </MapView>
-
-        {tilesLoading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#2EC4B6" />
-            <Text style={styles.loadingText}>Loading map tiles...</Text>
-            <Text style={styles.loadingSubtext}>Make sure you have internet connection</Text>
-          </View>
-        )}
-        {isLoading && !tilesLoading && (
-          <View style={styles.addressLoadingOverlay}>
-            <ActivityIndicator size="small" color="#2EC4B6" />
-            <Text style={styles.addressLoadingText}>Getting location...</Text>
-          </View>
-        )}
+        />
       </View>
 
       <Text style={styles.hint}>
@@ -411,32 +422,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  loadingSubtext: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#999',
-  },
-  addressLoadingOverlay: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addressLoadingText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: '#666',
-  },
   hint: {
     fontSize: 12,
     color: '#666',
@@ -507,4 +492,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LocationPicker;
+export default LocationPickerOSM;
