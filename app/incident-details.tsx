@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions, Platform, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ImageView from 'react-native-image-viewing';
+import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { WebView } from 'react-native-webview';
 import { useAudioPlayer, AudioSource } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 import { crashLogger } from '@/src/utils/crashLogger';
+import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 
 const COLORS = {
   primary: '#1A237E',
@@ -494,7 +495,7 @@ const IncidentDetailsScreen = () => {
           {otherAttachments.map(att => (
             <TouchableOpacity
               key={att.id}
-              onPress={() => Linking.openURL(`${baseURL}/attachments/${att.id}`)}
+              onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
               style={styles.fileAttachment}
             >
               <View style={styles.fileIconContainer}>
@@ -512,11 +513,16 @@ const IncidentDetailsScreen = () => {
           )}
         </View>
 
-        <ImageView
-          images={imageAttachments.map(att => ({ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }))}
+        <AuthenticatedImageViewer
+          images={imageAttachments.map(att => ({
+            id: att.id,
+            uri: `${baseURL}/attachments/${att.id}`,
+            file_name: att.file_name,
+          }))}
           imageIndex={currentImageIndex}
           visible={isImageViewerVisible}
           onRequestClose={() => setImageViewerVisible(false)}
+          token={token || ''}
         />
 
         {/* Geolocation Card */}

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
@@ -28,15 +29,24 @@ interface LocationPickerProps {
   required?: boolean;
   error?: string;
   label?: string;
+  autoFetch?: boolean; // Auto-fetch location when component mounts and required is true
 }
 
 const DEFAULT_LAT = 25.276987; // Dubai
 const DEFAULT_LNG = 55.296249;
 
-export function LocationPickerOSM({ value, onChange, required, error, label }: LocationPickerProps) {
+// Rate limiter for Nominatim (max 1 request per second)
+let lastSearchTime = 0;
+const MIN_SEARCH_INTERVAL = 1000; // 1 second
+
+export function LocationPickerOSM({ value, onChange, required, error, label, autoFetch }: LocationPickerProps) {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [autoFetched, setAutoFetched] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
@@ -51,6 +61,15 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
       }
     };
   }, []);
+
+  // Auto-fetch location when component mounts if required and autoFetch is enabled
+  useEffect(() => {
+    if (autoFetch && required && !value && !autoFetched && mapLoaded) {
+      console.log('🎯 [LocationPicker] Auto-fetching current location (required field)');
+      setAutoFetched(true);
+      handleGetCurrentLocation();
+    }
+  }, [autoFetch, required, value, autoFetched, mapLoaded, handleGetCurrentLocation]);
 
   const reverseGeocode = async (latitude: number, longitude: number): Promise<Partial<LocationData>> => {
     try {
@@ -115,6 +134,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
       console.log('✅ [LocationPicker OSM] Got GPS position:', latitude, longitude);
 
       const locationData: LocationData = { latitude, longitude };
+      console.log('🔔 [LocationPicker] Calling onChange with initial location (coordinates only):', JSON.stringify(locationData, null, 2));
       onChange(locationData);
 
       // Move map to location
@@ -128,9 +148,15 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
       // Get address in background (non-blocking)
       try {
         const addressData = await reverseGeocode(latitude, longitude);
+        console.log('📮 [LocationPicker OSM] Address data received:', JSON.stringify(addressData, null, 2));
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
-          console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
-          onChange({ ...locationData, ...addressData });
+          const fullLocationData = { latitude, longitude, ...addressData };
+          console.log('📮 [LocationPicker OSM] Updating with full location:', JSON.stringify(fullLocationData, null, 2));
+          console.log('🔔 [LocationPicker] Calling onChange with full location (coordinates + address)');
+          onChange(fullLocationData);
+          console.log('✅ [LocationPicker] onChange called successfully with full location');
+        } else {
+          console.warn('⚠️ [LocationPicker] No address data to update or component unmounted');
         }
       } catch (error) {
         console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
@@ -175,9 +201,11 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
         geocodingTimerRef.current = setTimeout(async () => {
           try {
             const addressData = await reverseGeocode(data.lat, data.lng);
+            console.log('📮 [LocationPicker OSM] Address data received:', JSON.stringify(addressData, null, 2));
             if (isMountedRef.current && Object.keys(addressData).length > 0) {
-              console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
-              onChange({ ...locationData, ...addressData });
+              const fullLocationData = { latitude: data.lat, longitude: data.lng, ...addressData };
+              console.log('📮 [LocationPicker OSM] Updating with full location:', JSON.stringify(fullLocationData, null, 2));
+              onChange(fullLocationData);
             }
           } catch (error) {
             console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
@@ -196,6 +224,106 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
       true;
     `);
   }, [onChange]);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      Alert.alert('Error', 'Please enter a location to search');
+      return;
+    }
+
+    // Rate limiting: ensure at least 1 second between requests
+    const now = Date.now();
+    const timeSinceLastSearch = now - lastSearchTime;
+    if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
+      const waitTime = MIN_SEARCH_INTERVAL - timeSinceLastSearch;
+      Alert.alert('Please Wait', `Please wait ${Math.ceil(waitTime / 1000)} second(s) before searching again.`);
+      return;
+    }
+
+    lastSearchTime = now;
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      console.log('🔍 [LocationPicker OSM] Searching for:', searchQuery);
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Language': 'en',
+            'User-Agent': 'AutomaxMobileApp/1.0 (Contact: support@automax.com)',
+          },
+        }
+      );
+
+      console.log('📡 [LocationPicker OSM] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [LocationPicker OSM] API response not OK:', response.status, errorText);
+
+        if (response.status === 403) {
+          throw new Error('Access denied. The geocoding service may be temporarily unavailable.');
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else {
+          throw new Error(`Search failed (Status: ${response.status})`);
+        }
+      }
+
+      const results = await response.json();
+      console.log('📊 [LocationPicker OSM] Results count:', results.length);
+
+      if (results.length === 0) {
+        setSearchError('No results found');
+        Alert.alert('No Results', 'No location found for your search query. Try different keywords.');
+        setIsSearching(false);
+        return;
+      }
+
+      const { lat, lon, display_name } = results[0];
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lon);
+
+      console.log('✅ [LocationPicker OSM] Search result:', display_name);
+      console.log('📍 [LocationPicker OSM] Coordinates:', latitude, longitude);
+
+      // Update marker and map view
+      webViewRef.current?.injectJavaScript(`
+        setMarker(${latitude}, ${longitude});
+        true;
+      `);
+
+      const locationData: LocationData = {
+        latitude,
+        longitude,
+      };
+
+      onChange(locationData);
+
+      setIsSearching(false);
+      setSearchError(null);
+
+      // Get detailed address in background
+      try {
+        const addressData = await reverseGeocode(latitude, longitude);
+        if (isMountedRef.current && Object.keys(addressData).length > 0) {
+          console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
+          onChange({ ...locationData, ...addressData });
+        }
+      } catch (error) {
+        console.warn('⚠️ [LocationPicker OSM] Could not fetch detailed address');
+      }
+    } catch (error) {
+      console.error('❌ [LocationPicker OSM] Search error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setSearchError(errorMessage);
+      Alert.alert('Search Failed', errorMessage);
+      setIsSearching(false);
+    }
+  }, [searchQuery, onChange]);
 
   const mapHtml = `
 <!DOCTYPE html>
@@ -277,6 +405,42 @@ export function LocationPickerOSM({ value, onChange, required, error, label }: L
         <Text style={styles.label}>
           {label} {required && <Text style={styles.required}>*</Text>}
         </Text>
+      )}
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputWrapper}>
+          <Ionicons name="search" size={18} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search for an address or place..."
+            placeholderTextColor="#999"
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[styles.searchButton, (!searchQuery.trim() || isSearching) && styles.searchButtonDisabled]}
+          onPress={handleSearch}
+          disabled={!searchQuery.trim() || isSearching}
+        >
+          {isSearching ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="search" size={20} color="#fff" />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {searchError && (
+        <Text style={styles.searchErrorText}>{searchError}</Text>
       )}
 
       {/* Controls */}
@@ -393,6 +557,47 @@ const styles = StyleSheet.create({
   },
   required: {
     color: '#E74C3C',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchIcon: {
+    marginRight: 4,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    padding: 0,
+  },
+  searchButton: {
+    backgroundColor: '#2EC4B6',
+    borderRadius: 10,
+    width: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#A0A0A0',
+  },
+  searchErrorText: {
+    fontSize: 12,
+    color: '#E74C3C',
+    marginBottom: 8,
   },
   controls: {
     flexDirection: 'row',

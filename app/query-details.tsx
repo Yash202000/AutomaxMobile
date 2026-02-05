@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Dimensions, Platform, ImageBackground } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ImageView from 'react-native-image-viewing';
+import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { useTranslation } from 'react-i18next';
-import { Audio } from 'expo-av';
+import { Audio, useAudioPlayer, AudioSource } from 'expo-audio';
+import { WebView } from 'react-native-webview';
 import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
+import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 
 const COLORS = {
   primary: '#1A237E',
@@ -52,6 +54,65 @@ const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { ic
   </View>
 );
 
+const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_name: string }; token: string }) => {
+  const audioSource: AudioSource = {
+    uri: `${baseURL}/attachments/${attachment.id}`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const player = useAudioPlayer(audioSource);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(player.currentTime);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [player.currentTime]);
+
+  const handlePlayPause = () => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
+  const handleStop = () => {
+    player.pause();
+    player.seekTo(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <View style={styles.audioPlayer}>
+      <View style={styles.audioInfo}>
+        <Ionicons name="musical-notes" size={20} color={COLORS.accent} />
+        <Text style={styles.audioFileName} numberOfLines={1}>{attachment.file_name}</Text>
+      </View>
+      <View style={styles.audioControls}>
+        <TouchableOpacity onPress={handlePlayPause} style={styles.audioButton}>
+          <Ionicons name={player.playing ? 'pause' : 'play'} size={24} color={COLORS.accent} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleStop} style={styles.audioButton}>
+          <Ionicons name="stop" size={24} color={COLORS.text.muted} />
+        </TouchableOpacity>
+        <Text style={styles.audioTime}>
+          {formatTime(currentTime)} / {formatTime(player.duration || 0)}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
 const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
   <View style={styles.sectionHeader}>
     <Ionicons name={icon as any} size={20} color={COLORS.accent} />
@@ -75,10 +136,44 @@ const QueryDetailsScreen = () => {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
+  const mapRef = useRef<WebView>(null);
+  const [zoom, setZoom] = useState(15);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/') && !att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
+
+  const handleZoomIn = () => {
+    mapRef.current?.injectJavaScript(`
+      map.setZoom(map.getZoom() + 1);
+      true;
+    `);
+  };
+
+  const handleZoomOut = () => {
+    mapRef.current?.injectJavaScript(`
+      map.setZoom(map.getZoom() - 1);
+      true;
+    `);
+  };
+
+  const handleOpenDirections = () => {
+    if (query?.latitude !== undefined && query?.longitude !== undefined) {
+      const url = Platform.select({
+        ios: `maps://app?daddr=${query.latitude},${query.longitude}`,
+        android: `google.navigation:q=${query.latitude},${query.longitude}`,
+      });
+      if (url) {
+        Linking.canOpenURL(url).then(supported => {
+          if (supported) {
+            Linking.openURL(url);
+          } else {
+            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query.latitude},${query.longitude}`);
+          }
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -320,10 +415,13 @@ const QueryDetailsScreen = () => {
               ))}
             </ScrollView>
           )}
+          {audioAttachments.length > 0 && token && audioAttachments.map(att => (
+            <AudioPlayer key={att.id} attachment={att} token={token} />
+          ))}
           {otherAttachments.map(att => (
             <TouchableOpacity
               key={att.id}
-              onPress={() => Linking.openURL(`${baseURL}/attachments/${att.id}`)}
+              onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
               style={styles.fileAttachment}
             >
               <View style={[styles.fileIconContainer, { backgroundColor: `${COLORS.accent}20` }]}>
@@ -341,15 +439,139 @@ const QueryDetailsScreen = () => {
           )}
         </View>
 
-        <ImageView
-          images={imageAttachments.map(att => ({ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }))}
+        <AuthenticatedImageViewer
+          images={imageAttachments.map(att => ({
+            id: att.id,
+            uri: `${baseURL}/attachments/${att.id}`,
+            file_name: att.file_name,
+          }))}
           imageIndex={currentImageIndex}
           visible={isImageViewerVisible}
           onRequestClose={() => setImageViewerVisible(false)}
+          token={token || ''}
         />
 
-        {/* Location Card */}
-        {query.location && (
+        {/* Geolocation Card */}
+        {(query.latitude !== undefined && query.longitude !== undefined) && (
+          <View style={styles.card}>
+            <SectionHeader title={t('details.geolocation')} icon="navigate" />
+            <View style={styles.mapContainer}>
+              <WebView
+                ref={mapRef}
+                source={{ html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+    .custom-marker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background-color: ${COLORS.error};
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .custom-marker::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const lat = ${query.latitude};
+    const lng = ${query.longitude};
+    const map = L.map('map').setView([lat, lng], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const markerHtml = '<div class="custom-marker"></div>';
+    const customIcon = L.divIcon({
+      html: markerHtml,
+      className: 'custom-div-icon',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30]
+    });
+
+    const marker = L.marker([lat, lng], { icon: customIcon })
+      .addTo(map)
+      .bindPopup(\`
+        <div style="min-width: 150px;">
+          <strong style="font-size: 13px;">${query.title ? query.title.replace(/'/g, "\\'") : 'Query Location'}</strong><br/>
+          <span style="font-size: 11px; color: #64748B;">${(query.address || 'Query Location').replace(/'/g, "\\'")}</span>
+        </div>
+      \`);
+
+    map.whenReady(function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapReady'
+      }));
+    });
+  </script>
+</body>
+</html>
+                ` }}
+                style={styles.map}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                startInLoadingState={false}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'mapReady') {
+                      // Map is ready
+                    }
+                  } catch (error) {
+                    console.error('❌ [QueryDetails OSM] Error handling message:', error);
+                  }
+                }}
+              />
+              {/* Zoom Controls */}
+              <View style={styles.mapControls}>
+                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomIn}>
+                  <Ionicons name="add" size={22} color={COLORS.text.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomOut}>
+                  <Ionicons name="remove" size={22} color={COLORS.text.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* Address and Directions */}
+            <View style={styles.mapFooter}>
+              {query.address && (
+                <View style={styles.addressContainer}>
+                  <Ionicons name="location" size={16} color={COLORS.error} />
+                  <Text style={styles.addressText}>{query.address}</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
+                <Ionicons name="navigate" size={18} color={COLORS.white} />
+                <Text style={styles.directionsButtonText}>{t('details.directions') || 'Directions'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Location Card (fallback for legacy data) */}
+        {query.location && !(query.latitude !== undefined && query.longitude !== undefined) && (
           <View style={styles.card}>
             <SectionHeader title={t('details.location')} icon="location" />
             <View style={styles.locationInfo}>
@@ -553,6 +775,110 @@ const styles = StyleSheet.create({
     }),
   },
   updateButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+
+  // Audio Player Styles
+  audioPlayer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  audioInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  audioFileName: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text.primary,
+    fontWeight: '500',
+  },
+  audioControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  audioButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioTime: {
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    marginLeft: 'auto',
+  },
+
+  // Map Styles
+  mapContainer: {
+    height: 250,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  map: {
+    flex: 1,
+  },
+  mapControls: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    gap: 8,
+  },
+  mapControlButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  mapFooter: {
+    gap: 10,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.background,
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+  },
+  addressText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    lineHeight: 18,
+  },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  directionsButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
 export default QueryDetailsScreen;
