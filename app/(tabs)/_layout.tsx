@@ -1,17 +1,16 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
-const TAB_BAR_HEIGHT = 60;
-const ICON_SIZE = 22;
+const TAB_BAR_HEIGHT = 70;
+const ICON_SIZE = 26;
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -32,41 +31,49 @@ export default function TabLayout() {
     canCreateQueries,
   } = usePermissions();
 
-  const tabBarHeight = TAB_BAR_HEIGHT + insets.bottom;
+  const tabBarHeight =
+    TAB_BAR_HEIGHT + (insets.bottom > 0 ? insets.bottom - 10 : 0);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#1A237E",
-        tabBarInactiveTintColor: "#9E9E9E",
+        tabBarActiveTintColor: "#2EC4B6",
+        tabBarInactiveTintColor: "#94A3B8",
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-          paddingTop: 8,
-          height: tabBarHeight,
+          position: "absolute",
+          bottom: insets.bottom > 0 ? insets.bottom - 10 : 16,
+          left: 16,
+          right: 16,
+          height: 70,
           backgroundColor: "#FFFFFF",
-          borderTopWidth: 1,
-          borderTopColor: "#E0E0E0",
+          borderRadius: 24,
+          paddingBottom: 8,
+          paddingTop: 8,
+          paddingHorizontal: 8,
+          borderWidth: 0,
+          borderTopWidth: 0,
           ...Platform.select({
             ios: {
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
             },
             android: {
-              elevation: 8,
+              elevation: 12,
             },
           }),
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "600",
-          marginTop: 2,
+          fontWeight: "700",
+          marginTop: 4,
+          letterSpacing: 0.2,
         },
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 0,
         },
       }}
     >
@@ -75,11 +82,18 @@ export default function TabLayout() {
         options={{
           title: t("tabs.dashboard"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "grid" : "grid-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={focused ? "grid" : "grid-outline"}
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
         }}
       />
@@ -88,13 +102,23 @@ export default function TabLayout() {
         options={{
           title: t("tabs.incident"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "alert-circle" : "alert-circle-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={focused ? "alert-circle" : "alert-circle-outline"}
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
-          href: canViewIncidents() || canViewAllIncidents() || canCreateIncidents() ? "/(tabs)/incident" : null,
+          href:
+            canViewIncidents() || canViewAllIncidents() || canCreateIncidents()
+              ? "/(tabs)/incident"
+              : null,
         }}
       />
       <Tabs.Screen
@@ -102,13 +126,23 @@ export default function TabLayout() {
         options={{
           title: t("tabs.request"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "document-text" : "document-text-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={focused ? "document-text" : "document-text-outline"}
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
-          href: canViewRequests() || canViewAllRequests() || canCreateRequests() ? "/(tabs)/request" : null,
+          href:
+            canViewRequests() || canViewAllRequests() || canCreateRequests()
+              ? "/(tabs)/request"
+              : null,
         }}
       />
       <Tabs.Screen
@@ -116,13 +150,29 @@ export default function TabLayout() {
         options={{
           title: t("tabs.complaint"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={
+                  focused
+                    ? "chatbubble-ellipses"
+                    : "chatbubble-ellipses-outline"
+                }
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
-          href: canViewComplaints() || canViewAllComplaints() || canCreateComplaints() ? "/(tabs)/complaint" : null,
+          href:
+            canViewComplaints() ||
+            canViewAllComplaints() ||
+            canCreateComplaints()
+              ? "/(tabs)/complaint"
+              : null,
         }}
       />
       <Tabs.Screen
@@ -130,13 +180,23 @@ export default function TabLayout() {
         options={{
           title: t("tabs.query"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "help-circle" : "help-circle-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={focused ? "help-circle" : "help-circle-outline"}
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
-          href: canViewQueries() || canViewAllQueries() || canCreateQueries() ? "/(tabs)/query" : null,
+          href:
+            canViewQueries() || canViewAllQueries() || canCreateQueries()
+              ? "/(tabs)/query"
+              : null,
         }}
       />
       <Tabs.Screen
@@ -144,14 +204,44 @@ export default function TabLayout() {
         options={{
           title: t("tabs.settings"),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              size={ICON_SIZE}
-              name={focused ? "settings" : "settings-outline"}
-              color={color}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                focused && styles.activeIconContainer,
+              ]}
+            >
+              <Ionicons
+                size={focused ? 28 : 24}
+                name={focused ? "settings" : "settings-outline"}
+                color={focused ? "#FFFFFF" : color}
+              />
+            </View>
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 40,
+    height: 38,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 0,
+    marginBottom: 2,
+  },
+  activeIconContainer: {
+    backgroundColor: "#2EC4B6",
+    shadowColor: "#2EC4B6",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+});

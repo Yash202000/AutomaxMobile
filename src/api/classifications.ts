@@ -1,8 +1,9 @@
 import apiClient from './client';
 
-export const getClassifications = async () => {
+export const getClassifications = async (type?: 'incident' | 'request' | 'complaint' | 'query' | 'both' | 'all') => {
   try {
-    const response = await apiClient.get('/admin/classifications');
+    const url = type ? `/admin/classifications?type=${type}` : '/admin/classifications';
+    const response = await apiClient.get(url);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -12,7 +13,7 @@ export const getClassifications = async () => {
   }
 };
 
-export const getClassificationsTree = async (type?: 'incident' | 'request' | 'all') => {
+export const getClassificationsTree = async (type?: 'incident' | 'request' | 'complaint' | 'query' | 'both' | 'all') => {
   try {
     const url = type ? `/admin/classifications/tree?type=${type}` : '/admin/classifications/tree';
     const response = await apiClient.get(url);

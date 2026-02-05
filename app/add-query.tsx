@@ -17,12 +17,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { createQuery } from '@/src/api/incidents';
-import { getClassifications } from '@/src/api/classifications';
+import { getClassificationsTree } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 
 interface DropdownOption {
   id: string;
@@ -265,7 +266,7 @@ const AddQueryScreen = () => {
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
 
-  const [classifications, setClassifications] = useState<DropdownOption[]>([]);
+  const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [locations, setLocations] = useState<DropdownOption[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
@@ -285,7 +286,7 @@ const AddQueryScreen = () => {
     setLoadingData(true);
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getClassifications(),
+        getClassificationsTree('query'),
         getLocations(),
         getWorkflows(true, 'query'),
         getUsers(),
@@ -293,8 +294,19 @@ const AddQueryScreen = () => {
         getLookupCategories().catch(err => ({ success: false, error: err.message })),
       ]);
 
-      if (classRes.success && classRes.data) {
-        setClassifications(classRes.data.map((c: any) => ({ id: c.id, name: c.name })));
+      if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
+        // Normalize classification tree data
+        const normalizeClassifications = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeClassifications(node.children) : undefined,
+          }));
+        };
+        setClassifications(normalizeClassifications(classRes.data));
+      } else {
+        setClassifications([]);
       }
       if (locRes.success && locRes.data) {
         setLocations(locRes.data.map((l: any) => ({ id: l.id, name: l.name })));
@@ -570,13 +582,15 @@ const AddQueryScreen = () => {
                 <Text style={styles.sectionTitle}>
                   Classification <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
+                <TreeSelect
                   label={t('addQuery.selectClassification')}
                   value={selectedClassification?.name || ''}
-                  options={classifications}
-                  onSelect={setSelectedClassification}
+                  data={classifications}
+                  onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
                   required={true}
                   error={errors.classification_id}
+                  leafOnly={true}
+                  placeholder={t('addQuery.selectClassification')}
                 />
               </>
             )}

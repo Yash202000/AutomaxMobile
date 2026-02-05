@@ -256,6 +256,14 @@ const QueryDetailsScreen = () => {
             {query.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={query.location.name} iconColor={COLORS.error} />
             )}
+            {query.source_incident && (
+              <InfoRow
+                icon="link-outline"
+                label={t('details.sourceIncident', 'Source Incident')}
+                value={`${query.source_incident.incident_number} - ${query.source_incident.title}`}
+                iconColor="#06B6D4"
+              />
+            )}
           </View>
         </View>
 

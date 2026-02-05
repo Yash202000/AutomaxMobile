@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   detailIcon: { marginRight: 8 },
   detailText: { fontSize: 14, color: COLORS.text.secondary, flex: 1 },
-  fab: { position: 'absolute', width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center', bottom: 90, right: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }, android: { elevation: 8 } }) },
+  fab: { position: 'absolute', width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center', bottom: 120, right: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }, android: { elevation: 8 } }) },
   footerLoader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 20 },
   footerLoaderText: { marginLeft: 10, color: COLORS.text.secondary, fontSize: 14 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },

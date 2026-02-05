@@ -353,7 +353,7 @@ export const getComplaintStats = async (params = {}) => {
 
 export const createComplaint = async (complaintData: any) => {
   try {
-    const response = await apiClient.post('/incidents', { ...complaintData, record_type: 'complaint' });
+    const response = await apiClient.post('/complaints', complaintData);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -458,7 +458,7 @@ export const getQueryStats = async (params = {}) => {
 
 export const createQuery = async (queryData: any) => {
   try {
-    const response = await apiClient.post('/incidents', { ...queryData, record_type: 'query' });
+    const response = await apiClient.post('/queries', queryData);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }

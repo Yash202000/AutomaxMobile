@@ -8,10 +8,11 @@ import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Animated,
   ImageBackground,
   Platform,
   RefreshControl,
@@ -77,6 +78,11 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Animation values
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const cardsAnim = useRef(new Animated.Value(0)).current;
+  const sectionsAnim = useRef(new Animated.Value(0)).current;
+
   const fetchStats = useCallback(
     async (isRefresh = false) => {
       if (isRefresh) {
@@ -123,6 +129,38 @@ const DashboardScreen = () => {
       fetchStats();
     }, [fetchStats]),
   );
+
+  // Entrance animations
+  useEffect(() => {
+    if (!loading && !error) {
+      // Reset animations
+      headerAnim.setValue(0);
+      cardsAnim.setValue(0);
+      sectionsAnim.setValue(0);
+
+      // Staggered entrance
+      Animated.stagger(150, [
+        Animated.spring(headerAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardsAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sectionsAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading, error]);
 
   const onRefresh = useCallback(() => {
     fetchStats(true);
@@ -420,7 +458,22 @@ const DashboardScreen = () => {
           }
         >
         {/* Summary Cards */}
-        <View style={styles.summaryCardsContainer}>
+        <Animated.View
+          style={[
+            styles.summaryCardsContainer,
+            {
+              opacity: cardsAnim,
+              transform: [
+                {
+                  translateY: cardsAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           {renderSummaryCard("incident", incidentStats, canViewAllIncidents(), "/(tabs)/incident")}
           {renderSummaryCard("request", requestStats, canViewAllRequests(), "/(tabs)/request")}
           {renderSummaryCard(
@@ -430,36 +483,49 @@ const DashboardScreen = () => {
             "/(tabs)/complaint",
           )}
           {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
-        </View>
+        </Animated.View>
 
-        {/* My Tickets */}
-        {renderMyTicketsSection()}
+        {/* My Tickets and Status Sections */}
+        <Animated.View
+          style={{
+            opacity: sectionsAnim,
+            transform: [
+              {
+                translateY: sectionsAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          {renderMyTicketsSection()}
 
-        {/* Status Sections */}
-        {renderStatusSection(
-          "incident",
-          incidentStats,
-          canViewIncidents(),
-          "/(tabs)/incident",
-        )}
-        {renderStatusSection(
-          "request",
-          requestStats,
-          canViewRequests(),
-          "/(tabs)/request",
-        )}
-        {renderStatusSection(
-          "complaint",
-          complaintStats,
-          canViewComplaints(),
-          "/(tabs)/complaint",
-        )}
-        {renderStatusSection(
-          "query",
-          queryStats,
-          canViewQueries(),
-          "/(tabs)/query",
-        )}
+          {renderStatusSection(
+            "incident",
+            incidentStats,
+            canViewIncidents(),
+            "/(tabs)/incident",
+          )}
+          {renderStatusSection(
+            "request",
+            requestStats,
+            canViewRequests(),
+            "/(tabs)/request",
+          )}
+          {renderStatusSection(
+            "complaint",
+            complaintStats,
+            canViewComplaints(),
+            "/(tabs)/complaint",
+          )}
+          {renderStatusSection(
+            "query",
+            queryStats,
+            canViewQueries(),
+            "/(tabs)/query",
+          )}
+        </Animated.View>
 
         <View style={styles.bottomPadding} />
         </ScrollView>

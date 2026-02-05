@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   detailText: { fontSize: 14, color: COLORS.text.secondary, flex: 1 },
   fab: {
     position: 'absolute', width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.accent,
-    justifyContent: 'center', alignItems: 'center', bottom: 90, right: 20,
+    justifyContent: 'center', alignItems: 'center', bottom: 120, right: 20,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
       android: { elevation: 8 },

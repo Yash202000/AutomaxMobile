@@ -257,6 +257,14 @@ const ComplaintDetailsScreen = () => {
             {complaint.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={complaint.location.name} iconColor={COLORS.error} />
             )}
+            {complaint.source_incident && (
+              <InfoRow
+                icon="link-outline"
+                label={t('details.sourceIncident', 'Source Incident')}
+                value={`${complaint.source_incident.incident_number} - ${complaint.source_incident.title}`}
+                iconColor="#06B6D4"
+              />
+            )}
           </View>
         </View>
 

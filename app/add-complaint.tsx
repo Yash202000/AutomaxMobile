@@ -17,13 +17,14 @@ import { useRouter } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Audio } from 'expo-av';
-import { createComplaint, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getClassifications } from '@/src/api/classifications';
+import { createComplaint, uploadMultipleComplaintAttachments, getIncidents } from '@/src/api/incidents';
+import { getClassificationsTree } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
 import { getWorkflows } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 
 interface DropdownOption {
   id: string;
@@ -262,11 +263,15 @@ const AddComplaintScreen = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
   const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
+  const [selectedSourceIncident, setSelectedSourceIncident] = useState<DropdownOption | null>(null);
+  const [incidentSearch, setIncidentSearch] = useState('');
+  const [searchedIncidents, setSearchedIncidents] = useState<DropdownOption[]>([]);
+  const [loadingIncidents, setLoadingIncidents] = useState(false);
 
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
 
-  const [classifications, setClassifications] = useState<DropdownOption[]>([]);
+  const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [locations, setLocations] = useState<DropdownOption[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
@@ -291,7 +296,7 @@ const AddComplaintScreen = () => {
     setLoadingData(true);
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getClassifications(),
+        getClassificationsTree('complaint'),
         getLocations(),
         getWorkflows(true, 'complaint'),
         getUsers(),
@@ -299,8 +304,19 @@ const AddComplaintScreen = () => {
         getLookupCategories().catch(err => ({ success: false, error: err.message })),
       ]);
 
-      if (classRes.success && classRes.data) {
-        setClassifications(classRes.data.map((c: any) => ({ id: c.id, name: c.name })));
+      if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
+        // Normalize classification tree data
+        const normalizeClassifications = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeClassifications(node.children) : undefined,
+          }));
+        };
+        setClassifications(normalizeClassifications(classRes.data));
+      } else {
+        setClassifications([]);
       }
       if (locRes.success && locRes.data) {
         setLocations(locRes.data.map((l: any) => ({ id: l.id, name: l.name })));
@@ -327,6 +343,44 @@ const AddComplaintScreen = () => {
     }
     setLoadingData(false);
   };
+
+  // Search incidents with debouncing
+  const searchIncidents = useCallback(async (searchText: string) => {
+    if (searchText.length < 2) {
+      setSearchedIncidents([]);
+      return;
+    }
+
+    setLoadingIncidents(true);
+    try {
+      const response = await getIncidents({
+        search: searchText,
+        created_by_me: true, // Only show incidents created by current user
+        limit: 20,
+      });
+
+      if (response.success && response.data) {
+        setSearchedIncidents(response.data.map((i: any) => ({
+          id: i.id,
+          name: `${i.incident_number} - ${i.title}`
+        })));
+      }
+    } catch (error) {
+      console.error('Error searching incidents:', error);
+    }
+    setLoadingIncidents(false);
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (incidentSearch) {
+        searchIncidents(incidentSearch);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [incidentSearch, searchIncidents]);
 
   const matchWorkflow = useCallback(() => {
     if (allWorkflows.length === 0) return;
@@ -365,6 +419,7 @@ const AddComplaintScreen = () => {
     priority: 'Priority',
     severity: 'Severity',
     source: 'Source',
+    source_incident_id: 'Source Incident Reference',
     channel: 'Channel',
     assignee_id: 'Assignee',
     department_id: 'Department',
@@ -380,6 +435,10 @@ const AddComplaintScreen = () => {
 
     if (!title.trim()) {
       newErrors.title = 'Title is required';
+    }
+
+    if (!selectedClassification) {
+      newErrors.classification_id = 'Classification is required';
     }
 
     if (!matchedWorkflow) {
@@ -419,6 +478,9 @@ const AddComplaintScreen = () => {
           break;
         case 'department_id':
           value = selectedDepartment?.id;
+          break;
+        case 'source_incident_id':
+          value = selectedSourceIncident?.id;
           break;
         case 'reporter_name':
           value = reporterName;
@@ -564,6 +626,7 @@ const AddComplaintScreen = () => {
     if (selectedChannel) complaintData.channel = selectedChannel.id;
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
+    if (selectedSourceIncident) complaintData.source_incident_id = selectedSourceIncident.id;
     if (reporterName.trim()) complaintData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) complaintData.reporter_email = reporterEmail.trim();
 
@@ -656,6 +719,20 @@ const AddComplaintScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
+            <Text style={styles.sectionTitle}>
+              Classification <Text style={styles.required}>*</Text>
+            </Text>
+            <TreeSelect
+              label={t('addComplaint.selectClassification')}
+              value={selectedClassification?.name || ''}
+              data={classifications}
+              onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+              required={true}
+              error={errors.classification_id}
+              leafOnly={true}
+              placeholder={t('addComplaint.selectClassification')}
+            />
+
             {isFieldRequired('channel') && (
             <>
             <Text style={styles.sectionTitle}>
@@ -668,22 +745,6 @@ const AddComplaintScreen = () => {
               onSelect={setSelectedChannel}
               required={true}
               error={errors.channel}
-            />
-            </>
-            )}
-
-            {isFieldRequired('classification_id') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Classification <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectClassification')}
-              value={selectedClassification?.name || ''}
-              options={classifications}
-              onSelect={setSelectedClassification}
-              required={true}
-              error={errors.classification_id}
             />
             </>
             )}
@@ -814,6 +875,70 @@ const AddComplaintScreen = () => {
               required={true}
               error={errors.department_id}
             />
+            </>
+            )}
+
+            {isFieldRequired('source_incident_id') && (
+            <>
+            <Text style={styles.sectionTitle}>
+              Source Incident Reference <Text style={styles.required}>*</Text>
+            </Text>
+
+            {selectedSourceIncident ? (
+              <View style={styles.selectedIncidentCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.selectedIncidentText}>{selectedSourceIncident.name}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedSourceIncident(null)}>
+                  <Ionicons name="close-circle" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder={t('addComplaint.searchIncident', 'Search by incident number or title...')}
+                    value={incidentSearch}
+                    onChangeText={setIncidentSearch}
+                    placeholderTextColor="#999"
+                  />
+                  {loadingIncidents && <ActivityIndicator size="small" color="#666" />}
+                </View>
+
+                {searchedIncidents.length > 0 && (
+                  <View style={styles.searchResults}>
+                    <ScrollView style={{ maxHeight: 200 }}>
+                      {searchedIncidents.map((incident) => (
+                        <TouchableOpacity
+                          key={incident.id}
+                          style={styles.searchResultItem}
+                          onPress={() => {
+                            setSelectedSourceIncident(incident);
+                            setIncidentSearch('');
+                            setSearchedIncidents([]);
+                            if (errors.source_incident_id) {
+                              setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                            }
+                          }}
+                        >
+                          <Text style={styles.searchResultText}>{incident.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {incidentSearch.length >= 2 && !loadingIncidents && searchedIncidents.length === 0 && (
+                  <Text style={styles.noResultsText}>
+                    {t('addComplaint.noIncidentsFound', 'No incidents found')}
+                  </Text>
+                )}
+              </>
+            )}
+
+            {errors.source_incident_id && <Text style={styles.errorText}>{errors.source_incident_id}</Text>}
             </>
             )}
 
@@ -1212,6 +1337,61 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  selectedIncidentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  selectedIncidentText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    padding: 0,
+  },
+  searchResults: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  searchResultItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  searchResultText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });
 
