@@ -267,7 +267,6 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     // Batch the state update to prevent blocking
     const allIds = getAllIds(data);
     if (allIds.length > 500) {
-      console.warn('[TreeSelect] Large tree detected, limiting expansion to first 500 nodes');
       setExpandedIds(new Set(allIds.slice(0, 500)));
     } else {
       setExpandedIds(new Set(allIds));

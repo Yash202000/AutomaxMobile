@@ -49,7 +49,6 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
     longitudeDelta: 0.1,
   };
 
-  console.log('[LocationPicker] Component rendered, mapLoaded:', mapLoaded, 'tilesLoading:', tilesLoading);
 
   const reverseGeocode = async (latitude: number, longitude: number): Promise<Partial<LocationData>> => {
     try {
@@ -82,33 +81,27 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
       return {};
     } catch (error) {
       // Silently fail - coordinates are more important than address
-      console.warn('Reverse geocoding failed (using coordinates only):', error instanceof Error ? error.message : 'Unknown error');
       return {};
     }
   };
 
   const handleGetCurrentLocation = useCallback(async () => {
     try {
-      console.log('🎯 [LocationPicker] Getting current location...');
       setIsLoading(true);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('🔐 [LocationPicker] Permission status:', status);
 
       if (status !== 'granted') {
-        console.warn('⚠️ [LocationPicker] Location permission denied');
         Alert.alert('Permission Required', 'Location permission is required to get your current location.');
         setIsLoading(false);
         return;
       }
 
-      console.log('📡 [LocationPicker] Requesting GPS position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = location.coords;
-      console.log('✅ [LocationPicker] Got GPS position:', latitude, longitude);
 
       // Immediately set location with coordinates
       const locationData: LocationData = {
@@ -134,16 +127,13 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
 
         // Update with address if we got one
         if (Object.keys(addressData).length > 0) {
-          console.log('📮 [LocationPicker] Address fetched:', addressData.address);
           onChange({
             ...locationData,
             ...addressData,
           });
         } else {
-          console.log('⚠️ [LocationPicker] No address found');
         }
       } catch (error) {
-        console.warn('⚠️ [LocationPicker] Could not fetch address, using coordinates only');
       }
 
     } catch (error) {
@@ -154,9 +144,7 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
   }, [onChange]);
 
   const handleMapPress = useCallback(async (event: MapPressEvent) => {
-    console.log('🗺️ [LocationPicker] Map tapped');
     const { latitude, longitude } = event.nativeEvent.coordinate;
-    console.log('📍 [LocationPicker] Coordinates:', latitude, longitude);
 
     // Immediately set location with coordinates (don't wait for address)
     const locationData: LocationData = {
@@ -172,14 +160,12 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
 
       // Update with address if we got one
       if (Object.keys(addressData).length > 0) {
-        console.log('📮 [LocationPicker] Address fetched for tap:', addressData.address);
         onChange({
           ...locationData,
           ...addressData,
         });
       }
     } catch (error) {
-      console.warn('⚠️ [LocationPicker] Could not fetch address for tap');
     }
   }, [onChange]);
 
@@ -238,7 +224,6 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
           loadingIndicatorColor="#2EC4B6"
           loadingBackgroundColor="#ffffff"
           onMapReady={() => {
-            console.log('✅ [LocationPicker] Map loaded successfully!');
             setMapLoaded(true);
             setTilesLoading(false); // Hide loading immediately when map is ready
           }}
@@ -249,11 +234,9 @@ export function LocationPicker({ value, onChange, required, error, label }: Loca
             setTilesLoading(false);
           }}
           onLayout={() => {
-            console.log('📐 [LocationPicker] MapView layout completed');
             // Hide loading after layout if map hasn't called onMapReady yet
             setTimeout(() => {
               if (tilesLoading) {
-                console.log('⏱️ [LocationPicker] Forcing tiles loaded after timeout');
                 setTilesLoading(false);
               }
             }, 3000);

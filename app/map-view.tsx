@@ -178,11 +178,9 @@ const MapViewScreen = () => {
       markers = [];
 
       if (!incidentsData || incidentsData.length === 0) {
-        console.log('No incidents to display');
         return;
       }
 
-      console.log('Adding', incidentsData.length, 'markers to map');
 
       // Get priority colors
       const getPriorityColor = (priority) => {
@@ -240,7 +238,6 @@ const MapViewScreen = () => {
         map.fitBounds(group.getBounds().pad(0.1));
       }
 
-      console.log('Markers added successfully');
     };
 
     // Handle marker click
@@ -253,7 +250,6 @@ const MapViewScreen = () => {
 
     // Notify React Native that map is ready
     map.whenReady(function() {
-      console.log('Map initialized');
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'mapReady'
       }));

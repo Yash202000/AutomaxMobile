@@ -25,7 +25,6 @@ export async function createWatermarkedImage(
     // Create watermark text
     const watermarkText = createWatermarkText(watermarkData);
 
-    console.log('[Watermark] Adding visual overlay:', watermarkText);
 
     // Since we can't directly manipulate pixels in React Native without additional libraries,
     // we'll need to use expo-image-manipulator or a native module

@@ -294,9 +294,7 @@ const AddIncidentScreen = () => {
 
   // Monitor pending watermarks
   useEffect(() => {
-    console.log('🔄 [Watermark Queue] Current pending watermarks:', pendingWatermarks.length);
     if (pendingWatermarks.length > 0) {
-      console.log('🔄 [Watermark Queue] IDs:', pendingWatermarks.map(w => w.id).join(', '));
     }
   }, [pendingWatermarks]);
 
@@ -306,7 +304,6 @@ const AddIncidentScreen = () => {
 
   // Monitor locationData changes and keep ref in sync
   useEffect(() => {
-    console.log('🗺️ [Location State] LocationData changed:', JSON.stringify(locationData, null, 2));
     locationDataRef.current = locationData; // Keep ref updated
   }, [locationData]);
 
@@ -604,7 +601,6 @@ const AddIncidentScreen = () => {
   };
 
   const handleTakePhoto = async () => {
-    console.log('📷 [Camera] Take photo button pressed');
 
     // Check if geolocation is required
     const isGeoRequired = isFieldRequired('geolocation');
@@ -612,7 +608,6 @@ const AddIncidentScreen = () => {
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
-        console.warn('⚠️ [Camera] Location is required but not available yet');
         Alert.alert(
           'Location Required',
           'Please wait for your location to be detected before taking a photo, or click "Get Current Location" button.',
@@ -623,7 +618,6 @@ const AddIncidentScreen = () => {
 
       // If we have coordinates but no address yet (still loading)
       if (locationData?.latitude && !locationData?.address && !locationData?.city) {
-        console.log('⏳ [Camera] Location address is still loading, waiting up to 3 seconds...');
 
         // Show loading alert
         Alert.alert(
@@ -638,7 +632,6 @@ const AddIncidentScreen = () => {
         // Check again after waiting
         const finalLocation = locationDataRef.current;
         if (finalLocation?.latitude && !finalLocation?.address && !finalLocation?.city) {
-          console.warn('⚠️ [Camera] Address still not available after waiting');
           Alert.alert(
             'Location Address Unavailable',
             'We have your GPS coordinates but couldn\'t get the street address. Continue with coordinates only?',
@@ -649,7 +642,6 @@ const AddIncidentScreen = () => {
           );
           return;
         }
-        console.log('✅ [Camera] Address loaded, proceeding');
       }
     }
 
@@ -659,17 +651,13 @@ const AddIncidentScreen = () => {
   const proceedWithCamera = async () => {
 
     try {
-      console.log('📷 [Camera] Requesting camera permissions...');
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      console.log('📷 [Camera] Permission status:', status);
 
       if (status !== 'granted') {
-        console.warn('📷 [Camera] Permission denied');
         Alert.alert('Permission Required', 'Camera permission is required to take photos.');
         return;
       }
 
-      console.log('📷 [Camera] Launching camera...');
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
@@ -677,27 +665,14 @@ const AddIncidentScreen = () => {
         exif: true,
       });
 
-      console.log('📷 [Camera] ✅ Camera closed');
-      console.log('📷 [Camera] Full result:', JSON.stringify(result, null, 2));
-      console.log('📷 [Camera] Result.canceled:', result.canceled);
-      console.log('📷 [Camera] Result.assets:', result.assets);
-      console.log('📷 [Camera] Assets count:', result.assets?.length || 0);
 
       if (!result.canceled && result.assets && Array.isArray(result.assets) && result.assets.length > 0) {
-        console.log('📷 [Camera] Photo captured successfully!');
 
         // Take first image
         const asset = result.assets[0];
-        console.log('📷 [Camera] Image details:', {
-          uri: asset.uri?.substring(0, 50) + '...',
-          width: asset.width,
-          height: asset.height,
-        });
 
         // Prepare watermark data - Use ref to get latest value that won't be lost on re-render
         const currentLocation = locationDataRef.current;
-        console.log('📍 [Location Data] From STATE:', JSON.stringify(locationData, null, 2));
-        console.log('📍 [Location Data] From REF:', JSON.stringify(currentLocation, null, 2));
 
         const watermarkData: WatermarkData = {
           latitude: currentLocation?.latitude,
@@ -711,7 +686,6 @@ const AddIncidentScreen = () => {
           appName: 'Automax',
         };
 
-        console.log('🏷️ [Watermark Data] Prepared:', JSON.stringify(watermarkData, null, 2));
 
         const originalFileName = asset.fileName || `photo_${Date.now()}.jpg`;
         const watermarkedFileName = generateWatermarkedFilename(originalFileName, {
@@ -729,7 +703,6 @@ const AddIncidentScreen = () => {
           originalName: watermarkedFileName,
         };
 
-        console.log('🏷️ [Camera] Showing preview with watermark data:', watermarkData);
 
         // Show preview modal
         setPreviewImageUri(asset.uri);
@@ -737,7 +710,6 @@ const AddIncidentScreen = () => {
         setPreviewPendingWatermark(pendingWatermark);
         setPreviewVisible(true);
       } else {
-        console.log('📷 [Camera] Photo capture was canceled or no assets');
       }
     } catch (error) {
       console.error('❌ [Camera] Error taking photo:', error);
@@ -752,9 +724,7 @@ const AddIncidentScreen = () => {
 
   // Handle preview accept
   const handlePreviewAccept = useCallback(() => {
-    console.log('✅ [Preview] User accepted photo');
     if (previewPendingWatermark) {
-      console.log('✅ [Preview] Adding to watermark queue');
       setPendingWatermarks(prev => [...prev, previewPendingWatermark]);
     }
     setPreviewVisible(false);
@@ -765,7 +735,6 @@ const AddIncidentScreen = () => {
 
   // Handle preview retry
   const handlePreviewRetry = useCallback(() => {
-    console.log('🔄 [Preview] User wants to retry');
     setPreviewVisible(false);
     setPreviewImageUri('');
     setPreviewWatermarkData({});
@@ -778,9 +747,6 @@ const AddIncidentScreen = () => {
 
   // Handle watermark completion
   const handleWatermarkComplete = useCallback((id: string, watermarkedUri: string, originalName: string) => {
-    console.log('✅ [Watermark Complete] ID:', id);
-    console.log('✅ [Watermark Complete] URI:', watermarkedUri.substring(0, 50) + '...');
-    console.log('✅ [Watermark Complete] Name:', originalName);
 
     // Add watermarked image to attachments
     setAttachments(prev => {
@@ -792,14 +758,12 @@ const AddIncidentScreen = () => {
           type: 'image/jpeg',
         },
       ];
-      console.log('✅ [Watermark Complete] Total attachments now:', newAttachments.length);
       return newAttachments;
     });
 
     // Remove from pending list
     setPendingWatermarks(prev => {
       const remaining = prev.filter(w => w.id !== id);
-      console.log('✅ [Watermark Complete] Remaining in queue:', remaining.length);
       return remaining;
     });
 
@@ -881,7 +845,6 @@ const AddIncidentScreen = () => {
   };
 
   const handleLocationChange = (location: LocationData | undefined) => {
-    console.log('🗺️ [Location Change] Received location update:', JSON.stringify(location, null, 2));
     setLocationData(location);
     if (location && errors.geolocation) {
       setErrors(prev => ({ ...prev, geolocation: '' }));
@@ -980,7 +943,6 @@ const AddIncidentScreen = () => {
           try {
             const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
             if (!uploadResult.success && uploadResult.errors) {
-              console.warn('Some attachments failed to upload:', uploadResult.errors);
               Alert.alert(
                 'Partial Success',
                 'Incident created but some attachments failed to upload.',
@@ -1461,20 +1423,16 @@ const AddIncidentScreen = () => {
       )}
 
       {/* Hidden watermark processors */}
-      {pendingWatermarks.length > 0 && console.log('🎨 [Render] Rendering', pendingWatermarks.length, 'WatermarkProcessor component(s)')}
-      {pendingWatermarks.map((pending) => {
-        console.log('🎨 [Render] Creating WatermarkProcessor for:', pending.id);
-        return (
-          <WatermarkProcessor
-            key={pending.id}
-            imageUri={pending.imageUri}
-            data={pending.data}
-            onComplete={(watermarkedUri) =>
-              handleWatermarkComplete(pending.id, watermarkedUri, pending.originalName)
-            }
-          />
-        );
-      })}
+      {pendingWatermarks.map((pending) => (
+        <WatermarkProcessor
+          key={pending.id}
+          imageUri={pending.imageUri}
+          data={pending.data}
+          onComplete={(watermarkedUri) =>
+            handleWatermarkComplete(pending.id, watermarkedUri, pending.originalName)
+          }
+        />
+      ))}
 
       {/* Watermark Preview Modal */}
       <WatermarkPreview

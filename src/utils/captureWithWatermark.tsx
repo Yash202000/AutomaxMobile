@@ -124,14 +124,10 @@ export async function captureWatermarkedImage(
     try {
       captureRef = require('react-native-view-shot');
     } catch (e) {
-      console.warn('[Watermark] react-native-view-shot not installed');
-      console.warn('[Watermark] Run: npx expo install react-native-view-shot');
-      console.warn('[Watermark] Returning original image without visual watermark');
       return originalUri;
     }
 
     if (!viewRef || !viewRef.current) {
-      console.warn('[Watermark] View ref not available');
       return originalUri;
     }
 
@@ -142,7 +138,6 @@ export async function captureWatermarkedImage(
       result: 'tmpfile',
     });
 
-    console.log('[Watermark] Visual watermark applied successfully');
     return uri;
   } catch (error) {
     console.error('[Watermark] Error capturing watermarked image:', error);

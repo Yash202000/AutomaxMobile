@@ -83,7 +83,6 @@ const UpdateStatusModal = () => {
       if (response.success) {
         setMatchingUsers(response.data.users || []);
       } else {
-        console.log('Failed to fetch matching users:', response.error);
         setMatchingUsers([]);
       }
     };

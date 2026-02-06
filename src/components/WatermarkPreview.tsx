@@ -32,15 +32,6 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
   // Create watermark text lines (compact version)
   const watermarkLines: string[] = [];
 
-  console.log('[WatermarkPreview] Received data:', {
-    latitude: watermarkData.latitude,
-    longitude: watermarkData.longitude,
-    address: watermarkData.address,
-    city: watermarkData.city,
-    state: watermarkData.state,
-    userName: watermarkData.userName,
-  });
-
   // Line 1: Coordinates + Location in one line
   let line1 = '';
   if (watermarkData.latitude !== undefined && watermarkData.longitude !== undefined) {
@@ -49,18 +40,14 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
 
   // Add city or address to same line if available
   if (watermarkData.city) {
-    console.log('[WatermarkPreview] Adding city:', watermarkData.city);
     line1 += line1 ? ` • ${watermarkData.city}` : watermarkData.city;
   } else if (watermarkData.address) {
-    console.log('[WatermarkPreview] Adding address:', watermarkData.address);
     const shortAddress = watermarkData.address.length > 20 ? watermarkData.address.substring(0, 20) + '...' : watermarkData.address;
     line1 += line1 ? ` • ${shortAddress}` : shortAddress;
   } else {
-    console.log('[WatermarkPreview] ⚠️ No city or address available!');
   }
 
   if (line1) {
-    console.log('[WatermarkPreview] Line 1:', line1);
     watermarkLines.push(line1);
   }
 
@@ -85,12 +72,10 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
 
   // Line 3: Full address (street/area) if available
   if (watermarkData.address) {
-    console.log('[WatermarkPreview] Adding full address line:', watermarkData.address);
     const fullAddress = watermarkData.address.length > 40 ? watermarkData.address.substring(0, 40) + '...' : watermarkData.address;
     watermarkLines.push(fullAddress);
   } else if (watermarkData.state && !watermarkData.city) {
     // If we have state but not city, show state on separate line
-    console.log('[WatermarkPreview] Adding state line:', watermarkData.state);
     watermarkLines.push(watermarkData.state);
   }
 

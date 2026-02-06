@@ -37,7 +37,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
 
   // Get image dimensions
   useEffect(() => {
-    console.log('[WatermarkProcessor] 🎬 Starting watermark process for:', imageUri.substring(0, 50) + '...');
 
     // Add timeout for getting image size
     const timeout = setTimeout(() => {
@@ -51,7 +50,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
       imageUri,
       (width, height) => {
         clearTimeout(timeout);
-        console.log('[WatermarkProcessor] ✅ Image size:', width, 'x', height);
         setImageSize({ width, height });
       },
       (error) => {
@@ -70,7 +68,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
     if (imageSize) {
       // Give it a moment for React to render
       const timer = setTimeout(() => {
-        console.log('[WatermarkProcessor] ✓ Render ready');
         setRenderReady(true);
       }, 100);
       return () => clearTimeout(timer);
@@ -105,7 +102,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
             return;
           }
 
-          console.log('[WatermarkProcessor] 📸 Capturing watermarked image...');
           const uri = await captureRef(viewRef, {
             format: 'jpg',
             quality: 0.9,
@@ -113,8 +109,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
           });
 
           if (uri) {
-            console.log('[WatermarkProcessor] ✅ Watermark applied successfully!');
-            console.log('[WatermarkProcessor] Output:', uri.substring(0, 50) + '...');
             onComplete(uri);
           } else {
             console.error('[WatermarkProcessor] ❌ Capture returned null/undefined');
@@ -136,15 +130,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
   // Create watermark text lines (compact version)
   const watermarkLines: string[] = [];
 
-  console.log('[WatermarkProcessor] Received data:', {
-    latitude: data.latitude,
-    longitude: data.longitude,
-    address: data.address,
-    city: data.city,
-    state: data.state,
-    userName: data.userName,
-  });
-
   // Line 1: Coordinates + Location in one line
   let line1 = '';
   if (data.latitude !== undefined && data.longitude !== undefined) {
@@ -153,18 +138,14 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
 
   // Add city or address to same line if available
   if (data.city) {
-    console.log('[WatermarkProcessor] Adding city:', data.city);
     line1 += line1 ? ` • ${data.city}` : data.city;
   } else if (data.address) {
-    console.log('[WatermarkProcessor] Adding address:', data.address);
     const shortAddress = data.address.length > 20 ? data.address.substring(0, 20) + '...' : data.address;
     line1 += line1 ? ` • ${shortAddress}` : shortAddress;
   } else {
-    console.log('[WatermarkProcessor] ⚠️ No city or address available!');
   }
 
   if (line1) {
-    console.log('[WatermarkProcessor] Line 1:', line1);
     watermarkLines.push(line1);
   }
 
@@ -189,12 +170,10 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
 
   // Line 3: Full address (street/area) if available
   if (data.address) {
-    console.log('[WatermarkProcessor] Adding full address line:', data.address);
     const fullAddress = data.address.length > 40 ? data.address.substring(0, 40) + '...' : data.address;
     watermarkLines.push(fullAddress);
   } else if (data.state && !data.city) {
     // If we have state but not city, show state on separate line
-    console.log('[WatermarkProcessor] Adding state line:', data.state);
     watermarkLines.push(data.state);
   }
 
@@ -219,7 +198,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
     return null;
   }
 
-  console.log('[WatermarkProcessor] Rendering at:', displayWidth, 'x', displayHeight);
 
   return (
     <View style={styles.hiddenContainer} collapsable={false}>
@@ -239,7 +217,6 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
           style={[styles.image, { width: displayWidth, height: displayHeight }]}
           resizeMode="cover"
           onLoad={() => {
-            console.log('[WatermarkProcessor] ✅ Image loaded successfully');
             setImageLoaded(true);
           }}
           onError={(error) => {

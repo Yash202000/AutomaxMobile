@@ -22,8 +22,6 @@ export async function addVisualWatermark(
   data: WatermarkData
 ): Promise<string> {
   try {
-    console.log('[Visual Watermark] Adding watermark to:', imageUri);
-    console.log('[Visual Watermark] Data:', data);
 
     // Get image dimensions
     const imageInfo: any = await new Promise((resolve, reject) => {
@@ -34,7 +32,6 @@ export async function addVisualWatermark(
       );
     });
 
-    console.log('[Visual Watermark] Image size:', imageInfo);
 
     // Create a temporary component to render and capture
     const watermarkComponent = (
@@ -86,7 +83,6 @@ export const WatermarkImageView: React.FC<WatermarkImageViewProps> = ({
             format: 'jpg',
             quality: 0.9,
           });
-          console.log('[Visual Watermark] Captured:', uri);
           onCapture(uri);
         } catch (error) {
           console.error('[Visual Watermark] Capture error:', error);
@@ -238,14 +234,6 @@ export async function applyWatermarkToImage(
   try {
     // Since we can't render React components outside of component tree,
     // we'll need to use a different approach
-    // For now, just log the watermark data and return original
-    console.log('[Visual Watermark] Would apply watermark:', {
-      latitude: data.latitude,
-      longitude: data.longitude,
-      userName: data.userName,
-      timestamp: data.timestamp,
-    });
-
     // TODO: Implement actual watermarking using canvas or native module
     return imageUri;
   } catch (error) {

@@ -65,7 +65,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
   // Auto-fetch location when component mounts if required and autoFetch is enabled
   useEffect(() => {
     if (autoFetch && required && !value && !autoFetched && mapLoaded) {
-      console.log('🎯 [LocationPicker] Auto-fetching current location (required field)');
       setAutoFetched(true);
       handleGetCurrentLocation();
     }
@@ -105,36 +104,29 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       }
       return {};
     } catch (error) {
-      console.warn('Reverse geocoding failed:', error instanceof Error ? error.message : 'Unknown error');
       return {};
     }
   };
 
   const handleGetCurrentLocation = useCallback(async () => {
     try {
-      console.log('🎯 [LocationPicker OSM] Getting current location...');
       setIsLoading(true);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('🔐 [LocationPicker OSM] Permission status:', status);
 
       if (status !== 'granted') {
-        console.warn('⚠️ [LocationPicker OSM] Location permission denied');
         Alert.alert('Permission Required', 'Location permission is required to get your current location.');
         setIsLoading(false);
         return;
       }
 
-      console.log('📡 [LocationPicker OSM] Requesting GPS position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = location.coords;
-      console.log('✅ [LocationPicker OSM] Got GPS position:', latitude, longitude);
 
       const locationData: LocationData = { latitude, longitude };
-      console.log('🔔 [LocationPicker] Calling onChange with initial location (coordinates only):', JSON.stringify(locationData, null, 2));
       onChange(locationData);
 
       // Move map to location
@@ -148,18 +140,12 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       // Get address in background (non-blocking)
       try {
         const addressData = await reverseGeocode(latitude, longitude);
-        console.log('📮 [LocationPicker OSM] Address data received:', JSON.stringify(addressData, null, 2));
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
           const fullLocationData = { latitude, longitude, ...addressData };
-          console.log('📮 [LocationPicker OSM] Updating with full location:', JSON.stringify(fullLocationData, null, 2));
-          console.log('🔔 [LocationPicker] Calling onChange with full location (coordinates + address)');
           onChange(fullLocationData);
-          console.log('✅ [LocationPicker] onChange called successfully with full location');
         } else {
-          console.warn('⚠️ [LocationPicker] No address data to update or component unmounted');
         }
       } catch (error) {
-        console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Error getting location:', error);
@@ -173,7 +159,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       const data = JSON.parse(event.nativeEvent.data);
 
       if (data.type === 'mapReady') {
-        console.log('✅ [LocationPicker OSM] Map ready');
         setMapLoaded(true);
 
         // Set initial marker if value exists
@@ -184,7 +169,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
           `);
         }
       } else if (data.type === 'locationSelected') {
-        console.log('📍 [LocationPicker OSM] Location selected:', data.lat, data.lng);
         const locationData: LocationData = {
           latitude: data.lat,
           longitude: data.lng,
@@ -201,14 +185,11 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
         geocodingTimerRef.current = setTimeout(async () => {
           try {
             const addressData = await reverseGeocode(data.lat, data.lng);
-            console.log('📮 [LocationPicker OSM] Address data received:', JSON.stringify(addressData, null, 2));
             if (isMountedRef.current && Object.keys(addressData).length > 0) {
               const fullLocationData = { latitude: data.lat, longitude: data.lng, ...addressData };
-              console.log('📮 [LocationPicker OSM] Updating with full location:', JSON.stringify(fullLocationData, null, 2));
               onChange(fullLocationData);
             }
           } catch (error) {
-            console.warn('⚠️ [LocationPicker OSM] Could not fetch address');
           }
         }, 500);
       }
@@ -245,7 +226,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
     setSearchError(null);
 
     try {
-      console.log('🔍 [LocationPicker OSM] Searching for:', searchQuery);
 
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`,
@@ -258,7 +238,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
         }
       );
 
-      console.log('📡 [LocationPicker OSM] Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -274,7 +253,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       }
 
       const results = await response.json();
-      console.log('📊 [LocationPicker OSM] Results count:', results.length);
 
       if (results.length === 0) {
         setSearchError('No results found');
@@ -287,8 +265,6 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lon);
 
-      console.log('✅ [LocationPicker OSM] Search result:', display_name);
-      console.log('📍 [LocationPicker OSM] Coordinates:', latitude, longitude);
 
       // Update marker and map view
       webViewRef.current?.injectJavaScript(`
@@ -310,11 +286,9 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       try {
         const addressData = await reverseGeocode(latitude, longitude);
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
-          console.log('📮 [LocationPicker OSM] Address fetched:', addressData.address);
           onChange({ ...locationData, ...addressData });
         }
       } catch (error) {
-        console.warn('⚠️ [LocationPicker OSM] Could not fetch detailed address');
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Search error:', error);

@@ -19,8 +19,6 @@ export async function addVisualWatermarkToImage(
   options: VisualWatermarkOptions
 ): Promise<string> {
   try {
-    console.log('[Visual Watermark] Processing image:', imageUri);
-    console.log('[Visual Watermark] Options:', options);
 
     // For now, we'll return the original image
     // Visual text overlay requires additional native module
@@ -41,7 +39,6 @@ export async function addVisualWatermarkToImage(
       }
     );
 
-    console.log('[Visual Watermark] Image processed:', manipulatedImage.uri);
 
     // Return the processed image
     // Note: Visual text overlay would require additional implementation

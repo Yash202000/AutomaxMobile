@@ -177,8 +177,6 @@ export async function addSimpleWatermark(
     // we'll return the original image with metadata
     // You can implement server-side watermarking or use a different library
 
-    console.log('[imageWatermark] Simple watermark - metadata approach');
-    console.log('Watermark text:', watermarkText);
 
     // For now, return original image
     // In production, consider using:

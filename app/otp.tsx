@@ -9,14 +9,12 @@ const OtpScreen = () => {
 
   const handleVerify = () => {
     const enteredOtp = otp.join('');
-    console.log('Entered OTP:', enteredOtp);
     // TODO: Implement OTP verification logic
     // On success, navigate to the main app or a new password screen
     router.push('/explore');
   };
 
   const handleResend = () => {
-    console.log('Resend code');
     // TODO: Implement resend code logic
   };
 
