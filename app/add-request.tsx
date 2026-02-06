@@ -34,6 +34,7 @@ import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkPro
 import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '@/src/context/AuthContext';
+import { compressImage } from '@/src/utils/imageCompression';
 
 interface DropdownOption {
   id: string;
@@ -631,12 +632,24 @@ const AddRequestScreen = () => {
   };
 
   // Handle watermark completion
-  const handleWatermarkComplete = useCallback((id: string, watermarkedUri: string, originalName: string) => {
+  const handleWatermarkComplete = useCallback(async (id: string, watermarkedUri: string, originalName: string) => {
+    // Compress watermarked image before adding to attachments
+    const compressionResult = await compressImage(watermarkedUri, {
+      quality: 0.75,        // ~50% reduction
+      format: 'jpeg',
+      skipSmallFiles: true,
+    });
+
+    // Use compressed URI or fallback to original on error
+    const finalUri = compressionResult.success && compressionResult.compressedUri
+      ? compressionResult.compressedUri
+      : watermarkedUri;
+
     // Add watermarked image to attachments
     setAttachments(prev => [
       ...prev,
       {
-        uri: watermarkedUri,
+        uri: finalUri,
         name: originalName,
         type: 'image/jpeg',
       },

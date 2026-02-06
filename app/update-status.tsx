@@ -12,6 +12,7 @@ import { LocationData } from '@/src/components/LocationPickerOSM';
 import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
 import { useAuth } from '@/src/context/AuthContext';
 import * as Location from 'expo-location';
+import { compressImage } from '@/src/utils/imageCompression';
 
 const UpdateStatusModal = () => {
   const router = useRouter();
@@ -390,13 +391,25 @@ const UpdateStatusModal = () => {
   };
 
   // Handle watermark completion
-  const handleWatermarkComplete = useCallback((id: string, watermarkedUri: string, originalName: string) => {
+  const handleWatermarkComplete = useCallback(async (id: string, watermarkedUri: string, originalName: string) => {
+    // Compress watermarked image before adding to attachments
+    const compressionResult = await compressImage(watermarkedUri, {
+      quality: 0.75,        // ~50% reduction
+      format: 'jpeg',
+      skipSmallFiles: true,
+    });
+
+    // Use compressed URI or fallback to original on error
+    const finalUri = compressionResult.success && compressionResult.compressedUri
+      ? compressionResult.compressedUri
+      : watermarkedUri;
+
     // Add watermarked image to attachments
     setAttachments(prev => {
       const newAttachments = [
         ...prev,
         {
-          uri: watermarkedUri,
+          uri: finalUri,
           name: originalName,
           type: 'image/jpeg',
         },
