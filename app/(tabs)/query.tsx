@@ -40,6 +40,12 @@ interface Query {
   current_state?: { name: string };
   location?: { name: string };
   channel?: string;
+  lookup_values?: Array<{
+    category: { code: string; name: string };
+    code: string;
+    name: string;
+    color: string;
+  }>;
 }
 
 interface PaginationInfo {
@@ -51,8 +57,20 @@ interface PaginationInfo {
 
 const QueryCard = ({ query, t }: { query: Query; t: any }) => {
   const router = useRouter();
-  const config = priorityConfig[query.priority] || { key: 'unknown', color: '#94A3B8' };
-  const priorityText = t(`priorities.${config.key}`, config.key);
+
+  // Extract priority from lookup_values if available
+  const priorityLookup = query.lookup_values?.find(
+    lv => lv.category.code === 'PRIORITY'
+  );
+
+  // Use lookup value color and name if available, otherwise fallback to old config
+  let config = priorityConfig[query.priority] || { key: 'unknown', color: '#94A3B8' };
+  let priorityText = t(`priorities.${config.key}`, config.key);
+
+  if (priorityLookup) {
+    config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
+    priorityText = priorityLookup.name;
+  }
 
   return (
     <TouchableOpacity
