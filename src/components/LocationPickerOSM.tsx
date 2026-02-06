@@ -70,6 +70,14 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
     }
   }, [autoFetch, required, value, autoFetched, mapLoaded, handleGetCurrentLocation]);
 
+  // Helper function to check if a string is a Plus Code
+  const isPlusCode = (str: string | null | undefined): boolean => {
+    if (!str) return false;
+    // Plus Codes format: XXXX+XX or longer variations
+    const plusCodeRegex = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i;
+    return plusCodeRegex.test(str.replace(/\s/g, ''));
+  };
+
   const reverseGeocode = async (latitude: number, longitude: number): Promise<Partial<LocationData>> => {
     try {
       // Reduce timeout from 10s to 5s to prevent long waits
@@ -94,8 +102,14 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
           result.subregion,
         ].filter(Boolean);
 
+        // Get address, filtering out Plus Codes
+        let addressString = addressParts.join(', ');
+        if (!addressString && result.name && !isPlusCode(result.name)) {
+          addressString = result.name;
+        }
+
         return {
-          address: addressParts.join(', ') || result.name || undefined,
+          address: addressString || undefined,
           city: result.city || undefined,
           state: result.region || undefined,
           country: result.country || undefined,

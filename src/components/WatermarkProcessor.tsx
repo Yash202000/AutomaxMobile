@@ -127,6 +127,14 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
     return null;
   }
 
+  // Helper function to check if a string is a Plus Code
+  const isPlusCode = (str: string | null | undefined): boolean => {
+    if (!str) return false;
+    // Plus Codes format: XXXX+XX or longer variations
+    const plusCodeRegex = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i;
+    return plusCodeRegex.test(str.replace(/\s/g, ''));
+  };
+
   // Create watermark text lines (compact version)
   const watermarkLines: string[] = [];
 
@@ -136,10 +144,10 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
     line1 = `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`;
   }
 
-  // Add city or address to same line if available
-  if (data.city) {
+  // Add city or address to same line if available (filter out Plus Codes)
+  if (data.city && !isPlusCode(data.city)) {
     line1 += line1 ? ` • ${data.city}` : data.city;
-  } else if (data.address) {
+  } else if (data.address && !isPlusCode(data.address)) {
     const shortAddress = data.address.length > 20 ? data.address.substring(0, 20) + '...' : data.address;
     line1 += line1 ? ` • ${shortAddress}` : shortAddress;
   } else {
@@ -168,11 +176,11 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
   }
   watermarkLines.push(line2);
 
-  // Line 3: Full address (street/area) if available
-  if (data.address) {
+  // Line 3: Full address (street/area) if available (filter out Plus Codes)
+  if (data.address && !isPlusCode(data.address)) {
     const fullAddress = data.address.length > 40 ? data.address.substring(0, 40) + '...' : data.address;
     watermarkLines.push(fullAddress);
-  } else if (data.state && !data.city) {
+  } else if (data.state && !data.city && !isPlusCode(data.state)) {
     // If we have state but not city, show state on separate line
     watermarkLines.push(data.state);
   }

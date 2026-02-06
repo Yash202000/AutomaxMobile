@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActionSheetIOS,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -253,6 +254,10 @@ const findMatchingWorkflow = (
 
   return bestMatch?.workflow || null;
 };
+
+// File size limit: 10MB (adjust based on your server configuration)
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 const AddIncidentScreen = () => {
   const router = useRouter();
@@ -654,7 +659,26 @@ const AddIncidentScreen = () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+        Alert.alert(
+          t('common.permissionRequired', 'Permission Required'),
+          t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
+          [
+            {
+              text: t('common.cancel', 'Cancel'),
+              style: 'cancel'
+            },
+            {
+              text: t('common.openSettings', 'Open Settings'),
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
         return;
       }
 
@@ -777,7 +801,26 @@ const AddIncidentScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Gallery permission is required to select photos.');
+        Alert.alert(
+          t('common.permissionRequired', 'Permission Required'),
+          t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
+          [
+            {
+              text: t('common.cancel', 'Cancel'),
+              style: 'cancel'
+            },
+            {
+              text: t('common.openSettings', 'Open Settings'),
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
         return;
       }
 
@@ -788,15 +831,41 @@ const AddIncidentScreen = () => {
       });
 
       if (!result.canceled && result.assets && Array.isArray(result.assets)) {
-        const newAttachments = result.assets.map(asset => ({
-          uri: asset.uri,
-          name: asset.fileName || `image_${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-          size: asset.fileSize,
-        }));
-        setAttachments(prev => [...prev, ...newAttachments]);
-        if (errors.attachments) {
-          setErrors(prev => ({ ...prev, attachments: '' }));
+        // Filter out oversized files
+        const validFiles: any[] = [];
+        const oversizedFiles: string[] = [];
+
+        result.assets.forEach(asset => {
+          const fileSize = asset.fileSize || 0;
+          const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+          if (fileSize > MAX_FILE_SIZE_BYTES) {
+            oversizedFiles.push(`${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+          } else {
+            validFiles.push({
+              uri: asset.uri,
+              name: fileName,
+              type: asset.mimeType || 'image/jpeg',
+              size: fileSize,
+            });
+          }
+        });
+
+        // Add valid files
+        if (validFiles.length > 0) {
+          setAttachments(prev => [...prev, ...validFiles]);
+          if (errors.attachments) {
+            setErrors(prev => ({ ...prev, attachments: '' }));
+          }
+        }
+
+        // Show warning for oversized files
+        if (oversizedFiles.length > 0) {
+          Alert.alert(
+            'Files Too Large',
+            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
+            [{ text: 'OK' }]
+          );
         }
       }
     } catch (error) {
@@ -818,15 +887,40 @@ const AddIncidentScreen = () => {
       });
 
       if (!result.canceled && result.assets) {
-        const newAttachments = result.assets.map(asset => ({
-          uri: asset.uri,
-          name: asset.name,
-          type: asset.mimeType || 'application/octet-stream',
-          size: asset.size,
-        }));
-        setAttachments(prev => [...prev, ...newAttachments]);
-        if (errors.attachments) {
-          setErrors(prev => ({ ...prev, attachments: '' }));
+        // Filter out oversized files
+        const validFiles: any[] = [];
+        const oversizedFiles: string[] = [];
+
+        result.assets.forEach(asset => {
+          const fileSize = asset.size || 0;
+
+          if (fileSize > MAX_FILE_SIZE_BYTES) {
+            oversizedFiles.push(`${asset.name} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+          } else {
+            validFiles.push({
+              uri: asset.uri,
+              name: asset.name,
+              type: asset.mimeType || 'application/octet-stream',
+              size: fileSize,
+            });
+          }
+        });
+
+        // Add valid files
+        if (validFiles.length > 0) {
+          setAttachments(prev => [...prev, ...validFiles]);
+          if (errors.attachments) {
+            setErrors(prev => ({ ...prev, attachments: '' }));
+          }
+        }
+
+        // Show warning for oversized files
+        if (oversizedFiles.length > 0) {
+          Alert.alert(
+            'Files Too Large',
+            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
+            [{ text: 'OK' }]
+          );
         }
       }
     } catch (error) {

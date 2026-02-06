@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable, Alert, ActivityIndicator, ScrollView, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
+import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
+import { WatermarkPreview } from '@/src/components/WatermarkPreview';
+import { LocationData } from '@/src/components/LocationPickerOSM';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { useAuth } from '@/src/context/AuthContext';
+import * as Location from 'expo-location';
 
 const UpdateStatusModal = () => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { id, type, transitions, incident: incidentParam } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
   const ticketType = Array.isArray(type) ? type[0] : (type || 'incident');
@@ -48,6 +55,150 @@ const UpdateStatusModal = () => {
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Watermark processing state
+  interface PendingWatermark {
+    id: string;
+    imageUri: string;
+    data: WatermarkData;
+    originalName: string;
+  }
+  const [pendingWatermarks, setPendingWatermarks] = useState<PendingWatermark[]>([]);
+
+  // Preview state
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImageUri, setPreviewImageUri] = useState<string>('');
+  const [previewWatermarkData, setPreviewWatermarkData] = useState<WatermarkData>({});
+  const [previewPendingWatermark, setPreviewPendingWatermark] = useState<PendingWatermark | null>(null);
+
+  // Geolocation state
+  const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
+  const locationDataRef = useRef<LocationData | undefined>(undefined);
+
+  // Monitor locationData changes and keep ref in sync
+  useEffect(() => {
+    locationDataRef.current = locationData; // Keep ref updated
+  }, [locationData]);
+
+  // Helper function to check if a string is a Plus Code
+  const isPlusCode = (str: string | null | undefined): boolean => {
+    if (!str) return false;
+    // Plus Codes format: XXXX+XX or longer variations
+    const plusCodeRegex = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i;
+    return plusCodeRegex.test(str.replace(/\s/g, ''));
+  };
+
+  // Auto-fetch location on mount (request permission)
+  useEffect(() => {
+    const fetchLocation = async () => {
+      try {
+        // Check current permission status first
+        const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+
+        let finalStatus = existingStatus;
+
+        // If not granted, request permission
+        if (existingStatus !== 'granted') {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+          Alert.alert(
+            t('common.locationPermissionRequired', 'Location Permission Required'),
+            t('common.locationNeededForWatermark', 'Location access is needed to watermark photos with GPS coordinates. Please enable location services in your device settings.'),
+            [
+              {
+                text: t('common.cancel', 'Cancel'),
+                style: 'cancel',
+                onPress: () => {
+                  // User can still use the app, but photos won't have location watermark
+                }
+              },
+              {
+                text: t('common.openSettings', 'Open Settings'),
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+          return;
+        }
+
+        // Permission granted, get location
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        // Reverse geocode to get address
+        const [geocode] = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        // Filter out Plus Codes from address fields
+        let streetAddress: string | null | undefined = geocode?.street;
+        if (isPlusCode(streetAddress)) {
+          streetAddress = null;
+        }
+
+        let nameAddress: string | null | undefined = geocode?.name;
+        if (isPlusCode(nameAddress)) {
+          nameAddress = null;
+        }
+
+        // Build a readable address string
+        let addressParts: string[] = [];
+        if (streetAddress) addressParts.push(streetAddress);
+        if (geocode?.district && geocode.district !== streetAddress) addressParts.push(geocode.district);
+        if (geocode?.subregion && geocode.subregion !== geocode?.city) addressParts.push(geocode.subregion);
+
+        const locationData: LocationData = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address: addressParts.length > 0 ? addressParts.join(', ') : (nameAddress || undefined),
+          city: geocode?.city || undefined,
+          state: geocode?.region || undefined,
+          country: geocode?.country || undefined,
+        };
+
+        setLocationData(locationData);
+      } catch (error: any) {
+        // Handle location services disabled or other errors
+        if (error?.message?.includes('Location services are disabled') ||
+            error?.message?.includes('unavailable')) {
+          Alert.alert(
+            t('common.locationServicesDisabled', 'Location Services Disabled'),
+            t('common.enableLocationServices', 'Please enable location services in your device settings to add GPS coordinates to photos.'),
+            [
+              {
+                text: t('common.cancel', 'Cancel'),
+                style: 'cancel'
+              },
+              {
+                text: t('common.openSettings', 'Open Settings'),
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+        }
+        // For other errors, silently fail - watermark will work without location
+      }
+    };
+
+    fetchLocation();
+  }, [t]);
 
   // Feedback rating state
   const [feedbackRating, setFeedbackRating] = useState(0);
@@ -96,7 +247,26 @@ const UpdateStatusModal = () => {
   const requestCameraPermission = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+      Alert.alert(
+        t('common.permissionRequired', 'Permission Required'),
+        t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
+        [
+          {
+            text: t('common.cancel', 'Cancel'),
+            style: 'cancel'
+          },
+          {
+            text: t('common.openSettings', 'Open Settings'),
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            }
+          }
+        ]
+      );
       return false;
     }
     return true;
@@ -106,7 +276,26 @@ const UpdateStatusModal = () => {
   const requestMediaLibraryPermission = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Media library permission is needed to select photos.');
+      Alert.alert(
+        t('common.permissionRequired', 'Permission Required'),
+        t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
+        [
+          {
+            text: t('common.cancel', 'Cancel'),
+            style: 'cancel'
+          },
+          {
+            text: t('common.openSettings', 'Open Settings'),
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            }
+          }
+        ]
+      );
       return false;
     }
     return true;
@@ -142,21 +331,56 @@ const UpdateStatusModal = () => {
     const hasPermission = await requestCameraPermission();
     if (!hasPermission) return;
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      base64: false,
-    });
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        base64: false,
+        exif: true,
+      });
 
-    if (!result.canceled && result.assets && result.assets[0]) {
-      const asset = result.assets[0];
-      const newAttachment = {
-        uri: asset.uri,
-        name: asset.fileName || `photo_${Date.now()}.jpg`,
-        type: asset.mimeType || 'image/jpeg',
-        size: asset.fileSize,
-      };
-      setAttachments(prev => [...prev, newAttachment]);
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+
+        // Prepare watermark data - Use ref to get latest value that won't be lost on re-render
+        const currentLocation = locationDataRef.current;
+
+        const watermarkData: WatermarkData = {
+          latitude: currentLocation?.latitude,
+          longitude: currentLocation?.longitude,
+          address: currentLocation?.address,
+          city: currentLocation?.city,
+          state: currentLocation?.state,
+          country: currentLocation?.country,
+          userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
+          timestamp: new Date(),
+          appName: 'Automax',
+        };
+
+        const originalFileName = asset.fileName || `photo_${Date.now()}.jpg`;
+        const watermarkedFileName = generateWatermarkedFilename(originalFileName, {
+          appName: 'Automax',
+          userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
+          userId: user?.id,
+          timestamp: new Date(),
+          location: locationData ? `${locationData.city || ''} ${locationData.state || ''}`.trim() : undefined,
+        });
+
+        const pendingWatermark: PendingWatermark = {
+          id: `watermark_${Date.now()}`,
+          imageUri: asset.uri,
+          data: watermarkData,
+          originalName: watermarkedFileName,
+        };
+
+        // Show preview modal
+        setPreviewImageUri(asset.uri);
+        setPreviewWatermarkData(watermarkData);
+        setPreviewPendingWatermark(pendingWatermark);
+        setPreviewVisible(true);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to take photo');
     }
   };
 
@@ -164,6 +388,51 @@ const UpdateStatusModal = () => {
   const removeAttachment = (index) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Handle watermark completion
+  const handleWatermarkComplete = useCallback((id: string, watermarkedUri: string, originalName: string) => {
+    // Add watermarked image to attachments
+    setAttachments(prev => {
+      const newAttachments = [
+        ...prev,
+        {
+          uri: watermarkedUri,
+          name: originalName,
+          type: 'image/jpeg',
+        },
+      ];
+      return newAttachments;
+    });
+
+    // Remove from pending list
+    setPendingWatermarks(prev => {
+      const remaining = prev.filter(w => w.id !== id);
+      return remaining;
+    });
+  }, []);
+
+  // Handle preview accept
+  const handlePreviewAccept = useCallback(() => {
+    if (previewPendingWatermark) {
+      setPendingWatermarks(prev => [...prev, previewPendingWatermark]);
+    }
+    setPreviewVisible(false);
+    setPreviewImageUri('');
+    setPreviewWatermarkData({});
+    setPreviewPendingWatermark(null);
+  }, [previewPendingWatermark]);
+
+  // Handle preview retry
+  const handlePreviewRetry = useCallback(() => {
+    setPreviewVisible(false);
+    setPreviewImageUri('');
+    setPreviewWatermarkData({});
+    setPreviewPendingWatermark(null);
+    // Relaunch camera
+    setTimeout(() => {
+      takePhotoWithCamera();
+    }, 300);
+  }, []);
 
   const handleUpdate = async () => {
     if (!selectedTransition) {
@@ -551,6 +820,27 @@ const UpdateStatusModal = () => {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Hidden watermark processors */}
+      {pendingWatermarks.map((pending) => (
+        <WatermarkProcessor
+          key={pending.id}
+          imageUri={pending.imageUri}
+          data={pending.data}
+          onComplete={(watermarkedUri) =>
+            handleWatermarkComplete(pending.id, watermarkedUri, pending.originalName)
+          }
+        />
+      ))}
+
+      {/* Watermark Preview Modal */}
+      <WatermarkPreview
+        visible={previewVisible}
+        imageUri={previewImageUri}
+        watermarkData={previewWatermarkData}
+        onAccept={handlePreviewAccept}
+        onRetry={handlePreviewRetry}
+      />
     </KeyboardAvoidingView>
   );
 };
