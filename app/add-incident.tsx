@@ -32,6 +32,7 @@ import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
+import { DynamicLookupField } from '@/src/components/DynamicLookupField';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -307,6 +308,7 @@ const AddIncidentScreen = () => {
   // Geolocation state
   const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
   const locationDataRef = useRef<LocationData | undefined>(undefined);
+  const hasFetchedDataRef = useRef(false);
 
   // Monitor locationData changes and keep ref in sync
   useEffect(() => {
@@ -323,7 +325,7 @@ const AddIncidentScreen = () => {
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
   const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
-  const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
+  const [lookupValues, setLookupValues] = useState<Record<string, any>>({});
 
   // Loading state
   const [loadingData, setLoadingData] = useState(true);
@@ -332,10 +334,13 @@ const AddIncidentScreen = () => {
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fetch all data on mount
+  // Fetch all data once when user is loaded
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (user && !hasFetchedDataRef.current) {
+      hasFetchedDataRef.current = true;
+      fetchAllData();
+    }
+  }, [user]);
 
   const fetchAllData = async () => {
     setLoadingData(true);
@@ -382,7 +387,46 @@ const AddIncidentScreen = () => {
           }).filter(Boolean) as TreeNode[];
         };
 
-        const filteredClassifications = filterForIncidents(classRes.data);
+        let filteredClassifications = filterForIncidents(classRes.data);
+
+        // Filter by user's assigned classifications (unless super admin)
+        if (user && !user.is_super_admin && user.classifications && user.classifications.length > 0) {
+          const userClassificationIds = new Set(user.classifications.map(c => c.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userClassificationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          filteredClassifications = filterByUserAccess(filteredClassifications);
+        }
+
         setClassifications(filteredClassifications);
       } else {
         setClassifications([]);
@@ -398,7 +442,46 @@ const AddIncidentScreen = () => {
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
-        const normalizedLocations = normalizeLocations(locRes.data);
+        let normalizedLocations = normalizeLocations(locRes.data);
+
+        // Filter by user's assigned locations (unless super admin)
+        if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
+          const userLocationIds = new Set(user.locations.map(l => l.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
+        }
+
         setLocations(normalizedLocations);
       } else {
         setLocations([]);
@@ -519,8 +602,16 @@ const AddIncidentScreen = () => {
       if (field.startsWith('lookup:')) {
         const categoryCode = field.replace('lookup:', '');
         const category = lookupCategories.find(c => c.code === categoryCode);
-        if (category && !lookupValues[category.id]) {
-          newErrors[field] = `${category.name} is required`;
+        if (category) {
+          const value = lookupValues[category.id];
+          // For multiselect, check if array is empty
+          if (category.field_type === 'multiselect') {
+            if (!value || (Array.isArray(value) && value.length === 0)) {
+              newErrors[field] = `${category.name} is required`;
+            }
+          } else if (!value) {
+            newErrors[field] = `${category.name} is required`;
+          }
         }
         continue;
       }
@@ -957,14 +1048,14 @@ const AddIncidentScreen = () => {
     }
   };
 
-  const handleLookupChange = (categoryId: string, valueId: string) => {
+  const handleLookupChange = (categoryId: string, value: any) => {
     setLookupValues(prev => {
-      if (!valueId) {
+      if (!value || (Array.isArray(value) && value.length === 0)) {
         const newValues = { ...prev };
         delete newValues[categoryId];
         return newValues;
       }
-      return { ...prev, [categoryId]: valueId };
+      return { ...prev, [categoryId]: value };
     });
 
     // Clear error for this lookup field if it exists
@@ -1035,10 +1126,39 @@ const AddIncidentScreen = () => {
     if (reporterName.trim()) incidentData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) incidentData.reporter_email = reporterEmail.trim();
 
-    // Add lookup values if any selected
-    const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
-    if (selectedLookupIds.length > 0) {
-      incidentData.lookup_value_ids = selectedLookupIds;
+    // Separate lookup values by field type
+    const selectLookupIds: string[] = [];
+    const customLookupFields: Record<string, any> = {};
+
+    for (const [categoryId, value] of Object.entries(lookupValues)) {
+      const category = lookupCategories.find(c => c.id === categoryId);
+      if (!category) continue;
+
+      const fieldType = category.field_type || 'select';
+
+      if (fieldType === 'select' || fieldType === 'multiselect') {
+        // Add to lookup_value_ids array
+        if (Array.isArray(value)) {
+          selectLookupIds.push(...value.filter(Boolean));
+        } else if (value) {
+          selectLookupIds.push(value);
+        }
+      } else {
+        // Add to custom_lookup_fields with metadata
+        customLookupFields[`lookup:${category.code}`] = {
+          value: value,
+          field_type: fieldType,
+          category_id: categoryId,
+        };
+      }
+    }
+
+    if (selectLookupIds.length > 0) {
+      incidentData.lookup_value_ids = selectLookupIds;
+    }
+
+    if (Object.keys(customLookupFields).length > 0) {
+      incidentData.custom_lookup_fields = customLookupFields;
     }
 
     const response = await createIncident(incidentData);
@@ -1232,27 +1352,15 @@ const AddIncidentScreen = () => {
               // Only show if required by workflow
               if (!isRequired) return null;
 
-              const options = (category.values || [])
-                .filter(v => v.is_active)
-                .map(v => ({
-                  id: v.id,
-                  name: v.name
-                }));
-
               return (
-                <View key={category.id}>
-                  <Text style={styles.sectionTitle}>
-                    {category.name} <Text style={styles.required}>*</Text>
-                  </Text>
-                  <Dropdown
-                    label={`Select ${category.name.toLowerCase()}`}
-                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
-                    options={options}
-                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
-                    required={isRequired}
-                    error={errors[lookupFieldKey]}
-                  />
-                </View>
+                <DynamicLookupField
+                  key={category.id}
+                  category={category}
+                  value={lookupValues[category.id]}
+                  onChange={handleLookupChange}
+                  required={isRequired}
+                  error={errors[lookupFieldKey]}
+                />
               );
             })}
 

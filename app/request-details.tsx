@@ -42,6 +42,18 @@ const priorityConfig: Record<number, { key: string; color: string }> = {
   5: { key: 'veryLow', color: COLORS.priority.veryLow },
 };
 
+interface LookupValue {
+  id: string;
+  name: string;
+  name_ar?: string;
+  color?: string;
+  category?: {
+    id: string;
+    name: string;
+    name_ar?: string;
+  };
+}
+
 const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { icon: string; label: string; value: string; iconColor?: string }) => (
   <View style={styles.infoRow}>
     <View style={styles.infoRowLeft}>
@@ -189,6 +201,7 @@ const RequestDetailsScreen = () => {
         <View style={styles.card}>
           <SectionHeader title={t('requests.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
+            {/* Basic Info */}
             <InfoRow icon="grid-outline" label={t('details.classification')} value={request.classification?.name || ''} iconColor={COLORS.accent} />
             <InfoRow icon="business-outline" label={t('details.department')} value={request.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
@@ -203,6 +216,92 @@ const RequestDetailsScreen = () => {
             {request.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={request.location.name} iconColor={COLORS.error} />
             )}
+
+            {/* Lookup Values as InfoRows */}
+            {request.lookup_values && request.lookup_values.length > 0 && (() => {
+              const grouped: Record<string, LookupValue[]> = {};
+              request.lookup_values.forEach((value: LookupValue) => {
+                const categoryName = value.category?.name || 'Other';
+                if (!grouped[categoryName]) {
+                  grouped[categoryName] = [];
+                }
+                grouped[categoryName].push(value);
+              });
+
+              return Object.entries(grouped).map(([category, values]) => (
+                <View key={category} style={styles.infoRow}>
+                  <View style={styles.infoRowLeft}>
+                    <Ionicons name="pricetag" size={18} color="#10B981" />
+                    <Text style={styles.infoLabel}>{category}</Text>
+                  </View>
+                  <View style={styles.lookupValuesList}>
+                    {values.map(value => (
+                      <View
+                        key={value.id}
+                        style={[
+                          styles.lookupValueTag,
+                          {
+                            backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
+                            borderColor: value.color || '#CBD5E1',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.lookupValueTagText,
+                            { color: value.color || COLORS.text.primary },
+                          ]}
+                        >
+                          {value.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ));
+            })()}
+
+            {/* Custom Fields as InfoRows */}
+            {request.custom_fields && (() => {
+              try {
+                const customFields = JSON.parse(request.custom_fields);
+                const allFields: any[] = [];
+
+                // Extract all custom fields
+                Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                  if (key.startsWith('lookup:')) {
+                    allFields.push({
+                      key,
+                      label: fieldData.label || key.replace('lookup:', ''),
+                      value: fieldData.value,
+                      field_type: fieldData.field_type || 'text',
+                    });
+                  }
+                });
+
+                return allFields.map((field) => {
+                  let displayValue = field.value || 'N/A';
+                  if (field.field_type === 'checkbox') {
+                    displayValue = field.value ? 'Yes' : 'No';
+                  } else if (field.field_type === 'date' && field.value) {
+                    displayValue = new Date(field.value).toLocaleDateString();
+                  }
+
+                  return (
+                    <InfoRow
+                      key={field.key}
+                      icon="list-outline"
+                      label={field.label}
+                      value={String(displayValue)}
+                      iconColor="#F59E0B"
+                    />
+                  );
+                });
+              } catch (error) {
+                console.error('Error parsing custom_fields:', error);
+                return null;
+              }
+            })()}
           </View>
         </View>
 
@@ -497,6 +596,25 @@ const styles = StyleSheet.create({
     }),
   },
   updateButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+
+  // Lookup Values Styles (InfoRow compatible)
+  lookupValuesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    maxWidth: '50%',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  lookupValueTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  lookupValueTagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 export default RequestDetailsScreen;

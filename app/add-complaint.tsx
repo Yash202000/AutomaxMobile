@@ -25,6 +25,7 @@ import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface DropdownOption {
   id: string;
@@ -250,6 +251,7 @@ const findMatchingWorkflow = (
 const AddComplaintScreen = () => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -288,9 +290,15 @@ const AddComplaintScreen = () => {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioFiles, setAudioFiles] = useState<{ uri: string; duration: number }[]>([]);
 
+  const hasFetchedDataRef = React.useRef(false);
+
+  // Fetch all data once when user is loaded
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (user && !hasFetchedDataRef.current) {
+      hasFetchedDataRef.current = true;
+      fetchAllData();
+    }
+  }, [user]);
 
   const fetchAllData = async () => {
     setLoadingData(true);
@@ -314,12 +322,60 @@ const AddComplaintScreen = () => {
             children: node.children ? normalizeClassifications(node.children) : undefined,
           }));
         };
-        setClassifications(normalizeClassifications(classRes.data));
+        let normalizedClassifications = normalizeClassifications(classRes.data);
+
+        // Filter by user's assigned classifications (unless super admin)
+        if (user && !user.is_super_admin && user.classifications && user.classifications.length > 0) {
+          const userClassificationIds = new Set(user.classifications.map(c => c.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userClassificationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedClassifications = filterByUserAccess(normalizedClassifications);
+        }
+
+        setClassifications(normalizedClassifications);
       } else {
         setClassifications([]);
       }
       if (locRes.success && locRes.data) {
-        setLocations(locRes.data.map((l: any) => ({ id: l.id, name: l.name })));
+        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+
+        // Filter by user's assigned locations (unless super admin)
+        if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
+          const userLocationIds = new Set(user.locations.map(l => l.id));
+          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
+        }
+
+        setLocations(locationsList);
       }
       if (workflowRes.success && workflowRes.data) {
         setAllWorkflows(workflowRes.data);

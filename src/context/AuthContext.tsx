@@ -10,6 +10,21 @@ export interface Role {
   is_active: boolean;
 }
 
+export interface Classification {
+  id: string;
+  name: string;
+  type?: string;
+  level?: number;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  code?: string;
+  type?: string;
+  level?: number;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -24,6 +39,8 @@ export interface User {
   is_super_admin: boolean;
   permissions?: string[];
   roles?: Role[];
+  classifications?: Classification[];
+  locations?: Location[];
 }
 
 interface AuthContextType {

@@ -13,6 +13,8 @@ export interface LookupValue {
   is_active: boolean;
 }
 
+export type FieldType = 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'checkbox' | 'textarea';
+
 export interface LookupCategory {
   id: string;
   code: string;
@@ -22,6 +24,8 @@ export interface LookupCategory {
   is_system: boolean;
   is_active: boolean;
   add_to_incident_form?: boolean;
+  field_type?: FieldType;
+  validation_rules?: string;
   values_count: number;
   values?: LookupValue[];
   created_at: string;

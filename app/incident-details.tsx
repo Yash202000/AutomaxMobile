@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -44,6 +44,18 @@ const priorityConfig: Record<number, { key: string; color: string }> = {
   5: { key: 'veryLow', color: COLORS.priority.veryLow },
 };
 
+interface LookupValue {
+  id: string;
+  name: string;
+  name_ar?: string;
+  color?: string;
+  category?: {
+    id: string;
+    name: string;
+    name_ar?: string;
+  };
+}
+
 interface IncidentData {
   id: string;
   incident_number: string;
@@ -71,6 +83,8 @@ interface IncidentData {
   country?: string;
   postal_code?: string;
   created_at: string;
+  lookup_values?: LookupValue[];
+  custom_fields?: string;
   attachments?: Array<{ id: string; file_name: string; mime_type: string }>;
   comments?: Array<{ id: string; content: string; author: { username: string }; created_at: string }>;
   transition_history?: Array<{
@@ -375,10 +389,12 @@ const IncidentDetailsScreen = () => {
           </View>
         </View>
 
-        {/* Details Card */}
+        {/* Details Card with Lookup Values and Custom Fields Inside */}
         <View style={styles.card}>
           <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
+
           <View style={styles.infoContainer}>
+            {/* Basic Info */}
             <InfoRow icon="grid-outline" label={t('details.classification')} value={incident.classification?.name || ''} iconColor={COLORS.accent} />
             <InfoRow icon="business-outline" label={t('details.department')} value={incident.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
@@ -393,81 +409,93 @@ const IncidentDetailsScreen = () => {
             {incident.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={incident.location.name} iconColor={COLORS.error} />
             )}
-          </View>
-        </View>
 
-        {/* Description Card */}
-        {incident.description && (
-          <View style={styles.card}>
-            <SectionHeader title={t('details.description')} icon="document-text" />
-            <Text style={styles.descriptionText}>{incident.description}</Text>
-          </View>
-        )}
+            {/* Lookup Values as InfoRows */}
+            {incident.lookup_values && incident.lookup_values.length > 0 && (() => {
+              const grouped: Record<string, LookupValue[]> = {};
+              incident.lookup_values.forEach(value => {
+                const categoryName = value.category?.name || 'Other';
+                if (!grouped[categoryName]) {
+                  grouped[categoryName] = [];
+                }
+                grouped[categoryName].push(value);
+              });
 
-        {/* Reporter Card */}
-        <View style={styles.card}>
-          <SectionHeader title={t('details.reporter')} icon="person-circle" />
-          <View style={styles.reporterCard}>
-            <View style={styles.reporterAvatar}>
-              <Text style={styles.reporterAvatarText}>
-                {incident.reporter?.first_name?.[0] || incident.reporter?.username?.[0] || 'U'}
-              </Text>
-            </View>
-            <View style={styles.reporterInfo}>
-              <Text style={styles.reporterName}>
-                {incident.reporter?.first_name
-                  ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
-                  : incident.reporter?.username || incident.reporter_name || 'Unknown'}
-              </Text>
-              {(incident.reporter_email || incident.reporter?.email) && (
-                <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
-              )}
-            </View>
-            <View style={styles.reporterActions}>
-              {(incident.reporter_email || incident.reporter?.email) && (
-                <TouchableOpacity
-                  style={styles.reporterActionButton}
-                  onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}
-                >
-                  <Ionicons name="mail" size={18} color={COLORS.accent} />
-                </TouchableOpacity>
-              )}
-              {incident.reporter?.phone && (
-                <TouchableOpacity
-                  style={styles.reporterActionButton}
-                  onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}
-                >
-                  <Ionicons name="call" size={18} color={COLORS.accent} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Comments Card */}
-        <View style={styles.card}>
-          <SectionHeader title={t('details.comments')} icon="chatbubbles" />
-          {incident.comments && incident.comments.length > 0 ? (
-            incident.comments.map(comment => (
-              <View style={styles.commentItem} key={comment.id}>
-                <View style={styles.commentHeader}>
-                  <View style={styles.commentAvatar}>
-                    <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+              return Object.entries(grouped).map(([category, values]) => (
+                <View key={category} style={styles.infoRow}>
+                  <View style={styles.infoRowLeft}>
+                    <Ionicons name="pricetag" size={18} color="#10B981" />
+                    <Text style={styles.infoLabel}>{category}</Text>
                   </View>
-                  <View style={styles.commentMeta}>
-                    <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                  <View style={styles.lookupValuesList}>
+                    {values.map(value => (
+                      <View
+                        key={value.id}
+                        style={[
+                          styles.lookupValueTag,
+                          {
+                            backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
+                            borderColor: value.color || '#CBD5E1',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.lookupValueTagText,
+                            { color: value.color || COLORS.text.primary },
+                          ]}
+                        >
+                          {value.name}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
-              <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
-            </View>
-          )}
+              ));
+            })()}
+
+            {/* Custom Fields as InfoRows */}
+            {incident.custom_fields && (() => {
+              try {
+                const customFields = JSON.parse(incident.custom_fields);
+                const allFields: any[] = [];
+
+                // Extract all custom fields
+                Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                  if (key.startsWith('lookup:')) {
+                    allFields.push({
+                      key,
+                      label: fieldData.label || key.replace('lookup:', ''),
+                      value: fieldData.value,
+                      field_type: fieldData.field_type || 'text',
+                    });
+                  }
+                });
+
+                return allFields.map((field) => {
+                  let displayValue = field.value || 'N/A';
+                  if (field.field_type === 'checkbox') {
+                    displayValue = field.value ? 'Yes' : 'No';
+                  } else if (field.field_type === 'date' && field.value) {
+                    displayValue = new Date(field.value).toLocaleDateString();
+                  }
+
+                  return (
+                    <InfoRow
+                      key={field.key}
+                      icon="list-outline"
+                      label={field.label}
+                      value={String(displayValue)}
+                      iconColor="#F59E0B"
+                    />
+                  );
+                });
+              } catch (error) {
+                console.error('Error parsing custom_fields:', error);
+                return null;
+              }
+            })()}
+          </View>
         </View>
 
         {/* Attachments Card */}
@@ -643,6 +671,80 @@ const IncidentDetailsScreen = () => {
             </View>
           </View>
         )}
+
+        {/* Description Card */}
+        {incident.description && (
+          <View style={styles.card}>
+            <SectionHeader title={t('details.description')} icon="document-text" />
+            <Text style={styles.descriptionText}>{incident.description}</Text>
+          </View>
+        )}
+
+        {/* Reporter Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('details.reporter')} icon="person-circle" />
+          <View style={styles.reporterCard}>
+            <View style={styles.reporterAvatar}>
+              <Text style={styles.reporterAvatarText}>
+                {incident.reporter?.first_name?.[0] || incident.reporter?.username?.[0] || 'U'}
+              </Text>
+            </View>
+            <View style={styles.reporterInfo}>
+              <Text style={styles.reporterName}>
+                {incident.reporter?.first_name
+                  ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
+                  : incident.reporter?.username || incident.reporter_name || 'Unknown'}
+              </Text>
+              {(incident.reporter_email || incident.reporter?.email) && (
+                <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
+              )}
+            </View>
+            <View style={styles.reporterActions}>
+              {(incident.reporter_email || incident.reporter?.email) && (
+                <TouchableOpacity
+                  style={styles.reporterActionButton}
+                  onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}
+                >
+                  <Ionicons name="mail" size={18} color={COLORS.accent} />
+                </TouchableOpacity>
+              )}
+              {incident.reporter?.phone && (
+                <TouchableOpacity
+                  style={styles.reporterActionButton}
+                  onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}
+                >
+                  <Ionicons name="call" size={18} color={COLORS.accent} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Comments Card */}
+        <View style={styles.card}>
+          <SectionHeader title={t('details.comments')} icon="chatbubbles" />
+          {incident.comments && incident.comments.length > 0 ? (
+            incident.comments.map(comment => (
+              <View style={styles.commentItem} key={comment.id}>
+                <View style={styles.commentHeader}>
+                  <View style={styles.commentAvatar}>
+                    <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+                  </View>
+                  <View style={styles.commentMeta}>
+                    <Text style={styles.commentAuthor}>{comment.author.username}</Text>
+                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                  </View>
+                </View>
+                <Text style={styles.commentContent}>{comment.content}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
+              <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Transition History Card */}
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
@@ -891,6 +993,30 @@ const styles = StyleSheet.create({
     }),
   },
   updateButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+
+  // Lookup Values Styles (InfoRow compatible)
+  lookupValuesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    maxWidth: '50%',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  lookupValueTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  lookupValueTagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
 });
 
 export default IncidentDetailsScreen;

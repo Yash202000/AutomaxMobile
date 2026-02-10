@@ -220,7 +220,8 @@
     "fetchError": "Failed to fetch details",
     "reporter": "Reporter",
     "geolocation": "Geolocation",
-    "directions": "Directions"
+    "directions": "Directions",
+    "additionalInfo": "Additional Information"
   },
   "priorities": {
     "critical": "Critical",
