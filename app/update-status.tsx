@@ -510,6 +510,7 @@ const UpdateStatusModal = () => {
       user_id: selectedUser?.id || undefined,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
       feedback_rating: feedbackRating > 0 ? feedbackRating : undefined,
+      version: incident?.version || 1, // Include version for optimistic locking
     };
     const response = await executeTransition(incidentId, transitionData);
     setLoading(false);
@@ -534,7 +535,22 @@ const UpdateStatusModal = () => {
         }},
       ]);
     } else {
-      Alert.alert('Error', `Failed to update status: ${response.error}`);
+      // Check for version conflict
+      const errorMessage = response.error || '';
+      if (errorMessage.includes('conflict') || errorMessage.includes('modified by another user')) {
+        Alert.alert(
+          t('common.conflictDetected') || 'Conflict Detected',
+          t('common.incidentModifiedByAnother') || 'This incident was modified by another user. Please review and try again.',
+          [
+            {
+              text: t('common.refresh') || 'Refresh',
+              onPress: () => router.back(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', `Failed to update status: ${response.error}`);
+      }
     }
   };
 
