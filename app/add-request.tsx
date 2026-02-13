@@ -175,14 +175,7 @@ const severityOptions: DropdownOption[] = [
 ];
 
 const sourceOptions: DropdownOption[] = [
-  { id: 'web', name: 'Web Portal' },
-  { id: 'mobile', name: 'Mobile App' },
-  { id: 'email', name: 'Email' },
-  { id: 'phone', name: 'Phone' },
-  { id: 'walk_in', name: 'Walk-in' },
-  { id: 'api', name: 'API' },
-  { id: 'social_media', name: 'Social Media' },
-  { id: 'other', name: 'Other' },
+  { id: 'mobile', name: 'Mobile App' }, // Only mobile option for mobile app
 ];
 
 const findMatchingWorkflow = (
@@ -263,7 +256,7 @@ const AddRequestScreen = () => {
   const [reporterEmail, setReporterEmail] = useState('');
   const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
-  const [selectedSource, setSelectedSource] = useState<DropdownOption | null>(null);
+  const [selectedSource] = useState<DropdownOption>({ id: 'mobile', name: 'Mobile App' }); // Fixed to mobile, non-editable
   const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
@@ -1029,22 +1022,19 @@ const AddRequestScreen = () => {
               </>
             )}
 
-            {/* Source - only show if required */}
-            {isFieldRequired('source') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  Source <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addRequest.selectSource')}
-                  value={selectedSource?.name || ''}
-                  options={sourceOptions}
-                  onSelect={setSelectedSource}
-                  required={true}
-                  error={errors.source}
-                />
-              </>
-            )}
+            {/* Source field - always mobile for mobile app, non-editable */}
+            <Text style={styles.sectionTitle}>
+              Source {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+            </Text>
+            <Dropdown
+              label={t('addRequest.selectSource')}
+              value={selectedSource?.name || ''}
+              options={sourceOptions}
+              onSelect={() => {}} // No-op, field is not editable
+              required={isFieldRequired('source')}
+              error={errors.source}
+              disabled={true}
+            />
 
             {/* Lookup Fields - Dynamic master data fields */}
             {lookupCategories.map(category => {
