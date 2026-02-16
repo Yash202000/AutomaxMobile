@@ -45,10 +45,12 @@ interface Workflow {
   id: string;
   name: string;
   is_active: boolean;
+  is_default?: boolean;
   required_fields?: string[];
   classifications?: { id: string; name: string }[];
   locations?: { id: string; name: string }[];
   sources?: string[];
+  priorities?: number[];
   severity_min?: number;
   severity_max?: number;
   priority_min?: number;
@@ -178,6 +180,7 @@ const sourceOptions: DropdownOption[] = [
   { id: 'mobile', name: 'Mobile App' }, // Only mobile option for mobile app
 ];
 
+// Workflow matching function (updated to match web client logic with exclusions)
 const findMatchingWorkflow = (
   workflows: Workflow[],
   criteria: {
@@ -193,51 +196,93 @@ const findMatchingWorkflow = (
 
   for (const workflow of activeWorkflows) {
     let score = 0;
+    let matchCount = 0;
+    let isExcluded = false;
 
+    // Check classification match
     if (criteria.classification_id && workflow.classifications?.length) {
-      if (workflow.classifications.some(c => c.id === criteria.classification_id)) {
+      const matches = workflow.classifications.some(c => c.id === criteria.classification_id);
+      if (matches) {
         score += 10;
+        matchCount++;
+      } else {
+        // Workflow has specific classifications and this one doesn't match - EXCLUDE
+        isExcluded = true;
       }
     }
 
+    // Check location match
     if (criteria.location_id && workflow.locations?.length) {
-      if (workflow.locations.some(l => l.id === criteria.location_id)) {
+      const matches = workflow.locations.some(l => l.id === criteria.location_id);
+      if (matches) {
         score += 10;
+        matchCount++;
+      } else {
+        // Workflow has specific locations and this one doesn't match - EXCLUDE
+        isExcluded = true;
       }
     }
 
+    // Check source match - if workflow defines sources, criteria MUST match
     if (criteria.source && workflow.sources?.length) {
-      if (workflow.sources.includes(criteria.source)) {
+      const matches = workflow.sources.includes(criteria.source);
+      if (matches) {
         score += 10;
+        matchCount++;
+      } else {
+        // Workflow has specific sources and this one doesn't match - EXCLUDE
+        isExcluded = true;
       }
     }
 
-    if (criteria.severity !== undefined) {
-      const minSev = workflow.severity_min ?? 1;
-      const maxSev = workflow.severity_max ?? 5;
-      if (criteria.severity >= minSev && criteria.severity <= maxSev) {
-        score += 5;
-      }
-    }
-
+    // Check priority - if workflow defines priorities, criteria MUST match
     if (criteria.priority !== undefined) {
-      const minPri = workflow.priority_min ?? 1;
-      const maxPri = workflow.priority_max ?? 5;
-      if (criteria.priority >= minPri && criteria.priority <= maxPri) {
+      // If workflow has priorities array (new format), use it
+      if (workflow.priorities && workflow.priorities.length > 0) {
+        if (workflow.priorities.includes(criteria.priority)) {
+          score += 5;
+          matchCount++;
+        } else {
+          // Workflow has specific priorities and this one doesn't match - EXCLUDE
+          isExcluded = true;
+        }
+      }
+      // Fallback to min/max range for backward compatibility
+      else if (workflow.priority_min !== undefined || workflow.priority_max !== undefined) {
+        const minPri = workflow.priority_min ?? 1;
+        const maxPri = workflow.priority_max ?? 5;
+        if (criteria.priority >= minPri && criteria.priority <= maxPri) {
+          score += 5;
+          matchCount++;
+        } else {
+          isExcluded = true;
+        }
+      }
+      // If no priorities specified at all, workflow accepts all priorities
+      else {
         score += 5;
+        matchCount++;
       }
     }
 
-    if (!workflow.classifications?.length && !workflow.locations?.length && !workflow.sources?.length) {
-      score += 1;
+    // Skip excluded workflows
+    if (isExcluded) {
+      continue;
     }
 
+    // Prefer workflows with more specific matching (more criteria matched)
     if (score > 0 && (!bestMatch || score > bestMatch.score)) {
       bestMatch = { workflow, score };
     }
   }
 
-  return bestMatch?.workflow || null;
+  // If no match found, return the default workflow
+  if (!bestMatch) {
+    const defaultWorkflow = activeWorkflows.find(w => w.is_default);
+    return defaultWorkflow || activeWorkflows[0] || null;
+  }
+
+  return bestMatch.workflow;
 };
 
 // File size limit: 10MB (adjust based on your server configuration)
@@ -439,6 +484,38 @@ const AddRequestScreen = () => {
     matchWorkflow();
   }, [matchWorkflow]);
 
+  // Auto-generate title from classification, location, and geolocation
+  useEffect(() => {
+    const parts: string[] = [];
+
+    // Add classification name
+    if (selectedClassification?.name) {
+      parts.push(selectedClassification.name);
+    }
+
+    // Add location name
+    if (selectedLocation?.name) {
+      parts.push(selectedLocation.name);
+    }
+
+    // Add geolocation area/address if available
+    if (locationData) {
+      if (locationData.area) {
+        parts.push(locationData.area);
+      } else if (locationData.address) {
+        parts.push(locationData.address);
+      } else if (locationData.city) {
+        parts.push(locationData.city);
+      }
+    }
+
+    // Generate title from parts
+    if (parts.length > 0) {
+      const generatedTitle = parts.join(' - ');
+      setTitle(generatedTitle);
+    }
+  }, [selectedClassification, selectedLocation, locationData]);
+
   const requiredFields = matchedWorkflow?.required_fields || [];
 
   const isFieldRequired = (fieldName: string): boolean => {
@@ -471,7 +548,28 @@ const AddRequestScreen = () => {
       newErrors.workflow = 'Please select classification, location, or source to match a workflow';
     }
 
+    // Always require classification, location, source, and priority on mobile
+    if (!selectedClassification) {
+      newErrors.classification_id = 'Classification is required';
+    }
+
+    if (!selectedLocation) {
+      newErrors.location_id = 'Location is required';
+    }
+
+    if (!selectedSource) {
+      newErrors.source = 'Source is required';
+    }
+
+    if (!selectedPriority) {
+      newErrors.priority = 'Priority is required';
+    }
+
     for (const field of requiredFields) {
+      // Skip classification, location, source, and priority since we already validated them above
+      if (field === 'classification_id' || field === 'location_id' || field === 'source' || field === 'priority') {
+        continue;
+      }
       // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
       if (field.startsWith('lookup:')) {
         const categoryCode = field.replace('lookup:', '');
@@ -974,16 +1072,15 @@ const AddRequestScreen = () => {
             <Text style={styles.sectionTitle}>
               Title <Text style={styles.required}>*</Text>
             </Text>
-            <TextInput
-              style={[styles.input, errors.title && styles.inputError]}
-              placeholder={t('addRequest.titlePlaceholder')}
-              value={title}
-              onChangeText={(text) => {
-                setTitle(text);
-                if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
-              }}
-              placeholderTextColor="#999"
-            />
+            <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
+              <Text style={[styles.autoGeneratedText, !title && styles.placeholderText]}>
+                {title || 'Auto-generated from classification, location, and area'}
+              </Text>
+              <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
+            </View>
+            <Text style={styles.helperText}>
+              Title is automatically generated from selected classification, location, and area
+            </Text>
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
             {/* Classification - only show if required */}
@@ -1444,6 +1541,32 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#E74C3C',
+  },
+  autoGeneratedField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    borderColor: '#D0D0D0',
+    paddingRight: 10,
+  },
+  autoGeneratedText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  lockIcon: {
+    marginLeft: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: -15,
+    marginBottom: 15,
+  },
+  placeholderText: {
+    color: '#999',
   },
   dropdown: {
     flexDirection: 'row',

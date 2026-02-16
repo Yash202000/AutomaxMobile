@@ -1,23 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { getIncidents, getRequests } from '@/src/api/incidents';
+import { getIncidents, getRequests } from "@/src/api/incidents";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 
 const COLORS = {
-  primary: '#1A237E',
-  accent: '#2EC4B6',
-  background: '#F5F7FA',
-  white: '#FFFFFF',
+  primary: "#1A237E",
+  accent: "#2EC4B6",
+  background: "#F5F7FA",
+  white: "#FFFFFF",
   text: {
-    primary: '#1A1A2E',
-    secondary: '#64748B',
-    muted: '#94A3B8',
+    primary: "#1A1A2E",
+    secondary: "#64748B",
+    muted: "#94A3B8",
   },
-  error: '#DC2626',
+  error: "#DC2626",
 };
 
 interface IncidentMarker {
@@ -34,7 +40,7 @@ const MapViewScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { type } = useLocalSearchParams<{ type?: string }>();
-  const recordType = type || 'incident';
+  const recordType = type || "incident";
   const webViewRef = useRef<WebView>(null);
 
   const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
@@ -48,11 +54,12 @@ const MapViewScreen = () => {
   const fetchIncidentsWithLocation = async () => {
     setLoading(true);
     try {
-      const fetchFunction = recordType === 'request' ? getRequests : getIncidents;
+      const fetchFunction =
+        recordType === "request" ? getRequests : getIncidents;
       const response = await fetchFunction({
         page: 1,
         limit: 1000,
-        has_location: true
+        has_location: true,
       });
 
       if (response.success && response.data) {
@@ -63,7 +70,7 @@ const MapViewScreen = () => {
             inc.longitude !== null &&
             inc.longitude !== undefined &&
             !isNaN(inc.latitude) &&
-            !isNaN(inc.longitude)
+            !isNaN(inc.longitude),
         );
         setIncidents(incidentsWithLocation);
 
@@ -73,21 +80,21 @@ const MapViewScreen = () => {
         }
       }
     } catch (error) {
-      console.error('❌ [MapView OSM] Error fetching incidents:', error);
+      console.error("❌ [MapView OSM] Error fetching incidents:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const updateMapMarkers = (incidentList: IncidentMarker[]) => {
-    const markersData = incidentList.map(inc => ({
+    const markersData = incidentList.map((inc) => ({
       id: inc.id,
       lat: parseFloat(String(inc.latitude)),
       lng: parseFloat(String(inc.longitude)),
       title: inc.title,
       number: inc.incident_number,
       priority: inc.priority || 0,
-      state: inc.current_state?.name || 'N/A',
+      state: inc.current_state?.name || "N/A",
     }));
 
     const markersJson = JSON.stringify(markersData);
@@ -99,12 +106,18 @@ const MapViewScreen = () => {
 
   const getMarkerColor = (priority?: number) => {
     switch (priority) {
-      case 1: return '#DC2626'; // Critical - Red
-      case 2: return '#EA580C'; // High - Orange
-      case 3: return '#F59E0B'; // Medium - Yellow
-      case 4: return '#3B82F6'; // Low - Blue
-      case 5: return '#22C55E'; // Very Low - Green
-      default: return '#2EC4B6'; // Default - Teal
+      case 1:
+        return "#DC2626"; // Critical - Red
+      case 2:
+        return "#EA580C"; // High - Orange
+      case 3:
+        return "#F59E0B"; // Medium - Yellow
+      case 4:
+        return "#3B82F6"; // Low - Blue
+      case 5:
+        return "#22C55E"; // Very Low - Green
+      default:
+        return "#2EC4B6"; // Default - Teal
     }
   };
 
@@ -112,17 +125,18 @@ const MapViewScreen = () => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
 
-      if (data.type === 'mapReady') {
+      if (data.type === "mapReady") {
         setMapReady(true);
         if (incidents.length > 0) {
           updateMapMarkers(incidents);
         }
-      } else if (data.type === 'markerClicked') {
-        const detailsPage = recordType === 'request' ? '/request-details' : '/incident-details';
+      } else if (data.type === "markerClicked") {
+        const detailsPage =
+          recordType === "request" ? "/request-details" : "/incident-details";
         router.push(`${detailsPage}?id=${data.id}`);
       }
     } catch (error) {
-      console.error('❌ [MapView OSM] Error handling message:', error);
+      console.error("❌ [MapView OSM] Error handling message:", error);
     }
   };
 
@@ -260,16 +274,24 @@ const MapViewScreen = () => {
   `;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {recordType === 'request' ? t('map.requests', 'Requests Map') : t('map.incidents', 'Incidents Map')}
+          {recordType === "request"
+            ? t("map.requests", "Requests Map")
+            : t("map.incidents", "Incidents Map")}
         </Text>
-        <TouchableOpacity onPress={fetchIncidentsWithLocation} style={styles.refreshButton}>
+        <TouchableOpacity
+          onPress={fetchIncidentsWithLocation}
+          style={styles.refreshButton}
+        >
           <Ionicons name="refresh" size={24} color={COLORS.white} />
         </TouchableOpacity>
       </View>
@@ -277,7 +299,7 @@ const MapViewScreen = () => {
       {loading && !mapReady ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <>
@@ -295,7 +317,10 @@ const MapViewScreen = () => {
           <View style={styles.infoBadge}>
             <Ionicons name="location" size={20} color={COLORS.accent} />
             <Text style={styles.infoBadgeText}>
-              {incidents.length} {recordType === 'request' ? t('map.requestsOnMap', 'requests on map') : t('map.incidentsOnMap', 'incidents on map')}
+              {incidents.length}{" "}
+              {recordType === "request"
+                ? t("map.requestsOnMap", "requests on map")
+                : t("map.incidentsOnMap", "incidents on map")}
             </Text>
           </View>
 
@@ -318,9 +343,9 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: COLORS.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -330,17 +355,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: COLORS.white,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   refreshButton: {
     padding: 8,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
@@ -351,16 +376,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoBadge: {
-    position: 'absolute',
-    top: 80,
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: "absolute",
+    top: 100,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -369,14 +394,14 @@ const styles = StyleSheet.create({
   },
   infoBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text.primary,
   },
   refreshOverlay: {
-    position: 'absolute',
-    top: 80,
+    position: "absolute",
+    top: 190,
     right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,

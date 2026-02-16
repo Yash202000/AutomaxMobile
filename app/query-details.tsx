@@ -643,6 +643,7 @@ const QueryDetailsScreen = () => {
                 location_id: query.location_id,
                 department_id: query.department_id,
                 assignee_id: query.assignee_id,
+                version: query.version,
               }),
             },
           })}

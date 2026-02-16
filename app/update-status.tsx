@@ -509,10 +509,12 @@ const UpdateStatusModal = () => {
       comment: comment.trim() || undefined,
       user_id: selectedUser?.id || undefined,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
-      feedback_rating: feedbackRating > 0 ? feedbackRating : undefined,
+      feedback: feedbackRating > 0 ? { rating: feedbackRating } : undefined,
       version: incident?.version || 1, // Include version for optimistic locking
     };
+
     const response = await executeTransition(incidentId, transitionData);
+
     setLoading(false);
     setUploadProgress('');
 

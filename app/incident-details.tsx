@@ -807,6 +807,7 @@ const IncidentDetailsScreen = () => {
                 location_id: incident.location_id,
                 department_id: incident.department_id,
                 assignee_id: incident.assignee_id,
+                version: incident.version,
               }),
             },
           })}

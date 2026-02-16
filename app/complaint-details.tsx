@@ -455,6 +455,7 @@ const ComplaintDetailsScreen = () => {
                 location_id: complaint.location_id,
                 department_id: complaint.department_id,
                 assignee_id: complaint.assignee_id,
+                version: complaint.version,
               }),
             },
           })}

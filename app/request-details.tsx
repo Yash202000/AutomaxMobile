@@ -464,6 +464,7 @@ const RequestDetailsScreen = () => {
                 location_id: request.location_id,
                 department_id: request.department_id,
                 assignee_id: request.assignee_id,
+                version: request.version,
               }),
             },
           })}
