@@ -56,7 +56,7 @@ const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { ic
 
 const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_name: string }; token: string }) => {
   const audioSource: AudioSource = {
-    uri: `${baseURL}/attachments/${attachment.id}`,
+    uri: `${baseURL}/attachments/${attachment.id}/preview`,
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -224,7 +224,7 @@ const QueryDetailsScreen = () => {
         await sound.unloadAsync();
       }
 
-      const audioUrl = `${baseURL}/attachments/${audioId}`;
+      const audioUrl = `${baseURL}/attachments/${audioId}/preview`;
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUrl, headers: { Authorization: `Bearer ${token}` } },
         { shouldPlay: true },
@@ -408,7 +408,7 @@ const QueryDetailsScreen = () => {
                   style={styles.imageThumb}
                 >
                   <Image
-                    source={{ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }}
+                    source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
                     style={styles.attachmentImage}
                   />
                 </TouchableOpacity>
@@ -442,7 +442,7 @@ const QueryDetailsScreen = () => {
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
             id: att.id,
-            uri: `${baseURL}/attachments/${att.id}`,
+            uri: `${baseURL}/attachments/${att.id}/preview`,
             file_name: att.file_name,
           }))}
           imageIndex={currentImageIndex}

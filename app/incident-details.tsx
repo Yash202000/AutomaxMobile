@@ -104,7 +104,7 @@ interface TransitionData {
 
 const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_name: string }; token: string }) => {
   const audioSource: AudioSource = {
-    uri: `${baseURL}/attachments/${attachment.id}`,
+    uri: `${baseURL}/attachments/${attachment.id}/preview`,
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -510,7 +510,7 @@ const IncidentDetailsScreen = () => {
                   style={styles.imageThumb}
                 >
                   <Image
-                    source={{ uri: `${baseURL}/attachments/${att.id}`, headers: { Authorization: `Bearer ${token}` } }}
+                    source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
                     style={styles.attachmentImage}
                   />
                 </TouchableOpacity>
@@ -544,7 +544,7 @@ const IncidentDetailsScreen = () => {
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
             id: att.id,
-            uri: `${baseURL}/attachments/${att.id}`,
+            uri: `${baseURL}/attachments/${att.id}/preview`,
             file_name: att.file_name,
           }))}
           imageIndex={currentImageIndex}

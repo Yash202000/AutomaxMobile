@@ -6,6 +6,10 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
+import { getDepartmentsTree } from '@/src/api/departments';
+import { getLocationsTree } from '@/src/api/locations';
+import { getClassificationsTree } from '@/src/api/classifications';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { LocationData } from '@/src/components/LocationPickerOSM';
@@ -56,6 +60,13 @@ const UpdateStatusModal = () => {
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Field change state
+  const [fieldChangeValues, setFieldChangeValues] = useState<Record<string, string>>({});
+  const [fieldChangeDisplayValues, setFieldChangeDisplayValues] = useState<Record<string, string>>({});
+  const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
+  const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
+  const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>([]);
 
   // Watermark processing state
   interface PendingWatermark {
@@ -469,6 +480,15 @@ const UpdateStatusModal = () => {
       return;
     }
 
+    // Validate required field changes
+    const fieldChanges = selectedTransition?.transition?.field_changes || [];
+    for (const fc of fieldChanges) {
+      if (fc.is_required && !fieldChangeValues[fc.field_name]) {
+        Alert.alert('Error', `${fc.label || fc.field_name} is required for this transition.`);
+        return;
+      }
+    }
+
     setLoading(true);
     let uploadedAttachmentIds = [];
 
@@ -511,6 +531,7 @@ const UpdateStatusModal = () => {
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
       feedback: feedbackRating > 0 ? { rating: feedbackRating } : undefined,
       version: incident?.version || 1, // Include version for optimistic locking
+      field_changes: Object.keys(fieldChangeValues).length > 0 ? fieldChangeValues : undefined,
     };
 
     const response = await executeTransition(incidentId, transitionData);
@@ -562,7 +583,21 @@ const UpdateStatusModal = () => {
     setMatchingUsers([]);
     setFeedbackRating(0);
     setComment('');
+    setFieldChangeValues({});
+    setFieldChangeDisplayValues({});
     setShowPicker(false);
+
+    // Pre-fetch tree data for field changes that need hierarchical pickers
+    const fcs = trans.transition?.field_changes || [];
+    if (fcs.some(fc => fc.field_name === 'department_id')) {
+      getDepartmentsTree().then(r => { if (r.success) setDepartmentsTree(r.data); });
+    }
+    if (fcs.some(fc => fc.field_name === 'location_id')) {
+      getLocationsTree().then(r => { if (r.success) setLocationsTree(r.data); });
+    }
+    if (fcs.some(fc => fc.field_name === 'classification_id')) {
+      getClassificationsTree().then(r => { if (r.success) setClassificationsTree(r.data); });
+    }
   };
 
   return (
@@ -734,6 +769,130 @@ const UpdateStatusModal = () => {
                   {feedbackRating === 5 && t('incidents.ratingExcellent')}
                 </Text>
               )}
+            </>
+          )}
+
+          {/* Field Changes */}
+          {selectedTransition?.transition?.field_changes?.length > 0 && (
+            <>
+              {selectedTransition.transition.field_changes
+                .slice()
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                .map((fc) => (
+                  <View key={fc.field_name}>
+                    <Text style={styles.label}>
+                      {fc.label || fc.field_name}{fc.is_required ? ' *' : ''}
+                    </Text>
+
+                    {fc.field_name === 'priority' && (
+                      <View style={styles.priorityRow}>
+                        {[1, 2, 3, 4, 5].map((p) => (
+                          <TouchableOpacity
+                            key={p}
+                            style={[
+                              styles.priorityBtn,
+                              fieldChangeValues['priority'] === String(p) && styles.priorityBtnSelected,
+                            ]}
+                            onPress={() =>
+                              setFieldChangeValues(prev => ({ ...prev, priority: String(p) }))
+                            }
+                          >
+                            <Text
+                              style={[
+                                styles.priorityBtnText,
+                                fieldChangeValues['priority'] === String(p) && styles.priorityBtnTextSelected,
+                              ]}
+                            >
+                              {p}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {fc.field_name === 'department_id' && (
+                      <TreeSelect
+                        label={fc.label || 'Department'}
+                        value={fieldChangeDisplayValues['department_id'] || ''}
+                        data={departmentsTree}
+                        onSelect={(node) => {
+                          if (node) {
+                            setFieldChangeValues(prev => ({ ...prev, department_id: node.id }));
+                            setFieldChangeDisplayValues(prev => ({ ...prev, department_id: node.name }));
+                          } else {
+                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.department_id; return next; });
+                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.department_id; return next; });
+                          }
+                        }}
+                        leafOnly={false}
+                        placeholder="Select department..."
+                      />
+                    )}
+
+                    {fc.field_name === 'location_id' && (
+                      <TreeSelect
+                        label={fc.label || 'Location'}
+                        value={fieldChangeDisplayValues['location_id'] || ''}
+                        data={locationsTree}
+                        onSelect={(node) => {
+                          if (node) {
+                            setFieldChangeValues(prev => ({ ...prev, location_id: node.id }));
+                            setFieldChangeDisplayValues(prev => ({ ...prev, location_id: node.name }));
+                          } else {
+                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.location_id; return next; });
+                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.location_id; return next; });
+                          }
+                        }}
+                        leafOnly={false}
+                        placeholder="Select location..."
+                      />
+                    )}
+
+                    {fc.field_name === 'classification_id' && (
+                      <TreeSelect
+                        label={fc.label || 'Classification'}
+                        value={fieldChangeDisplayValues['classification_id'] || ''}
+                        data={classificationsTree}
+                        onSelect={(node) => {
+                          if (node) {
+                            setFieldChangeValues(prev => ({ ...prev, classification_id: node.id }));
+                            setFieldChangeDisplayValues(prev => ({ ...prev, classification_id: node.name }));
+                          } else {
+                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.classification_id; return next; });
+                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.classification_id; return next; });
+                          }
+                        }}
+                        leafOnly={false}
+                        placeholder="Select classification..."
+                      />
+                    )}
+
+                    {fc.field_name === 'title' && (
+                      <TextInput
+                        style={styles.fieldInput}
+                        placeholder="Enter title..."
+                        placeholderTextColor="#999"
+                        value={fieldChangeValues['title'] || ''}
+                        onChangeText={(text) =>
+                          setFieldChangeValues(prev => ({ ...prev, title: text }))
+                        }
+                      />
+                    )}
+
+                    {fc.field_name === 'description' && (
+                      <TextInput
+                        style={[styles.fieldInput, styles.fieldInputMultiline]}
+                        placeholder="Enter description..."
+                        placeholderTextColor="#999"
+                        multiline
+                        value={fieldChangeValues['description'] || ''}
+                        onChangeText={(text) =>
+                          setFieldChangeValues(prev => ({ ...prev, description: text }))
+                        }
+                      />
+                    )}
+                  </View>
+                ))}
             </>
           )}
 
@@ -1112,6 +1271,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Field Change Styles
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  priorityBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+  },
+  priorityBtnSelected: {
+    borderColor: '#2EC4B6',
+    backgroundColor: '#E8F8F7',
+  },
+  priorityBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  priorityBtnTextSelected: {
+    color: '#2EC4B6',
+  },
+  fieldInput: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  fieldInputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   // Bottom Sheet Styles
   bottomSheetOverlay: {
