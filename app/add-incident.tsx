@@ -24,7 +24,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getLocationsTree } from '@/src/api/locations';
-import { getWorkflows } from '@/src/api/workflow';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
@@ -183,110 +183,6 @@ const sourceOptions: DropdownOption[] = [
   { id: 'mobile', name: 'Mobile App' }, // Only mobile option for mobile app
 ];
 
-// Workflow matching function (updated to match web client logic with exclusions)
-const findMatchingWorkflow = (
-  workflows: Workflow[],
-  criteria: {
-    classification_id?: string;
-    location_id?: string;
-    source?: string;
-    severity?: number;
-    priority?: number;
-  }
-): Workflow | null => {
-  const activeWorkflows = workflows.filter(w => w.is_active);
-  let bestMatch: { workflow: Workflow; score: number } | null = null;
-
-  for (const workflow of activeWorkflows) {
-    let score = 0;
-    let matchCount = 0;
-    let isExcluded = false;
-
-    // Check classification match
-    if (criteria.classification_id && workflow.classifications?.length) {
-      const matches = workflow.classifications.some(c => c.id === criteria.classification_id);
-      if (matches) {
-        score += 10;
-        matchCount++;
-      } else {
-        // Workflow has specific classifications and this one doesn't match - EXCLUDE
-        isExcluded = true;
-      }
-    }
-
-    // Check location match
-    if (criteria.location_id && workflow.locations?.length) {
-      const matches = workflow.locations.some(l => l.id === criteria.location_id);
-      if (matches) {
-        score += 10;
-        matchCount++;
-      } else {
-        // Workflow has specific locations and this one doesn't match - EXCLUDE
-        isExcluded = true;
-      }
-    }
-
-    // Check source match - if workflow defines sources, criteria MUST match
-    if (criteria.source && workflow.sources?.length) {
-      const matches = workflow.sources.includes(criteria.source);
-      if (matches) {
-        score += 10;
-        matchCount++;
-      } else {
-        // Workflow has specific sources and this one doesn't match - EXCLUDE
-        isExcluded = true;
-      }
-    }
-
-    // Check priority - if workflow defines priorities, criteria MUST match
-    if (criteria.priority !== undefined) {
-      // If workflow has priorities array (new format), use it
-      if (workflow.priorities && workflow.priorities.length > 0) {
-        if (workflow.priorities.includes(criteria.priority)) {
-          score += 5;
-          matchCount++;
-        } else {
-          // Workflow has specific priorities and this one doesn't match - EXCLUDE
-          isExcluded = true;
-        }
-      }
-      // Fallback to min/max range for backward compatibility
-      else if (workflow.priority_min !== undefined || workflow.priority_max !== undefined) {
-        const minPri = workflow.priority_min ?? 1;
-        const maxPri = workflow.priority_max ?? 5;
-        if (criteria.priority >= minPri && criteria.priority <= maxPri) {
-          score += 5;
-          matchCount++;
-        } else {
-          isExcluded = true;
-        }
-      }
-      // If no priorities specified at all, workflow accepts all priorities
-      else {
-        score += 5;
-        matchCount++;
-      }
-    }
-
-    // Skip excluded workflows
-    if (isExcluded) {
-      continue;
-    }
-
-    // Prefer workflows with more specific matching (more criteria matched)
-    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
-      bestMatch = { workflow, score };
-    }
-  }
-
-  // If no match found, return the default workflow
-  if (!bestMatch) {
-    const defaultWorkflow = activeWorkflows.find(w => w.is_default);
-    return defaultWorkflow || activeWorkflows[0] || null;
-  }
-
-  return bestMatch.workflow;
-};
 
 // File size limit: 10MB (adjust based on your server configuration)
 const MAX_FILE_SIZE_MB = 10;
@@ -568,31 +464,35 @@ const AddIncidentScreen = () => {
     setLoadingData(false);
   };
 
-  // Auto-match workflow when criteria change
-  const matchWorkflow = useCallback(() => {
-    if (allWorkflows.length === 0) return;
-
-    const matched = findMatchingWorkflow(allWorkflows, {
-      classification_id: selectedClassification?.id,
-      location_id: selectedLocation?.id,
-      source: selectedSource?.id,
-      severity: parseInt(selectedSeverity.id),
+  // Auto-match workflow via backend API when criteria change
+  const matchWorkflow = useCallback(async () => {
+    const criteria = {
+      classification_id: selectedClassification?.id || undefined,
+      location_id: selectedLocation?.id || undefined,
+      source: selectedSource?.id || undefined,
       priority: parseInt(selectedPriority.id),
-    });
+    };
 
-    setMatchedWorkflow(matched);
-  }, [
-    allWorkflows,
-    selectedClassification,
-    selectedLocation,
-    selectedSource,
-    selectedSeverity,
-    selectedPriority,
-  ]);
+    try {
+      const result = await matchWorkflowAPI(criteria);
+      if (result.success && result.data?.workflow_id) {
+        const matched = allWorkflows.find(w => w.id === result.data.workflow_id) || null;
+        setMatchedWorkflow(matched ?? allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      } else if (allWorkflows.length > 0) {
+        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      }
+    } catch {
+      if (allWorkflows.length > 0) {
+        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      }
+    }
+  }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
 
   useEffect(() => {
-    matchWorkflow();
-  }, [matchWorkflow]);
+    if (allWorkflows.length > 0) {
+      matchWorkflow();
+    }
+  }, [selectedClassification?.id, selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
 
   // Auto-generate title from classification, location, and geolocation
   useEffect(() => {

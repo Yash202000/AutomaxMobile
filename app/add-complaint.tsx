@@ -20,7 +20,7 @@ import { Audio } from 'expo-av';
 import { createComplaint, uploadMultipleComplaintAttachments, getIncidents } from '@/src/api/incidents';
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getLocations } from '@/src/api/locations';
-import { getWorkflows } from '@/src/api/workflow';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
 import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
@@ -179,67 +179,6 @@ const channelOptions: DropdownOption[] = [
   { id: 'other', name: 'Other' },
 ];
 
-const findMatchingWorkflow = (
-  workflows: Workflow[],
-  criteria: {
-    classification_id?: string;
-    location_id?: string;
-    source?: string;
-    severity?: number;
-    priority?: number;
-  }
-): Workflow | null => {
-  const activeWorkflows = workflows.filter(w => w.is_active);
-  let bestMatch: { workflow: Workflow; score: number } | null = null;
-
-  for (const workflow of activeWorkflows) {
-    let score = 0;
-
-    if (criteria.classification_id && workflow.classifications?.length) {
-      if (workflow.classifications.some(c => c.id === criteria.classification_id)) {
-        score += 10;
-      }
-    }
-
-    if (criteria.location_id && workflow.locations?.length) {
-      if (workflow.locations.some(l => l.id === criteria.location_id)) {
-        score += 10;
-      }
-    }
-
-    if (criteria.source && workflow.sources?.length) {
-      if (workflow.sources.includes(criteria.source)) {
-        score += 10;
-      }
-    }
-
-    if (criteria.severity !== undefined) {
-      const minSev = workflow.severity_min ?? 1;
-      const maxSev = workflow.severity_max ?? 5;
-      if (criteria.severity >= minSev && criteria.severity <= maxSev) {
-        score += 5;
-      }
-    }
-
-    if (criteria.priority !== undefined) {
-      const minPri = workflow.priority_min ?? 1;
-      const maxPri = workflow.priority_max ?? 5;
-      if (criteria.priority >= minPri && criteria.priority <= maxPri) {
-        score += 5;
-      }
-    }
-
-    if (!workflow.classifications?.length && !workflow.locations?.length && !workflow.sources?.length) {
-      score += 1;
-    }
-
-    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
-      bestMatch = { workflow, score };
-    }
-  }
-
-  return bestMatch?.workflow || null;
-};
 
 const AddComplaintScreen = () => {
   const router = useRouter();
@@ -431,30 +370,35 @@ const AddComplaintScreen = () => {
     return () => clearTimeout(timer);
   }, [incidentSearch, searchIncidents]);
 
-  const matchWorkflow = useCallback(() => {
-    if (allWorkflows.length === 0) return;
-
-    const matched = findMatchingWorkflow(allWorkflows, {
-      classification_id: selectedClassification?.id,
-      location_id: selectedLocation?.id,
-      source: selectedSource?.id,
-      severity: parseInt(selectedSeverity.id),
+  // Auto-match workflow via backend API when criteria change
+  const matchWorkflow = useCallback(async () => {
+    const criteria = {
+      classification_id: selectedClassification?.id || undefined,
+      location_id: selectedLocation?.id || undefined,
+      source: selectedSource?.id || undefined,
       priority: parseInt(selectedPriority.id),
-    });
+    };
 
-    setMatchedWorkflow(matched);
-  }, [
-    allWorkflows,
-    selectedClassification,
-    selectedLocation,
-    selectedSource,
-    selectedSeverity,
-    selectedPriority,
-  ]);
+    try {
+      const result = await matchWorkflowAPI(criteria);
+      if (result.success && result.data?.workflow_id) {
+        const matched = allWorkflows.find(w => w.id === result.data.workflow_id) || null;
+        setMatchedWorkflow(matched ?? allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      } else if (allWorkflows.length > 0) {
+        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      }
+    } catch {
+      if (allWorkflows.length > 0) {
+        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+      }
+    }
+  }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
 
   useEffect(() => {
-    matchWorkflow();
-  }, [matchWorkflow]);
+    if (allWorkflows.length > 0) {
+      matchWorkflow();
+    }
+  }, [selectedClassification?.id, selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
 
   const requiredFields = matchedWorkflow?.required_fields || [];
 

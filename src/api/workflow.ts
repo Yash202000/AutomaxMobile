@@ -23,6 +23,23 @@ export const getWorkflows = async (activeOnly = true, recordType?: RecordType) =
   }
 };
 
+export const matchWorkflow = async (criteria: {
+  classification_id?: string;
+  location_id?: string;
+  source?: string;
+  priority?: number;
+}) => {
+  try {
+    const response = await apiClient.post('/admin/workflows/match', criteria);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
 export const getWorkflowStates = async (workflowId: string) => {
   try {
     const response = await apiClient.get(`/admin/workflows/${workflowId}/states`);
