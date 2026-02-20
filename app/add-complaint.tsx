@@ -1,31 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getDepartments } from '@/src/api/departments';
+import { createComplaint, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
+import { getLocations } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
+import { getUsers } from '@/src/api/users';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
+import { TreeNode } from '@/src/components/TreeSelect';
+import { useAuth } from '@/src/context/AuthContext';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Alert,
   ActivityIndicator,
-  Modal,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
-  Platform
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { Audio } from 'expo-av';
-import { createComplaint, uploadMultipleComplaintAttachments, getIncidents } from '@/src/api/incidents';
-import { getClassificationsTree } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { getUsers } from '@/src/api/users';
-import { getDepartments } from '@/src/api/departments';
-import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { useAuth } from '@/src/context/AuthContext';
 
 interface DropdownOption {
   id: string;
@@ -36,6 +36,7 @@ interface Workflow {
   id: string;
   name: string;
   is_active: boolean;
+  is_default?: boolean;
   required_fields?: string[];
   classifications?: { id: string; name: string }[];
   locations?: { id: string; name: string }[];
@@ -55,6 +56,7 @@ interface DropdownProps {
   required?: boolean;
   error?: string;
   allowClear?: boolean;
+  disabled?: boolean;
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -64,6 +66,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   onSelect,
   loading,
   required,
+  disabled,
   error,
   allowClear = true
 }) => {
@@ -74,6 +77,7 @@ const Dropdown: React.FC<DropdownProps> = ({
       <TouchableOpacity
         style={[styles.dropdown, error && styles.dropdownError]}
         onPress={() => setModalVisible(true)}
+        disabled={disabled}
       >
         <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
           {value || label}
@@ -189,8 +193,9 @@ const AddComplaintScreen = () => {
   const [description, setDescription] = useState('');
   const [reporterName, setReporterName] = useState('');
   const [reporterEmail, setReporterEmail] = useState('');
-  const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
+  // const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
+  const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
   const [selectedSource] = useState<DropdownOption>({ id: 'mobile', name: 'Mobile App' }); // Fixed to mobile, non-editable
   const [selectedChannel, setSelectedChannel] = useState<DropdownOption | null>(null);
   const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
@@ -241,7 +246,7 @@ const AddComplaintScreen = () => {
         getWorkflows(true, 'complaint'),
         getUsers(),
         getDepartments(),
-        getLookupCategories().catch(err => ({ success: false, error: err.message })),
+        getLookupCategories().catch(err => ({ success: false, error: err.message, data: [] })),
       ]);
 
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
@@ -292,6 +297,9 @@ const AddComplaintScreen = () => {
           };
 
           normalizedClassifications = filterByUserAccess(normalizedClassifications);
+        }
+        if (normalizedClassifications.length) {
+          setSelectedClassification({ id: normalizedClassifications?.[0]?.children?.[0]?.id || '', name: normalizedClassifications?.[0]?.children?.[0]?.name || '' })
         }
 
         setClassifications(normalizedClassifications);
@@ -373,7 +381,6 @@ const AddComplaintScreen = () => {
   // Auto-match workflow via backend API when criteria change
   const matchWorkflow = useCallback(async () => {
     const criteria = {
-      classification_id: selectedClassification?.id || undefined,
       location_id: selectedLocation?.id || undefined,
       source: selectedSource?.id || undefined,
       priority: parseInt(selectedPriority.id),
@@ -392,13 +399,13 @@ const AddComplaintScreen = () => {
         setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
       }
     }
-  }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
+  }, [allWorkflows, selectedLocation, selectedSource, selectedPriority]);
 
   useEffect(() => {
     if (allWorkflows.length > 0) {
       matchWorkflow();
     }
-  }, [selectedClassification?.id, selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
+  }, [selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
 
   const requiredFields = matchedWorkflow?.required_fields || [];
 
@@ -428,10 +435,6 @@ const AddComplaintScreen = () => {
 
     if (!title.trim()) {
       newErrors.title = 'Title is required';
-    }
-
-    if (!selectedClassification) {
-      newErrors.classification_id = 'Classification is required';
     }
 
     if (!matchedWorkflow) {
@@ -489,6 +492,8 @@ const AddComplaintScreen = () => {
 
       if (!value || (typeof value === 'string' && !value.trim())) {
         newErrors[field] = `${fieldLabels[field] || field} is required`;
+      } else if (field === 'classification_id' && !value) {
+        alert('Please contact administrator to configure the query classification');
       }
     }
 
@@ -613,11 +618,11 @@ const AddComplaintScreen = () => {
     }
 
     if (description.trim()) complaintData.description = description.trim();
-    if (selectedClassification) complaintData.classification_id = selectedClassification.id;
     if (selectedLocation) complaintData.location_id = selectedLocation.id;
     if (selectedSource) complaintData.source = selectedSource.id;
     if (selectedChannel) complaintData.channel = selectedChannel.id;
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
+    if (selectedClassification) complaintData.classification_id = selectedClassification.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
     if (selectedSourceIncident) complaintData.source_incident_id = selectedSourceIncident.id;
     if (reporterName.trim()) complaintData.reporter_name = reporterName.trim();
@@ -630,7 +635,7 @@ const AddComplaintScreen = () => {
     }
 
     const response = await createComplaint(complaintData);
-
+    console.log('Complaint created:', classifications);
     if (response.success) {
       // Upload audio files if any
       if (audioFiles.length > 0) {
@@ -712,50 +717,36 @@ const AddComplaintScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            <Text style={styles.sectionTitle}>
-              Classification <Text style={styles.required}>*</Text>
-            </Text>
-            <TreeSelect
-              label={t('addComplaint.selectClassification')}
-              value={selectedClassification?.name || ''}
-              data={classifications}
-              onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
-              required={true}
-              error={errors.classification_id}
-              leafOnly={true}
-              placeholder={t('addComplaint.selectClassification')}
-            />
-
             {isFieldRequired('channel') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Channel <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectChannel')}
-              value={selectedChannel?.name || ''}
-              options={channelOptions}
-              onSelect={setSelectedChannel}
-              required={true}
-              error={errors.channel}
-            />
-            </>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Channel <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label={t('addComplaint.selectChannel')}
+                  value={selectedChannel?.name || ''}
+                  options={channelOptions}
+                  onSelect={setSelectedChannel}
+                  required={true}
+                  error={errors.channel}
+                />
+              </>
             )}
 
             {isFieldRequired('location_id') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Location <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectLocation')}
-              value={selectedLocation?.name || ''}
-              options={locations}
-              onSelect={setSelectedLocation}
-              required={true}
-              error={errors.location_id}
-            />
-            </>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Location <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label={t('addComplaint.selectLocation')}
+                  value={selectedLocation?.name || ''}
+                  options={locations}
+                  onSelect={setSelectedLocation}
+                  required={true}
+                  error={errors.location_id}
+                />
+              </>
             )}
 
             {/* Source field - always mobile for mobile app, non-editable */}
@@ -766,7 +757,7 @@ const AddComplaintScreen = () => {
               label={t('addComplaint.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
-              onSelect={() => {}} // No-op, field is not editable
+              onSelect={() => { }} // No-op, field is not editable
               required={isFieldRequired('source')}
               error={errors.source}
               disabled={true}
@@ -805,244 +796,244 @@ const AddComplaintScreen = () => {
             })}
 
             {(isFieldRequired('priority') || isFieldRequired('severity')) && (
-            <View style={styles.row}>
-              {isFieldRequired('priority') && (
-              <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
-                <Text style={styles.sectionTitle}>
-                  Priority <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addComplaint.selectPriority')}
-                  value={selectedPriority.name}
-                  options={priorityOptions}
-                  onSelect={(opt) => opt && setSelectedPriority(opt)}
-                  allowClear={false}
-                />
+              <View style={styles.row}>
+                {isFieldRequired('priority') && (
+                  <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                    <Text style={styles.sectionTitle}>
+                      Priority <Text style={styles.required}>*</Text>
+                    </Text>
+                    <Dropdown
+                      label={t('addComplaint.selectPriority')}
+                      value={selectedPriority.name}
+                      options={priorityOptions}
+                      onSelect={(opt) => opt && setSelectedPriority(opt)}
+                      allowClear={false}
+                    />
+                  </View>
+                )}
+                {isFieldRequired('severity') && (
+                  <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                    <Text style={styles.sectionTitle}>
+                      Severity <Text style={styles.required}>*</Text>
+                    </Text>
+                    <Dropdown
+                      label={t('addComplaint.selectSeverity')}
+                      value={selectedSeverity.name}
+                      options={severityOptions}
+                      onSelect={(opt) => opt && setSelectedSeverity(opt)}
+                      allowClear={false}
+                    />
+                  </View>
+                )}
               </View>
-              )}
-              {isFieldRequired('severity') && (
-              <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
-                <Text style={styles.sectionTitle}>
-                  Severity <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addComplaint.selectSeverity')}
-                  value={selectedSeverity.name}
-                  options={severityOptions}
-                  onSelect={(opt) => opt && setSelectedSeverity(opt)}
-                  allowClear={false}
-                />
-              </View>
-              )}
-            </View>
             )}
 
             {isFieldRequired('assignee_id') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Assignee <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectAssignee')}
-              value={selectedAssignee?.name || ''}
-              options={users}
-              onSelect={setSelectedAssignee}
-              required={true}
-              error={errors.assignee_id}
-            />
-            </>
-            )}
-
-            {isFieldRequired('department_id') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Department <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectDepartment')}
-              value={selectedDepartment?.name || ''}
-              options={departments}
-              onSelect={setSelectedDepartment}
-              required={true}
-              error={errors.department_id}
-            />
-            </>
-            )}
-
-            {isFieldRequired('source_incident_id') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Source Incident Reference <Text style={styles.required}>*</Text>
-            </Text>
-
-            {selectedSourceIncident ? (
-              <View style={styles.selectedIncidentCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.selectedIncidentText}>{selectedSourceIncident.name}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setSelectedSourceIncident(null)}>
-                  <Ionicons name="close-circle" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-            ) : (
               <>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder={t('addComplaint.searchIncident', 'Search by incident number or title...')}
-                    value={incidentSearch}
-                    onChangeText={setIncidentSearch}
-                    placeholderTextColor="#999"
-                  />
-                  {loadingIncidents && <ActivityIndicator size="small" color="#666" />}
-                </View>
-
-                {searchedIncidents.length > 0 && (
-                  <View style={styles.searchResults}>
-                    <ScrollView style={{ maxHeight: 200 }}>
-                      {searchedIncidents.map((incident) => (
-                        <TouchableOpacity
-                          key={incident.id}
-                          style={styles.searchResultItem}
-                          onPress={() => {
-                            setSelectedSourceIncident(incident);
-                            setIncidentSearch('');
-                            setSearchedIncidents([]);
-                            if (errors.source_incident_id) {
-                              setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                            }
-                          }}
-                        >
-                          <Text style={styles.searchResultText}>{incident.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                {incidentSearch.length >= 2 && !loadingIncidents && searchedIncidents.length === 0 && (
-                  <Text style={styles.noResultsText}>
-                    {t('addComplaint.noIncidentsFound', 'No incidents found')}
-                  </Text>
-                )}
+                <Text style={styles.sectionTitle}>
+                  Assignee <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label={t('addComplaint.selectAssignee')}
+                  value={selectedAssignee?.name || ''}
+                  options={users}
+                  onSelect={setSelectedAssignee}
+                  required={true}
+                  error={errors.assignee_id}
+                />
               </>
             )}
 
-            {errors.source_incident_id && <Text style={styles.errorText}>{errors.source_incident_id}</Text>}
-            </>
+            {isFieldRequired('department_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Department <Text style={styles.required}>*</Text>
+                </Text>
+                <Dropdown
+                  label={t('addComplaint.selectDepartment')}
+                  value={selectedDepartment?.name || ''}
+                  options={departments}
+                  onSelect={setSelectedDepartment}
+                  required={true}
+                  error={errors.department_id}
+                />
+              </>
+            )}
+
+            {isFieldRequired('source_incident_id') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Source Incident Reference <Text style={styles.required}>*</Text>
+                </Text>
+
+                {selectedSourceIncident ? (
+                  <View style={styles.selectedIncidentCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.selectedIncidentText}>{selectedSourceIncident.name}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedSourceIncident(null)}>
+                      <Ionicons name="close-circle" size={24} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.searchInputContainer}>
+                      <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder={t('addComplaint.searchIncident', 'Search by incident number or title...')}
+                        value={incidentSearch}
+                        onChangeText={setIncidentSearch}
+                        placeholderTextColor="#999"
+                      />
+                      {loadingIncidents && <ActivityIndicator size="small" color="#666" />}
+                    </View>
+
+                    {searchedIncidents.length > 0 && (
+                      <View style={styles.searchResults}>
+                        <ScrollView style={{ maxHeight: 200 }}>
+                          {searchedIncidents.map((incident) => (
+                            <TouchableOpacity
+                              key={incident.id}
+                              style={styles.searchResultItem}
+                              onPress={() => {
+                                setSelectedSourceIncident(incident);
+                                setIncidentSearch('');
+                                setSearchedIncidents([]);
+                                if (errors.source_incident_id) {
+                                  setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                                }
+                              }}
+                            >
+                              <Text style={styles.searchResultText}>{incident.name}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+
+                    {incidentSearch.length >= 2 && !loadingIncidents && searchedIncidents.length === 0 && (
+                      <Text style={styles.noResultsText}>
+                        {t('addComplaint.noIncidentsFound', 'No incidents found')}
+                      </Text>
+                    )}
+                  </>
+                )}
+
+                {errors.source_incident_id && <Text style={[styles.errorText, { marginTop: 1 }]}>{errors.source_incident_id}</Text>}
+              </>
             )}
 
             {isFieldRequired('description') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Description <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.descriptionInput, errors.description && styles.inputError]}
-              placeholder={t('addComplaint.descriptionPlaceholder')}
-              multiline
-              value={description}
-              onChangeText={(text) => {
-                setDescription(text);
-                if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-              }}
-              placeholderTextColor="#999"
-              textAlignVertical="top"
-            />
-            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-            </>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Description <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  placeholder={t('addComplaint.descriptionPlaceholder')}
+                  multiline
+                  value={description}
+                  onChangeText={(text) => {
+                    setDescription(text);
+                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                  textAlignVertical="top"
+                />
+                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+              </>
             )}
 
             {isFieldRequired('reporter_name') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Reporter Name <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, errors.reporter_name && styles.inputError]}
-              placeholder={t('addComplaint.reporterNamePlaceholder')}
-              value={reporterName}
-              onChangeText={(text) => {
-                setReporterName(text);
-                if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
-              }}
-              placeholderTextColor="#999"
-            />
-            {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
-            </>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Reporter Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  placeholder={t('addComplaint.reporterNamePlaceholder')}
+                  value={reporterName}
+                  onChangeText={(text) => {
+                    setReporterName(text);
+                    if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                />
+                {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+              </>
             )}
 
             {isFieldRequired('reporter_email') && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Reporter Email <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, errors.reporter_email && styles.inputError]}
-              placeholder={t('addComplaint.reporterEmailPlaceholder')}
-              value={reporterEmail}
-              onChangeText={(text) => {
-                setReporterEmail(text);
-                if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
-              }}
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
-            </>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Reporter Email <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  placeholder={t('addComplaint.reporterEmailPlaceholder')}
+                  value={reporterEmail}
+                  onChangeText={(text) => {
+                    setReporterEmail(text);
+                    if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+              </>
             )}
 
             {/* Voice Recording Section */}
             {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
-            <>
-            <Text style={styles.sectionTitle}>
-              Voice Recording <Text style={styles.required}>*</Text>
-            </Text>
+              <>
+                <Text style={styles.sectionTitle}>
+                  Voice Recording <Text style={styles.required}>*</Text>
+                </Text>
 
-            {/* Recorded Audio Files */}
-            {audioFiles.length > 0 && (
-              <View style={styles.audioList}>
-                {audioFiles.map((audio, index) => (
-                  <View key={index} style={styles.audioItem}>
-                    <View style={styles.audioInfo}>
-                      <Ionicons name="mic" size={20} color="#3B82F6" />
-                      <Text style={styles.audioText}>
-                        Recording {index + 1} ({formatDuration(audio.duration)})
-                      </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => removeAudio(index)}>
-                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
+                {/* Recorded Audio Files */}
+                {audioFiles.length > 0 && (
+                  <View style={styles.audioList}>
+                    {audioFiles.map((audio, index) => (
+                      <View key={index} style={styles.audioItem}>
+                        <View style={styles.audioInfo}>
+                          <Ionicons name="mic" size={20} color="#3B82F6" />
+                          <Text style={styles.audioText}>
+                            Recording {index + 1} ({formatDuration(audio.duration)})
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => removeAudio(index)}>
+                          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
-            )}
+                )}
 
-            {/* Recording Button */}
-            <TouchableOpacity
-              style={[
-                styles.recordButton,
-                recording && styles.recordingButton
-              ]}
-              onPress={recording ? stopRecording : startRecording}
-            >
-              {recording ? (
-                <>
-                  <Ionicons name="stop" size={24} color="#fff" />
-                  <Text style={styles.recordButtonText}>
-                    Stop Recording ({formatDuration(recordingDuration)})
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="mic" size={24} color="#fff" />
-                  <Text style={styles.recordButtonText}>Start Recording</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            </>
+                {/* Recording Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.recordButton,
+                    recording && styles.recordingButton
+                  ]}
+                  onPress={recording ? stopRecording : startRecording}
+                >
+                  {recording ? (
+                    <>
+                      <Ionicons name="stop" size={24} color="#fff" />
+                      <Text style={styles.recordButtonText}>
+                        Stop Recording ({formatDuration(recordingDuration)})
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="mic" size={24} color="#fff" />
+                      <Text style={styles.recordButtonText}>Start Recording</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
 
             <View style={styles.bottomPadding} />
@@ -1359,7 +1350,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#333',
-    padding: 0,
+
+    padding: 8,
   },
   searchResults: {
     backgroundColor: 'white',
