@@ -68,6 +68,12 @@ const UpdateStatusModal = () => {
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>([]);
 
+  // Recursively filter department tree by type ('internal' | 'external')
+  const filterDeptTree = (nodes: TreeNode[], type: string): TreeNode[] =>
+    nodes
+      .map(node => ({ ...node, children: node.children ? filterDeptTree(node.children, type) : [] }))
+      .filter(node => node.type === type || (node.children && node.children.length > 0));
+
   // Watermark processing state
   interface PendingWatermark {
     id: string;
@@ -814,7 +820,7 @@ const UpdateStatusModal = () => {
                       <TreeSelect
                         label={fc.label || 'Department'}
                         value={fieldChangeDisplayValues['department_id'] || ''}
-                        data={departmentsTree}
+                        data={fc.department_type_filter ? filterDeptTree(departmentsTree, fc.department_type_filter) : departmentsTree}
                         onSelect={(node) => {
                           if (node) {
                             setFieldChangeValues(prev => ({ ...prev, department_id: node.id }));
@@ -825,7 +831,7 @@ const UpdateStatusModal = () => {
                           }
                         }}
                         leafOnly={false}
-                        placeholder="Select department..."
+                        placeholder={fc.department_type_filter ? `Select ${fc.department_type_filter} department...` : 'Select department...'}
                       />
                     )}
 

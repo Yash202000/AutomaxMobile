@@ -16,6 +16,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export interface TreeNode {
   id: string;
   name: string;
+  type?: string;
   children?: TreeNode[];
   parent_id?: string | null;
 }
