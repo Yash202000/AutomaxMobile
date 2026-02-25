@@ -1,43 +1,42 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ActionSheetIOS,
-  Linking,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getDepartments } from '@/src/api/departments';
 import { createIncident, uploadMultipleAttachments } from '@/src/api/incidents';
+import { getLocationsTree } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
+import { getUsers } from '@/src/api/users';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
+import { DynamicLookupField } from '@/src/components/DynamicLookupField';
+import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { WatermarkPreview } from '@/src/components/WatermarkPreview';
+import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
+import { useAuth } from '@/src/context/AuthContext';
+import { crashLogger } from '@/src/utils/crashLogger';
+import { compressImage } from '@/src/utils/imageCompression';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { getClassificationsTree } from '@/src/api/classifications';
-import { getLocationsTree } from '@/src/api/locations';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { getUsers } from '@/src/api/users';
-import { getDepartments } from '@/src/api/departments';
-import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
-import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { DynamicLookupField } from '@/src/components/DynamicLookupField';
-import { crashLogger } from '@/src/utils/crashLogger';
-import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
-import * as FileSystem from 'expo-file-system/legacy';
-import { useAuth } from '@/src/context/AuthContext';
-import { compressImage } from '@/src/utils/imageCompression';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownOption {
   id: string;
@@ -291,8 +290,8 @@ const AddIncidentScreen = () => {
           return nodes.map(node => {
             const nodeWithType = node as any;
             const validType = !nodeWithType.type ||
-                             nodeWithType.type === 'incident' ||
-                             nodeWithType.type === 'all';
+              nodeWithType.type === 'incident' ||
+              nodeWithType.type === 'all';
 
             if (!validType) return null;
 
@@ -353,6 +352,9 @@ const AddIncidentScreen = () => {
 
           filteredClassifications = filterByUserAccess(filteredClassifications);
         }
+
+        //filtering only Ministry classification
+        filteredClassifications = filteredClassifications.filter(node => node.name === 'Ministry');
 
         setClassifications(filteredClassifications);
       } else {
@@ -1093,60 +1095,60 @@ const AddIncidentScreen = () => {
         severity: severityNum,
       };
 
-    if (description.trim()) incidentData.description = description.trim();
-    if (selectedClassification) incidentData.classification_id = selectedClassification.id;
-    if (selectedLocation) incidentData.location_id = selectedLocation.id;
-    if (selectedSource) incidentData.source = selectedSource.id;
-    if (selectedAssignee) incidentData.assignee_id = selectedAssignee.id;
-    if (selectedDepartment) incidentData.department_id = selectedDepartment.id;
-    if (locationData) {
-      incidentData.latitude = locationData.latitude;
-      incidentData.longitude = locationData.longitude;
-      if (locationData.address) incidentData.address = locationData.address;
-      if (locationData.city) incidentData.city = locationData.city;
-      if (locationData.state) incidentData.state = locationData.state;
-      if (locationData.country) incidentData.country = locationData.country;
-      if (locationData.postal_code) incidentData.postal_code = locationData.postal_code;
-    }
-    if (reporterName.trim()) incidentData.reporter_name = reporterName.trim();
-    if (reporterEmail.trim()) incidentData.reporter_email = reporterEmail.trim();
-
-    // Separate lookup values by field type
-    const selectLookupIds: string[] = [];
-    const customLookupFields: Record<string, any> = {};
-
-    for (const [categoryId, value] of Object.entries(lookupValues)) {
-      const category = lookupCategories.find(c => c.id === categoryId);
-      if (!category) continue;
-
-      const fieldType = category.field_type || 'select';
-
-      if (fieldType === 'select' || fieldType === 'multiselect') {
-        // Add to lookup_value_ids array
-        if (Array.isArray(value)) {
-          selectLookupIds.push(...value.filter(Boolean));
-        } else if (value) {
-          selectLookupIds.push(value);
-        }
-      } else {
-        // Add to custom_lookup_fields with metadata
-        customLookupFields[`lookup:${category.code}`] = {
-          value: value,
-          field_type: fieldType,
-          category_id: categoryId,
-        };
+      if (description.trim()) incidentData.description = description.trim();
+      if (selectedClassification) incidentData.classification_id = selectedClassification.id;
+      if (selectedLocation) incidentData.location_id = selectedLocation.id;
+      if (selectedSource) incidentData.source = selectedSource.id;
+      if (selectedAssignee) incidentData.assignee_id = selectedAssignee.id;
+      if (selectedDepartment) incidentData.department_id = selectedDepartment.id;
+      if (locationData) {
+        incidentData.latitude = locationData.latitude;
+        incidentData.longitude = locationData.longitude;
+        if (locationData.address) incidentData.address = locationData.address;
+        if (locationData.city) incidentData.city = locationData.city;
+        if (locationData.state) incidentData.state = locationData.state;
+        if (locationData.country) incidentData.country = locationData.country;
+        if (locationData.postal_code) incidentData.postal_code = locationData.postal_code;
       }
-    }
+      if (reporterName.trim()) incidentData.reporter_name = reporterName.trim();
+      if (reporterEmail.trim()) incidentData.reporter_email = reporterEmail.trim();
 
-    if (selectLookupIds.length > 0) {
-      incidentData.lookup_value_ids = selectLookupIds;
-    }
+      // Separate lookup values by field type
+      const selectLookupIds: string[] = [];
+      const customLookupFields: Record<string, any> = {};
 
-    if (Object.keys(customLookupFields).length > 0) {
-      incidentData.custom_lookup_fields = customLookupFields;
-    }
+      for (const [categoryId, value] of Object.entries(lookupValues)) {
+        const category = lookupCategories.find(c => c.id === categoryId);
+        if (!category) continue;
 
-    const response = await createIncident(incidentData);
+        const fieldType = category.field_type || 'select';
+
+        if (fieldType === 'select' || fieldType === 'multiselect') {
+          // Add to lookup_value_ids array
+          if (Array.isArray(value)) {
+            selectLookupIds.push(...value.filter(Boolean));
+          } else if (value) {
+            selectLookupIds.push(value);
+          }
+        } else {
+          // Add to custom_lookup_fields with metadata
+          customLookupFields[`lookup:${category.code}`] = {
+            value: value,
+            field_type: fieldType,
+            category_id: categoryId,
+          };
+        }
+      }
+
+      if (selectLookupIds.length > 0) {
+        incidentData.lookup_value_ids = selectLookupIds;
+      }
+
+      if (Object.keys(customLookupFields).length > 0) {
+        incidentData.custom_lookup_fields = customLookupFields;
+      }
+
+      const response = await createIncident(incidentData);
 
       if (response.success && response.data && response.data.id) {
         // Upload attachments if any
@@ -1311,7 +1313,7 @@ const AddIncidentScreen = () => {
               label={t('addIncident.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
-              onSelect={() => {}} // No-op, field is not editable on mobile
+              onSelect={() => { }} // No-op, field is not editable on mobile
               required={true}
               error={errors.source}
               allowClear={false}
