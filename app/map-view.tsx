@@ -51,6 +51,12 @@ const MapViewScreen = () => {
     fetchIncidentsWithLocation();
   }, []);
 
+  useEffect(() => {
+    if (mapReady && incidents.length > 0) {
+      updateMapMarkers(incidents);
+    }
+  }, [mapReady, incidents]);
+
   const fetchIncidentsWithLocation = async () => {
     setLoading(true);
     try {
@@ -58,8 +64,7 @@ const MapViewScreen = () => {
         recordType === "request" ? getRequests : getIncidents;
       const response = await fetchFunction({
         page: 1,
-        limit: 1000,
-        has_location: true,
+        limit: 100,
       });
 
       if (response.success && response.data) {
@@ -73,14 +78,9 @@ const MapViewScreen = () => {
             !isNaN(inc.longitude),
         );
         setIncidents(incidentsWithLocation);
-
-        // Update map markers
-        if (mapReady && incidentsWithLocation.length > 0) {
-          updateMapMarkers(incidentsWithLocation);
-        }
       }
     } catch (error) {
-      console.error("❌ [MapView OSM] Error fetching incidents:", error);
+      // silent
     } finally {
       setLoading(false);
     }
@@ -127,9 +127,6 @@ const MapViewScreen = () => {
 
       if (data.type === "mapReady") {
         setMapReady(true);
-        if (incidents.length > 0) {
-          updateMapMarkers(incidents);
-        }
       } else if (data.type === "markerClicked") {
         const detailsPage =
           recordType === "request" ? "/request-details" : "/incident-details";
@@ -174,8 +171,8 @@ const MapViewScreen = () => {
 <body>
   <div id="map"></div>
   <script>
-    // Initialize map centered on Dubai/Riyadh
-    const map = L.map('map').setView([24.7136, 46.6753], 10);
+    // Initialize map centered on Saudi Arabia
+    const map = L.map('map').setView([24.7136, 46.6753], 6);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

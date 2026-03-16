@@ -292,6 +292,7 @@ const AddIncidentScreen = () => {
             const nodeWithType = node as any;
             const validType = !nodeWithType.type ||
                              nodeWithType.type === 'incident' ||
+                             nodeWithType.type === 'both' ||
                              nodeWithType.type === 'all';
 
             if (!validType) return null;

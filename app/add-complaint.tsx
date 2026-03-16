@@ -180,6 +180,7 @@ const channelOptions: DropdownOption[] = [
   { id: 'mobile', name: 'Mobile App' },
   { id: 'social_media', name: 'Social Media' },
   { id: 'in_person', name: 'In Person' },
+  { id: 'viusional', name: 'Viusional' },
   { id: 'other', name: 'Other' },
 ];
 

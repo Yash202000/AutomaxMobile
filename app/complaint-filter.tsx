@@ -54,6 +54,7 @@ const channels = [
   { value: 'mobile', label: 'Mobile App' },
   { value: 'social_media', label: 'Social Media' },
   { value: 'in_person', label: 'In Person' },
+  { value: 'viusional', label: 'Viusional' },
   { value: 'other', label: 'Other' },
 ];
 

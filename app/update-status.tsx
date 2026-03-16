@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable, Alert, ActivityIndicator, ScrollView, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -6,7 +6,7 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
-import { getDepartmentsTree } from '@/src/api/departments';
+import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
 import { getLocationsTree } from '@/src/api/locations';
 import { getClassificationsTree } from '@/src/api/classifications';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
@@ -26,23 +26,24 @@ const UpdateStatusModal = () => {
   const incidentId = Array.isArray(id) ? id[0] : id;
   const ticketType = Array.isArray(type) ? type[0] : (type || 'incident');
 
-  // Safely parse JSON with error handling to prevent crashes
-  let availableTransitions = [];
-  let incident = null;
+  // Safely parse JSON — wrapped in useMemo so the object reference is stable across renders
+  const availableTransitions = useMemo(() => {
+    try {
+      return transitions ? JSON.parse(transitions as string) : [];
+    } catch (error) {
+      console.error('[UpdateStatus] Failed to parse transitions:', error);
+      return [];
+    }
+  }, [transitions]);
 
-  try {
-    availableTransitions = transitions ? JSON.parse(transitions as string) : [];
-  } catch (error) {
-    console.error('[UpdateStatus] Failed to parse transitions:', error);
-    availableTransitions = [];
-  }
-
-  try {
-    incident = incidentParam ? JSON.parse(incidentParam as string) : null;
-  } catch (error) {
-    console.error('[UpdateStatus] Failed to parse incident:', error);
-    incident = null;
-  }
+  const incident = useMemo(() => {
+    try {
+      return incidentParam ? JSON.parse(incidentParam as string) : null;
+    } catch (error) {
+      console.error('[UpdateStatus] Failed to parse incident:', error);
+      return null;
+    }
+  }, [incidentParam]);
 
   const [selectedTransition, setSelectedTransition] = useState(null);
   const [comment, setComment] = useState('');
@@ -54,6 +55,19 @@ const UpdateStatusModal = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [singleUserMatch, setSingleUserMatch] = useState(false);
+
+  // Department selection state (auto_detect_department)
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
+  const [departmentMatchResult, setDepartmentMatchResult] = useState<any>(null);
+  const [loadingDeptMatch, setLoadingDeptMatch] = useState(false);
+
+  // Ready-to-close duration state
+  const [readyToCloseDuration, setReadyToCloseDuration] = useState('');
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+
+  // Feedback comment state
+  const [feedbackComment, setFeedbackComment] = useState('');
 
   // Attachment state
   const [attachments, setAttachments] = useState([]);
@@ -229,37 +243,184 @@ const UpdateStatusModal = () => {
   const showCommentField = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment');
   const showFeedbackField = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback');
 
-  // Check if manual user selection is needed
-  const needsManualUserSelection = selectedTransition?.transition?.manual_select_user && selectedTransition?.transition?.assignment_role_id;
+  // Check if user selection is needed (manual_select_user or auto_match_user with roles)
+  const needsUserSelection =
+    (selectedTransition?.transition?.manual_select_user || selectedTransition?.transition?.auto_match_user) &&
+    selectedTransition?.transition?.assignment_roles?.length > 0;
 
-  // Fetch matching users when a transition with manual_select_user is selected
+  // Check if department selection is needed
+  const needsDeptSelection =
+    selectedTransition?.transition?.auto_detect_department && !selectedTransition?.transition?.assign_department_id;
+
+  // is_ready_to_close duration needed
+  const isReadyToClose = selectedTransition?.transition?.to_state?.is_ready_to_close === true;
+
+  const readyToCloseDurationOptions = [
+    { label: '1 hour', value: '1h' },
+    { label: '2 hours', value: '2h' },
+    { label: '4 hours', value: '4h' },
+    { label: '8 hours', value: '8h' },
+    { label: '24 hours', value: '24h' },
+    { label: '48 hours', value: '48h' },
+    { label: '72 hours', value: '72h' },
+  ];
+
+  // Step wizard state
+  const [transitionStep, setTransitionStep] = useState(0);
+
+  // Compute wizard steps based on selected transition
+  const transitionSteps = useMemo<string[]>(() => {
+    if (!selectedTransition) return [];
+    const trans = selectedTransition.transition;
+    const steps: string[] = [];
+    if (trans.assign_department_id || trans.auto_detect_department) steps.push('department');
+    if (trans.assign_user_id || ((trans.auto_match_user || trans.manual_select_user) && trans.assignment_roles?.length > 0)) steps.push('user');
+    if (trans.field_changes?.length > 0) steps.push('field_changes');
+    if (trans.to_state?.is_ready_to_close) steps.push('duration');
+    if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'attachment' && r.is_mandatory)) steps.push('attachment');
+    if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'feedback')) steps.push('feedback');
+    steps.push('comment');
+    return steps;
+  }, [selectedTransition]);
+
+  const stepTitles: Record<string, string> = {
+    department: 'Department Assignment',
+    user: 'User Assignment',
+    field_changes: 'Field Changes',
+    duration: 'Auto-Revert Duration',
+    attachment: t('incidents.attachment', 'Attachment'),
+    feedback: t('incidents.feedback', 'Feedback'),
+    comment: t('incidents.comment', 'Comment'),
+  };
+
+  const currentStepKey = transitionSteps[transitionStep];
+  const isLastStep = transitionStep === transitionSteps.length - 1;
+
+  const validateStep = (): boolean => {
+    if (!selectedTransition || !currentStepKey) return true;
+    const trans = selectedTransition.transition;
+
+    if (currentStepKey === 'department') {
+      // Block while still loading
+      if (loadingDeptMatch) {
+        Alert.alert('Please wait', 'Loading departments...');
+        return false;
+      }
+      // Block if department selection is needed and nothing selected
+      if (needsDeptSelection && !selectedDepartmentId) {
+        Alert.alert('Required', 'Please select a department to continue.');
+        return false;
+      }
+    }
+
+    if (currentStepKey === 'user') {
+      // Block while still loading
+      if (loadingUsers) {
+        Alert.alert('Please wait', 'Loading matching users...');
+        return false;
+      }
+      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUser automatically)
+      if (needsUserSelection && !selectedUser && !trans.assign_user_id) {
+        Alert.alert('Required', 'Please select a user to continue.');
+        return false;
+      }
+    }
+
+    if (currentStepKey === 'attachment' && transitionRequiresAttachment && attachments.length === 0) {
+      Alert.alert('Required', 'At least one attachment is required.');
+      return false;
+    }
+
+    if (currentStepKey === 'feedback' && transitionRequiresFeedback && feedbackRating === 0) {
+      Alert.alert('Required', 'Please provide a feedback rating.');
+      return false;
+    }
+
+    if (currentStepKey === 'comment' && transitionRequiresComment && !comment.trim()) {
+      Alert.alert('Required', 'A comment is required for this transition.');
+      return false;
+    }
+
+    if (currentStepKey === 'field_changes') {
+      const fcs = trans.field_changes || [];
+      for (const fc of fcs) {
+        if (fc.is_required && !fieldChangeValues[fc.field_name]) {
+          Alert.alert('Required', `${fc.label || fc.field_name} is required.`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const handleNext = () => {
+    if (!validateStep()) return;
+    if (isLastStep) {
+      handleUpdate();
+    } else {
+      setTransitionStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (transitionStep === 0) {
+      // Back to transition selection
+      setSelectedTransition(null);
+      setTransitionStep(0);
+    } else {
+      setTransitionStep(prev => prev - 1);
+    }
+  };
+
+  const isStepMandatory = (): boolean => {
+    if (!currentStepKey || !selectedTransition) return false;
+    const trans = selectedTransition.transition;
+    if (currentStepKey === 'department') return needsDeptSelection;
+    if (currentStepKey === 'user') return trans.manual_select_user && !trans.assign_user_id;
+    if (currentStepKey === 'attachment') return transitionRequiresAttachment;
+    if (currentStepKey === 'feedback') return transitionRequiresFeedback;
+    if (currentStepKey === 'comment') return transitionRequiresComment;
+    if (currentStepKey === 'duration') return true;
+    return false;
+  };
+
+  // Fetch matching users when a transition with user selection is needed
   useEffect(() => {
     const fetchMatchingUsers = async () => {
-      if (!needsManualUserSelection || !incident) return;
+      if (!needsUserSelection || !incident) return;
 
       setLoadingUsers(true);
+      const roleIds = selectedTransition.transition.assignment_roles?.map((r: any) => r.id) || [];
       const matchCriteria = {
-        role_id: selectedTransition.transition.assignment_role_id,
-        classification_id: incident.classification_id || null,
-        location_id: incident.location_id || null,
-        department_id: incident.department_id || null,
-        exclude_user_id: incident.assignee_id || null,
+        role_ids: roleIds,
+        classification_id: incident.classification_id || incident.classification?.id || null,
+        location_id: incident.location_id || incident.location?.id || null,
+        department_id: incident.department_id || incident.department?.id || null,
+        exclude_user_id: incident.assignee_id || incident.assignee?.id || null,
       };
 
       const response = await getMatchingUsers(matchCriteria);
       setLoadingUsers(false);
 
       if (response.success) {
-        setMatchingUsers(response.data.users || []);
+        const users = response.data.users || [];
+        setMatchingUsers(users);
+        const isSingle = response.data.single_match === true;
+        setSingleUserMatch(isSingle);
+        if (isSingle && users.length === 1) {
+          setSelectedUser(users[0]);
+        }
       } else {
         setMatchingUsers([]);
+        setSingleUserMatch(false);
       }
     };
 
     if (selectedTransition) {
       fetchMatchingUsers();
     }
-  }, [selectedTransition, needsManualUserSelection, incident]);
+  }, [selectedTransition, needsUserSelection, incident]);
 
   // Request camera permissions
   const requestCameraPermission = async () => {
@@ -477,8 +638,12 @@ const UpdateStatusModal = () => {
       Alert.alert('Error', 'Please provide a feedback rating for this transition.');
       return;
     }
-    if (needsManualUserSelection && !selectedUser) {
+    if (needsUserSelection && !selectedUser) {
       Alert.alert('Error', 'Please select a user to assign this incident to.');
+      return;
+    }
+    if (needsDeptSelection && !selectedDepartmentId) {
+      Alert.alert('Error', 'Please select a department for this transition.');
       return;
     }
     if (transitionRequiresAttachment && attachments.length === 0) {
@@ -530,13 +695,24 @@ const UpdateStatusModal = () => {
 
     // Execute the transition
     setUploadProgress('Updating status...');
-    const transitionData = {
+
+    // Determine department_id: static assign or auto-detected selection
+    let departmentId: string | undefined;
+    if (selectedTransition.transition?.assign_department_id) {
+      departmentId = selectedTransition.transition.assign_department_id;
+    } else if (needsDeptSelection && selectedDepartmentId) {
+      departmentId = selectedDepartmentId;
+    }
+
+    const transitionData: any = {
       transition_id: selectedTransition.transition.id,
       comment: comment.trim() || undefined,
-      user_id: selectedUser?.id || undefined,
+      user_ids: selectedUser ? [selectedUser.id] : undefined,
+      department_id: departmentId,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
-      feedback: feedbackRating > 0 ? { rating: feedbackRating } : undefined,
-      version: incident?.version || 1, // Include version for optimistic locking
+      feedback: feedbackRating > 0 ? { rating: feedbackRating, comment: feedbackComment.trim() || undefined } : undefined,
+      ready_to_close_duration: readyToCloseDuration || undefined,
+      version: incident?.version || 1,
       field_changes: Object.keys(fieldChangeValues).length > 0 ? fieldChangeValues : undefined,
     };
 
@@ -587,10 +763,16 @@ const UpdateStatusModal = () => {
     setSelectedTransition(trans);
     setSelectedUser(null);
     setMatchingUsers([]);
+    setSingleUserMatch(false);
     setFeedbackRating(0);
+    setFeedbackComment('');
     setComment('');
     setFieldChangeValues({});
     setFieldChangeDisplayValues({});
+    setSelectedDepartmentId('');
+    setDepartmentMatchResult(null);
+    setReadyToCloseDuration('');
+    setTransitionStep(0);
     setShowPicker(false);
 
     // Pre-fetch tree data for field changes that need hierarchical pickers
@@ -604,6 +786,30 @@ const UpdateStatusModal = () => {
     if (fcs.some(fc => fc.field_name === 'classification_id')) {
       getClassificationsTree().then(r => { if (r.success) setClassificationsTree(r.data); });
     }
+
+    // Auto-detect department: fetch match result
+    if (trans.transition?.auto_detect_department && !trans.transition?.assign_department_id && incident) {
+      setLoadingDeptMatch(true);
+      const criteria: any = {
+        classification_id: incident.classification_id || incident.classification?.id || undefined,
+        location_id: incident.location_id || incident.location?.id || undefined,
+      };
+      if (trans.transition?.department_type_filter) {
+        criteria.department_type = trans.transition.department_type_filter;
+      }
+      matchDepartments(criteria).then(r => {
+        setLoadingDeptMatch(false);
+        if (r.success && r.data) {
+          setDepartmentMatchResult(r.data);
+          if (r.data.single_match && r.data.matched_department_id) {
+            setSelectedDepartmentId(r.data.matched_department_id);
+          }
+        } else {
+          // API failed — show empty result so UI doesn't stay blank
+          setDepartmentMatchResult({ departments: [], single_match: false });
+        }
+      });
+    }
   };
 
   return (
@@ -614,334 +820,345 @@ const UpdateStatusModal = () => {
       <View style={styles.modalContainer}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('incidents.updateTheStatus')}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>{t('incidents.updateTheStatus')}</Text>
+            {selectedTransition && transitionSteps.length > 0 && (
+              <Text style={styles.stepCounter}>
+                Step {transitionStep + 1} of {transitionSteps.length}
+              </Text>
+            )}
+          </View>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="close-circle" size={28} color="#E74C3C" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-          {/* Status/Transition Picker */}
-          <Text style={styles.label}>{t('incidents.selectStatus')}</Text>
-          <TouchableOpacity style={styles.dropdown} onPress={() => setShowPicker(true)}>
-            <Text style={[styles.dropdownText, !selectedTransition && styles.placeholder]}>
-              {selectedTransition ? selectedTransition.transition.name : t('incidents.selectTheStatus')}
-            </Text>
-            <FontAwesome name="chevron-down" size={16} color="#666" />
-          </TouchableOpacity>
-
-          <Modal
-            transparent={true}
-            visible={showPicker}
-            onRequestClose={() => setShowPicker(false)}
-          >
-            <Pressable style={styles.pickerOverlay} onPress={() => setShowPicker(false)}>
-              <View style={styles.pickerContainer}>
-                <Text style={styles.pickerTitle}>{t('incidents.selectStatus')}</Text>
-                {availableTransitions.map((trans, index) => (
-                  <TouchableOpacity
-                    key={trans.transition.id}
-                    style={[
-                      styles.pickerItem,
-                      selectedTransition?.transition.id === trans.transition.id && styles.pickerItemSelected
-                    ]}
-                    onPress={() => handleTransitionSelect(trans)}
-                  >
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedTransition?.transition.id === trans.transition.id && styles.pickerItemTextSelected
-                    ]}>
-                      {trans.transition.name}
-                    </Text>
-                    {trans.transition.to_state && (
-                      <Text style={styles.pickerItemSubtext}>
-                        to {trans.transition.to_state.name}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Pressable>
-          </Modal>
-
-          {/* User Assignment Picker - only show if manual selection is needed */}
-          {needsManualUserSelection && (
-            <>
-              <Text style={styles.label}>{t('incidents.assignToUser')}</Text>
-              {loadingUsers ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#2EC4B6" />
-                  <Text style={styles.loadingText}>Loading matching users...</Text>
-                </View>
-              ) : matchingUsers.length > 0 ? (
-                <>
-                  <TouchableOpacity style={styles.dropdown} onPress={() => setShowUserPicker(true)}>
-                    <Text style={[styles.dropdownText, !selectedUser && styles.placeholder]}>
-                      {selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : t('incidents.selectAUser')}
-                    </Text>
-                    <FontAwesome name="chevron-down" size={16} color="#666" />
-                  </TouchableOpacity>
-
-                  <Modal
-                    transparent={true}
-                    visible={showUserPicker}
-                    onRequestClose={() => setShowUserPicker(false)}
-                  >
-                    <Pressable style={styles.pickerOverlay} onPress={() => setShowUserPicker(false)}>
-                      <View style={styles.pickerContainer}>
-                        <Text style={styles.pickerTitle}>Select User</Text>
-                        <ScrollView style={{ maxHeight: 300 }}>
-                          {matchingUsers.map((user) => (
-                            <TouchableOpacity
-                              key={user.id}
-                              style={[
-                                styles.pickerItem,
-                                selectedUser?.id === user.id && styles.pickerItemSelected
-                              ]}
-                              onPress={() => {
-                                setSelectedUser(user);
-                                setShowUserPicker(false);
-                              }}
-                            >
-                              <Text style={[
-                                styles.pickerItemText,
-                                selectedUser?.id === user.id && styles.pickerItemTextSelected
-                              ]}>
-                                {user.first_name} {user.last_name}
-                              </Text>
-                              <Text style={styles.pickerItemSubtext}>
-                                {user.email}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    </Pressable>
-                  </Modal>
-                </>
-              ) : (
-                <View style={styles.noUsersContainer}>
-                  <Ionicons name="person-outline" size={24} color="#999" />
-                  <Text style={styles.noUsersText}>No matching users found</Text>
-                </View>
-              )}
-            </>
-          )}
-
-          {/* Comment Field */}
-          {(showCommentField || selectedTransition) && (
-            <>
-              <Text style={styles.label}>
-                {transitionRequiresComment ? t('incidents.commentRequired') : t('incidents.commentOptional')}
-              </Text>
-              <TextInput
-                style={styles.commentInput}
-                placeholder={t('incidents.addCommentPlaceholder')}
-                placeholderTextColor="#999"
-                multiline
-                value={comment}
-                onChangeText={setComment}
-              />
-            </>
-          )}
-
-          {/* Feedback Rating Field */}
-          {showFeedbackField && (
-            <>
-              <Text style={styles.label}>
-                {transitionRequiresFeedback ? t('incidents.feedbackRatingRequired') : t('incidents.feedbackRatingOptional')}
-              </Text>
-              <View style={styles.starRatingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() => setFeedbackRating(star)}
-                    style={styles.starButton}
-                  >
-                    <Ionicons
-                      name={star <= feedbackRating ? 'star' : 'star-outline'}
-                      size={36}
-                      color={star <= feedbackRating ? '#FFD700' : '#CCC'}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {feedbackRating > 0 && (
-                <Text style={styles.ratingText}>
-                  {feedbackRating === 1 && t('incidents.ratingPoor')}
-                  {feedbackRating === 2 && t('incidents.ratingFair')}
-                  {feedbackRating === 3 && t('incidents.ratingGood')}
-                  {feedbackRating === 4 && t('incidents.ratingVeryGood')}
-                  {feedbackRating === 5 && t('incidents.ratingExcellent')}
+        {/* State indicator + progress dots (shown after transition is selected) */}
+        {selectedTransition && (
+          <View style={styles.wizardInfoBar}>
+            <View style={styles.stateRow}>
+              <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.from_state?.color || '#888') + '22' }]}>
+                <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.from_state?.color || '#888' }]}>
+                  {selectedTransition.transition.from_state?.name || 'Current'}
                 </Text>
-              )}
-            </>
-          )}
+              </View>
+              <Ionicons name="arrow-forward" size={14} color="#888" style={{ marginHorizontal: 6 }} />
+              <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.to_state?.color || '#2EC4B6') + '22' }]}>
+                <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.to_state?.color || '#2EC4B6' }]}>
+                  {selectedTransition.transition.to_state?.name || 'Next'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.dotsRow}>
+              {transitionSteps.map((_, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.dot,
+                    idx === transitionStep ? styles.dotActive : idx < transitionStep ? styles.dotDone : styles.dotPending,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
-          {/* Field Changes */}
-          {selectedTransition?.transition?.field_changes?.length > 0 && (
+        <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+
+          {/* ── TRANSITION SELECTION SCREEN (no transition picked yet) ── */}
+          {!selectedTransition && (
             <>
-              {selectedTransition.transition.field_changes
-                .slice()
-                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                .map((fc) => (
-                  <View key={fc.field_name}>
-                    <Text style={styles.label}>
-                      {fc.label || fc.field_name}{fc.is_required ? ' *' : ''}
-                    </Text>
-
-                    {fc.field_name === 'priority' && (
-                      <View style={styles.priorityRow}>
-                        {[1, 2, 3, 4, 5].map((p) => (
-                          <TouchableOpacity
-                            key={p}
-                            style={[
-                              styles.priorityBtn,
-                              fieldChangeValues['priority'] === String(p) && styles.priorityBtnSelected,
-                            ]}
-                            onPress={() =>
-                              setFieldChangeValues(prev => ({ ...prev, priority: String(p) }))
-                            }
-                          >
-                            <Text
-                              style={[
-                                styles.priorityBtnText,
-                                fieldChangeValues['priority'] === String(p) && styles.priorityBtnTextSelected,
-                              ]}
-                            >
-                              {p}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+              <Text style={styles.stepLabel}>{t('incidents.selectStatus')}</Text>
+              <Text style={styles.stepHint}>Choose the action you want to perform</Text>
+              {availableTransitions.map((trans) => (
+                <TouchableOpacity
+                  key={trans.transition.id}
+                  style={styles.transitionCard}
+                  onPress={() => handleTransitionSelect(trans)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transitionCardTitle}>{trans.transition.name}</Text>
+                    {trans.transition.to_state && (
+                      <View style={styles.transitionCardStateRow}>
+                        <Text style={styles.transitionCardStateLabel}>→ </Text>
+                        <View style={[styles.stateBadge, { backgroundColor: (trans.transition.to_state.color || '#2EC4B6') + '22' }]}>
+                          <Text style={[styles.stateBadgeText, { color: trans.transition.to_state.color || '#2EC4B6' }]}>
+                            {trans.transition.to_state.name}
+                          </Text>
+                        </View>
                       </View>
-                    )}
-
-                    {fc.field_name === 'department_id' && (
-                      <TreeSelect
-                        label={fc.label || 'Department'}
-                        value={fieldChangeDisplayValues['department_id'] || ''}
-                        data={fc.department_type_filter ? filterDeptTree(departmentsTree, fc.department_type_filter) : departmentsTree}
-                        onSelect={(node) => {
-                          if (node) {
-                            setFieldChangeValues(prev => ({ ...prev, department_id: node.id }));
-                            setFieldChangeDisplayValues(prev => ({ ...prev, department_id: node.name }));
-                          } else {
-                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.department_id; return next; });
-                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.department_id; return next; });
-                          }
-                        }}
-                        leafOnly={false}
-                        placeholder={fc.department_type_filter ? `Select ${fc.department_type_filter} department...` : 'Select department...'}
-                      />
-                    )}
-
-                    {fc.field_name === 'location_id' && (
-                      <TreeSelect
-                        label={fc.label || 'Location'}
-                        value={fieldChangeDisplayValues['location_id'] || ''}
-                        data={locationsTree}
-                        onSelect={(node) => {
-                          if (node) {
-                            setFieldChangeValues(prev => ({ ...prev, location_id: node.id }));
-                            setFieldChangeDisplayValues(prev => ({ ...prev, location_id: node.name }));
-                          } else {
-                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.location_id; return next; });
-                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.location_id; return next; });
-                          }
-                        }}
-                        leafOnly={false}
-                        placeholder="Select location..."
-                      />
-                    )}
-
-                    {fc.field_name === 'classification_id' && (
-                      <TreeSelect
-                        label={fc.label || 'Classification'}
-                        value={fieldChangeDisplayValues['classification_id'] || ''}
-                        data={classificationsTree}
-                        onSelect={(node) => {
-                          if (node) {
-                            setFieldChangeValues(prev => ({ ...prev, classification_id: node.id }));
-                            setFieldChangeDisplayValues(prev => ({ ...prev, classification_id: node.name }));
-                          } else {
-                            setFieldChangeValues(prev => { const next = { ...prev }; delete next.classification_id; return next; });
-                            setFieldChangeDisplayValues(prev => { const next = { ...prev }; delete next.classification_id; return next; });
-                          }
-                        }}
-                        leafOnly={false}
-                        placeholder="Select classification..."
-                      />
-                    )}
-
-                    {fc.field_name === 'title' && (
-                      <TextInput
-                        style={styles.fieldInput}
-                        placeholder="Enter title..."
-                        placeholderTextColor="#999"
-                        value={fieldChangeValues['title'] || ''}
-                        onChangeText={(text) =>
-                          setFieldChangeValues(prev => ({ ...prev, title: text }))
-                        }
-                      />
-                    )}
-
-                    {fc.field_name === 'description' && (
-                      <TextInput
-                        style={[styles.fieldInput, styles.fieldInputMultiline]}
-                        placeholder="Enter description..."
-                        placeholderTextColor="#999"
-                        multiline
-                        value={fieldChangeValues['description'] || ''}
-                        onChangeText={(text) =>
-                          setFieldChangeValues(prev => ({ ...prev, description: text }))
-                        }
-                      />
                     )}
                   </View>
-                ))}
+                  <Ionicons name="chevron-forward" size={20} color="#CCC" />
+                </TouchableOpacity>
+              ))}
             </>
           )}
 
-          {/* Attachment Field */}
-          {(transitionRequiresAttachment || selectedTransition) && (
-            <>
-              <Text style={styles.label}>
-                {transitionRequiresAttachment ? t('incidents.attachmentsRequired') : t('incidents.attachmentsOptional')}
-              </Text>
+          {/* ── WIZARD STEPS (transition selected) ── */}
+          {selectedTransition && currentStepKey && (
+            <View style={{ paddingBottom: 8 }}>
+              {/* Step title */}
+              <View style={styles.stepTitleRow}>
+                <Text style={styles.stepLabel}>{stepTitles[currentStepKey]}</Text>
+                {isStepMandatory()
+                  ? <Text style={styles.stepRequired}>Required</Text>
+                  : <Text style={styles.stepOptional}>Optional</Text>
+                }
+              </View>
 
-              {/* Attachment Preview */}
-              {attachments.length > 0 && (
-                <View style={styles.attachmentPreviewContainer}>
-                  {attachments.map((attachment, index) => (
-                    <View key={index} style={styles.attachmentPreview}>
-                      <Image
-                        source={{ uri: attachment.uri }}
-                        style={styles.attachmentThumbnail}
-                        contentFit="cover"
-                      />
-                      <TouchableOpacity
-                        style={styles.removeAttachmentBtn}
-                        onPress={() => removeAttachment(index)}
-                      >
-                        <Ionicons name="close-circle" size={24} color="#E74C3C" />
-                      </TouchableOpacity>
+              {/* ── DEPARTMENT STEP ── */}
+              {currentStepKey === 'department' && (
+                <>
+                  {selectedTransition.transition.assign_department_id ? (
+                    <View style={styles.autoAssignedCard}>
+                      <Ionicons name="business-outline" size={20} color="#2EC4B6" />
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.autoAssignedName}>Department pre-configured</Text>
+                      </View>
+                      <Text style={styles.autoAssignedBadge}>Auto</Text>
                     </View>
-                  ))}
-                </View>
+                  ) : loadingDeptMatch ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#2EC4B6" />
+                      <Text style={styles.loadingText}>Finding matching departments...</Text>
+                    </View>
+                  ) : departmentMatchResult?.single_match ? (
+                    <View style={styles.autoAssignedCard}>
+                      <Ionicons name="business-outline" size={20} color="#2EC4B6" />
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.autoAssignedName}>
+                          {departmentMatchResult.departments?.[0]?.name || 'Department auto-selected'}
+                        </Text>
+                      </View>
+                      <Text style={styles.autoAssignedBadge}>Auto-selected</Text>
+                    </View>
+                  ) : departmentMatchResult?.departments?.length === 0 ? (
+                    <View style={styles.noUsersContainer}>
+                      <Ionicons name="business-outline" size={32} color="#CCC" />
+                      <Text style={styles.noUsersText}>No matching departments found</Text>
+                    </View>
+                  ) : departmentMatchResult ? (
+                    departmentMatchResult.departments.map((dept: any) => (
+                      <TouchableOpacity
+                        key={dept.id}
+                        style={[styles.selectionRow, selectedDepartmentId === dept.id && styles.selectionRowSelected]}
+                        onPress={() => setSelectedDepartmentId(dept.id)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.selectionRowTitle, selectedDepartmentId === dept.id && styles.selectionRowTitleSelected]}>
+                            {dept.name}
+                          </Text>
+                          {dept.type && <Text style={styles.selectionRowSub}>{dept.type}</Text>}
+                        </View>
+                        {selectedDepartmentId === dept.id && (
+                          <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  ) : null}
+                </>
               )}
 
-              {/* Add Attachment Button */}
-              <TouchableOpacity
-                style={styles.attachmentBox}
-                onPress={() => setShowAttachmentOptions(true)}
-              >
-                <Ionicons name="cloud-upload-outline" size={32} color="#2EC4B6" />
-                <Text style={styles.attachmentText}>
-                  {attachments.length > 0 ? 'Add more files' : 'Attach files'}
-                </Text>
-                <Text style={styles.attachmentSubText}>Max file size: 5 MB</Text>
-              </TouchableOpacity>
-            </>
+              {/* ── USER STEP ── */}
+              {currentStepKey === 'user' && (
+                <>
+                  {loadingUsers ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#2EC4B6" />
+                      <Text style={styles.loadingText}>Finding matching users...</Text>
+                    </View>
+                  ) : singleUserMatch && matchingUsers.length === 1 ? (
+                    <View style={styles.autoAssignedCard}>
+                      <Ionicons name="person-circle-outline" size={20} color="#2EC4B6" />
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.autoAssignedName}>
+                          {matchingUsers[0].first_name} {matchingUsers[0].last_name}
+                        </Text>
+                        <Text style={styles.autoAssignedSub}>{matchingUsers[0].email}</Text>
+                      </View>
+                      <Text style={styles.autoAssignedBadge}>Auto-selected</Text>
+                    </View>
+                  ) : matchingUsers.length > 0 ? (
+                    matchingUsers.map((u: any) => (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={[styles.selectionRow, selectedUser?.id === u.id && styles.selectionRowSelected]}
+                        onPress={() => setSelectedUser(u)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.selectionRowTitle, selectedUser?.id === u.id && styles.selectionRowTitleSelected]}>
+                            {u.first_name} {u.last_name}
+                          </Text>
+                          <Text style={styles.selectionRowSub}>{u.email}</Text>
+                        </View>
+                        {selectedUser?.id === u.id && (
+                          <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <View style={styles.noUsersContainer}>
+                      <Ionicons name="person-outline" size={32} color="#CCC" />
+                      <Text style={styles.noUsersText}>No matching users found</Text>
+                    </View>
+                  )}
+                </>
+              )}
+
+              {/* ── FIELD CHANGES STEP ── */}
+              {currentStepKey === 'field_changes' && (
+                <>
+                  {(selectedTransition.transition.field_changes || [])
+                    .slice()
+                    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                    .map((fc: any) => (
+                      <View key={fc.field_name} style={{ marginBottom: 16 }}>
+                        <Text style={styles.label}>{fc.label || fc.field_name}{fc.is_required ? ' *' : ''}</Text>
+                        {fc.field_name === 'priority' && (
+                          <View style={styles.priorityRow}>
+                            {[1, 2, 3, 4, 5].map((p) => (
+                              <TouchableOpacity
+                                key={p}
+                                style={[styles.priorityBtn, fieldChangeValues['priority'] === String(p) && styles.priorityBtnSelected]}
+                                onPress={() => setFieldChangeValues(prev => ({ ...prev, priority: String(p) }))}
+                              >
+                                <Text style={[styles.priorityBtnText, fieldChangeValues['priority'] === String(p) && styles.priorityBtnTextSelected]}>{p}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                        {fc.field_name === 'department_id' && (
+                          <TreeSelect
+                            label={fc.label || 'Department'}
+                            value={fieldChangeDisplayValues['department_id'] || ''}
+                            data={fc.department_type_filter ? filterDeptTree(departmentsTree, fc.department_type_filter) : departmentsTree}
+                            onSelect={(node) => {
+                              if (node) { setFieldChangeValues(p => ({ ...p, department_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, department_id: node.name })); }
+                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.department_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.department_id; return n; }); }
+                            }}
+                            leafOnly={false}
+                            placeholder="Select department..."
+                          />
+                        )}
+                        {fc.field_name === 'location_id' && (
+                          <TreeSelect label={fc.label || 'Location'} value={fieldChangeDisplayValues['location_id'] || ''} data={locationsTree}
+                            onSelect={(node) => {
+                              if (node) { setFieldChangeValues(p => ({ ...p, location_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, location_id: node.name })); }
+                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.location_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.location_id; return n; }); }
+                            }} leafOnly={false} placeholder="Select location..." />
+                        )}
+                        {fc.field_name === 'classification_id' && (
+                          <TreeSelect label={fc.label || 'Classification'} value={fieldChangeDisplayValues['classification_id'] || ''} data={classificationsTree}
+                            onSelect={(node) => {
+                              if (node) { setFieldChangeValues(p => ({ ...p, classification_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, classification_id: node.name })); }
+                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.classification_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.classification_id; return n; }); }
+                            }} leafOnly={false} placeholder="Select classification..." />
+                        )}
+                        {fc.field_name === 'title' && (
+                          <TextInput style={styles.fieldInput} placeholder="Enter title..." placeholderTextColor="#999"
+                            value={fieldChangeValues['title'] || ''} onChangeText={(t) => setFieldChangeValues(p => ({ ...p, title: t }))} />
+                        )}
+                        {fc.field_name === 'description' && (
+                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline]} placeholder="Enter description..."
+                            placeholderTextColor="#999" multiline value={fieldChangeValues['description'] || ''}
+                            onChangeText={(t) => setFieldChangeValues(p => ({ ...p, description: t }))} />
+                        )}
+                      </View>
+                    ))}
+                </>
+              )}
+
+              {/* ── DURATION STEP ── */}
+              {currentStepKey === 'duration' && (
+                <>
+                  <Text style={styles.stepHint}>
+                    If not closed within this duration, the incident will automatically revert.
+                  </Text>
+                  {readyToCloseDurationOptions.map(opt => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.selectionRow, readyToCloseDuration === opt.value && styles.selectionRowSelected]}
+                      onPress={() => setReadyToCloseDuration(opt.value)}
+                    >
+                      <Text style={[styles.selectionRowTitle, readyToCloseDuration === opt.value && styles.selectionRowTitleSelected]}>
+                        {opt.label}
+                      </Text>
+                      {readyToCloseDuration === opt.value && (
+                        <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {/* ── ATTACHMENT STEP ── */}
+              {currentStepKey === 'attachment' && (
+                <>
+                  {attachments.length > 0 && (
+                    <View style={styles.attachmentPreviewContainer}>
+                      {attachments.map((attachment: any, index: number) => (
+                        <View key={index} style={styles.attachmentPreview}>
+                          <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} contentFit="cover" />
+                          <TouchableOpacity style={styles.removeAttachmentBtn} onPress={() => removeAttachment(index)}>
+                            <Ionicons name="close-circle" size={24} color="#E74C3C" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <TouchableOpacity style={styles.attachmentBox} onPress={() => setShowAttachmentOptions(true)}>
+                    <Ionicons name="cloud-upload-outline" size={32} color="#2EC4B6" />
+                    <Text style={styles.attachmentText}>{attachments.length > 0 ? 'Add more files' : 'Attach files'}</Text>
+                    <Text style={styles.attachmentSubText}>Max file size: 5 MB</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* ── FEEDBACK STEP ── */}
+              {currentStepKey === 'feedback' && (
+                <>
+                  <Text style={styles.stepHint}>Rate your experience with this resolution</Text>
+                  <View style={styles.starRatingContainer}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity key={star} onPress={() => setFeedbackRating(star)} style={styles.starButton}>
+                        <Ionicons name={star <= feedbackRating ? 'star' : 'star-outline'} size={40} color={star <= feedbackRating ? '#FFD700' : '#CCC'} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {feedbackRating > 0 && (
+                    <Text style={[styles.ratingText, { textAlign: 'center', marginBottom: 12 }]}>
+                      {feedbackRating === 1 && t('incidents.ratingPoor')}
+                      {feedbackRating === 2 && t('incidents.ratingFair')}
+                      {feedbackRating === 3 && t('incidents.ratingGood')}
+                      {feedbackRating === 4 && t('incidents.ratingVeryGood')}
+                      {feedbackRating === 5 && t('incidents.ratingExcellent')}
+                    </Text>
+                  )}
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder={t('incidents.feedbackCommentPlaceholder', 'Add feedback comment (optional)...')}
+                    placeholderTextColor="#999"
+                    multiline
+                    value={feedbackComment}
+                    onChangeText={setFeedbackComment}
+                  />
+                </>
+              )}
+
+              {/* ── COMMENT STEP ── */}
+              {currentStepKey === 'comment' && (
+                <TextInput
+                  style={[styles.commentInput, { minHeight: 120 }]}
+                  placeholder={transitionRequiresComment ? t('incidents.addCommentPlaceholder') + ' *' : t('incidents.addCommentPlaceholder')}
+                  placeholderTextColor="#999"
+                  multiline
+                  autoFocus
+                  value={comment}
+                  onChangeText={setComment}
+                />
+              )}
+            </View>
           )}
         </ScrollView>
 
@@ -953,26 +1170,32 @@ const UpdateStatusModal = () => {
           </View>
         ) : null}
 
-        {/* Footer Button */}
-        <TouchableOpacity
-          style={[
-            styles.updateButton,
-            (loading || !selectedTransition || (needsManualUserSelection && !selectedUser) || (transitionRequiresAttachment && attachments.length === 0)) && styles.disabledButton
-          ]}
-          onPress={handleUpdate}
-          disabled={loading || !selectedTransition || (needsManualUserSelection && !selectedUser) || (transitionRequiresAttachment && attachments.length === 0)}
-        >
-          {loading ? (
-            <View style={styles.buttonLoadingContainer}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.updateButtonText}>
-                {isUploading ? ' Uploading...' : ' Updating...'}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.updateButtonText}>Update</Text>
-          )}
-        </TouchableOpacity>
+        {/* Wizard Navigation Footer */}
+        {selectedTransition ? (
+          <View style={styles.wizardFooter}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Ionicons name="arrow-back" size={18} color="#666" />
+              <Text style={styles.backButtonText}>{transitionStep === 0 ? 'Change' : 'Back'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.nextButton, loading && styles.disabledButton]}
+              onPress={handleNext}
+              disabled={loading}
+            >
+              {loading ? (
+                <View style={styles.buttonLoadingContainer}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.nextButtonText}>{isUploading ? ' Uploading...' : ' Updating...'}</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.nextButtonText}>{isLastStep ? 'Execute' : 'Next'}</Text>
+                  <Ionicons name={isLastStep ? 'checkmark' : 'arrow-forward'} size={18} color="#fff" />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {/* Attachment Options Modal */}
@@ -1156,6 +1379,30 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 10,
     color: '#666',
+  },
+  autoAssignedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F0FDFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2EC4B640',
+  },
+  autoAssignedName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  autoAssignedSub: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  autoAssignedBadge: {
+    fontSize: 11,
+    color: '#2EC4B6',
+    fontWeight: '600',
   },
   noUsersContainer: {
     flexDirection: 'row',
@@ -1385,6 +1632,175 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
+  },
+  // Wizard styles
+  stepCounter: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  wizardInfoBar: {
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFEF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  stateBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  stateBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 20,
+    backgroundColor: '#2EC4B6',
+  },
+  dotDone: {
+    width: 8,
+    backgroundColor: '#2EC4B640',
+  },
+  dotPending: {
+    width: 8,
+    backgroundColor: '#E0E0E0',
+  },
+  stepTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  stepLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222',
+  },
+  stepHint: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 14,
+  },
+  stepRequired: {
+    fontSize: 12,
+    color: '#E74C3C',
+    fontWeight: '600',
+  },
+  stepOptional: {
+    fontSize: 12,
+    color: '#999',
+  },
+  transitionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  transitionCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 4,
+  },
+  transitionCardStateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transitionCardStateLabel: {
+    fontSize: 12,
+    color: '#888',
+  },
+  selectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  selectionRowSelected: {
+    borderColor: '#2EC4B6',
+    backgroundColor: '#F0FAFA',
+  },
+  selectionRowTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+  },
+  selectionRowTitleSelected: {
+    color: '#2EC4B6',
+    fontWeight: '600',
+  },
+  selectionRowSub: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  wizardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEFEF',
+    gap: 12,
+  },
+  backButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    gap: 6,
+  },
+  backButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  nextButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2EC4B6',
+    paddingVertical: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  nextButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

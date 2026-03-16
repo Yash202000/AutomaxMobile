@@ -3,7 +3,10 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { crashLogger } from '@/src/utils/crashLogger';
 
-export const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.31.107:8080/api/v1';
+if (!process.env.EXPO_PUBLIC_API_URL) {
+  throw new Error('EXPO_PUBLIC_API_URL is not set');
+}
+export const baseURL = process.env.EXPO_PUBLIC_API_URL;
 
 const apiClient = axios.create({
   baseURL,
