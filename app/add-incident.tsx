@@ -197,6 +197,7 @@ const AddIncidentScreen = () => {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [comment, setComment] = useState('');
   const [reporterName, setReporterName] = useState('');
   const [reporterEmail, setReporterEmail] = useState('');
   const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
@@ -536,6 +537,7 @@ const AddIncidentScreen = () => {
 
   const fieldLabels: Record<string, string> = {
     description: 'Description',
+    comment: 'Comment',
     classification_id: 'Classification',
     priority: 'Priority',
     severity: 'Severity',
@@ -622,6 +624,9 @@ const AddIncidentScreen = () => {
       switch (field) {
         case 'description':
           value = description;
+          break;
+        case 'comment':
+          value = comment;
           break;
         case 'classification_id':
           value = selectedClassification?.id;
@@ -1095,6 +1100,7 @@ const AddIncidentScreen = () => {
       };
 
     if (description.trim()) incidentData.description = description.trim();
+    if (comment.trim()) incidentData.comment = comment.trim();
     if (selectedClassification) incidentData.classification_id = selectedClassification.id;
     if (selectedLocation) incidentData.location_id = selectedLocation.id;
     if (selectedSource) incidentData.source = selectedSource.id;
@@ -1410,6 +1416,28 @@ const AddIncidentScreen = () => {
                   textAlignVertical="top"
                 />
                 {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+              </>
+            )}
+
+            {/* Comment - only show if required */}
+            {isFieldRequired('comment') && (
+              <>
+                <Text style={styles.sectionTitle}>
+                  Comment <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={[styles.descriptionInput, errors.comment && styles.inputError]}
+                  placeholder="Add a comment..."
+                  multiline
+                  value={comment}
+                  onChangeText={(text) => {
+                    setComment(text);
+                    if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                  }}
+                  placeholderTextColor="#999"
+                  textAlignVertical="top"
+                />
+                {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
               </>
             )}
 
