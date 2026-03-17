@@ -999,6 +999,7 @@ const AddRequestScreen = () => {
                   error={errors.classification_id}
                   leafOnly={true}
                   placeholder={t('addRequest.selectClassification')}
+                  iconType="classification"
                 />
               </>
             )}

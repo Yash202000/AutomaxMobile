@@ -120,12 +120,12 @@ const IncidentsScreen = () => {
   const {
     state_id, state_name, priority, severity, assignee_id, assignee_name,
     department_id, department_name, classification_id, classification_name,
-    location_id, location_name, sla_status
+    location_id, location_name, sla_status, channel
   } = useLocalSearchParams<{
     state_id?: string; state_name?: string; priority?: string; severity?: string;
     assignee_id?: string; assignee_name?: string; department_id?: string;
     department_name?: string; classification_id?: string; classification_name?: string;
-    location_id?: string; location_name?: string; sla_status?: string;
+    location_id?: string; location_name?: string; sla_status?: string; channel?: string;
   }>();
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -155,7 +155,8 @@ const IncidentsScreen = () => {
     if (classification_id) params.classification_id = classification_id;
     if (location_id) params.location_id = location_id;
     if (sla_status) params.sla_status = sla_status;
-    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (channel) params.channel = channel;
+    if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
     return params;
   };
 
@@ -195,7 +196,7 @@ const IncidentsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchIncidents(1, false);
-    }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, searchQuery])
+    }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel, searchQuery])
   );
 
   const handleSearchToggle = () => {
@@ -213,9 +214,9 @@ const IncidentsScreen = () => {
 
   const clearFilter = () => router.replace('/(tabs)/incident');
 
-  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_id || location_id || sla_status;
+  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_id || location_id || sla_status || channel;
   const headerTitle = activeStateName || t('incidents.title');
-  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status].filter(Boolean).length;
+  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel].filter(Boolean).length;
 
   const renderFooter = () => {
     if (!loadingMore) return null;
@@ -264,6 +265,7 @@ const IncidentsScreen = () => {
       classification_id && classification_name && { key: 'class', label: t('filter.classification'), value: classification_name },
       location_id && location_name && { key: 'loc', label: t('filter.location'), value: location_name },
       sla_status && { key: 'sla', label: t('filter.slaStatus'), value: t(`sla.${slaStatusConfig[sla_status]?.key}`) },
+      channel && { key: 'channel', label: t('filter.channel', 'Channel'), value: channel },
     ].filter(Boolean) as { key: string; label: string; value: string }[];
 
     return (
@@ -333,7 +335,7 @@ const IncidentsScreen = () => {
                 style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
                 onPress={() => router.push({
                   pathname: '/filter',
-                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, sla_status }
+                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, sla_status, channel }
                 })}
               >
                 <Ionicons name="filter" size={22} color="white" />

@@ -1287,6 +1287,7 @@ const AddIncidentScreen = () => {
               error={errors.classification_id}
               leafOnly={true}
               placeholder={t('addIncident.selectClassification')}
+              iconType="classification"
             />
 
             {/* Location - Always required on mobile */}
@@ -1302,6 +1303,7 @@ const AddIncidentScreen = () => {
               error={errors.location_id}
               leafOnly={true}
               placeholder={t('addIncident.selectLocation')}
+              iconType="location"
             />
 
             {/* Source - Always mobile for mobile app, non-editable, Always required */}
@@ -1337,20 +1339,6 @@ const AddIncidentScreen = () => {
                 />
               );
             })}
-
-            {/* Priority - Always required on mobile */}
-            <Text style={styles.sectionTitle}>
-              {t('incidents.priority')} <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addIncident.selectPriority')}
-              value={selectedPriority.name}
-              options={priorityOptions}
-              onSelect={(opt) => opt && setSelectedPriority(opt)}
-              allowClear={false}
-              required={true}
-              error={errors.priority}
-            />
 
             {/* Severity - Only show if required by workflow */}
             {isFieldRequired('severity') && (

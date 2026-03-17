@@ -31,6 +31,7 @@ interface TreeSelectProps {
   error?: string;
   leafOnly?: boolean;
   placeholder?: string;
+  iconType?: 'classification' | 'location' | 'default';
 }
 
 interface TreeItemProps {
@@ -41,6 +42,7 @@ interface TreeItemProps {
   onSelect: (node: TreeNode) => void;
   leafOnly: boolean;
   selectedId?: string;
+  iconType?: 'classification' | 'location' | 'default';
 }
 
 const TreeItem: React.FC<TreeItemProps> = ({
@@ -51,6 +53,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
   onSelect,
   leafOnly,
   selectedId,
+  iconType = 'default',
 }) => {
   // Safety checks for malformed node data
   if (!node || !node.id || !node.name) {
@@ -97,9 +100,21 @@ const TreeItem: React.FC<TreeItemProps> = ({
             <View style={styles.leafIndent} />
           )}
           <Ionicons
-            name={hasChildren ? 'folder' : 'document'}
+            name={
+              iconType === 'classification'
+                ? (hasChildren ? 'layers' : 'alert-circle')
+                : iconType === 'location'
+                ? (hasChildren ? 'map' : 'location')
+                : (hasChildren ? 'folder' : 'document')
+            }
             size={18}
-            color={hasChildren ? '#F39C12' : '#3498DB'}
+            color={
+              iconType === 'classification'
+                ? (hasChildren ? '#8B5CF6' : '#EC4899')
+                : iconType === 'location'
+                ? (hasChildren ? '#10B981' : '#3B82F6')
+                : (hasChildren ? '#F39C12' : '#3498DB')
+            }
             style={styles.nodeIcon}
           />
           <Text
@@ -130,6 +145,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
               onSelect={onSelect}
               leafOnly={leafOnly}
               selectedId={selectedId}
+              iconType={iconType}
             />
           ))}
         </View>
@@ -148,6 +164,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   error,
   leafOnly = true,
   placeholder,
+  iconType = 'default',
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -363,6 +380,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
                     onSelect={handleSelect}
                     leafOnly={leafOnly}
                     selectedId={selectedId}
+                    iconType={iconType}
                   />
                 ))}
               </ScrollView>

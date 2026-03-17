@@ -47,8 +47,11 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [autoFetched, setAutoFetched] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const suggestionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -56,9 +59,8 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (geocodingTimerRef.current) {
-        clearTimeout(geocodingTimerRef.current);
-      }
+      if (geocodingTimerRef.current) clearTimeout(geocodingTimerRef.current);
+      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
     };
   }, []);
 
@@ -220,13 +222,76 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
     `);
   }, [onChange]);
 
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (query.trim().length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastSearchTime < MIN_SEARCH_INTERVAL) return;
+    lastSearchTime = now;
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=0`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Language': 'en',
+            'User-Agent': 'AutomaxMobileApp/1.0 (Contact: support@automax.com)',
+          },
+        }
+      );
+      if (!isMountedRef.current) return;
+      if (!response.ok) return;
+      const results = await response.json();
+      if (isMountedRef.current) {
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      }
+    } catch {
+      // silent — suggestions are best-effort
+    }
+  }, []);
+
+  const handleSearchQueryChange = useCallback((text: string) => {
+    setSearchQuery(text);
+    setShowSuggestions(false);
+    if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+    if (text.trim().length >= 3) {
+      suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), 800);
+    } else {
+      setSuggestions([]);
+    }
+  }, [fetchSuggestions]);
+
+  const handleSelectSuggestion = useCallback(async (item: { display_name: string; lat: string; lon: string }) => {
+    const latitude = parseFloat(item.lat);
+    const longitude = parseFloat(item.lon);
+    setSearchQuery(item.display_name);
+    setShowSuggestions(false);
+    setSuggestions([]);
+
+    webViewRef.current?.injectJavaScript(`setMarker(${latitude}, ${longitude}); true;`);
+    const locationData: LocationData = { latitude, longitude };
+    onChange(locationData);
+
+    try {
+      const addressData = await reverseGeocode(latitude, longitude);
+      if (isMountedRef.current && Object.keys(addressData).length > 0) {
+        onChange({ ...locationData, ...addressData });
+      }
+    } catch {}
+  }, [onChange]);
+
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       Alert.alert('Error', 'Please enter a location to search');
       return;
     }
 
-    // Rate limiting: ensure at least 1 second between requests
     const now = Date.now();
     const timeSinceLastSearch = now - lastSearchTime;
     if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
@@ -238,9 +303,9 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
     lastSearchTime = now;
     setIsSearching(true);
     setSearchError(null);
+    setShowSuggestions(false);
 
     try {
-
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`,
         {
@@ -252,18 +317,10 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
         }
       );
 
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ [LocationPicker OSM] API response not OK:', response.status, errorText);
-
-        if (response.status === 403) {
-          throw new Error('Access denied. The geocoding service may be temporarily unavailable.');
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please wait a moment and try again.');
-        } else {
-          throw new Error(`Search failed (Status: ${response.status})`);
-        }
+        if (response.status === 403) throw new Error('Access denied. The geocoding service may be temporarily unavailable.');
+        else if (response.status === 429) throw new Error('Too many requests. Please wait a moment and try again.');
+        else throw new Error(`Search failed (Status: ${response.status})`);
       }
 
       const results = await response.json();
@@ -275,37 +332,23 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
         return;
       }
 
-      const { lat, lon, display_name } = results[0];
+      const { lat, lon } = results[0];
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lon);
 
-
-      // Update marker and map view
-      webViewRef.current?.injectJavaScript(`
-        setMarker(${latitude}, ${longitude});
-        true;
-      `);
-
-      const locationData: LocationData = {
-        latitude,
-        longitude,
-      };
-
+      webViewRef.current?.injectJavaScript(`setMarker(${latitude}, ${longitude}); true;`);
+      const locationData: LocationData = { latitude, longitude };
       onChange(locationData);
-
       setIsSearching(false);
       setSearchError(null);
 
-      // Get detailed address in background
       try {
         const addressData = await reverseGeocode(latitude, longitude);
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
           onChange({ ...locationData, ...addressData });
         }
-      } catch (error) {
-      }
+      } catch {}
     } catch (error) {
-      console.error('❌ [LocationPicker OSM] Search error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setSearchError(errorMessage);
       Alert.alert('Search Failed', errorMessage);
@@ -402,14 +445,14 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
           <TextInput
             style={styles.searchInput}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchQueryChange}
             placeholder="Search for an address or place..."
             placeholderTextColor="#999"
             returnKeyType="search"
             onSubmitEditing={handleSearch}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => { setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); }}>
               <Ionicons name="close-circle" size={18} color="#999" />
             </TouchableOpacity>
           )}
@@ -426,6 +469,24 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Suggestions Dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {suggestions.map((item, i) => (
+            <View key={i}>
+              <TouchableOpacity
+                style={styles.suggestionItem}
+                onPress={() => handleSelectSuggestion(item)}
+              >
+                <Ionicons name="location-outline" size={16} color="#2EC4B6" style={{ marginRight: 8 }} />
+                <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
+              </TouchableOpacity>
+              {i < suggestions.length - 1 && <View style={styles.suggestionDivider} />}
+            </View>
+          ))}
+        </View>
+      )}
 
       {searchError && (
         <Text style={styles.searchErrorText}>{searchError}</Text>
@@ -586,6 +647,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#E74C3C',
     marginBottom: 8,
+  },
+  suggestionsContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginTop: -8,
+    marginBottom: 8,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 999,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1,
+  },
+  suggestionDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
   },
   controls: {
     flexDirection: 'row',

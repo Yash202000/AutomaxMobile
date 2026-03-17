@@ -40,6 +40,7 @@ interface Incident {
   location?: { name: string };
   assignee?: { first_name?: string; username: string };
   department?: { name: string };
+  lookup_values?: Array<{ category: { code: string }; code: string; name: string; color: string }>;
 }
 
 interface PaginationInfo {
@@ -60,11 +61,16 @@ const IncidentCard = ({
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const priority = priorityMap[incident.priority] || {
-    key: "unknown",
-    color: "#95A5A6",
-  };
-  const priorityText = t(`priorities.${priority.key}`);
+  // Extract priority from lookup_values if available
+  const priorityLookup = incident.lookup_values?.find(
+    (lv) => lv.category.code === 'PRIORITY'
+  );
+  let priority = priorityMap[parseInt(String(incident.priority))] || { key: "unknown", color: "#95A5A6" };
+  let priorityText = t(`priorities.${priority.key}`);
+  if (priorityLookup) {
+    priority = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
+    priorityText = priorityLookup.name;
+  }
 
   // Determine the correct detail page based on ticket type
   const getDetailRoute = () => {
@@ -86,19 +92,13 @@ const IncidentCard = ({
     <TouchableOpacity
       style={styles.incidentCard}
       onPress={() => router.push(getDetailRoute())}
+      activeOpacity={0.7}
     >
-      <View
-        style={[
-          styles.incidentPriorityBar,
-          { backgroundColor: priority.color },
-        ]}
-      />
+      <View style={[styles.incidentPriorityBar, { backgroundColor: priority.color }]} />
       <View style={styles.incidentCardContent}>
         <View style={styles.incidentCardHeader}>
           <View style={styles.incidentIdContainer}>
-            <View
-              style={[styles.incidentDot, { backgroundColor: priority.color }]}
-            />
+            <View style={[styles.incidentDot, { backgroundColor: priority.color }]} />
             <Text style={styles.incidentId}>{incident.incident_number}</Text>
           </View>
           <View style={styles.tagsRow}>
@@ -108,70 +108,38 @@ const IncidentCard = ({
                 <Text style={styles.slaBreachedText}>SLA</Text>
               </View>
             )}
-            <Text
-              style={[styles.incidentTag, { backgroundColor: priority.color }]}
-            >
-              {priorityText}
-            </Text>
+            <View style={[styles.incidentTag, { backgroundColor: priority.color }]}>
+              <Text style={styles.incidentTagText}>{priorityText}</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.incidentTitle} numberOfLines={2}>
-          {incident.title}
+        <Text style={styles.dateTime}>
+          {new Date(incident.created_at).toLocaleString()}
         </Text>
-        <View style={styles.statusRow}>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: incident.current_state?.color
-                  ? `${incident.current_state.color}20`
-                  : "#E3F2FD",
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                { color: incident.current_state?.color || "#1976D2" },
-              ]}
-            >
-              {incident.current_state?.name || "N/A"}
+        <Text style={styles.statusText}>
+          {t('incidents.status')}: {incident.current_state?.name || 'N/A'}
+        </Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="alert-circle" size={16} color="#10B981" style={styles.detailIcon} />
+          <Text style={styles.detailText} numberOfLines={1}>{incident.title}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="location" size={16} color="#3B82F6" style={styles.detailIcon} />
+          <Text style={styles.detailText}>{incident.location?.name || t('common.noData')}</Text>
+        </View>
+        {(incident.department || incident.assignee) && (
+          <View style={styles.detailRow}>
+            <Ionicons
+              name={isAssigned ? "business-outline" : "person-outline"}
+              size={16} color="#64748B" style={styles.detailIcon}
+            />
+            <Text style={styles.detailText}>
+              {isAssigned
+                ? incident.department?.name
+                : (incident.assignee?.first_name || incident.assignee?.username)}
             </Text>
           </View>
-          {incident.due_date && (
-            <View style={styles.dueDateContainer}>
-              <Ionicons name="calendar-outline" size={12} color="#666" />
-              <Text style={styles.dueDateText}>
-                {new Date(incident.due_date).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.metaRow}>
-          {isAssigned
-            ? incident.department && (
-                <View style={styles.metaItem}>
-                  <Ionicons name="business-outline" size={14} color="#666" />
-                  <Text style={styles.metaText}>
-                    {incident.department.name}
-                  </Text>
-                </View>
-              )
-            : incident.assignee && (
-                <View style={styles.metaItem}>
-                  <Ionicons name="person-outline" size={14} color="#666" />
-                  <Text style={styles.metaText}>
-                    {incident.assignee.first_name || incident.assignee.username}
-                  </Text>
-                </View>
-              )}
-          {incident.location && (
-            <View style={styles.metaItem}>
-              <Ionicons name="location-outline" size={14} color="#666" />
-              <Text style={styles.metaText}>{incident.location.name}</Text>
-            </View>
-          )}
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -184,8 +152,21 @@ const MyIncidentsScreen = () => {
   const [activeTab, setActiveTab] = useState<"assigned" | "created">(
     initialType === "created" ? "created" : "assigned",
   );
-  const [ticketType, setTicketType] = useState<"incident" | "request" | "complaint" | "query">("incident");
-  const { canCreateIncidents, canUpdateIncidents } = usePermissions();
+  const {
+    canCreateIncidents, canUpdateIncidents, canTransitionIncidents,
+    canCreateRequests, canUpdateRequests, canTransitionRequests,
+    canCreateComplaints, canUpdateComplaints, canTransitionComplaints,
+    canCreateQueries, canUpdateQueries, canTransitionQueries,
+  } = usePermissions();
+  const canSeeAssignedTab = () => canTransitionIncidents() || canTransitionRequests() || canTransitionComplaints() || canTransitionQueries();
+  const getDefaultTicketType = () => {
+    if (canCreateIncidents() || canUpdateIncidents()) return "incident";
+    if (canCreateRequests() || canUpdateRequests()) return "request";
+    if (canCreateComplaints() || canUpdateComplaints()) return "complaint";
+    if (canCreateQueries() || canUpdateQueries()) return "query";
+    return "incident";
+  };
+  const [ticketType, setTicketType] = useState<"incident" | "request" | "complaint" | "query">(getDefaultTicketType);
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,6 +186,13 @@ const MyIncidentsScreen = () => {
   });
 
   const isLoadingMore = useRef(false);
+
+  // Redirect away from "assigned" tab if user lacks transition permission
+  useEffect(() => {
+    if (activeTab === "assigned" && !canSeeAssignedTab()) {
+      setActiveTab("created");
+    }
+  }, []);
 
   // Fetch current user info
   useEffect(() => {
@@ -404,7 +392,7 @@ const MyIncidentsScreen = () => {
       <View style={styles.contentContainer}>
         {/* Main Tabs - Assigned vs Created */}
         <View style={styles.tabContainer}>
-          {canUpdateIncidents() && (
+          {canSeeAssignedTab() && (
             <TouchableOpacity
               style={[styles.tab, activeTab === "assigned" && styles.activeTab]}
               onPress={() => setActiveTab("assigned")}
@@ -448,38 +436,46 @@ const MyIncidentsScreen = () => {
 
         {/* Ticket Type Tabs */}
         <View style={styles.ticketTypeContainer}>
-          <TouchableOpacity
-            style={[styles.ticketTypeTab, ticketType === "incident" && styles.activeTicketTypeTab]}
-            onPress={() => setTicketType("incident")}
-          >
-            <Text style={[styles.ticketTypeText, ticketType === "incident" && styles.activeTicketTypeText]}>
-              {t('tabs.incident')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ticketTypeTab, ticketType === "request" && styles.activeTicketTypeTab]}
-            onPress={() => setTicketType("request")}
-          >
-            <Text style={[styles.ticketTypeText, ticketType === "request" && styles.activeTicketTypeText]}>
-              {t('tabs.request')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ticketTypeTab, ticketType === "complaint" && styles.activeTicketTypeTab]}
-            onPress={() => setTicketType("complaint")}
-          >
-            <Text style={[styles.ticketTypeText, ticketType === "complaint" && styles.activeTicketTypeText]}>
-              {t('tabs.complaint')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ticketTypeTab, ticketType === "query" && styles.activeTicketTypeTab]}
-            onPress={() => setTicketType("query")}
-          >
-            <Text style={[styles.ticketTypeText, ticketType === "query" && styles.activeTicketTypeText]}>
-              {t('tabs.query')}
-            </Text>
-          </TouchableOpacity>
+          {(canCreateIncidents() || canUpdateIncidents()) && (
+            <TouchableOpacity
+              style={[styles.ticketTypeTab, ticketType === "incident" && styles.activeTicketTypeTab]}
+              onPress={() => setTicketType("incident")}
+            >
+              <Text style={[styles.ticketTypeText, ticketType === "incident" && styles.activeTicketTypeText]}>
+                {t('tabs.incident')}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {(canCreateRequests() || canUpdateRequests()) && (
+            <TouchableOpacity
+              style={[styles.ticketTypeTab, ticketType === "request" && styles.activeTicketTypeTab]}
+              onPress={() => setTicketType("request")}
+            >
+              <Text style={[styles.ticketTypeText, ticketType === "request" && styles.activeTicketTypeText]}>
+                {t('tabs.request')}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {(canCreateComplaints() || canUpdateComplaints()) && (
+            <TouchableOpacity
+              style={[styles.ticketTypeTab, ticketType === "complaint" && styles.activeTicketTypeTab]}
+              onPress={() => setTicketType("complaint")}
+            >
+              <Text style={[styles.ticketTypeText, ticketType === "complaint" && styles.activeTicketTypeText]}>
+                {t('tabs.complaint')}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {(canCreateQueries() || canUpdateQueries()) && (
+            <TouchableOpacity
+              style={[styles.ticketTypeTab, ticketType === "query" && styles.activeTicketTypeTab]}
+              onPress={() => setTicketType("query")}
+            >
+              <Text style={[styles.ticketTypeText, ticketType === "query" && styles.activeTicketTypeText]}>
+                {t('tabs.query')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Quick Stats */}
@@ -822,57 +818,37 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   incidentTag: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "bold",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
-  incidentTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
-    lineHeight: 20,
+  incidentTagText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
   },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    gap: 10,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+  dateTime: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginBottom: 6,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    color: "#64748B",
+    marginBottom: 8,
   },
-  dueDateContainer: {
+  detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    marginBottom: 4,
   },
-  dueDateText: {
-    fontSize: 12,
-    color: "#666",
+  detailIcon: {
+    marginRight: 6,
   },
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: "#666",
+  detailText: {
+    fontSize: 13,
+    color: "#475569",
+    flex: 1,
   },
   footerLoader: {
     flexDirection: "row",

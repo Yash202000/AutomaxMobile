@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { getAllStates } from '@/src/api/workflow';
 import { getDepartments } from '@/src/api/departments';
 import { getUsers } from '@/src/api/users';
-import { getClassifications } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getLocationsTree } from '@/src/api/locations';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 
 interface FilterState {
   state_id: string | null;
@@ -23,6 +24,7 @@ interface FilterState {
   location_id: string | null;
   location_name: string | null;
   sla_status: string | null;
+  channel: string | null;
 }
 
 const priorities = [
@@ -39,6 +41,17 @@ const severities = [
   { value: 3, key: 'moderate', color: '#F1C40F' },
   { value: 4, key: 'minor', color: '#3498DB' },
   { value: 5, key: 'cosmetic', color: '#2ECC71' },
+];
+
+const channels = [
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+  { value: 'web', label: 'Web Portal' },
+  { value: 'mobile', label: 'Mobile App' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'in_person', label: 'In Person' },
+  { value: 'viusional', label: 'Viusional' },
+  { value: 'other', label: 'Other' },
 ];
 
 const slaStatuses = [
@@ -64,13 +77,14 @@ const FilterScreen = () => {
     location_id?: string;
     location_name?: string;
     sla_status?: string;
+    channel?: string;
   }>();
 
   const [states, setStates] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [classifications, setClassifications] = useState<any[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
+  const [classifications, setClassifications] = useState<TreeNode[]>([]);
+  const [locations, setLocations] = useState<TreeNode[]>([]);
   const [loadingStates, setLoadingStates] = useState(true);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -90,6 +104,7 @@ const FilterScreen = () => {
     location_id: params.location_id || null,
     location_name: params.location_name || null,
     sla_status: params.sla_status || null,
+    channel: params.channel || null,
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -131,7 +146,7 @@ const FilterScreen = () => {
 
   const fetchClassifications = async () => {
     setLoadingClassifications(true);
-    const response = await getClassifications();
+    const response = await getClassificationsTree();
     if (response.success) {
       setClassifications(response.data || []);
     }
@@ -140,7 +155,7 @@ const FilterScreen = () => {
 
   const fetchLocations = async () => {
     setLoadingLocations(true);
-    const response = await getLocations();
+    const response = await getLocationsTree();
     if (response.success) {
       setLocations(response.data || []);
     }
@@ -223,6 +238,11 @@ const FilterScreen = () => {
     setExpandedSection(null);
   };
 
+  const selectChannel = (channel: string) => {
+    setFilters({ ...filters, channel: filters.channel === channel ? null : channel });
+    setExpandedSection(null);
+  };
+
   const applyFilters = () => {
     const queryParams: any = {};
     if (filters.state_id) {
@@ -254,6 +274,9 @@ const FilterScreen = () => {
     if (filters.sla_status) {
       queryParams.sla_status = filters.sla_status;
     }
+    if (filters.channel) {
+      queryParams.channel = filters.channel;
+    }
 
     router.replace({
       pathname: '/(tabs)/incident',
@@ -276,12 +299,13 @@ const FilterScreen = () => {
       location_id: null,
       location_name: null,
       sla_status: null,
+      channel: null,
     });
   };
 
   const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
     filters.assignee_id || filters.department_id || filters.classification_id ||
-    filters.location_id || filters.sla_status;
+    filters.location_id || filters.sla_status || filters.channel;
 
   const getSelectedStateName = () => {
     if (!filters.state_id) return t('filter.all');
@@ -446,166 +470,60 @@ const FilterScreen = () => {
           )}
         </View>
 
-        {/* Severity Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('severity')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="warning-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.severity')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.severity && styles.filterValueActive]}>
-                {getSelectedSeverityLabel()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'severity' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'severity' && (
-            <View style={styles.filterOptions}>
-              <TouchableOpacity
-                style={[styles.filterOption, !filters.severity && styles.filterOptionSelected]}
-                onPress={() => setFilters({ ...filters, severity: null })}
-              >
-                <Text style={[styles.filterOptionText, !filters.severity && styles.filterOptionTextSelected]}>
-                  {t('filter.allSeverities')}
-                </Text>
-                {!filters.severity && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-              </TouchableOpacity>
-              {severities.map((severity) => (
-                <TouchableOpacity
-                  key={severity.value}
-                  style={[styles.filterOption, filters.severity === severity.value && styles.filterOptionSelected]}
-                  onPress={() => selectSeverity(severity.value)}
-                >
-                  <View style={styles.priorityOption}>
-                    <View style={[styles.priorityDot, { backgroundColor: severity.color }]} />
-                    <Text style={[styles.filterOptionText, filters.severity === severity.value && styles.filterOptionTextSelected]}>
-                      {t(`severities.${severity.key}`)}
-                    </Text>
-                  </View>
-                  {filters.severity === severity.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
         {/* Classification Filter */}
         <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('classification')}
-          >
+          <View style={styles.filterHeader}>
             <View style={styles.filterHeaderLeft}>
-              <Ionicons name="folder-outline" size={20} color="#1A237E" />
+              <Ionicons name="layers-outline" size={20} color="#1A237E" />
               <Text style={styles.filterLabel}>{t('filter.classification')}</Text>
             </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.classification_id && styles.filterValueActive]}>
-                {getSelectedClassificationName()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'classification' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'classification' && (
-            <View style={styles.filterOptions}>
-              {loadingClassifications ? (
-                <ActivityIndicator size="small" color="#1A237E" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.filterOption, !filters.classification_id && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, classification_id: null, classification_name: null })}
-                  >
-                    <Text style={[styles.filterOptionText, !filters.classification_id && styles.filterOptionTextSelected]}>
-                      {t('filter.allClassifications')}
-                    </Text>
-                    {!filters.classification_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                  </TouchableOpacity>
-                  {classifications.map((classification) => (
-                    <TouchableOpacity
-                      key={classification.id}
-                      style={[styles.filterOption, filters.classification_id === classification.id && styles.filterOptionSelected]}
-                      onPress={() => selectClassification(classification)}
-                    >
-                      <Text style={[styles.filterOptionText, filters.classification_id === classification.id && styles.filterOptionTextSelected]}>
-                        {classification.name}
-                      </Text>
-                      {filters.classification_id === classification.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label={t('filter.classification')}
+              value={filters.classification_name || ''}
+              data={classifications}
+              loading={loadingClassifications}
+              onSelect={(node) => {
+                if (node) {
+                  setFilters({ ...filters, classification_id: node.id, classification_name: node.name });
+                } else {
+                  setFilters({ ...filters, classification_id: null, classification_name: null });
+                }
+              }}
+              leafOnly={true}
+              placeholder={t('filter.allClassifications')}
+              iconType="classification"
+            />
+          </View>
         </View>
 
         {/* Location Filter */}
         <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('location')}
-          >
+          <View style={styles.filterHeader}>
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="location-outline" size={20} color="#1A237E" />
               <Text style={styles.filterLabel}>{t('filter.location')}</Text>
             </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.location_id && styles.filterValueActive]}>
-                {getSelectedLocationName()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'location' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'location' && (
-            <View style={styles.filterOptions}>
-              {loadingLocations ? (
-                <ActivityIndicator size="small" color="#1A237E" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.filterOption, !filters.location_id && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, location_id: null, location_name: null })}
-                  >
-                    <Text style={[styles.filterOptionText, !filters.location_id && styles.filterOptionTextSelected]}>
-                      {t('filter.allLocations')}
-                    </Text>
-                    {!filters.location_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                  </TouchableOpacity>
-                  {locations.map((location) => (
-                    <TouchableOpacity
-                      key={location.id}
-                      style={[styles.filterOption, filters.location_id === location.id && styles.filterOptionSelected]}
-                      onPress={() => selectLocation(location)}
-                    >
-                      <Text style={[styles.filterOptionText, filters.location_id === location.id && styles.filterOptionTextSelected]}>
-                        {location.name}
-                      </Text>
-                      {filters.location_id === location.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label={t('filter.location')}
+              value={filters.location_name || ''}
+              data={locations}
+              loading={loadingLocations}
+              onSelect={(node) => {
+                if (node) {
+                  setFilters({ ...filters, location_id: node.id, location_name: node.name });
+                } else {
+                  setFilters({ ...filters, location_id: null, location_name: null });
+                }
+              }}
+              leafOnly={false}
+              placeholder={t('filter.allLocations')}
+              iconType="location"
+            />
+          </View>
         </View>
 
         {/* Assignee Filter */}
@@ -777,6 +695,55 @@ const FilterScreen = () => {
           )}
         </View>
 
+        {/* Channel Filter */}
+        <View style={styles.filterSection}>
+          <TouchableOpacity
+            style={styles.filterHeader}
+            onPress={() => toggleSection('channel')}
+          >
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="git-network-outline" size={20} color="#1A237E" />
+              <Text style={styles.filterLabel}>{t('filter.channel', 'Channel')}</Text>
+            </View>
+            <View style={styles.filterHeaderRight}>
+              <Text style={[styles.filterValue, filters.channel && styles.filterValueActive]}>
+                {filters.channel ? channels.find(c => c.value === filters.channel)?.label || t('filter.selected') : t('filter.all')}
+              </Text>
+              <Ionicons
+                name={expandedSection === 'channel' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color="#666"
+              />
+            </View>
+          </TouchableOpacity>
+
+          {expandedSection === 'channel' && (
+            <View style={styles.filterOptions}>
+              <TouchableOpacity
+                style={[styles.filterOption, !filters.channel && styles.filterOptionSelected]}
+                onPress={() => setFilters({ ...filters, channel: null })}
+              >
+                <Text style={[styles.filterOptionText, !filters.channel && styles.filterOptionTextSelected]}>
+                  {t('filter.allChannels', 'All Channels')}
+                </Text>
+                {!filters.channel && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+              </TouchableOpacity>
+              {channels.map((ch) => (
+                <TouchableOpacity
+                  key={ch.value}
+                  style={[styles.filterOption, filters.channel === ch.value && styles.filterOptionSelected]}
+                  onPress={() => selectChannel(ch.value)}
+                >
+                  <Text style={[styles.filterOptionText, filters.channel === ch.value && styles.filterOptionTextSelected]}>
+                    {ch.label}
+                  </Text>
+                  {filters.channel === ch.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* Add some bottom padding for scroll */}
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -864,6 +831,10 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+  },
+  treeSelectWrapper: {
+    paddingHorizontal: 15,
+    paddingBottom: 15,
   },
   filterOption: {
     flexDirection: 'row',

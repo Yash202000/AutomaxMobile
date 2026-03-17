@@ -1046,14 +1046,14 @@ const UpdateStatusModal = () => {
                             onSelect={(node) => {
                               if (node) { setFieldChangeValues(p => ({ ...p, location_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, location_id: node.name })); }
                               else { setFieldChangeValues(p => { const n = { ...p }; delete n.location_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.location_id; return n; }); }
-                            }} leafOnly={false} placeholder="Select location..." />
+                            }} leafOnly={false} placeholder="Select location..." iconType="location" />
                         )}
                         {fc.field_name === 'classification_id' && (
                           <TreeSelect label={fc.label || 'Classification'} value={fieldChangeDisplayValues['classification_id'] || ''} data={classificationsTree}
                             onSelect={(node) => {
                               if (node) { setFieldChangeValues(p => ({ ...p, classification_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, classification_id: node.name })); }
                               else { setFieldChangeValues(p => { const n = { ...p }; delete n.classification_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.classification_id; return n; }); }
-                            }} leafOnly={false} placeholder="Select classification..." />
+                            }} leafOnly={false} placeholder="Select classification..." iconType="classification" />
                         )}
                         {fc.field_name === 'title' && (
                           <TextInput style={styles.fieldInput} placeholder="Enter title..." placeholderTextColor="#999"

@@ -122,7 +122,7 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
 
           <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
             <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-            <Text style={styles.acceptButtonText}>Accept</Text>
+            <Text style={styles.acceptButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>

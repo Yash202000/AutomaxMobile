@@ -1275,6 +1275,7 @@ const AddQueryScreen = () => {
               error={errors.classification_id}
               leafOnly={true}
               placeholder={t('addQuery.selectClassification')}
+              iconType="classification"
             />
 
             {/* Location - only show if required */}

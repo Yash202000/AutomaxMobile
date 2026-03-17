@@ -151,7 +151,7 @@ const QueriesScreen = () => {
     if (location_id) params.location_id = location_id;
     if (sla_status) params.sla_status = sla_status;
     if (channel) params.channel = channel;
-    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
     return params;
   };
 

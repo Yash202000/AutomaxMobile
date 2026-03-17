@@ -22,6 +22,7 @@ interface FilterState {
   location_id: string | null;
   location_name: string | null;
   sla_status: string | null;
+  channel: string | null;
 }
 
 const priorities = [
@@ -38,6 +39,17 @@ const severities = [
   { value: 3, label: 'Moderate', color: '#F1C40F' },
   { value: 4, label: 'Minor', color: '#3498DB' },
   { value: 5, label: 'Cosmetic', color: '#2ECC71' },
+];
+
+const channels = [
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+  { value: 'web', label: 'Web Portal' },
+  { value: 'mobile', label: 'Mobile App' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'in_person', label: 'In Person' },
+  { value: 'viusional', label: 'Viusional' },
+  { value: 'other', label: 'Other' },
 ];
 
 const slaStatuses = [
@@ -62,6 +74,7 @@ const RequestFilterScreen = () => {
     location_id?: string;
     location_name?: string;
     sla_status?: string;
+    channel?: string;
   }>();
 
   const [states, setStates] = useState<any[]>([]);
@@ -88,6 +101,7 @@ const RequestFilterScreen = () => {
     location_id: params.location_id || null,
     location_name: params.location_name || null,
     sla_status: params.sla_status || null,
+    channel: params.channel || null,
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -209,6 +223,11 @@ const RequestFilterScreen = () => {
     setExpandedSection(null);
   };
 
+  const selectChannel = (channel: string) => {
+    setFilters({ ...filters, channel: filters.channel === channel ? null : channel });
+    setExpandedSection(null);
+  };
+
   const applyFilters = () => {
     const queryParams: any = {};
     if (filters.state_id) {
@@ -234,6 +253,7 @@ const RequestFilterScreen = () => {
       queryParams.location_name = filters.location_name;
     }
     if (filters.sla_status) queryParams.sla_status = filters.sla_status;
+    if (filters.channel) queryParams.channel = filters.channel;
 
     router.replace({
       pathname: '/(tabs)/request',
@@ -246,13 +266,13 @@ const RequestFilterScreen = () => {
       state_id: null, state_name: null, priority: null, severity: null,
       assignee_id: null, assignee_name: null, department_id: null, department_name: null,
       classification_id: null, classification_name: null, location_id: null, location_name: null,
-      sla_status: null,
+      sla_status: null, channel: null,
     });
   };
 
   const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
     filters.assignee_id || filters.department_id || filters.classification_id ||
-    filters.location_id || filters.sla_status;
+    filters.location_id || filters.sla_status || filters.channel;
 
   const renderFilterSection = (
     key: string,
@@ -363,6 +383,17 @@ const RequestFilterScreen = () => {
                 <Text style={styles.filterOptionText}>{s.label}</Text>
               </View>
               {(s.value ? filters.sla_status === s.value : !filters.sla_status) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
+            </TouchableOpacity>
+          )
+        )}
+
+        {renderFilterSection('channel', 'Channel', 'git-network-outline', channels.find(c => c.value === filters.channel)?.label || 'All', false,
+          [{ value: null, label: 'All Channels' }, ...channels],
+          (c) => (
+            <TouchableOpacity key={c.value || 'all'} style={[styles.filterOption, (c.value ? filters.channel === c.value : !filters.channel) && styles.filterOptionSelected]}
+              onPress={() => c.value ? selectChannel(c.value) : setFilters({ ...filters, channel: null })}>
+              <Text style={styles.filterOptionText}>{c.label}</Text>
+              {(c.value ? filters.channel === c.value : !filters.channel) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
             </TouchableOpacity>
           )
         )}
