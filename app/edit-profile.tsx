@@ -67,7 +67,7 @@ const EditProfileScreen = () => {
             { text: t('common.ok'), onPress: () => router.back() }
         ]);
     } else {
-        Alert.alert(t('common.error'), `${t('profile.updateProfileFailed')}: ${response.error}`);
+        Alert.alert(t('common.error'), response.error || t('profile.updateProfileFailed'));
     }
   };
 

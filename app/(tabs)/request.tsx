@@ -326,7 +326,10 @@ const RequestsScreen = () => {
               <Text style={styles.headerTitle}>{headerTitle}</Text>
             </View>
             <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.headerIcon} onPress={() => router.push('/map-view?type=request')}>
+              <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
+                pathname: '/map-view',
+                params: { type: 'request', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date }
+              })}>
                 <Ionicons name="map-outline" size={22} color="white" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>

@@ -639,11 +639,13 @@ const IncidentDetailsScreen = () => {
   </script>
 </body>
 </html>
-                ` }}
+                `, baseUrl: 'https://localhost/' }}
                 style={styles.map}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 startInLoadingState={false}
+                originWhitelist={['*']}
+                mixedContentMode="compatibility"
                 onMessage={(event) => {
                   try {
                     const data = JSON.parse(event.nativeEvent.data);

@@ -1553,7 +1553,7 @@ const AddIncidentScreen = () => {
                       ))}
                     </View>
                   )}
-                  <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
+                  <TouchableOpacity style={styles.attachmentButton} onPress={handleTakePhoto}>
                     <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
                     <Text style={styles.attachmentButtonText}>
                       {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}

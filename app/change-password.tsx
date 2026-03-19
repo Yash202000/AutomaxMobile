@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { changePassword } from '@/src/api/user';
+import { useAuth } from '@/src/context/AuthContext';
 
 const PasswordInput = ({ label, value, onChangeText }) => {
     const [visible, setVisible] = useState(false);
@@ -28,18 +29,23 @@ const PasswordInput = ({ label, value, onChangeText }) => {
 
 const ChangePasswordScreen = () => {
   const router = useRouter();
+  const { logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleUpdate = async () => {
-    if (newPassword !== confirmPassword) {
-        Alert.alert('Error', 'New passwords do not match.');
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        Alert.alert('Error', 'Please fill out all fields.');
         return;
     }
-    if (!currentPassword || !newPassword) {
-        Alert.alert('Error', 'Please fill out all fields.');
+    if (newPassword.length < 8) {
+        Alert.alert('Error', 'New password must be at least 8 characters.');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        Alert.alert('Error', 'New passwords do not match.');
         return;
     }
     setLoading(true);
@@ -47,11 +53,11 @@ const ChangePasswordScreen = () => {
     setLoading(false);
 
     if (response.success) {
-        Alert.alert('Success', 'Password updated successfully.', [
-            { text: 'OK', onPress: () => router.back() }
+        Alert.alert('Success', 'Password updated successfully. Please log in again.', [
+            { text: 'OK', onPress: () => logout() }
         ]);
     } else {
-        Alert.alert('Error', `Failed to update password: ${response.error}`);
+        Alert.alert('Error', response.error || 'Failed to update password.');
     }
   };
 

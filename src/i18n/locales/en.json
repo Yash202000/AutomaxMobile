@@ -173,7 +173,8 @@
     "ratingFair": "Fair",
     "ratingGood": "Good",
     "ratingVeryGood": "Very Good",
-    "ratingExcellent": "Excellent"
+    "ratingExcellent": "Excellent",
+    "source": "Source"
   },
   "requests": {
     "title": "Requests",

@@ -174,7 +174,8 @@
     "ratingFair": "مقبول",
     "ratingGood": "جيد",
     "ratingVeryGood": "جيد جداً",
-    "ratingExcellent": "ممتاز"
+    "ratingExcellent": "ممتاز",
+    "source": "المصدر"
   },
   "requests": {
     "title": "الطلبات",

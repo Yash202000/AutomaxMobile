@@ -8,17 +8,44 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "development",
+        "APP_NAME": "Automax Dev",
+        "APP_VERSION": "1.0.0",
+        "APP_VERSION_CODE": "1",
+        "APP_ICON_BG_COLOR": "#ffffff",
+        "ANDROID_PACKAGE": "com.automax.mobile",
+        "IOS_BUNDLE_ID": "com.automax.mobile"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "preview",
+        "APP_NAME": "Automax",
+        "APP_VERSION": "1.0.0",
+        "APP_VERSION_CODE": "1",
+        "APP_ICON_BG_COLOR": "#ffffff",
+        "ANDROID_PACKAGE": "com.automax.mobile",
+        "IOS_BUNDLE_ID": "com.automax.mobile"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "APP_NAME": "Automax",
+        "APP_VERSION": "1.0.0",
+        "APP_VERSION_CODE": "1",
+        "APP_ICON_BG_COLOR": "#ffffff",
+        "ANDROID_PACKAGE": "com.automax.mobile",
+        "IOS_BUNDLE_ID": "com.automax.mobile"
       }
     },
     "local-development": {

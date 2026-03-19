@@ -108,25 +108,43 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     Keyboard.dismiss();
-    setLoading(true);
     setError('');
 
+    // Client-side validation
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError(t('errors.validationError'));
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError(t('auth.invalidCredentials'));
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
+      const response = await apiClient.post('/auth/login', { email: trimmedEmail, password });
 
       if (response.data && response.data.success) {
         const { token, refresh_token } = response.data.data;
         await login(token, refresh_token);
         router.push('/otp');
       } else {
-        const errorMsg = 'Invalid response from server';
-        setError(errorMsg);
-        Alert.alert(t('auth.loginError'), errorMsg);
+        setError(t('auth.loginError'));
       }
     } catch (err: any) {
       let errorMsg: string;
-      if (err.response?.data?.message) {
-        errorMsg = err.response.data.message;
+      const data = err.response?.data;
+
+      if (data?.error) {
+        // Singular error string — e.g. "invalid credentials", "account is deactivated"
+        errorMsg = data.error;
+      } else if (data?.errors && typeof data.errors === 'object') {
+        // Validation error map — e.g. {"Email": "Email must be a valid email address"}
+        const first = Object.values(data.errors)[0];
+        errorMsg = first ? String(first) : t('errors.validationError');
       } else if (!err.response) {
         errorMsg = t('errors.networkError');
       } else if (err.response.status === 401 || err.response.status === 403) {
@@ -136,8 +154,8 @@ const LoginScreen = () => {
       } else {
         errorMsg = t('errors.unknownError');
       }
+
       setError(errorMsg);
-      Alert.alert(t('common.error'), errorMsg);
     } finally {
       setLoading(false);
     }

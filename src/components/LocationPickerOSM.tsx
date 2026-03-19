@@ -523,12 +523,14 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       <View style={[styles.mapContainer, error && styles.mapContainerError]}>
         <WebView
           ref={webViewRef}
-          source={{ html: mapHtml }}
+          source={{ html: mapHtml, baseUrl: 'https://localhost/' }}
           style={styles.map}
           onMessage={handleMessage}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          originWhitelist={['*']}
+          mixedContentMode="compatibility"
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color="#2EC4B6" />

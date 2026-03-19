@@ -252,12 +252,7 @@ const RequestFilterScreen = () => {
   };
 
   const resetFilters = () => {
-    setFilters({
-      state_id: null, state_name: null, priority: null, severity: null,
-      assignee_id: null, assignee_name: null, department_id: null, department_name: null,
-      classification_ids: [], classification_names: [], location_ids: [], location_names: [],
-      source: null, start_date: null, end_date: null,
-    });
+    router.replace({ pathname: '/(tabs)/request' });
   };
 
   const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
@@ -472,16 +467,17 @@ const RequestFilterScreen = () => {
                   }
                   mode="date"
                   display="spinner"
+                  maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
                     if (selectedDate) {
                       if (showDatePicker === 'from') {
                         const d = new Date(selectedDate);
                         d.setHours(0, 0, 0, 0);
-                        setFilters({ ...filters, start_date: d.toISOString() });
+                        setFilters(prev => ({ ...prev, start_date: d.toISOString() }));
                       } else {
                         const d = new Date(selectedDate);
                         d.setHours(23, 59, 59, 999);
-                        setFilters({ ...filters, end_date: d.toISOString() });
+                        setFilters(prev => ({ ...prev, end_date: d.toISOString() }));
                       }
                     }
                   }}
@@ -497,17 +493,18 @@ const RequestFilterScreen = () => {
             }
             mode="date"
             display="default"
+            maximumDate={new Date()}
             onChange={(event, selectedDate) => {
               setShowDatePicker(null);
               if (event.type === 'dismissed' || !selectedDate) return;
               if (showDatePicker === 'from') {
                 const d = new Date(selectedDate);
                 d.setHours(0, 0, 0, 0);
-                setFilters({ ...filters, start_date: d.toISOString() });
+                setFilters(prev => ({ ...prev, start_date: d.toISOString() }));
               } else {
                 const d = new Date(selectedDate);
                 d.setHours(23, 59, 59, 999);
-                setFilters({ ...filters, end_date: d.toISOString() });
+                setFilters(prev => ({ ...prev, end_date: d.toISOString() }));
               }
             }}
           />

@@ -1107,7 +1107,7 @@ const UpdateStatusModal = () => {
                       ))}
                     </View>
                   )}
-                  <TouchableOpacity style={styles.attachmentBox} onPress={() => setShowAttachmentOptions(true)}>
+                  <TouchableOpacity style={styles.attachmentBox} onPress={takePhotoWithCamera}>
                     <Ionicons name="cloud-upload-outline" size={32} color="#2EC4B6" />
                     <Text style={styles.attachmentText}>{attachments.length > 0 ? 'Add more files' : 'Attach files'}</Text>
                     <Text style={styles.attachmentSubText}>Max file size: 5 MB</Text>
@@ -1220,7 +1220,7 @@ const UpdateStatusModal = () => {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
+            {/* <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
               <View style={[styles.optionIconContainer, { backgroundColor: '#E3F2FD' }]}>
                 <Ionicons name="images" size={28} color="#2196F3" />
               </View>
@@ -1228,7 +1228,7 @@ const UpdateStatusModal = () => {
                 <Text style={styles.optionTitle}>Choose from Gallery</Text>
                 <Text style={styles.optionSubtitle}>Select images from your photo library</Text>
               </View>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <TouchableOpacity
               style={styles.cancelButton}

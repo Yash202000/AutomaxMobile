@@ -1,7 +1,7 @@
 import { getIncidents, getRequests } from "@/src/api/incidents";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -36,108 +36,7 @@ interface IncidentMarker {
   current_state?: { name: string };
 }
 
-const MapViewScreen = () => {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const { type } = useLocalSearchParams<{ type?: string }>();
-  const recordType = type || "incident";
-  const webViewRef = useRef<WebView>(null);
-
-  const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
-
-  useEffect(() => {
-    fetchIncidentsWithLocation();
-  }, []);
-
-  useEffect(() => {
-    if (mapReady && incidents.length > 0) {
-      updateMapMarkers(incidents);
-    }
-  }, [mapReady, incidents]);
-
-  const fetchIncidentsWithLocation = async () => {
-    setLoading(true);
-    try {
-      const fetchFunction =
-        recordType === "request" ? getRequests : getIncidents;
-      const response = await fetchFunction({
-        page: 1,
-        limit: 100,
-      });
-
-      if (response.success && response.data) {
-        const incidentsWithLocation = response.data.filter(
-          (inc: any) =>
-            inc.latitude !== null &&
-            inc.latitude !== undefined &&
-            inc.longitude !== null &&
-            inc.longitude !== undefined &&
-            !isNaN(inc.latitude) &&
-            !isNaN(inc.longitude),
-        );
-        setIncidents(incidentsWithLocation);
-      }
-    } catch (error) {
-      // silent
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateMapMarkers = (incidentList: IncidentMarker[]) => {
-    const markersData = incidentList.map((inc) => ({
-      id: inc.id,
-      lat: parseFloat(String(inc.latitude)),
-      lng: parseFloat(String(inc.longitude)),
-      title: inc.title,
-      number: inc.incident_number,
-      priority: inc.priority || 0,
-      state: inc.current_state?.name || "N/A",
-    }));
-
-    const markersJson = JSON.stringify(markersData);
-    webViewRef.current?.injectJavaScript(`
-      updateMarkers(${markersJson});
-      true;
-    `);
-  };
-
-  const getMarkerColor = (priority?: number) => {
-    switch (priority) {
-      case 1:
-        return "#DC2626"; // Critical - Red
-      case 2:
-        return "#EA580C"; // High - Orange
-      case 3:
-        return "#F59E0B"; // Medium - Yellow
-      case 4:
-        return "#3B82F6"; // Low - Blue
-      case 5:
-        return "#22C55E"; // Very Low - Green
-      default:
-        return "#2EC4B6"; // Default - Teal
-    }
-  };
-
-  const handleMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-
-      if (data.type === "mapReady") {
-        setMapReady(true);
-      } else if (data.type === "markerClicked") {
-        const detailsPage =
-          recordType === "request" ? "/request-details" : "/incident-details";
-        router.push(`${detailsPage}?id=${data.id}`);
-      }
-    } catch (error) {
-      console.error("❌ [MapView OSM] Error handling message:", error);
-    }
-  };
-
-  const mapHtml = `
+const MAP_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -171,10 +70,8 @@ const MapViewScreen = () => {
 <body>
   <div id="map"></div>
   <script>
-    // Initialize map centered on Saudi Arabia
     const map = L.map('map').setView([24.7136, 46.6753], 6);
 
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
@@ -182,9 +79,7 @@ const MapViewScreen = () => {
 
     let markers = [];
 
-    // Update markers function
     window.updateMarkers = function(incidentsData) {
-      // Clear existing markers
       markers.forEach(marker => map.removeLayer(marker));
       markers = [];
 
@@ -192,24 +87,19 @@ const MapViewScreen = () => {
         return;
       }
 
-
-      // Get priority colors
       const getPriorityColor = (priority) => {
         switch (priority) {
-          case 1: return '#DC2626'; // Critical
-          case 2: return '#EA580C'; // High
-          case 3: return '#F59E0B'; // Medium
-          case 4: return '#3B82F6'; // Low
-          case 5: return '#22C55E'; // Very Low
+          case 1: return '#DC2626';
+          case 2: return '#EA580C';
+          case 3: return '#F59E0B';
+          case 4: return '#3B82F6';
+          case 5: return '#22C55E';
           default: return '#2EC4B6';
         }
       };
 
-      // Add markers
       incidentsData.forEach(incident => {
         const color = getPriorityColor(incident.priority);
-
-        // Create custom marker
         const markerHtml = '<div class="custom-marker" style="background-color: ' + color + ';"></div>';
         const customIcon = L.divIcon({
           html: markerHtml,
@@ -243,15 +133,12 @@ const MapViewScreen = () => {
         markers.push(marker);
       });
 
-      // Fit map to show all markers
       if (markers.length > 0) {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds().pad(0.1));
       }
-
     };
 
-    // Handle marker click
     window.handleMarkerClick = function(incidentId) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'markerClicked',
@@ -259,7 +146,6 @@ const MapViewScreen = () => {
       }));
     };
 
-    // Notify React Native that map is ready
     map.whenReady(function() {
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'mapReady'
@@ -268,7 +154,131 @@ const MapViewScreen = () => {
   </script>
 </body>
 </html>
-  `;
+`;
+
+const MapViewScreen = () => {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const {
+    type, state_id, priority, severity, assignee_id, department_id,
+    classification_ids, location_ids, source, start_date, end_date,
+  } = useLocalSearchParams<{
+    type?: string; state_id?: string; priority?: string; severity?: string;
+    assignee_id?: string; department_id?: string; classification_ids?: string;
+    location_ids?: string; source?: string; start_date?: string; end_date?: string;
+  }>();
+  const recordType = type || "incident";
+  const webViewRef = useRef<WebView>(null);
+
+  const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    fetchIncidentsWithLocation();
+  }, []);
+
+  useEffect(() => {
+    if (mapReady && incidents.length > 0) {
+      updateMapMarkers(incidents);
+    }
+  }, [mapReady, incidents]);
+
+  const buildFilterParams = () => {
+    const params: Record<string, any> = {};
+    if (state_id) params.current_state_id = state_id;
+    if (priority) params.priority = parseInt(priority);
+    if (severity) params.severity = parseInt(severity);
+    if (assignee_id) params.assignee_id = assignee_id;
+    if (department_id) params.department_id = department_id;
+    if (classification_ids) params.classification_id = classification_ids.split(',');
+    if (location_ids) params.location_id = location_ids.split(',');
+    if (source) params.source = source;
+    if (start_date) params.start_date = start_date;
+    if (end_date) params.end_date = end_date;
+    return params;
+  };
+
+  const fetchIncidentsWithLocation = async () => {
+    setLoading(true);
+    try {
+      const fetchFunction =
+        recordType === "request" ? getRequests : getIncidents;
+
+      // First fetch to get total count
+      const countResponse = await fetchFunction({ page: 1, limit: 1, ...buildFilterParams() });
+      const total = countResponse.success ? (countResponse.pagination?.total_items ?? 0) : 0;
+      setTotalCount(total);
+
+      // Backend caps limit at 100, so fetch all pages and aggregate
+      const PAGE_SIZE = 100;
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+
+      const allData: any[] = [];
+      for (let page = 1; page <= totalPages; page++) {
+        const response = await fetchFunction({
+          page,
+          limit: PAGE_SIZE,
+          ...buildFilterParams(),
+        });
+        if (response.success && response.data) {
+          allData.push(...response.data);
+        }
+      }
+
+      const incidentsWithLocation = allData.filter(
+        (inc: any) =>
+          inc.latitude !== null &&
+          inc.latitude !== undefined &&
+          inc.longitude !== null &&
+          inc.longitude !== undefined &&
+          !isNaN(inc.latitude) &&
+          !isNaN(inc.longitude),
+      );
+      setIncidents(incidentsWithLocation);
+    } catch (error) {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateMapMarkers = (incidentList: IncidentMarker[]) => {
+    const markersData = incidentList.map((inc) => ({
+      id: inc.id,
+      lat: parseFloat(String(inc.latitude)),
+      lng: parseFloat(String(inc.longitude)),
+      title: inc.title,
+      number: inc.incident_number,
+      priority: inc.priority || 0,
+      state: inc.current_state?.name || "N/A",
+    }));
+
+    const markersJson = JSON.stringify(markersData);
+    webViewRef.current?.injectJavaScript(`
+      updateMarkers(${markersJson});
+      true;
+    `);
+  };
+
+  const mapSource = useMemo(() => ({ html: MAP_HTML, baseUrl: 'https://localhost/' }), []);
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+
+      if (data.type === "mapReady") {
+        setMapReady(true);
+      } else if (data.type === "markerClicked") {
+        const detailsPage =
+          recordType === "request" ? "/request-details" : "/incident-details";
+        router.push(`${detailsPage}?id=${data.id}`);
+      }
+    } catch (error) {
+      console.error("❌ [MapView OSM] Error handling message:", error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -302,19 +312,21 @@ const MapViewScreen = () => {
         <>
           <WebView
             ref={webViewRef}
-            source={{ html: mapHtml }}
+            source={mapSource}
             style={styles.map}
             onMessage={handleMessage}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={false}
+            originWhitelist={['*']}
+            mixedContentMode="compatibility"
           />
 
           {/* Info Badge */}
           <View style={styles.infoBadge}>
             <Ionicons name="location" size={20} color={COLORS.accent} />
             <Text style={styles.infoBadgeText}>
-              {incidents.length}{" "}
+              {incidents.length}{totalCount > incidents.length ? `/${totalCount}` : ""}{" "}
               {recordType === "request"
                 ? t("map.requestsOnMap", "requests on map")
                 : t("map.incidentsOnMap", "incidents on map")}
