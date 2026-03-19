@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getAllStates } from '@/src/api/workflow';
 import { getDepartments } from '@/src/api/departments';
 import { getUsers } from '@/src/api/users';
-import { getClassifications } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getLocationsTree } from '@/src/api/locations';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 
 interface FilterState {
   state_id: string | null;
@@ -17,13 +20,30 @@ interface FilterState {
   assignee_name: string | null;
   department_id: string | null;
   department_name: string | null;
-  classification_id: string | null;
-  classification_name: string | null;
-  location_id: string | null;
-  location_name: string | null;
-  sla_status: string | null;
-  channel: string | null;
+  classification_ids: string[];
+  classification_names: string[];
+  location_ids: string[];
+  location_names: string[];
+  source: string | null;
+  start_date: string | null;
+  end_date: string | null;
 }
+
+const sources = [
+  { value: 'web', label: 'Web Portal' },
+  { value: 'mobile', label: 'Mobile App' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'api', label: 'API Integration' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: '940_system', label: '940 System' },
+  { value: '940_manual', label: '940 Manual' },
+  { value: 'field', label: 'Field' },
+  { value: 'manual', label: 'Manual Entry' },
+  { value: 'viusional', label: 'Viusional' },
+  { value: 'other', label: 'Other' },
+];
 
 const priorities = [
   { value: 1, label: 'Critical', color: '#E74C3C' },
@@ -41,24 +61,13 @@ const severities = [
   { value: 5, label: 'Cosmetic', color: '#2ECC71' },
 ];
 
-const channels = [
-  { value: 'phone', label: 'Phone' },
-  { value: 'email', label: 'Email' },
-  { value: 'web', label: 'Web Portal' },
-  { value: 'mobile', label: 'Mobile App' },
-  { value: 'social_media', label: 'Social Media' },
-  { value: 'in_person', label: 'In Person' },
-  { value: 'viusional', label: 'Viusional' },
-  { value: 'other', label: 'Other' },
-];
 
-const slaStatuses = [
-  { value: 'on_track', label: 'On Track', color: '#2ECC71' },
-  { value: 'at_risk', label: 'At Risk', color: '#F1C40F' },
-  { value: 'breached', label: 'Breached', color: '#E74C3C' },
-];
+
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallScreen = screenHeight < 700;
 
 const RequestFilterScreen = () => {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     state_id?: string;
@@ -69,19 +78,20 @@ const RequestFilterScreen = () => {
     assignee_name?: string;
     department_id?: string;
     department_name?: string;
-    classification_id?: string;
-    classification_name?: string;
-    location_id?: string;
-    location_name?: string;
-    sla_status?: string;
-    channel?: string;
+    classification_ids?: string;
+    classification_names?: string;
+    location_ids?: string;
+    location_names?: string;
+    source?: string;
+    start_date?: string;
+    end_date?: string;
   }>();
 
   const [states, setStates] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [classifications, setClassifications] = useState<any[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
+  const [classifications, setClassifications] = useState<TreeNode[]>([]);
+  const [locations, setLocations] = useState<TreeNode[]>([]);
   const [loadingStates, setLoadingStates] = useState(true);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -96,15 +106,17 @@ const RequestFilterScreen = () => {
     assignee_name: params.assignee_name || null,
     department_id: params.department_id || null,
     department_name: params.department_name || null,
-    classification_id: params.classification_id || null,
-    classification_name: params.classification_name || null,
-    location_id: params.location_id || null,
-    location_name: params.location_name || null,
-    sla_status: params.sla_status || null,
-    channel: params.channel || null,
+    classification_ids: params.classification_ids ? params.classification_ids.split(',') : [],
+    classification_names: params.classification_names ? params.classification_names.split(',') : [],
+    location_ids: params.location_ids ? params.location_ids.split(',') : [],
+    location_names: params.location_names ? params.location_names.split(',') : [],
+    source: params.source || null,
+    start_date: params.start_date || null,
+    end_date: params.end_date || null,
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   useEffect(() => {
     fetchStates();
@@ -143,7 +155,7 @@ const RequestFilterScreen = () => {
 
   const fetchClassifications = async () => {
     setLoadingClassifications(true);
-    const response = await getClassifications();
+    const response = await getClassificationsTree();
     if (response.success) {
       setClassifications(response.data || []);
     }
@@ -152,7 +164,7 @@ const RequestFilterScreen = () => {
 
   const fetchLocations = async () => {
     setLoadingLocations(true);
-    const response = await getLocations();
+    const response = await getLocationsTree();
     if (response.success) {
       setLocations(response.data || []);
     }
@@ -200,31 +212,8 @@ const RequestFilterScreen = () => {
     setExpandedSection(null);
   };
 
-  const selectClassification = (classification: any) => {
-    if (filters.classification_id === classification.id) {
-      setFilters({ ...filters, classification_id: null, classification_name: null });
-    } else {
-      setFilters({ ...filters, classification_id: classification.id, classification_name: classification.name });
-    }
-    setExpandedSection(null);
-  };
-
-  const selectLocation = (location: any) => {
-    if (filters.location_id === location.id) {
-      setFilters({ ...filters, location_id: null, location_name: null });
-    } else {
-      setFilters({ ...filters, location_id: location.id, location_name: location.name });
-    }
-    setExpandedSection(null);
-  };
-
-  const selectSlaStatus = (status: string) => {
-    setFilters({ ...filters, sla_status: filters.sla_status === status ? null : status });
-    setExpandedSection(null);
-  };
-
-  const selectChannel = (channel: string) => {
-    setFilters({ ...filters, channel: filters.channel === channel ? null : channel });
+  const selectSource = (source: string | null) => {
+    setFilters({ ...filters, source });
     setExpandedSection(null);
   };
 
@@ -244,16 +233,17 @@ const RequestFilterScreen = () => {
       queryParams.department_id = filters.department_id;
       queryParams.department_name = filters.department_name;
     }
-    if (filters.classification_id) {
-      queryParams.classification_id = filters.classification_id;
-      queryParams.classification_name = filters.classification_name;
+    if (filters.classification_ids.length > 0) {
+      queryParams.classification_ids = filters.classification_ids.join(',');
+      queryParams.classification_names = filters.classification_names.join(',');
     }
-    if (filters.location_id) {
-      queryParams.location_id = filters.location_id;
-      queryParams.location_name = filters.location_name;
+    if (filters.location_ids.length > 0) {
+      queryParams.location_ids = filters.location_ids.join(',');
+      queryParams.location_names = filters.location_names.join(',');
     }
-    if (filters.sla_status) queryParams.sla_status = filters.sla_status;
-    if (filters.channel) queryParams.channel = filters.channel;
+    if (filters.source) queryParams.source = filters.source;
+    if (filters.start_date) queryParams.start_date = filters.start_date;
+    if (filters.end_date) queryParams.end_date = filters.end_date;
 
     router.replace({
       pathname: '/(tabs)/request',
@@ -265,14 +255,19 @@ const RequestFilterScreen = () => {
     setFilters({
       state_id: null, state_name: null, priority: null, severity: null,
       assignee_id: null, assignee_name: null, department_id: null, department_name: null,
-      classification_id: null, classification_name: null, location_id: null, location_name: null,
-      sla_status: null, channel: null,
+      classification_ids: [], classification_names: [], location_ids: [], location_names: [],
+      source: null, start_date: null, end_date: null,
     });
   };
 
   const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
-    filters.assignee_id || filters.department_id || filters.classification_id ||
-    filters.location_id || filters.sla_status || filters.channel;
+    filters.assignee_id || filters.department_id || filters.classification_ids.length > 0 ||
+    filters.location_ids.length > 0 || filters.source || filters.start_date || filters.end_date;
+
+  const formatDisplayDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   const renderFilterSection = (
     key: string,
@@ -303,7 +298,7 @@ const RequestFilterScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginTop: isSmallScreen ? 60 : 100 }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Filter Requests</Text>
         <TouchableOpacity onPress={() => router.back()}>
@@ -351,56 +346,175 @@ const RequestFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('classification', 'Classification', 'folder-outline', filters.classification_name || 'All', loadingClassifications,
-          [{ id: null, name: 'All Classifications' }, ...classifications],
-          (c) => (
-            <TouchableOpacity key={c.id || 'all'} style={[styles.filterOption, (c.id ? filters.classification_id === c.id : !filters.classification_id) && styles.filterOptionSelected]}
-              onPress={() => c.id ? selectClassification(c) : setFilters({ ...filters, classification_id: null, classification_name: null })}>
-              <Text style={styles.filterOptionText}>{c.name}</Text>
-              {(c.id ? filters.classification_id === c.id : !filters.classification_id) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
-            </TouchableOpacity>
-          )
-        )}
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="layers-outline" size={20} color="#9B59B6" />
+              <Text style={styles.filterLabel}>Classification</Text>
+            </View>
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label="Classification"
+              value=""
+              data={classifications}
+              loading={loadingClassifications}
+              onSelect={() => {}}
+              leafOnly={true}
+              placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : 'All Classifications'}
+              iconType="classification"
+              multiSelect={true}
+              selectedIds={filters.classification_ids}
+              onMultiSelect={(nodes) => setFilters({ ...filters, classification_ids: nodes.map(n => n.id), classification_names: nodes.map(n => n.name) })}
+            />
+          </View>
+        </View>
 
-        {renderFilterSection('location', 'Location', 'location-outline', filters.location_name || 'All', loadingLocations,
-          [{ id: null, name: 'All Locations' }, ...locations],
-          (l) => (
-            <TouchableOpacity key={l.id || 'all'} style={[styles.filterOption, (l.id ? filters.location_id === l.id : !filters.location_id) && styles.filterOptionSelected]}
-              onPress={() => l.id ? selectLocation(l) : setFilters({ ...filters, location_id: null, location_name: null })}>
-              <Text style={styles.filterOptionText}>{l.name}</Text>
-              {(l.id ? filters.location_id === l.id : !filters.location_id) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
-            </TouchableOpacity>
-          )
-        )}
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="location-outline" size={20} color="#9B59B6" />
+              <Text style={styles.filterLabel}>Location</Text>
+            </View>
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label="Location"
+              value=""
+              data={locations}
+              loading={loadingLocations}
+              onSelect={() => {}}
+              leafOnly={true}
+              placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : 'All Locations'}
+              iconType="location"
+              multiSelect={true}
+              selectedIds={filters.location_ids}
+              onMultiSelect={(nodes) => setFilters({ ...filters, location_ids: nodes.map(n => n.id), location_names: nodes.map(n => n.name) })}
+            />
+          </View>
+        </View>
 
-        {renderFilterSection('sla', 'SLA Status', 'time-outline', slaStatuses.find(s => s.value === filters.sla_status)?.label || 'All', false,
-          [{ value: null, label: 'All SLA Statuses' }, ...slaStatuses],
+        {renderFilterSection('source', 'Source', 'git-network-outline', sources.find(s => s.value === filters.source)?.label || 'All', false,
+          [{ value: null, label: 'All Sources' }, ...sources],
           (s) => (
-            <TouchableOpacity key={s.value || 'all'} style={[styles.filterOption, (s.value ? filters.sla_status === s.value : !filters.sla_status) && styles.filterOptionSelected]}
-              onPress={() => s.value ? selectSlaStatus(s.value) : setFilters({ ...filters, sla_status: null })}>
-              <View style={styles.priorityOption}>
-                {s.color && <View style={[styles.priorityDot, { backgroundColor: s.color }]} />}
-                <Text style={styles.filterOptionText}>{s.label}</Text>
-              </View>
-              {(s.value ? filters.sla_status === s.value : !filters.sla_status) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
+            <TouchableOpacity key={s.value || 'all'} style={[styles.filterOption, (s.value ? filters.source === s.value : !filters.source) && styles.filterOptionSelected]}
+              onPress={() => s.value ? selectSource(s.value) : selectSource(null)}>
+              <Text style={styles.filterOptionText}>{s.label}</Text>
+              {(s.value ? filters.source === s.value : !filters.source) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
             </TouchableOpacity>
           )
         )}
 
-        {renderFilterSection('channel', 'Channel', 'git-network-outline', channels.find(c => c.value === filters.channel)?.label || 'All', false,
-          [{ value: null, label: 'All Channels' }, ...channels],
-          (c) => (
-            <TouchableOpacity key={c.value || 'all'} style={[styles.filterOption, (c.value ? filters.channel === c.value : !filters.channel) && styles.filterOptionSelected]}
-              onPress={() => c.value ? selectChannel(c.value) : setFilters({ ...filters, channel: null })}>
-              <Text style={styles.filterOptionText}>{c.label}</Text>
-              {(c.value ? filters.channel === c.value : !filters.channel) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
-            </TouchableOpacity>
-          )
-        )}
+        {/* Date Range Filter */}
+        <View style={styles.filterSection}>
+          <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="calendar-outline" size={20} color="#9B59B6" />
+              <Text style={styles.filterLabel}>Date Range</Text>
+            </View>
+            <View style={styles.filterHeaderRight}>
+              <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
+                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+              </Text>
+              <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+            </View>
+          </TouchableOpacity>
+          {expandedSection === 'date_range' && (
+            <View style={styles.filterOptions}>
+              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
+                <Ionicons name="calendar" size={18} color="#9B59B6" />
+                <Text style={styles.dateLabel}>From</Text>
+                <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
+                  {filters.start_date ? formatDisplayDate(filters.start_date) : 'Any date'}
+                </Text>
+                {filters.start_date ? (
+                  <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
+                <Ionicons name="calendar" size={18} color="#9B59B6" />
+                <Text style={styles.dateLabel}>To</Text>
+                <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
+                  {filters.end_date ? formatDisplayDate(filters.end_date) : 'Any date'}
+                </Text>
+                {filters.end_date ? (
+                  <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      <View style={styles.footer}>
+      {showDatePicker !== null && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide">
+            <View style={styles.dateModalOverlay}>
+              <View style={styles.dateModalContent}>
+                <View style={styles.dateModalHeader}>
+                  <Text style={styles.dateModalTitle}>
+                    {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                    <Text style={styles.dateModalDone}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={showDatePicker === 'from'
+                    ? (filters.start_date ? new Date(filters.start_date) : new Date())
+                    : (filters.end_date ? new Date(filters.end_date) : new Date())
+                  }
+                  mode="date"
+                  display="spinner"
+                  onChange={(_, selectedDate) => {
+                    if (selectedDate) {
+                      if (showDatePicker === 'from') {
+                        const d = new Date(selectedDate);
+                        d.setHours(0, 0, 0, 0);
+                        setFilters({ ...filters, start_date: d.toISOString() });
+                      } else {
+                        const d = new Date(selectedDate);
+                        d.setHours(23, 59, 59, 999);
+                        setFilters({ ...filters, end_date: d.toISOString() });
+                      }
+                    }
+                  }}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={showDatePicker === 'from'
+              ? (filters.start_date ? new Date(filters.start_date) : new Date())
+              : (filters.end_date ? new Date(filters.end_date) : new Date())
+            }
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(null);
+              if (event.type === 'dismissed' || !selectedDate) return;
+              if (showDatePicker === 'from') {
+                const d = new Date(selectedDate);
+                d.setHours(0, 0, 0, 0);
+                setFilters({ ...filters, start_date: d.toISOString() });
+              } else {
+                const d = new Date(selectedDate);
+                d.setHours(23, 59, 59, 999);
+                setFilters({ ...filters, end_date: d.toISOString() });
+              }
+            }}
+          />
+        )
+      )}
+
+      <View style={[styles.footer, { paddingBottom: Math.max(15, insets.bottom + 10) }]}>
         <TouchableOpacity style={[styles.resetButton, !hasActiveFilters && styles.resetButtonDisabled]} onPress={resetFilters} disabled={!hasActiveFilters}>
           <Text style={[styles.resetButtonText, !hasActiveFilters && styles.resetButtonTextDisabled]}>Reset</Text>
         </TouchableOpacity>
@@ -425,18 +539,27 @@ const styles = StyleSheet.create({
   filterValue: { fontSize: 14, color: '#666' },
   filterValueActive: { color: '#9B59B6', fontWeight: '600' },
   filterOptions: { paddingHorizontal: 15, paddingBottom: 15, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
+  treeSelectWrapper: { paddingHorizontal: 15, paddingBottom: 15 },
   filterOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
   filterOptionSelected: { backgroundColor: '#F3E8FF' },
   filterOptionText: { fontSize: 15, color: '#333' },
   priorityOption: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   priorityDot: { width: 10, height: 10, borderRadius: 5 },
-  footer: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
-  resetButton: { flex: 1, padding: 15, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#9B59B6' },
+  footer: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
+  resetButton: { flex: 1, paddingVertical: isSmallScreen ? 12 : 15, paddingHorizontal: 8, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#9B59B6' },
   resetButtonDisabled: { borderColor: '#CCC' },
   resetButtonText: { fontSize: 16, fontWeight: 'bold', color: '#9B59B6' },
   resetButtonTextDisabled: { color: '#CCC' },
-  filterButton: { flex: 2, backgroundColor: '#9B59B6', padding: 15, borderRadius: 10, alignItems: 'center' },
-  filterButtonText: { fontSize: 16, fontWeight: 'bold', color: 'white' },
+  filterButton: { flex: 2, backgroundColor: '#9B59B6', paddingVertical: isSmallScreen ? 12 : 15, paddingHorizontal: 8, borderRadius: 10, alignItems: 'center' },
+  filterButtonText: { fontSize: isSmallScreen ? 14 : 16, fontWeight: 'bold', color: 'white' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, gap: 10 },
+  dateLabel: { fontSize: 15, color: '#333', width: 36 },
+  dateValue: { flex: 1, fontSize: 15, color: '#666' },
+  dateModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  dateModalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30 },
+  dateModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  dateModalTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  dateModalDone: { fontSize: 16, fontWeight: '600', color: '#2EC4B6' },
 });
 
 export default RequestFilterScreen;

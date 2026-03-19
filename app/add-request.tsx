@@ -843,7 +843,13 @@ const AddRequestScreen = () => {
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments(prev => {
+      const file = prev[index];
+      if (file?.uri) {
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleLocationChange = (location: LocationData | undefined) => {
@@ -926,6 +932,12 @@ const AddRequestScreen = () => {
       // Upload attachments if any
       if (attachments.length > 0) {
         await uploadMultipleAttachments(response.data.id, attachments);
+        // Clean up temp files after upload
+        attachments.forEach(file => {
+          if (file?.uri) {
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+          }
+        });
       }
 
       setSubmitting(false);

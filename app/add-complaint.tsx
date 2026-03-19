@@ -9,6 +9,7 @@ import { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -238,6 +239,18 @@ const AddComplaintScreen = () => {
       fetchAllData();
     }
   }, [user]);
+
+  // Cleanup active recording and interval on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (recording) {
+        if ((recording as any)._interval) {
+          clearInterval((recording as any)._interval);
+        }
+        recording.stopAndUnloadAsync().catch(() => {});
+      }
+    };
+  }, [recording]);
 
   const fetchAllData = async () => {
     setLoadingData(true);
@@ -566,7 +579,13 @@ const AddComplaintScreen = () => {
   };
 
   const removeAudio = (index: number) => {
-    setAudioFiles(prev => prev.filter((_, i) => i !== index));
+    setAudioFiles(prev => {
+      const file = prev[index];
+      if (file?.uri) {
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const formatDuration = (seconds: number): string => {
@@ -659,6 +678,13 @@ const AddComplaintScreen = () => {
           console.error('Failed to upload some audio files:', uploadResult.errors);
           // Continue anyway since complaint was created
         }
+
+        // Delete audio temp files from device cache after upload
+        audioFiles.forEach(audio => {
+          if (audio?.uri) {
+            FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(() => {});
+          }
+        });
       }
 
       setSubmitting(false);

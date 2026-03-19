@@ -90,6 +90,8 @@ export async function compressImage(
 
     // If compressed is larger, use original (rare but possible)
     if (compressedSize >= originalSize) {
+      // Delete the larger compressed file — it's wasteful
+      FileSystem.deleteAsync(compressed.uri, { idempotent: true }).catch(() => {});
       return {
         success: true,
         compressedUri: imageUri,
@@ -100,6 +102,9 @@ export async function compressImage(
         skipReason: 'Compression increased size',
       };
     }
+
+    // Delete the original watermarked tmpfile — the compressed copy is what we keep
+    FileSystem.deleteAsync(imageUri, { idempotent: true }).catch(() => {});
 
     return {
       success: true,

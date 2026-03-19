@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getAllStates } from '@/src/api/workflow';
 import { getDepartments } from '@/src/api/departments';
@@ -21,8 +23,9 @@ interface FilterState {
   classification_name: string | null;
   location_id: string | null;
   location_name: string | null;
-  sla_status: string | null;
   channel: string | null;
+  start_date: string | null;
+  end_date: string | null;
 }
 
 const priorities = [
@@ -41,11 +44,6 @@ const severities = [
   { value: 5, label: 'Cosmetic', color: '#2ECC71' },
 ];
 
-const slaStatuses = [
-  { value: 'on_track', label: 'On Track', color: '#2ECC71' },
-  { value: 'at_risk', label: 'At Risk', color: '#F1C40F' },
-  { value: 'breached', label: 'Breached', color: '#E74C3C' },
-];
 
 const channels = [
   { value: 'phone', label: 'Phone' },
@@ -58,7 +56,11 @@ const channels = [
   { value: 'other', label: 'Other' },
 ];
 
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallScreen = screenHeight < 700;
+
 const ComplaintFilterScreen = () => {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     state_id?: string;
@@ -73,8 +75,9 @@ const ComplaintFilterScreen = () => {
     classification_name?: string;
     location_id?: string;
     location_name?: string;
-    sla_status?: string;
     channel?: string;
+    start_date?: string;
+    end_date?: string;
   }>();
 
   const [states, setStates] = useState<any[]>([]);
@@ -100,11 +103,13 @@ const ComplaintFilterScreen = () => {
     classification_name: params.classification_name || null,
     location_id: params.location_id || null,
     location_name: params.location_name || null,
-    sla_status: params.sla_status || null,
     channel: params.channel || null,
+    start_date: params.start_date || null,
+    end_date: params.end_date || null,
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   useEffect(() => {
     fetchStates();
@@ -162,8 +167,9 @@ const ComplaintFilterScreen = () => {
     if (filters.department_id) { queryParams.department_id = filters.department_id; queryParams.department_name = filters.department_name; }
     if (filters.classification_id) { queryParams.classification_id = filters.classification_id; queryParams.classification_name = filters.classification_name; }
     if (filters.location_id) { queryParams.location_id = filters.location_id; queryParams.location_name = filters.location_name; }
-    if (filters.sla_status) queryParams.sla_status = filters.sla_status;
     if (filters.channel) queryParams.channel = filters.channel;
+    if (filters.start_date) queryParams.start_date = filters.start_date;
+    if (filters.end_date) queryParams.end_date = filters.end_date;
 
     router.replace({ pathname: '/(tabs)/complaint', params: queryParams });
   };
@@ -173,13 +179,18 @@ const ComplaintFilterScreen = () => {
       state_id: null, state_name: null, priority: null, severity: null,
       assignee_id: null, assignee_name: null, department_id: null, department_name: null,
       classification_id: null, classification_name: null, location_id: null, location_name: null,
-      sla_status: null, channel: null,
+      channel: null, start_date: null, end_date: null,
     });
   };
 
   const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
     filters.assignee_id || filters.department_id || filters.classification_id ||
-    filters.location_id || filters.sla_status || filters.channel;
+    filters.location_id || filters.channel || filters.start_date || filters.end_date;
+
+  const formatDisplayDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   const renderFilterSection = (
     key: string, label: string, icon: string, value: string, loading: boolean,
@@ -205,7 +216,7 @@ const ComplaintFilterScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginTop: isSmallScreen ? 60 : 100 }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Filter Complaints</Text>
         <TouchableOpacity onPress={() => router.back()}>
@@ -250,23 +261,116 @@ const ComplaintFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('sla', 'SLA Status', 'time-outline', slaStatuses.find(s => s.value === filters.sla_status)?.label || 'All', false,
-          [{ value: null, label: 'All SLA Statuses' }, ...slaStatuses],
-          (s) => (
-            <TouchableOpacity key={s.value || 'all'} style={[styles.filterOption, (s.value ? filters.sla_status === s.value : !filters.sla_status) && styles.filterOptionSelected]}
-              onPress={() => setFilters({ ...filters, sla_status: s.value })}>
-              <View style={styles.priorityOption}>
-                {s.color && <View style={[styles.priorityDot, { backgroundColor: s.color }]} />}
-                <Text style={styles.filterOptionText}>{s.label}</Text>
-              </View>
-              {(s.value ? filters.sla_status === s.value : !filters.sla_status) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
-            </TouchableOpacity>
-          )
-        )}
+        {/* Date Range Filter */}
+        <View style={styles.filterSection}>
+          <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="calendar-outline" size={20} color="#E74C3C" />
+              <Text style={styles.filterLabel}>Date Range</Text>
+            </View>
+            <View style={styles.filterHeaderRight}>
+              <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
+                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+              </Text>
+              <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+            </View>
+          </TouchableOpacity>
+          {expandedSection === 'date_range' && (
+            <View style={styles.filterOptions}>
+              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
+                <Ionicons name="calendar" size={18} color="#E74C3C" />
+                <Text style={styles.dateLabel}>From</Text>
+                <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
+                  {filters.start_date ? formatDisplayDate(filters.start_date) : 'Any date'}
+                </Text>
+                {filters.start_date ? (
+                  <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
+                <Ionicons name="calendar" size={18} color="#E74C3C" />
+                <Text style={styles.dateLabel}>To</Text>
+                <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
+                  {filters.end_date ? formatDisplayDate(filters.end_date) : 'Any date'}
+                </Text>
+                {filters.end_date ? (
+                  <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      <View style={styles.footer}>
+      {showDatePicker !== null && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide">
+            <View style={styles.dateModalOverlay}>
+              <View style={styles.dateModalContent}>
+                <View style={styles.dateModalHeader}>
+                  <Text style={styles.dateModalTitle}>
+                    {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                    <Text style={styles.dateModalDone}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={showDatePicker === 'from'
+                    ? (filters.start_date ? new Date(filters.start_date) : new Date())
+                    : (filters.end_date ? new Date(filters.end_date) : new Date())
+                  }
+                  mode="date"
+                  display="spinner"
+                  onChange={(_, selectedDate) => {
+                    if (selectedDate) {
+                      if (showDatePicker === 'from') {
+                        const d = new Date(selectedDate);
+                        d.setHours(0, 0, 0, 0);
+                        setFilters({ ...filters, start_date: d.toISOString() });
+                      } else {
+                        const d = new Date(selectedDate);
+                        d.setHours(23, 59, 59, 999);
+                        setFilters({ ...filters, end_date: d.toISOString() });
+                      }
+                    }
+                  }}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={showDatePicker === 'from'
+              ? (filters.start_date ? new Date(filters.start_date) : new Date())
+              : (filters.end_date ? new Date(filters.end_date) : new Date())
+            }
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(null);
+              if (event.type === 'dismissed' || !selectedDate) return;
+              if (showDatePicker === 'from') {
+                const d = new Date(selectedDate);
+                d.setHours(0, 0, 0, 0);
+                setFilters({ ...filters, start_date: d.toISOString() });
+              } else {
+                const d = new Date(selectedDate);
+                d.setHours(23, 59, 59, 999);
+                setFilters({ ...filters, end_date: d.toISOString() });
+              }
+            }}
+          />
+        )
+      )}
+
+      <View style={[styles.footer, { paddingBottom: Math.max(15, insets.bottom + 10) }]}>
         <TouchableOpacity style={[styles.resetButton, !hasActiveFilters && styles.resetButtonDisabled]} onPress={resetFilters} disabled={!hasActiveFilters}>
           <Text style={[styles.resetButtonText, !hasActiveFilters && styles.resetButtonTextDisabled]}>Reset</Text>
         </TouchableOpacity>
@@ -296,13 +400,21 @@ const styles = StyleSheet.create({
   filterOptionText: { fontSize: 15, color: '#333' },
   priorityOption: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   priorityDot: { width: 10, height: 10, borderRadius: 5 },
-  footer: { flexDirection: 'row', padding: 15, borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
-  resetButton: { flex: 1, padding: 15, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#E74C3C' },
+  footer: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEE', gap: 10 },
+  resetButton: { flex: 1, paddingVertical: isSmallScreen ? 12 : 15, paddingHorizontal: 8, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: '#E74C3C' },
   resetButtonDisabled: { borderColor: '#CCC' },
   resetButtonText: { fontSize: 16, fontWeight: 'bold', color: '#E74C3C' },
   resetButtonTextDisabled: { color: '#CCC' },
-  filterButton: { flex: 2, backgroundColor: '#E74C3C', padding: 15, borderRadius: 10, alignItems: 'center' },
-  filterButtonText: { fontSize: 16, fontWeight: 'bold', color: 'white' },
+  filterButton: { flex: 2, backgroundColor: '#E74C3C', paddingVertical: isSmallScreen ? 12 : 15, paddingHorizontal: 8, borderRadius: 10, alignItems: 'center' },
+  filterButtonText: { fontSize: isSmallScreen ? 14 : 16, fontWeight: 'bold', color: 'white' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, gap: 10 },
+  dateLabel: { fontSize: 15, color: '#333', width: 36 },
+  dateValue: { flex: 1, fontSize: 15, color: '#666' },
+  dateModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  dateModalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30 },
+  dateModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  dateModalTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  dateModalDone: { fontSize: 16, fontWeight: '600', color: '#2EC4B6' },
 });
 
 export default ComplaintFilterScreen;

@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -19,14 +20,19 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setLanguage, getCurrentLanguage } from '@/src/i18n';
 import { useAuth } from '@/src/context/AuthContext';
 import apiClient from '@/src/api/client';
+
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallScreen = screenHeight < 700;
 
 const LoginScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { login } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -118,9 +124,20 @@ const LoginScreen = () => {
         Alert.alert(t('auth.loginError'), errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message;
+      let errorMsg: string;
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (!err.response) {
+        errorMsg = t('errors.networkError');
+      } else if (err.response.status === 401 || err.response.status === 403) {
+        errorMsg = t('auth.invalidCredentials');
+      } else if (err.response.status >= 500) {
+        errorMsg = t('errors.serverError');
+      } else {
+        errorMsg = t('errors.unknownError');
+      }
       setError(errorMsg);
-      Alert.alert(t('auth.loginError'), errorMsg);
+      Alert.alert(t('common.error'), errorMsg);
     } finally {
       setLoading(false);
     }
@@ -184,27 +201,29 @@ const LoginScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.keyboardView}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <LinearGradient
+        colors={['#F8FFFE', '#FFFFFF']}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
-        <LinearGradient
-          colors={['#F8FFFE', '#FFFFFF']}
-          style={styles.container}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          {/* Decorative circles */}
-          <View style={styles.decorativeCircle1} />
-          <View style={styles.decorativeCircle2} />
+        {/* Decorative circles */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
 
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View
             style={[
               styles.content,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
+                paddingTop: isSmallScreen ? 30 : 60,
               },
             ]}
           >
@@ -359,52 +378,52 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </Animated.View>
           </Animated.View>
+        </ScrollView>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <View style={styles.languageContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.languageButton,
-                  currentLang === 'en' && styles.activeLanguage,
-                ]}
-                onPress={() => handleLanguageChange('en')}
-                activeOpacity={0.7}
+        {/* Footer — outside ScrollView so it's always visible */}
+        <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom + 10) }]}>
+          <View style={styles.languageContainer}>
+            <TouchableOpacity
+              style={[
+                styles.languageButton,
+                currentLang === 'en' && styles.activeLanguage,
+              ]}
+              onPress={() => handleLanguageChange('en')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={
+                  currentLang === 'en'
+                    ? styles.activeLanguageText
+                    : styles.languageText
+                }
               >
-                <Text
-                  style={
-                    currentLang === 'en'
-                      ? styles.activeLanguageText
-                      : styles.languageText
-                  }
-                >
-                  EN
-                </Text>
-              </TouchableOpacity>
-              <View style={styles.languageDivider} />
-              <TouchableOpacity
-                style={[
-                  styles.languageButton,
-                  currentLang === 'ar' && styles.activeLanguage,
-                ]}
-                onPress={() => handleLanguageChange('ar')}
-                activeOpacity={0.7}
+                EN
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.languageDivider} />
+            <TouchableOpacity
+              style={[
+                styles.languageButton,
+                currentLang === 'ar' && styles.activeLanguage,
+              ]}
+              onPress={() => handleLanguageChange('ar')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={
+                  currentLang === 'ar'
+                    ? styles.activeLanguageText
+                    : styles.languageText
+                }
               >
-                <Text
-                  style={
-                    currentLang === 'ar'
-                      ? styles.activeLanguageText
-                      : styles.languageText
-                  }
-                >
-                  AR
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.versionText}>V.3.0</Text>
+                AR
+              </Text>
+            </TouchableOpacity>
           </View>
-        </LinearGradient>
-      </ScrollView>
+          <Text style={styles.versionText}>V.3.0</Text>
+        </View>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 };
@@ -413,12 +432,15 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
   container: {
     flex: 1,
-    minHeight: '100%',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   decorativeCircle1: {
     position: 'absolute',
@@ -439,14 +461,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(46, 196, 182, 0.04)',
   },
   content: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   logoContainer: {
     alignSelf: 'flex-start',
-    marginBottom: 32,
+    marginBottom: isSmallScreen ? 16 : 32,
   },
   logoShadow: {
     shadowColor: '#2EC4B6',
@@ -464,22 +484,22 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   welcomeContainer: {
-    marginBottom: 40,
+    marginBottom: isSmallScreen ? 20 : 40,
   },
   welcomeText: {
-    fontSize: 32,
+    fontSize: isSmallScreen ? 26 : 32,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: 6,
     color: '#1A1A1A',
     letterSpacing: -0.5,
   },
   subtitleText: {
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     color: '#666',
     fontWeight: '500',
   },
   inputsContainer: {
-    marginBottom: 24,
+    marginBottom: isSmallScreen ? 12 : 24,
   },
   inputWrapper: {
     marginBottom: 20,
@@ -556,7 +576,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   loginButtonGradient: {
-    paddingVertical: 18,
+    paddingVertical: isSmallScreen ? 14 : 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -567,13 +587,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 24,
-    right: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 10,
   },
   languageContainer: {
     flexDirection: 'row',

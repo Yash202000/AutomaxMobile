@@ -26,6 +26,7 @@ export interface LocationData {
 interface LocationPickerProps {
   value?: LocationData;
   onChange: (location: LocationData | undefined) => void;
+  onGpsLocation?: (location: LocationData) => void; // Fires only on real GPS fetch, not map taps/search
   required?: boolean;
   error?: string;
   label?: string;
@@ -39,7 +40,7 @@ const DEFAULT_LNG = 55.296249;
 let lastSearchTime = 0;
 const MIN_SEARCH_INTERVAL = 1000; // 1 second
 
-export function LocationPickerOSM({ value, onChange, required, error, label, autoFetch }: LocationPickerProps) {
+export function LocationPickerOSM({ value, onChange, onGpsLocation, required, error, label, autoFetch }: LocationPickerProps) {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -144,6 +145,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
 
       const locationData: LocationData = { latitude, longitude };
       onChange(locationData);
+      onGpsLocation?.(locationData); // Notify with raw GPS coords immediately
 
       // Move map to location
       webViewRef.current?.injectJavaScript(`
@@ -159,6 +161,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
           const fullLocationData = { latitude, longitude, ...addressData };
           onChange(fullLocationData);
+          onGpsLocation?.(fullLocationData); // Update GPS ref with enriched address too
         } else {
         }
       } catch (error) {
@@ -168,7 +171,7 @@ export function LocationPickerOSM({ value, onChange, required, error, label, aut
       Alert.alert('Error', 'Failed to get current location. Please check your GPS is enabled.');
       setIsLoading(false);
     }
-  }, [onChange]);
+  }, [onChange, onGpsLocation]);
 
   const handleMessage = useCallback(async (event: any) => {
     try {

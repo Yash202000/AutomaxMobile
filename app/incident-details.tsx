@@ -82,6 +82,7 @@ interface IncidentData {
   state?: string;
   country?: string;
   postal_code?: string;
+  source?: string;
   created_at: string;
   lookup_values?: LookupValue[];
   custom_fields?: string;
@@ -408,6 +409,14 @@ const IncidentDetailsScreen = () => {
             />
             {incident.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={incident.location.name} iconColor={COLORS.error} />
+            )}
+            {incident.source && (
+              <InfoRow
+                icon="git-network-outline"
+                label={t('incidents.source')}
+                value={incident.source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                iconColor="#0EA5E9"
+              />
             )}
 
             {/* Lookup Values as InfoRows */}

@@ -52,11 +52,9 @@ interface PaginationInfo {
 
 const IncidentCard = ({
   incident,
-  isAssigned,
   ticketType,
 }: {
   incident: Incident;
-  isAssigned: boolean;
   ticketType: "incident" | "request" | "complaint" | "query";
 }) => {
   const router = useRouter();
@@ -101,16 +99,8 @@ const IncidentCard = ({
             <View style={[styles.incidentDot, { backgroundColor: priority.color }]} />
             <Text style={styles.incidentId}>{incident.incident_number}</Text>
           </View>
-          <View style={styles.tagsRow}>
-            {incident.sla_breached && (
-              <View style={styles.slaBreachedBadge}>
-                <Ionicons name="warning" size={10} color="#FFF" />
-                <Text style={styles.slaBreachedText}>SLA</Text>
-              </View>
-            )}
-            <View style={[styles.incidentTag, { backgroundColor: priority.color }]}>
-              <Text style={styles.incidentTagText}>{priorityText}</Text>
-            </View>
+          <View style={[styles.incidentTag, { backgroundColor: priority.color }]}>
+            <Text style={styles.incidentTagText}>{priorityText}</Text>
           </View>
         </View>
         <Text style={styles.dateTime}>
@@ -127,19 +117,6 @@ const IncidentCard = ({
           <Ionicons name="location" size={16} color="#3B82F6" style={styles.detailIcon} />
           <Text style={styles.detailText}>{incident.location?.name || t('common.noData')}</Text>
         </View>
-        {(incident.department || incident.assignee) && (
-          <View style={styles.detailRow}>
-            <Ionicons
-              name={isAssigned ? "business-outline" : "person-outline"}
-              size={16} color="#64748B" style={styles.detailIcon}
-            />
-            <Text style={styles.detailText}>
-              {isAssigned
-                ? incident.department?.name
-                : (incident.assignee?.first_name || incident.assignee?.username)}
-            </Text>
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -351,14 +328,6 @@ const MyIncidentsScreen = () => {
     );
   };
 
-  // Stats summary
-  const openCount = incidents.filter(
-    (i) =>
-      i.current_state?.name?.toLowerCase() !== "closed" &&
-      i.current_state?.name?.toLowerCase() !== "resolved",
-  ).length;
-  const breachedCount = incidents.filter((i) => i.sla_breached).length;
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ImageBackground
@@ -478,35 +447,6 @@ const MyIncidentsScreen = () => {
           )}
         </View>
 
-        {/* Quick Stats */}
-        {!loading && incidents.length > 0 && (
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{pagination.total_items}</Text>
-              <Text style={styles.statLabel}>{t('myIncidents.total')}</Text>
-            </View>
-            <View style={styles.statDivider} />
-
-            {canCreateIncidents() && (
-              <>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: "#F1C40F" }]}>
-                    {openCount}
-                  </Text>
-                  <Text style={styles.statLabel}>{t('myIncidents.open')}</Text>
-                </View>
-                <View style={styles.statDivider} />
-              </>
-            )}
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: "#E74C3C" }]}>
-                {breachedCount}
-              </Text>
-              <Text style={styles.statLabel}>{t('myIncidents.slaBreached')}</Text>
-            </View>
-          </View>
-        )}
-
         {loading ? (
           <View style={styles.loadingContainer}>
             <View style={styles.loaderCard}>
@@ -530,7 +470,6 @@ const MyIncidentsScreen = () => {
             renderItem={({ item }) => (
               <IncidentCard
                 incident={item}
-                isAssigned={activeTab === "assigned"}
                 ticketType={ticketType}
               />
             )}
@@ -708,38 +647,6 @@ const styles = StyleSheet.create({
   activeTicketTypeText: {
     color: "white",
   },
-  statsContainer: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    marginHorizontal: 15,
-    marginTop: 10,
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1A237E",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: "#E0E0E0",
-    marginVertical: 5,
-  },
   listContent: {
     padding: 15,
     paddingBottom: 30,
@@ -797,25 +704,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#1A237E",
-  },
-  tagsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  slaBreachedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E74C3C",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-    gap: 3,
-  },
-  slaBreachedText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "bold",
   },
   incidentTag: {
     paddingHorizontal: 8,

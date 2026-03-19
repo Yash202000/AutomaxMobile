@@ -117,12 +117,13 @@ const QueriesScreen = () => {
   const {
     state_id, state_name, priority, severity, assignee_id, assignee_name,
     department_id, department_name, classification_id, classification_name,
-    location_id, location_name, sla_status, channel
+    location_id, location_name, channel, start_date, end_date
   } = useLocalSearchParams<{
     state_id?: string; state_name?: string; priority?: string; severity?: string;
     assignee_id?: string; assignee_name?: string; department_id?: string;
     department_name?: string; classification_id?: string; classification_name?: string;
-    location_id?: string; location_name?: string; sla_status?: string; channel?: string;
+    location_id?: string; location_name?: string; channel?: string;
+    start_date?: string; end_date?: string;
   }>();
 
   const [queries, setQueries] = useState<Query[]>([]);
@@ -149,13 +150,24 @@ const QueriesScreen = () => {
     if (department_id) params.department_id = department_id;
     if (classification_id) params.classification_id = classification_id;
     if (location_id) params.location_id = location_id;
-    if (sla_status) params.sla_status = sla_status;
     if (channel) params.channel = channel;
+    if (start_date) params.start_date = start_date;
+    if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
     return params;
   };
 
   const fetchQueries = async (page = 1, append = false) => {
+    const trimmedSearch = searchQuery.trim();
+    if (trimmedSearch.length > 0 && trimmedSearch.length < 3) {
+      setQueries([]);
+      setPagination({ page: 1, limit: 20, total_items: 0, total_pages: 0 });
+      setLoading(false);
+      setRefreshing(false);
+      isLoadingMore.current = false;
+      return;
+    }
+
     if (page === 1) setLoading(true);
     setError('');
 
@@ -191,7 +203,7 @@ const QueriesScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchQueries(1, false);
-    }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel, searchQuery])
+    }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date, searchQuery])
   );
 
   const handleSearchToggle = () => {
@@ -209,9 +221,9 @@ const QueriesScreen = () => {
 
   const clearFilter = () => router.replace('/(tabs)/query');
 
-  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_id || location_id || sla_status || channel;
+  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_id || location_id || channel || start_date || end_date;
   const headerTitle = activeStateName || t('queries.title');
-  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_id, location_id, sla_status, channel].filter(Boolean).length;
+  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date].filter(Boolean).length;
 
   const renderFooter = () => {
     if (!loadingMore) return null;
@@ -225,12 +237,18 @@ const QueriesScreen = () => {
 
   const renderEmpty = () => {
     if (loading) return null;
+    const trimmedSearch = searchQuery.trim();
+    const isShortSearch = trimmedSearch.length > 0 && trimmedSearch.length < 3;
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="help-circle-outline" size={64} color={COLORS.text.muted} />
-        <Text style={styles.emptyTitle}>{t('queries.noQueries')}</Text>
+        <Ionicons name={isShortSearch ? 'search-outline' : 'help-circle-outline'} size={64} color={COLORS.text.muted} />
+        <Text style={styles.emptyTitle}>
+          {isShortSearch ? t('search.minCharsTitle', 'Keep Typing...') : t('queries.noQueries')}
+        </Text>
         <Text style={styles.emptySubtitle}>
-          {hasManualFilters ? t('incidents.adjustFilters') : t('queries.noQueriesDesc')}
+          {isShortSearch
+            ? t('search.minCharsDesc', 'Enter at least 3 characters to search')
+            : hasManualFilters ? t('incidents.adjustFilters') : t('queries.noQueriesDesc')}
         </Text>
       </View>
     );
@@ -257,7 +275,6 @@ const QueriesScreen = () => {
       department_id && department_name && { key: 'dept', label: t('filter.department'), value: department_name },
       classification_id && classification_name && { key: 'class', label: t('filter.classification'), value: classification_name },
       location_id && location_name && { key: 'loc', label: t('filter.location'), value: location_name },
-      sla_status && { key: 'sla', label: t('filter.slaStatus'), value: t(`sla.${slaStatusConfig[sla_status]?.key}`) },
       channel && { key: 'channel', label: t('queries.channel'), value: channel },
     ].filter(Boolean) as { key: string; label: string; value: string }[];
 
@@ -323,7 +340,7 @@ const QueriesScreen = () => {
                 style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
                 onPress={() => router.push({
                   pathname: '/query-filter',
-                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, sla_status, channel }
+                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, channel, start_date, end_date }
                 })}
               >
                 <Ionicons name="filter" size={22} color="white" />

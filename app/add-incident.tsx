@@ -236,6 +236,8 @@ const AddIncidentScreen = () => {
   // Geolocation state
   const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
   const locationDataRef = useRef<LocationData | undefined>(undefined);
+  // GPS-only location ref — updated solely from real device GPS, never from map taps or search
+  const gpsLocationRef = useRef<LocationData | undefined>(undefined);
   const hasFetchedDataRef = useRef(false);
 
   // Monitor locationData changes and keep ref in sync
@@ -670,17 +672,18 @@ const AddIncidentScreen = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Choose File'],
+          options: ['Cancel', 'Take Photo'/*, 'Choose from Gallery', 'Choose File'*/],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
             handleTakePhoto();
-          } else if (buttonIndex === 2) {
-            handlePickFromGallery();
-          } else if (buttonIndex === 3) {
-            handlePickDocument();
           }
+          // } else if (buttonIndex === 2) {
+          //   handlePickFromGallery();
+          // } else if (buttonIndex === 3) {
+          //   handlePickDocument();
+          // }
         }
       );
     } else {
@@ -778,16 +781,16 @@ const AddIncidentScreen = () => {
         // Take first image
         const asset = result.assets[0];
 
-        // Prepare watermark data - Use ref to get latest value that won't be lost on re-render
-        const currentLocation = locationDataRef.current;
+        // Use GPS-only location for watermark — never the map-selected location
+        const gpsLocation = gpsLocationRef.current;
 
         const watermarkData: WatermarkData = {
-          latitude: currentLocation?.latitude,
-          longitude: currentLocation?.longitude,
-          address: currentLocation?.address,
-          city: currentLocation?.city,
-          state: currentLocation?.state,
-          country: currentLocation?.country,
+          latitude: gpsLocation?.latitude,
+          longitude: gpsLocation?.longitude,
+          address: gpsLocation?.address,
+          city: gpsLocation?.city,
+          state: gpsLocation?.state,
+          country: gpsLocation?.country,
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           timestamp: new Date(),
           appName: 'Automax',
@@ -800,7 +803,7 @@ const AddIncidentScreen = () => {
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           userId: user?.id,
           timestamp: new Date(),
-          location: locationData ? `${locationData.city || ''} ${locationData.state || ''}`.trim() : undefined,
+          location: gpsLocation ? `${gpsLocation.city || ''} ${gpsLocation.state || ''}`.trim() : undefined,
         });
 
         const pendingWatermark: PendingWatermark = {
@@ -1029,7 +1032,14 @@ const AddIncidentScreen = () => {
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments(prev => {
+      const file = prev[index];
+      // Delete the temp file from device cache when the user removes it
+      if (file?.uri) {
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleLocationChange = (location: LocationData | undefined) => {
@@ -1190,6 +1200,13 @@ const AddIncidentScreen = () => {
             return;
           }
         }
+
+        // Clean up all temp files that were uploaded — prevents cache bloat
+        attachments.forEach(file => {
+          if (file?.uri) {
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+          }
+        });
 
         setSubmitting(false);
         Alert.alert('Success', 'Incident created successfully.', [
@@ -1490,6 +1507,7 @@ const AddIncidentScreen = () => {
                   label={t('details.geolocation')}
                   value={locationData}
                   onChange={handleLocationChange}
+                  onGpsLocation={(loc) => { gpsLocationRef.current = loc; }}
                   required
                   autoFetch={true}
                   error={errors.geolocation}
@@ -1575,7 +1593,7 @@ const AddIncidentScreen = () => {
                   <Text style={styles.pickerOptionText}>Take Photo</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.pickerOption}
                   onPress={() => {
                     setAttachmentPickerVisible(false);
@@ -1595,7 +1613,7 @@ const AddIncidentScreen = () => {
                 >
                   <Ionicons name="document" size={24} color="#2EC4B6" />
                   <Text style={styles.pickerOptionText}>Choose File</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <TouchableOpacity
                   style={styles.pickerCancelButton}

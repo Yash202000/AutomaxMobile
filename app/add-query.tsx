@@ -1059,7 +1059,13 @@ const AddQueryScreen = () => {
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments(prev => {
+      const file = prev[index];
+      if (file?.uri) {
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSubmit = async () => {
@@ -1123,6 +1129,13 @@ const AddQueryScreen = () => {
           console.error('Failed to upload some files:', uploadResult.errors);
           // Continue anyway since query was created
         }
+
+        // Clean up temp files after upload
+        attachments.forEach(file => {
+          if (file?.uri) {
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+          }
+        });
       }
 
       setSubmitting(false);

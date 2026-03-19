@@ -2,19 +2,28 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { changePassword } from '@/src/api/user';
 
-const PasswordInput = ({ label, value, onChangeText }) => (
-    <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <TextInput
-            style={styles.textInput}
-            value={value}
-            onChangeText={onChangeText}
-            secureTextEntry
-        />
-    </View>
-);
+const PasswordInput = ({ label, value, onChangeText }) => {
+    const [visible, setVisible] = useState(false);
+    return (
+        <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>{label}</Text>
+            <View style={styles.inputRow}>
+                <TextInput
+                    style={styles.textInput}
+                    value={value}
+                    onChangeText={onChangeText}
+                    secureTextEntry={!visible}
+                />
+                <TouchableOpacity onPress={() => setVisible(v => !v)} style={styles.eyeIcon}>
+                    <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={22} color="#999" />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
 
 
 const ChangePasswordScreen = () => {
@@ -34,7 +43,7 @@ const ChangePasswordScreen = () => {
         return;
     }
     setLoading(true);
-    const response = await changePassword({ current_password: currentPassword, new_password: newPassword });
+    const response = await changePassword({ old_password: currentPassword, new_password: newPassword });
     setLoading(false);
 
     if (response.success) {
@@ -87,10 +96,18 @@ const styles = StyleSheet.create({
         color: '#999',
         marginBottom: 5,
     },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     textInput: {
+        flex: 1,
         fontSize: 16,
         color: '#333',
         fontWeight: 'bold',
+    },
+    eyeIcon: {
+        paddingLeft: 8,
     },
     securityInfo: {
         marginTop: 20,
