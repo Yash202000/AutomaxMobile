@@ -3,6 +3,8 @@
 # dependencies
 node_modules/
 
+.vscode/
+
 # Expo
 .expo/
 dist/
@@ -38,8 +40,16 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/google-services.json
+
+# iOS
+ios/build/
+ios/Pods/
+
 
 .env

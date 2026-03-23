@@ -445,5 +445,21 @@
     "fetchStatsFailed": "فشل تحميل الإحصائيات",
     "fetchFailed": "فشل التحميل",
     "oops": "عذراً!"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "noNotifications": "لا توجد إشعارات",
+    "noNotificationsDesc": "ليس لديك أي إشعارات حتى الآن.",
+    "failedToFetch": "فشل في تحميل الإشعارات",
+    "status": {
+      "failed": "فاشل",
+      "success": "ناجح",
+      "pending": "قيد الانتظار"
+    },
+    "channel": {
+      "push": "إشعار دفع",
+      "sms": "رسالة نصية",
+      "email": "بريد إلكتروني"
+    }
   }
 }

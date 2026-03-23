@@ -444,5 +444,21 @@
     "unknownError": "An unknown error occurred.",
     "fetchStatsFailed": "Failed to load statistics",
     "oops": "Oops!"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No Notifications",
+    "noNotificationsDesc": "You don't have any notifications yet.",
+    "failedToFetch": "Failed to load notifications",
+    "status": {
+      "failed": "Failed",
+      "success": "Success",
+      "pending": "Pending"
+    },
+    "channel": {
+      "push": "Push Notification",
+      "sms": "SMS",
+      "email": "Email"
+    }
   }
 }

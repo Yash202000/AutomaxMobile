@@ -8,7 +8,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -189,7 +189,10 @@ const DashboardScreen = () => {
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.userName}>{getUserName()}</Text>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => router.push('/notifications')}
+        >
           <Ionicons name="notifications-outline" size={24} color="white" />
         </TouchableOpacity>
       </View>
@@ -457,77 +460,77 @@ const DashboardScreen = () => {
             />
           }
         >
-        {/* Summary Cards */}
-        <Animated.View
-          style={[
-            styles.summaryCardsContainer,
-            {
-              opacity: cardsAnim,
+          {/* Summary Cards */}
+          <Animated.View
+            style={[
+              styles.summaryCardsContainer,
+              {
+                opacity: cardsAnim,
+                transform: [
+                  {
+                    translateY: cardsAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {renderSummaryCard("incident", incidentStats, canViewAllIncidents(), "/(tabs)/incident")}
+            {renderSummaryCard("request", requestStats, canViewAllRequests(), "/(tabs)/request")}
+            {renderSummaryCard(
+              "complaint",
+              complaintStats,
+              canViewAllComplaints(),
+              "/(tabs)/complaint",
+            )}
+            {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
+          </Animated.View>
+
+          {/* My Tickets and Status Sections */}
+          <Animated.View
+            style={{
+              opacity: sectionsAnim,
               transform: [
                 {
-                  translateY: cardsAnim.interpolate({
+                  translateY: sectionsAnim.interpolate({
                     inputRange: [0, 1],
                     outputRange: [30, 0],
                   }),
                 },
               ],
-            },
-          ]}
-        >
-          {renderSummaryCard("incident", incidentStats, canViewAllIncidents(), "/(tabs)/incident")}
-          {renderSummaryCard("request", requestStats, canViewAllRequests(), "/(tabs)/request")}
-          {renderSummaryCard(
-            "complaint",
-            complaintStats,
-            canViewAllComplaints(),
-            "/(tabs)/complaint",
-          )}
-          {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
-        </Animated.View>
+            }}
+          >
+            {renderMyTicketsSection()}
 
-        {/* My Tickets and Status Sections */}
-        <Animated.View
-          style={{
-            opacity: sectionsAnim,
-            transform: [
-              {
-                translateY: sectionsAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [30, 0],
-                }),
-              },
-            ],
-          }}
-        >
-          {renderMyTicketsSection()}
+            {renderStatusSection(
+              "incident",
+              incidentStats,
+              canViewIncidents(),
+              "/(tabs)/incident",
+            )}
+            {renderStatusSection(
+              "request",
+              requestStats,
+              canViewRequests(),
+              "/(tabs)/request",
+            )}
+            {renderStatusSection(
+              "complaint",
+              complaintStats,
+              canViewComplaints(),
+              "/(tabs)/complaint",
+            )}
+            {renderStatusSection(
+              "query",
+              queryStats,
+              canViewQueries(),
+              "/(tabs)/query",
+            )}
+          </Animated.View>
 
-          {renderStatusSection(
-            "incident",
-            incidentStats,
-            canViewIncidents(),
-            "/(tabs)/incident",
-          )}
-          {renderStatusSection(
-            "request",
-            requestStats,
-            canViewRequests(),
-            "/(tabs)/request",
-          )}
-          {renderStatusSection(
-            "complaint",
-            complaintStats,
-            canViewComplaints(),
-            "/(tabs)/complaint",
-          )}
-          {renderStatusSection(
-            "query",
-            queryStats,
-            canViewQueries(),
-            "/(tabs)/query",
-          )}
-        </Animated.View>
-
-        <View style={styles.bottomPadding} />
+          <View style={styles.bottomPadding} />
         </ScrollView>
       </View>
     </SafeAreaView>
