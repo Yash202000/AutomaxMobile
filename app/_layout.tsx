@@ -1,21 +1,29 @@
+import '@/src/i18n';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useSegments, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import 'react-native-reanimated';
-import '@/src/i18n';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { useFCM } from '@/hooks/use-FCM';
+import { registerToken } from '@/src/api/notifications';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
+import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import FCMService from '@/src/services/fcm.service';
+import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
+
+
+
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  useFCM(router);
 
   useEffect(() => {
     if (isLoading) return;
@@ -30,6 +38,46 @@ function RootLayoutNav() {
       router.replace('/(tabs)/explore');
     }
   }, [isAuthenticated, isLoading, segments]);
+
+  useEffect(() => {
+    createChannel();
+  }, []);
+
+  // Register FCM token with backend only after the user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const setup = async () => {
+      const token = await FCMService.init();
+      if (!token) return;
+      const p = {
+        device_token: token,
+        device_type: Platform.OS.toLowerCase(),
+        user_id: user?.id || ''
+      }
+      console.log("[FCM] Registering token with payload:", p);
+      const result = await registerToken(p);
+      console.log("[FCM] Token registration result:", result);
+
+      // Listen for token refresh
+      const unsubscribeTokenRefresh = FCMService.onTokenRefresh((newToken) => {
+        registerToken({
+          device_token: newToken,
+          device_type: Platform.OS.toLowerCase(),
+          user_id: user?.id || ''
+        });
+      });
+
+      return () => {
+        unsubscribeTokenRefresh();
+      };
+    };
+
+    const cleanup = setup().catch(err => console.warn('[FCM] Token setup failed:', err));
+    return () => {
+      cleanup.then(unsub => unsub && unsub());
+    };
+  }, [isAuthenticated, user?.id]);
+
 
   if (isLoading) {
     return (
@@ -64,6 +112,7 @@ function RootLayoutNav() {
         <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

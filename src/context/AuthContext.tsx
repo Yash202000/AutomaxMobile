@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getProfile } from '../api/user';
 
 export interface Role {
