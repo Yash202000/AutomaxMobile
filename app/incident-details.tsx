@@ -1,18 +1,18 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
-import { WebView } from 'react-native-webview';
-import { useAudioPlayer, AudioSource } from 'expo-audio';
-import { useTranslation } from 'react-i18next';
-import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
-import * as SecureStore from 'expo-secure-store';
-import { crashLogger } from '@/src/utils/crashLogger';
+import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
+import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
+import { crashLogger } from '@/src/utils/crashLogger';
+import { Ionicons } from '@expo/vector-icons';
+import { AudioSource, useAudioPlayer } from 'expo-audio';
+import { Image } from 'expo-image';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 const COLORS = {
   primary: '#1A237E',
@@ -184,6 +184,7 @@ const IncidentDetailsScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [incident, setIncident] = useState<IncidentData | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
   const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; mime_type: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -213,8 +214,9 @@ const IncidentDetailsScreen = () => {
     setLoading(true);
 
     try {
-      const [detailsResponse, transitionsResponse] = await Promise.all([
+      const [detailsResponse, historyResponse, transitionsResponse] = await Promise.all([
         getIncidentById(incidentId),
+        getIncidentHistory(incidentId),
         getAvailableTransitions(incidentId),
       ]);
 
@@ -233,6 +235,12 @@ const IncidentDetailsScreen = () => {
         }).catch(err => console.error('Failed to log warning:', err));
 
         Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      }
+
+      if (historyResponse.success) {
+        setHistory(historyResponse.data);
+      } else {
+        setHistory([]);
       }
 
       if (transitionsResponse.success) {
@@ -569,7 +577,8 @@ const IncidentDetailsScreen = () => {
             <View style={styles.mapContainer}>
               <WebView
                 ref={mapRef}
-                source={{ html: `
+                source={{
+                  html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -639,7 +648,8 @@ const IncidentDetailsScreen = () => {
   </script>
 </body>
 </html>
-                `, baseUrl: 'https://localhost/' }}
+                `, baseUrl: 'https://localhost/'
+                }}
                 style={styles.map}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
@@ -760,15 +770,21 @@ const IncidentDetailsScreen = () => {
         {/* Transition History Card */}
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
-          {incident.transition_history && incident.transition_history.length > 0 ? (
+          {history && history.length > 0 ? (
             <View style={styles.timeline}>
-              {incident.transition_history.map((item, index) => (
+              {history.map((item, index) => (
                 <View key={item.id} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
                     <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
-                    {index < incident.transition_history!.length - 1 && <View style={styles.timelineLine} />}
+                    {index < history.length - 1 && <View style={styles.timelineLine} />}
                   </View>
                   <View style={styles.timelineContent}>
+                    <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
+                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition.name}</Text>
+                      <Text style={styles.transitionMeta}>
+                        {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                      </Text>
+                    </View>
                     <View style={styles.transitionBadges}>
                       <View style={styles.fromBadge}>
                         <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
@@ -778,9 +794,6 @@ const IncidentDetailsScreen = () => {
                         <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
                       </View>
                     </View>
-                    <Text style={styles.transitionMeta}>
-                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
-                    </Text>
                     {item.comment && (
                       <View style={styles.transitionComment}>
                         <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
@@ -807,26 +820,26 @@ const IncidentDetailsScreen = () => {
           <TouchableOpacity
             style={styles.updateButton}
             onPress={() => router.push({
-            pathname: '/update-status',
-            params: {
-              id: incident.id,
-              type: 'incident',
-              transitions: JSON.stringify(availableTransitions),
-              incident: JSON.stringify({
+              pathname: '/update-status',
+              params: {
                 id: incident.id,
-                classification_id: incident.classification_id || incident.classification?.id,
-                location_id: incident.location_id || incident.location?.id,
-                department_id: incident.department_id || incident.department?.id,
-                assignee_id: incident.assignee_id || incident.assignee?.id,
-                version: incident.version,
-              }),
-            },
-          })}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="sync" size={20} color={COLORS.white} />
-          <Text style={styles.updateButtonText}>{t('details.update')}</Text>
-        </TouchableOpacity>
+                type: 'incident',
+                transitions: JSON.stringify(availableTransitions),
+                incident: JSON.stringify({
+                  id: incident.id,
+                  classification_id: incident.classification_id || incident.classification?.id,
+                  location_id: incident.location_id || incident.location?.id,
+                  department_id: incident.department_id || incident.department?.id,
+                  assignee_id: incident.assignee_id || incident.assignee?.id,
+                  version: incident.version,
+                }),
+              },
+            })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="sync" size={20} color={COLORS.white} />
+            <Text style={styles.updateButtonText}>{t('details.update')}</Text>
+          </TouchableOpacity>
         )}
       </View>
     </SafeAreaView>
@@ -979,7 +992,7 @@ const styles = StyleSheet.create({
   timelineDot: { width: 12, height: 12, borderRadius: 6 },
   timelineLine: { width: 2, flex: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timelineContent: { flex: 1, paddingBottom: 20 },
-  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   fromBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   fromBadgeText: { fontSize: 12, color: COLORS.error, fontWeight: '600' },
   toBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
