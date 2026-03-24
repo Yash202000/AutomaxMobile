@@ -49,7 +49,7 @@
  * app.config.js → expo.plugins → './plugins/withAndroidGoogleServices'
  */
 
-const { withProjectBuildGradle, withAppBuildGradle, withDangerousMod } = require('@expo/config-plugins');
+const { withProjectBuildGradle, withAppBuildGradle, withDangerousMod, withGradleProperties } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -92,7 +92,16 @@ const withAppGradle = (config) => {
       );
     }
 
-    // 2. Add Firebase BOM after the react-android implementation line
+    // 2. Disable lintVital on release builds (avoids OOM during dev builds)
+    const lintBlock = `    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }\n\n`;
+    if (!contents.includes('checkReleaseBuilds')) {
+      contents = contents.replace(
+        /(\s*buildTypes\s*\{)/,
+        `\n${lintBlock}$1`
+      );
+    }
+
+    // 3. Add Firebase BOM after the react-android implementation line
     const firebaseBom = "    implementation platform('com.google.firebase:firebase-bom:34.10.0')";
     if (!contents.includes('firebase-bom')) {
       contents = contents.replace(
@@ -134,9 +143,29 @@ const withGoogleServicesJson = (config) => {
   ]);
 };
 
+/**
+ * Increases JVM heap and Metaspace in gradle.properties so lint + Firebase
+ * dependencies don't cause OutOfMemoryError during build.
+ */
+const withJvmArgs = (config) => {
+  return withGradleProperties(config, (mod) => {
+    const props = mod.modResults;
+    const jvmKey = 'org.gradle.jvmargs';
+    const idx = props.findIndex((p) => p.type === 'property' && p.key === jvmKey);
+    const jvmValue = '-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError';
+    if (idx !== -1) {
+      props[idx].value = jvmValue;
+    } else {
+      props.push({ type: 'property', key: jvmKey, value: jvmValue });
+    }
+    return mod;
+  });
+};
+
 module.exports = (config) => {
   config = withProjectGradle(config);
   config = withAppGradle(config);
   config = withGoogleServicesJson(config);
+  config = withJvmArgs(config);
   return config;
 };

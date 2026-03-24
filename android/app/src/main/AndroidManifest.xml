@@ -30,6 +30,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="automaxmobile"/>
+        <data android:scheme="exp+automaxmobile"/>
       </intent-filter>
     </activity>
   </application>
