@@ -55,6 +55,18 @@ export const getIncidentById = async (id: string) => {
   }
 };
 
+export const getIncidentHistory = async (id: string) => {
+  try {
+    const response = await apiClient.get(`/incidents/${id}/history`);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
 export const createIncident = async (incidentData: any) => {
   try {
     const response = await apiClient.post('/incidents', incidentData);
