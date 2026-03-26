@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
-import { default as React, default as React, useEffect, useRef, useState } from 'react';
+import { default as React, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -16,7 +16,12 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -108,18 +113,6 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     Keyboard.dismiss();
     setError('');
-
-    // Client-side validation
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setError(t('errors.validationError'));
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setError(t('auth.invalidCredentials'));
-      return;
-    }
 
     setLoading(true);
 
@@ -336,36 +329,33 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Citizen Login Method Toggle */}
-            {loginType === 'citizen' && (
-              <View style={styles.methodToggleContainer}>
-                <TouchableOpacity
-                  onPress={() =>
-                    setLoginMethod(loginMethod === 'email' ? 'phone' : 'email')
+            <View style={styles.methodToggleContainer}>
+              <TouchableOpacity
+                onPress={() =>
+                  setLoginMethod(loginMethod === 'email' ? 'phone' : 'email')
+                }
+                style={styles.methodToggleButton}
+              >
+                <Ionicons
+                  name={
+                    loginMethod === 'email'
+                      ? 'call-outline'
+                      : 'mail-outline'
                   }
-                  style={styles.methodToggleButton}
-                >
-                  <Ionicons
-                    name={
-                      loginMethod === 'email'
-                        ? 'call-outline'
-                        : 'mail-outline'
-                    }
-                    size={18}
-                    color="#2EC4B6"
-                  />
-                  <Text style={styles.methodToggleText}>
-                    {loginMethod === 'email'
-                      ? t('auth.loginMobile')
-                      : t('auth.loginEmail')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+                  size={18}
+                  color="#2EC4B6"
+                />
+                <Text style={styles.methodToggleText}>
+                  {loginMethod === 'email'
+                    ? t('auth.loginMobile')
+                    : t('auth.loginEmail')}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Input Fields Container */}
             <View style={styles.inputsContainer}>
-              {loginMethod === 'email' || loginType === 'employee' ? (
+              {loginMethod === 'email' ? (
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
@@ -692,9 +682,6 @@ const styles = StyleSheet.create({
     color: '#2EC4B6',
     marginLeft: 8,
   },
-  inputsContainer: {
-    marginBottom: isSmallScreen ? 12 : 24,
-  },
   inputWrapper: {
     marginBottom: 20,
   },
@@ -829,6 +816,15 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '500',
   },
+  tabContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    marginBottom: 20,
+  }
 });
 
 export default LoginScreen;
