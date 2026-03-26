@@ -1,29 +1,24 @@
+import apiClient from '@/src/api/client';
+import { useAuth } from '@/src/context/AuthContext';
+import { getCurrentLanguage, setLanguage } from '@/src/i18n';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import * as Updates from 'expo-updates';
+import { default as React, default as React, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Keyboard,
-  Dimensions,
+  ScrollView
 } from 'react-native';
-import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
-import * as Updates from 'expo-updates';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { setLanguage, getCurrentLanguage } from '@/src/i18n';
-import { useAuth } from '@/src/context/AuthContext';
-import apiClient from '@/src/api/client';
 
 const { height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenHeight < 700;
@@ -35,6 +30,9 @@ const LoginScreen = () => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [loginType, setLoginType] = useState<'employee' | 'citizen'>('employee');
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,6 +43,7 @@ const LoginScreen = () => {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const emailFocusAnim = useRef(new Animated.Value(0)).current;
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
+  const phoneFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
 
@@ -124,6 +123,20 @@ const LoginScreen = () => {
 
     setLoading(true);
 
+    // Client-side validation
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError(t('errors.validationError'));
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError(t('auth.invalidCredentials'));
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const response = await apiClient.post('/auth/login', { email: trimmedEmail, password });
 
@@ -159,6 +172,20 @@ const LoginScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhoneFocus = () => {
+    Animated.spring(phoneFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handlePhoneBlur = () => {
+    Animated.spring(phoneFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handleEmailFocus = () => {
@@ -210,6 +237,11 @@ const LoginScreen = () => {
   });
 
   const passwordBorderColor = passwordFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#E5E5E5', '#2EC4B6'],
+  });
+
+  const phoneBorderColor = phoneFocusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['#E5E5E5', '#2EC4B6'],
   });
@@ -268,93 +300,193 @@ const LoginScreen = () => {
               <Text style={styles.subtitleText}>{t('auth.loginSubtitle')}</Text>
             </View>
 
-            {/* Input Fields Container */}
-            <View style={styles.inputsContainer}>
-              {/* Email Input */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>{t('auth.email')}</Text>
-                <Animated.View
-                  style={[
-                    styles.inputContainer,
-                    {
-                      borderColor: emailBorderColor,
-                      borderWidth: 2,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="mail-outline"
-                    size={20}
-                    color="#666"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="user@example.com"
-                    placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    onFocus={handleEmailFocus}
-                    onBlur={handleEmailBlur}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </Animated.View>
-              </View>
-
-              {/* Password Input */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>{t('auth.password')}</Text>
-                <Animated.View
-                  style={[
-                    styles.inputContainer,
-                    {
-                      borderColor: passwordBorderColor,
-                      borderWidth: 2,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={20}
-                    color="#666"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="••••••••"
-                    placeholderTextColor="#999"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={handlePasswordFocus}
-                    onBlur={handlePasswordBlur}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color="#666"
-                    />
-                  </TouchableOpacity>
-                </Animated.View>
-              </View>
-
-              {/* Forgot Password */}
+            {/* Login Type Tabs */}
+            <View style={styles.tabContainer}>
               <TouchableOpacity
-                onPress={() => router.push('/forgot-password')}
-                style={styles.forgotPasswordContainer}
+                style={[
+                  styles.tabButton,
+                  loginType === 'employee' && styles.activeTab,
+                ]}
+                onPress={() => setLoginType('employee')}
               >
-                <Text style={styles.forgotPasswordText}>
-                  {t('auth.forgotPassword')}
+                <Text
+                  style={[
+                    styles.tabText,
+                    loginType === 'employee' && styles.activeTabText,
+                  ]}
+                >
+                  {t('auth.employeeLogin')}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tabButton,
+                  loginType === 'citizen' && styles.activeTab,
+                ]}
+                onPress={() => setLoginType('citizen')}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    loginType === 'citizen' && styles.activeTabText,
+                  ]}
+                >
+                  {t('auth.citizenLogin')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Citizen Login Method Toggle */}
+            {loginType === 'citizen' && (
+              <View style={styles.methodToggleContainer}>
+                <TouchableOpacity
+                  onPress={() =>
+                    setLoginMethod(loginMethod === 'email' ? 'phone' : 'email')
+                  }
+                  style={styles.methodToggleButton}
+                >
+                  <Ionicons
+                    name={
+                      loginMethod === 'email'
+                        ? 'call-outline'
+                        : 'mail-outline'
+                    }
+                    size={18}
+                    color="#2EC4B6"
+                  />
+                  <Text style={styles.methodToggleText}>
+                    {loginMethod === 'email'
+                      ? t('auth.loginMobile')
+                      : t('auth.loginEmail')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Input Fields Container */}
+            <View style={styles.inputsContainer}>
+              {loginMethod === 'email' || loginType === 'employee' ? (
+                <>
+                  {/* Email Input */}
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.inputLabel}>{t('auth.email')}</Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: emailBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="mail-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="user@example.com"
+                        placeholderTextColor="#999"
+                        value={email}
+                        onChangeText={setEmail}
+                        onFocus={handleEmailFocus}
+                        onBlur={handleEmailBlur}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                  </View>
+
+                  {/* Password Input */}
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.inputLabel}>{t('auth.password')}</Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: passwordBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="••••••••"
+                        placeholderTextColor="#999"
+                        secureTextEntry={!showPassword}
+                        value={password}
+                        onChangeText={setPassword}
+                        onFocus={handlePasswordFocus}
+                        onBlur={handlePasswordBlur}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeButton}
+                        onPress={() => setShowPassword(!showPassword)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color="#666"
+                        />
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </View>
+                </>
+              ) : (
+                /* Phone Number Input */
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>{t('auth.phone')}</Text>
+                  <Animated.View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        borderColor: phoneBorderColor,
+                        borderWidth: 2,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="call-outline"
+                      size={20}
+                      color="#666"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="+1234567890"
+                      placeholderTextColor="#999"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      onFocus={handlePhoneFocus}
+                      onBlur={handlePhoneBlur}
+                      keyboardType="phone-pad"
+                    />
+                  </Animated.View>
+                </View>
+              )}
+
+              {/* Forgot Password - Only for email login */}
+              {(loginMethod === 'email' || loginType === 'employee') && (
+                <TouchableOpacity
+                  onPress={() => router.push('/forgot-password')}
+                  style={styles.forgotPasswordContainer}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    {t('auth.forgotPassword')}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Error Message */}
@@ -377,7 +509,10 @@ const LoginScreen = () => {
               >
                 <LinearGradient
                   colors={
-                    loading || !email || !password
+                    loading ||
+                      (loginMethod === 'email' || loginType === 'employee'
+                        ? !email || !password
+                        : !phoneNumber)
                       ? ['#CCCCCC', '#AAAAAA']
                       : ['#2EC4B6', '#20B2A3']
                   }
@@ -515,6 +650,47 @@ const styles = StyleSheet.create({
     fontSize: isSmallScreen ? 14 : 16,
     color: '#666',
     fontWeight: '500',
+  },
+  inputsContainer: {
+    marginBottom: isSmallScreen ? 12 : 24,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#2EC4B6',
+  },
+  methodToggleContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  methodToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  methodToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2EC4B6',
+    marginLeft: 8,
   },
   inputsContainer: {
     marginBottom: isSmallScreen ? 12 : 24,
