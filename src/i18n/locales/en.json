@@ -290,7 +290,14 @@
     "save": "SAVE",
     "profileUpdated": "Profile updated successfully",
     "fetchProfileFailed": "Failed to fetch profile data.",
-    "updateProfileFailed": "Failed to update profile"
+    "updateProfileFailed": "Failed to update profile",
+    "verify": "Verify",
+    "verified": "Verified",
+    "sendOTP": "Send OTP",
+    "otpSent": "OTP sent successfully",
+    "otpVerified": "OTP verified successfully",
+    "otpSentFailed": "Failed to send OTP",
+    "otpVerifiedFailed": "Failed to verify OTP"
   },
   "password": {
     "currentPassword": "Current Password",

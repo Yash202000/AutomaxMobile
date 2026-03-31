@@ -61,7 +61,6 @@ const EditProfileScreen = () => {
             setLoading(true);
             const response = await getProfile();
             if (response.success) {
-                console.log(response.data);
                 const { first_name, last_name, email, phone, roles: userRoles, mobile_verified } = response.data;
                 setFirstName(first_name || '');
                 setLastName(last_name || '');

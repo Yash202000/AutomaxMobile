@@ -290,7 +290,14 @@
     "save": "حفظ",
     "profileUpdated": "تم تحديث الملف الشخصي بنجاح",
     "fetchProfileFailed": "فشل في جلب بيانات الملف الشخصي.",
-    "updateProfileFailed": "فشل تحديث الملف الشخصي"
+    "updateProfileFailed": "فشل تحديث الملف الشخصي",
+    "verify": "تحقق",
+    "verified": "تم التحقق",
+    "sendOTP": "إرسال رمز التحقق",
+    "otpSent": "تم إرسال رمز التحقق بنجاح",
+    "otpVerified": "تم التحقق من رمز التحقق بنجاح",
+    "otpSentFailed": "فشل إرسال رمز التحقق",
+    "otpVerifiedFailed": "فشل التحقق من رمز التحقق"
   },
   "password": {
     "currentPassword": "كلمة المرور الحالية",
