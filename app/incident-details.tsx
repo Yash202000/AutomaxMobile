@@ -63,8 +63,8 @@ interface IncidentData {
   description?: string;
   classification?: { id: string; name: string };
   classification_id?: string;
-  current_state?: { name: string };
-  department?: { name: string };
+  current_state?: { id: string; name: string };
+  department?: { id: string; name: string };
   department_id?: string;
   location?: { id: string; name: string; address?: string };
   location_id?: string;
@@ -96,6 +96,7 @@ interface IncidentData {
     transitioned_at: string;
     comment?: string;
   }>;
+  version?: number;
 }
 
 interface TransitionData {
@@ -193,6 +194,8 @@ const IncidentDetailsScreen = () => {
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [mapZoom, setMapZoom] = useState<number>(15);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const mapRef = useRef<WebView>(null);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
@@ -745,20 +748,37 @@ const IncidentDetailsScreen = () => {
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {incident.comments && incident.comments.length > 0 ? (
-            incident.comments.map(comment => (
-              <View style={styles.commentItem} key={comment.id}>
-                <View style={styles.commentHeader}>
-                  <View style={styles.commentAvatar}>
-                    <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+            <>
+              {(showAllComments ? incident.comments : [incident.comments[0]]).map(comment => (
+                <View style={styles.commentItem} key={comment.id}>
+                  <View style={styles.commentHeader}>
+                    <View style={styles.commentAvatar}>
+                      <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+                    </View>
+                    <View style={styles.commentMeta}>
+                      <Text style={styles.commentAuthor}>{comment.author.username}</Text>
+                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                    </View>
                   </View>
-                  <View style={styles.commentMeta}>
-                    <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
-                  </View>
+                  <Text style={styles.commentContent}>{comment.content}</Text>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
-              </View>
-            ))
+              ))}
+              {incident.comments.length > 1 && (
+                <TouchableOpacity
+                  style={styles.seeMoreButton}
+                  onPress={() => setShowAllComments(!showAllComments)}
+                >
+                  <Text style={styles.seeMoreText}>
+                    {showAllComments ? t('common.showLess') || 'Show Less' : `${t('common.viewAll') || 'See More'} (${incident.comments.length})`}
+                  </Text>
+                  <Ionicons
+                    name={showAllComments ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={COLORS.accent}
+                  />
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
@@ -772,11 +792,11 @@ const IncidentDetailsScreen = () => {
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {history && history.length > 0 ? (
             <View style={styles.timeline}>
-              {history.map((item, index) => (
+              {(showAllHistory ? history : [history[0]]).map((item, index) => (
                 <View key={item.id} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
                     <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
-                    {index < history.length - 1 && <View style={styles.timelineLine} />}
+                    {(showAllHistory ? index < history.length - 1 : false) && <View style={styles.timelineLine} />}
                   </View>
                   <View style={styles.timelineContent}>
                     <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
@@ -803,6 +823,21 @@ const IncidentDetailsScreen = () => {
                   </View>
                 </View>
               ))}
+              {history.length > 1 && (
+                <TouchableOpacity
+                  style={styles.seeMoreButton}
+                  onPress={() => setShowAllHistory(!showAllHistory)}
+                >
+                  <Text style={styles.seeMoreText}>
+                    {showAllHistory ? t('common.showLess') || 'Show Less' : `${t('common.viewAll') || 'See More'} (${history.length})`}
+                  </Text>
+                  <Ionicons
+                    name={showAllHistory ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={COLORS.accent}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View style={styles.emptyState}>
@@ -931,6 +966,21 @@ const styles = StyleSheet.create({
   commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
   commentDate: { fontSize: 11, color: COLORS.text.muted },
   commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20 },
+  seeMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginTop: 8,
+  },
+  seeMoreText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.accent,
+    marginRight: 4,
+  },
 
   emptyState: { alignItems: 'center', paddingVertical: 24 },
   emptyStateText: { fontSize: 14, color: COLORS.text.muted, marginTop: 8 },
