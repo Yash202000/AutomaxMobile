@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, ImageBackground, Modal, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import * as Updates from 'expo-updates';
-import * as Sharing from 'expo-sharing';
 import { getProfile } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
-import { setLanguage, supportedLanguages, getCurrentLanguage } from '@/src/i18n';
+import { getCurrentLanguage, setLanguage, supportedLanguages } from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import * as Updates from 'expo-updates';
+import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   primary: '#2EC4B6',
@@ -43,6 +44,30 @@ const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
   </TouchableOpacity>
 );
 
+const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  icon?: string;
+}) => (
+  <View style={styles.option}>
+    <View style={[styles.optionLeft, { flex: 1 }]}>
+      {icon && <Ionicons name={icon as any} size={20} color={COLORS.secondary} style={styles.optionIcon} />}
+      <View>
+        <Text style={styles.optionLabel}>{label}</Text>
+        {description && <Text style={styles.optionDescription}>{description}</Text>}
+      </View>
+    </View>
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: '#D1D1D1', true: COLORS.primary }}
+      thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+    />
+  </View>
+);
+
 const SettingsScreen = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -54,6 +79,7 @@ const SettingsScreen = () => {
   const [logFileSize, setLogFileSize] = useState<string>('0 KB');
   const [hasLogs, setHasLogs] = useState(false);
   const [sharingLogs, setSharingLogs] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const loadLogInfo = useCallback(async () => {
     try {
@@ -78,7 +104,20 @@ const SettingsScreen = () => {
         }
         setLoading(false);
       };
+
+      const loadNotificationSettings = async () => {
+        try {
+          const value = await AsyncStorage.getItem('notificationsEnabled');
+          if (value !== null) {
+            setNotificationsEnabled(value === 'true');
+          }
+        } catch (error) {
+          console.error('Failed to load notification settings:', error);
+        }
+      };
+
       fetchProfile();
+      loadNotificationSettings();
       setCurrentLang(getCurrentLanguage());
       loadLogInfo();
     }, [loadLogInfo])
@@ -271,6 +310,24 @@ const SettingsScreen = () => {
           />
         </View>
 
+        <Text style={styles.sectionTitle}>{t('notifications.title')}</Text>
+        <View style={styles.optionsContainer}>
+          <SettingsToggle
+            label={t('notifications.toggle')}
+            description={t('notifications.toggleDescription')}
+            icon="notifications-outline"
+            value={notificationsEnabled}
+            onValueChange={async (value) => {
+              setNotificationsEnabled(value);
+              try {
+                await AsyncStorage.setItem('notificationsEnabled', value.toString());
+              } catch (error) {
+                console.error('Failed to save notification settings:', error);
+              }
+            }}
+          />
+        </View>
+
         {/* Log Buttons */}
         <Text style={styles.sectionTitle}>{t('settings.diagnostics')}</Text>
         <View style={styles.logInfoContainer}>
@@ -370,7 +427,7 @@ const SettingsScreen = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
@@ -473,7 +530,6 @@ const styles = StyleSheet.create({
   option: {
     padding: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -488,6 +544,11 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 16,
     color: COLORS.text,
+  },
+  optionDescription: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   optionValueContainer: {
     flexDirection: 'row',

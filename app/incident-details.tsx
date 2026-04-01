@@ -866,7 +866,7 @@ const IncidentDetailsScreen = () => {
                   location_id: incident.location_id || incident.location?.id,
                   department_id: incident.department_id || incident.department?.id,
                   assignee_id: incident.assignee_id || incident.assignee?.id,
-                  version: incident.version,
+                  version: incident?.version,
                 }),
               },
             })}
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
 
   titleCard: {
-    backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: -10,
+    backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 10,
     borderRadius: 16, flexDirection: 'row', overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },

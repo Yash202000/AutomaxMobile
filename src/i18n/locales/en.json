@@ -461,6 +461,8 @@
       "push": "Push Notification",
       "sms": "SMS",
       "email": "Email"
-    }
+    },
+    "toggle": "Push Notifications",
+    "toggleDescription": "Receive alerts for new incidents and updates"
   }
 }

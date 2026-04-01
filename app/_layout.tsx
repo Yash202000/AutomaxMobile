@@ -1,4 +1,5 @@
 import '@/src/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -47,6 +48,13 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!isAuthenticated) return;
     const setup = async () => {
+      // Check if notifications are enabled
+      const enabled = await AsyncStorage.getItem('notificationsEnabled');
+      if (enabled === 'false') {
+        console.log("[FCM] Notifications are disabled, skipping registration.");
+        return;
+      }
+
       const token = await FCMService.init();
       if (!token) return;
       const p = {
