@@ -1,5 +1,6 @@
 import { handleNotification } from "@/src/utils/notificationRouter";
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     getInitialNotification,
     getMessaging,
@@ -15,6 +16,12 @@ export function useFCM(navigation: any) {
         // foreground
         const unsubscribeOnMessage = onMessage(messaging, async remoteMessage => {
             console.log("Foreground:", remoteMessage);
+
+            const enabled = await AsyncStorage.getItem('notificationsEnabled');
+            if (enabled === 'false') {
+                console.log("[FCM] Notifications are disabled, skipping foreground display.");
+                return;
+            }
 
             const title = remoteMessage.notification?.title || remoteMessage.data?.subject as string || remoteMessage.data?.title as string || 'New Notification';
             const body = remoteMessage.notification?.body || remoteMessage.data?.body as string || '';

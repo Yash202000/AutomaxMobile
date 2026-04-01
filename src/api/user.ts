@@ -25,26 +25,26 @@ export const getProfile = async () => {
   }
 };
 
-export const updateProfile = async (profileData) => {
-    try {
-        const response = await apiClient.put('/users/me', profileData);
-        if (response.data && response.data.success) {
-            return { success: true, data: response.data.data };
-        }
-        return { success: false, error: 'Invalid response from server' };
-    } catch (error) {
-        return { success: false, error: extractError(error) };
+export const updateProfile = async (profileData: any) => {
+  try {
+    const response = await apiClient.put('/users/me', profileData);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
     }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error) {
+    return { success: false, error: extractError(error) };
+  }
 };
 
-export const changePassword = async (passwordData) => {
-    try {
-        const response = await apiClient.put('/users/me/password', passwordData);
-        if (response.data && response.data.success) {
-            return { success: true, data: response.data.data };
-        }
-        return { success: false, error: 'Invalid response from server' };
-    } catch (error) {
-        return { success: false, error: extractError(error) };
+export const changePassword = async (passwordData: any) => {
+  try {
+    const response = await apiClient.put('/users/me/password', passwordData);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
     }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error) {
+    return { success: false, error: extractError(error) };
+  }
 };
