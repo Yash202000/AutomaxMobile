@@ -1,17 +1,17 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, Platform, ImageBackground } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
-import { useTranslation } from 'react-i18next';
-import { Audio, useAudioPlayer, AudioSource } from 'expo-audio';
-import { WebView } from 'react-native-webview';
-import { getIncidentById, getAvailableTransitions } from '@/src/api/incidents';
 import { baseURL } from '@/src/api/client';
-import * as SecureStore from 'expo-secure-store';
+import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
+import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
+import { Ionicons } from '@expo/vector-icons';
+import { Audio, AudioSource, useAudioPlayer } from 'expo-audio';
+import { Image } from 'expo-image';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 const COLORS = {
   primary: '#1A237E',
@@ -458,7 +458,8 @@ const QueryDetailsScreen = () => {
             <View style={styles.mapContainer}>
               <WebView
                 ref={mapRef}
-                source={{ html: `
+                source={{
+                  html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -686,7 +687,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 10 },
 
   titleCard: {
     backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: -10,
