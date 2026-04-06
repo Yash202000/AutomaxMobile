@@ -459,6 +459,7 @@
     },
     "channel": {
       "push": "Push Notification",
+      "notification": "Notification",
       "sms": "SMS",
       "email": "Email"
     },

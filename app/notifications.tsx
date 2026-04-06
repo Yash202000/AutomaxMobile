@@ -1,8 +1,10 @@
 import { getNotifications } from "@/src/api/notifications";
+import { handleNotification } from "@/src/utils/notificationRouter";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import {
     ActivityIndicator,
     FlatList,
@@ -35,6 +37,7 @@ interface PaginationInfo {
 
 const NotificationCard = ({ notification }: { notification: Notification }) => {
     const { t } = useTranslation();
+    const router = useRouter();
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -56,6 +59,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
     const getChannelIcon = (channel: string) => {
         switch (channel.toLowerCase()) {
             case "push-notification":
+            case "notification":
             case "push":
                 return "notifications-outline";
             case "sms":
@@ -67,8 +71,12 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         }
     };
 
+    useEffect(() => {
+        console.log(notification);
+    }, [notification]);
+
     return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() => { handleNotification(notification.metadata, router) }}>
             <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(notification.status) }]} />
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
@@ -92,7 +100,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                     </View>
                 )}
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
