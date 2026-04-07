@@ -187,14 +187,14 @@ const MapViewScreen = () => {
 
   const buildFilterParams = () => {
     const params: Record<string, any> = {};
-    if (state_id) params.current_state_id = state_id;
-    if (priority) params.priority = parseInt(priority);
-    if (severity) params.severity = parseInt(severity);
-    if (assignee_id) params.assignee_id = assignee_id;
-    if (department_id) params.department_id = department_id;
+    if (state_id) params.current_state_id = state_id.split(',');
+    if (priority) params.priority = priority.split(',').map(p => parseInt(p));
+    if (severity) params.severity = severity.split(',').map(s => parseInt(s));
+    if (assignee_id) params.assignee_id = assignee_id.split(',');
+    if (department_id) params.department_id = department_id.split(',');
     if (classification_ids) params.classification_id = classification_ids.split(',');
     if (location_ids) params.location_id = location_ids.split(',');
-    if (source) params.source = source;
+    if (source) params.source = source.split(',');
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     return params;
