@@ -1,7 +1,7 @@
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
-import { router } from 'expo-router';
 import { crashLogger } from '@/src/utils/crashLogger';
+import axios from 'axios';
+import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error('EXPO_PUBLIC_API_URL is not set');
@@ -60,7 +60,7 @@ apiClient.interceptors.request.use(
     const token = await SecureStore.getItemAsync('authToken');
 
     // If no token and not a public endpoint, reject the request
-    const publicEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/logout'];
+    const publicEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/logout', '/otp/send', '/otp/verify'];
     const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
 
     if (!token && !isPublicEndpoint) {
@@ -84,7 +84,7 @@ apiClient.interceptors.request.use(
           context: 'Error in API request interceptor',
           errorMessage: error.message,
         }
-      ).catch(() => {});
+      ).catch(() => { });
     }
     return Promise.reject(error);
   }
@@ -143,7 +143,7 @@ apiClient.interceptors.response.use(
             ...errorDetails,
             context: 'Failed to reach server - check internet connection',
           }
-        ).catch(() => {});
+        ).catch(() => { });
       } else if (error.response.status >= 500) {
         // Server error (5xx)
         crashLogger.logError(
@@ -153,7 +153,7 @@ apiClient.interceptors.response.use(
             ...errorDetails,
             context: 'Server returned 5xx error',
           }
-        ).catch(() => {});
+        ).catch(() => { });
       } else if (error.response.status >= 400 && error.response.status < 500) {
         // Client error (4xx) - log as warning since these are often expected
         crashLogger.logWarning(
@@ -163,7 +163,7 @@ apiClient.interceptors.response.use(
             ...errorDetails,
             context: 'Client request error (4xx)',
           }
-        ).catch(() => {});
+        ).catch(() => { });
       }
     }
 
@@ -217,7 +217,7 @@ apiClient.interceptors.response.use(
           type: 'MissingRefreshToken',
           context: 'User session expired or refresh token was deleted',
         }
-      ).catch(() => {});
+      ).catch(() => { });
 
       await redirectToLogin();
       return Promise.reject(error);
@@ -250,7 +250,7 @@ apiClient.interceptors.response.use(
           status: refreshError?.response?.status,
           context: 'Refresh token expired or invalid',
         }
-      ).catch(() => {});
+      ).catch(() => { });
 
       processQueue(refreshError, null);
       await redirectToLogin();

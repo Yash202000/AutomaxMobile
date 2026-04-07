@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform, Modal } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { getAllStates } from '@/src/api/workflow';
-import { getDepartments } from '@/src/api/departments';
-import { getUsers } from '@/src/api/users';
 import { getClassificationsTree } from '@/src/api/classifications';
+import { getDepartments } from '@/src/api/departments';
 import { getLocationsTree } from '@/src/api/locations';
+import { getUsers } from '@/src/api/users';
+import { getAllStates } from '@/src/api/workflow';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FilterState {
   state_id: string | null;
@@ -352,7 +352,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.status')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.state_id && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.state_id ? styles.filterValueActive : null]}>
                 {getSelectedStateName()}
               </Text>
               <Ionicons
@@ -410,7 +410,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.priority')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.priority && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.priority ? styles.filterValueActive : null]}>
                 {getSelectedPriorityLabel()}
               </Text>
               <Ionicons
@@ -465,7 +465,7 @@ const FilterScreen = () => {
               value=""
               data={classifications}
               loading={loadingClassifications}
-              onSelect={() => {}}
+              onSelect={() => { }}
               leafOnly={true}
               placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : t('filter.allClassifications')}
               iconType="classification"
@@ -490,7 +490,7 @@ const FilterScreen = () => {
               value=""
               data={locations}
               loading={loadingLocations}
-              onSelect={() => {}}
+              onSelect={() => { }}
               leafOnly={true}
               placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : t('filter.allLocations')}
               iconType="location"
