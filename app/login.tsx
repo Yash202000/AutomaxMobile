@@ -42,6 +42,7 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+  const [otpChannel, setOtpChannel] = useState<'sms' | 'whatsapp'>('sms');
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -114,56 +115,74 @@ const LoginScreen = () => {
     Keyboard.dismiss();
     setError('');
 
-    setLoading(true);
+    const isEmail = loginMethod === 'email';
 
-    // Client-side validation
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setError(t('errors.validationError'));
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setError(t('auth.invalidCredentials'));
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await apiClient.post('/auth/login', { email: trimmedEmail, password });
-
-      if (response.data && response.data.success) {
-        const { token, refresh_token } = response.data.data;
-        await login(token, refresh_token);
-        router.push('/otp');
-      } else {
-        setError(t('auth.loginError'));
+    if (isEmail) {
+      // Email Login Logic
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail || !password) {
+        setError(t('errors.validationError'));
+        return;
       }
-    } catch (err: any) {
-      let errorMsg: string;
-      const data = err.response?.data;
-
-      if (data?.error) {
-        // Singular error string — e.g. "invalid credentials", "account is deactivated"
-        errorMsg = data.error;
-      } else if (data?.errors && typeof data.errors === 'object') {
-        // Validation error map — e.g. {"Email": "Email must be a valid email address"}
-        const first = Object.values(data.errors)[0];
-        errorMsg = first ? String(first) : t('errors.validationError');
-      } else if (!err.response) {
-        errorMsg = t('errors.networkError');
-      } else if (err.response.status === 401 || err.response.status === 403) {
-        errorMsg = t('auth.invalidCredentials');
-      } else if (err.response.status >= 500) {
-        errorMsg = t('errors.serverError');
-      } else {
-        errorMsg = t('errors.unknownError');
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setError(t('auth.invalidCredentials'));
+        return;
       }
 
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
+      setLoading(true);
+
+      try {
+        const response = await apiClient.post('/auth/login', { email: trimmedEmail, password });
+
+        if (response.data && response.data.success) {
+          const { token, refresh_token } = response.data.data;
+          await login(token, refresh_token);
+          router.replace('/(tabs)/explore');
+        } else {
+          setError(t('auth.loginError'));
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.error || t('auth.loginError'));
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Phone OTP Login Logic
+      if (!phoneNumber) {
+        setError(t('errors.validationError'));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const authResponse = await apiClient.post('/auth/login', { phone: phoneNumber });
+
+        if (!authResponse.data || !authResponse.data.success) {
+          setError(authResponse.data.message);
+          return;
+        }
+        // Updated OTP send endpoint and payload based on user curl
+        const response = await apiClient.post('/otp/send', {
+          phone: phoneNumber,
+          channel: otpChannel
+        });
+
+        console.log(response.data);
+
+        if (response.data && response.data.session_id) {
+          router.push({
+            pathname: '/otp',
+            params: { phoneNumber, sessionId: response.data.session_id, channel: otpChannel }
+          });
+        } else {
+          setError(t('auth.otpSentFailed', 'Failed to send OTP'));
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.error || t('auth.otpSentFailed', 'Failed to send OTP'));
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -300,7 +319,7 @@ const LoginScreen = () => {
                   styles.tabButton,
                   loginType === 'employee' && styles.activeTab,
                 ]}
-                onPress={() => setLoginType('employee')}
+                onPress={() => { setLoginType('employee'); setError('') }}
               >
                 <Text
                   style={[
@@ -316,7 +335,7 @@ const LoginScreen = () => {
                   styles.tabButton,
                   loginType === 'citizen' && styles.activeTab,
                 ]}
-                onPress={() => setLoginType('citizen')}
+                onPress={() => { setLoginType('citizen'); setError('') }}
               >
                 <Text
                   style={[
@@ -331,9 +350,10 @@ const LoginScreen = () => {
 
             <View style={styles.methodToggleContainer}>
               <TouchableOpacity
-                onPress={() =>
-                  setLoginMethod(loginMethod === 'email' ? 'phone' : 'email')
-                }
+                onPress={() => {
+                  setLoginMethod(loginMethod === 'email' ? 'phone' : 'email');
+                  setError('')
+                }}
                 style={styles.methodToggleButton}
               >
                 <Ionicons
@@ -435,39 +455,90 @@ const LoginScreen = () => {
                 </>
               ) : (
                 /* Phone Number Input */
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>{t('auth.phone')}</Text>
-                  <Animated.View
-                    style={[
-                      styles.inputContainer,
-                      {
-                        borderColor: phoneBorderColor,
-                        borderWidth: 2,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="call-outline"
-                      size={20}
-                      color="#666"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="+1234567890"
-                      placeholderTextColor="#999"
-                      value={phoneNumber}
-                      onChangeText={setPhoneNumber}
-                      onFocus={handlePhoneFocus}
-                      onBlur={handlePhoneBlur}
-                      keyboardType="phone-pad"
-                    />
-                  </Animated.View>
-                </View>
+                <>
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.inputLabel}>{t('auth.phone')}</Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: phoneBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="call-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="+1234567890"
+                        placeholderTextColor="#999"
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                        onFocus={handlePhoneFocus}
+                        onBlur={handlePhoneBlur}
+                        keyboardType="phone-pad"
+                      />
+                    </Animated.View>
+                  </View>
+
+                  {/* OTP Channel Selection */}
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.inputLabel}>{t('auth.otpChannel')}</Text>
+                    <View style={styles.channelContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.channelButton,
+                          otpChannel === 'sms' && styles.activeChannel,
+                        ]}
+                        onPress={() => setOtpChannel('sms')}
+                      >
+                        <Ionicons
+                          name="chatbubble-ellipses-outline"
+                          size={20}
+                          color={otpChannel === 'sms' ? '#2EC4B6' : '#666'}
+                        />
+                        <Text
+                          style={[
+                            styles.channelText,
+                            otpChannel === 'sms' && styles.activeChannelText,
+                          ]}
+                        >
+                          {t('auth.sms')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.channelButton,
+                          otpChannel === 'whatsapp' && styles.activeChannel,
+                        ]}
+                        onPress={() => setOtpChannel('whatsapp')}
+                      >
+                        <Ionicons
+                          name="logo-whatsapp"
+                          size={20}
+                          color={otpChannel === 'whatsapp' ? '#2EC4B6' : '#666'}
+                        />
+                        <Text
+                          style={[
+                            styles.channelText,
+                            otpChannel === 'whatsapp' && styles.activeChannelText,
+                          ]}
+                        >
+                          {t('auth.whatsapp')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </>
               )}
 
               {/* Forgot Password - Only for email login */}
-              {(loginMethod === 'email' || loginType === 'employee') && (
+              {(loginMethod === 'email') && (
                 <TouchableOpacity
                   onPress={() => router.push('/forgot-password')}
                   style={styles.forgotPasswordContainer}
@@ -494,15 +565,12 @@ const LoginScreen = () => {
                 onPressIn={handleButtonPressIn}
                 onPressOut={handleButtonPressOut}
                 onPress={handleLogin}
-                disabled={loading || !email || !password}
+                disabled={loading || (loginMethod === 'email' ? (!email || !password) : !phoneNumber)}
                 style={styles.loginButton}
               >
                 <LinearGradient
                   colors={
-                    loading ||
-                      (loginMethod === 'email' || loginType === 'employee'
-                        ? !email || !password
-                        : !phoneNumber)
+                    loading || (loginMethod === 'email' ? (!email || !password) : !phoneNumber)
                       ? ['#CCCCCC', '#AAAAAA']
                       : ['#2EC4B6', '#20B2A3']
                   }
@@ -514,7 +582,9 @@ const LoginScreen = () => {
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={styles.loginButtonText}>
-                      {t('auth.loginButton')}
+                      {
+                        loginMethod === 'phone' ? t('auth.sendOTP') : t('auth.login')
+                      }
                     </Text>
                   )}
                 </LinearGradient>
@@ -723,9 +793,35 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   forgotPasswordText: {
-    color: '#2EC4B6',
+    fontWeight: '600',
+  },
+  channelContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  channelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
+    gap: 8,
+  },
+  activeChannel: {
+    borderColor: '#2EC4B6',
+    backgroundColor: '#F0FFFE',
+  },
+  channelText: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#666',
+  },
+  activeChannelText: {
+    color: '#2EC4B6',
   },
   errorContainer: {
     flexDirection: 'row',
