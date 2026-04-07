@@ -530,6 +530,7 @@ const styles = StyleSheet.create({
   option: {
     padding: 16,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,

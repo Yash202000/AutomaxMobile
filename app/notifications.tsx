@@ -17,13 +17,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Notification {
     id: string;
-    subject: string;
+    subject?: string;
     body: string;
     status: string;
     channel: string;
     created_at: string;
-    sent_at?: string;
-    metadata?: any;
+    category?: string;
+    direction?: string;
+    is_read?: boolean;
+    recipients?: { channel: string; status: string; type: string }[];
 }
 
 interface PaginationInfo {
@@ -55,6 +57,8 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
 
     const getChannelIcon = (channel: string) => {
         switch (channel.toLowerCase()) {
+            case "whatsapp":
+                return "logo-whatsapp";
             case "push-notification":
             case "push":
                 return "notifications-outline";
@@ -67,23 +71,41 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         }
     };
 
+    const getChannelColor = (channel: string) => {
+        if (channel.toLowerCase() === 'whatsapp') return "#25D366";
+        return "#666";
+    };
+
+    const displayTitle = notification.subject ||
+        (notification.category ? t(`notifications.category.${notification.category.toLowerCase()}`, notification.category.charAt(0).toUpperCase() + notification.category.slice(1)) : t("notifications.defaultTitle"));
+
     return (
         <View style={styles.card}>
             <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(notification.status) }]} />
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
                     <View style={styles.channelRow}>
-                        <Ionicons name={getChannelIcon(notification.channel) as any} size={14} color="#666" />
-                        <Text style={styles.channelText}>
-                            {t(`notifications.channel.${notification.channel.split('-')[0]}` || notification.channel)}
+                        <Ionicons
+                            name={getChannelIcon(notification.channel) as any}
+                            size={14}
+                            color={getChannelColor(notification.channel)}
+                        />
+                        <Text style={[styles.channelText, { color: getChannelColor(notification.channel) }]}>
+                            {t(`notifications.channel.${notification.channel.split('-')[0].toLowerCase()}`, notification.channel)}
                         </Text>
                     </View>
                     <Text style={styles.dateText}>
                         {new Date(notification.created_at).toLocaleString()}
                     </Text>
                 </View>
-                <Text style={styles.title} numberOfLines={1}>{notification.subject}</Text>
+                <Text style={styles.title} numberOfLines={1}>{displayTitle}</Text>
                 <Text style={styles.body} numberOfLines={2}>{notification.body}</Text>
+
+                {/* {notification.recipients && notification.recipients.length > 0 && (
+                    <Text style={styles.recipientText} numberOfLines={1}>
+                        {t('notifications.to')}: {notification.recipients.map(r => r.channel).join(', ')}
+                    </Text>
+                )} */}
 
                 {(notification.status.toLowerCase() === "failed" || notification.status.toLowerCase() === "error") && (
                     <View style={styles.failedBadge}>
@@ -121,7 +143,7 @@ const NotificationsScreen = () => {
 
         // You can add more filters here if needed
         const response = await getNotifications({ page, limit: 20 });
-
+        console.log(response.data[0])
         if (response.success) {
             if (append) {
                 setNotifications((prev) => [...prev, ...response.data]);
@@ -337,6 +359,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#666",
         lineHeight: 18,
+    },
+    recipientText: {
+        fontSize: 12,
+        color: "#888",
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     failedBadge: {
         flexDirection: "row",
