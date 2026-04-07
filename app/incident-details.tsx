@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 10 },
 
   titleCard: {
     backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 10,

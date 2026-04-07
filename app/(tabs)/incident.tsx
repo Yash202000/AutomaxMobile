@@ -1,11 +1,11 @@
 import { getIncidents, getIncidentStats } from '@/src/api/incidents';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ImageBackground, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, FlatList, ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   primary: '#1A237E',
@@ -40,6 +40,30 @@ const slaStatusConfig: Record<string, { key: string; color: string }> = {
   'at_risk': { key: 'atRisk', color: '#F59E0B' },
   'breached': { key: 'breached', color: '#DC2626' },
 };
+
+const severityConfig: Record<number, { key: string; color: string }> = {
+  1: { key: 'critical', color: '#E74C3C' },
+  2: { key: 'major', color: '#E67E22' },
+  3: { key: 'moderate', color: '#F1C40F' },
+  4: { key: 'minor', color: '#3498DB' },
+  5: { key: 'cosmetic', color: '#2ECC71' },
+};
+
+const sources = [
+  { value: 'web', label: 'Web Portal' },
+  { value: 'mobile', label: 'Mobile App' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'api', label: 'API Integration' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: '940_system', label: '940 System' },
+  { value: '940_manual', label: '940 Manual' },
+  { value: 'field', label: 'Field' },
+  { value: 'manual', label: 'Manual Entry' },
+  { value: 'viusional', label: 'Viusional' },
+  { value: 'other', label: 'Other' },
+];
 
 interface Incident {
   id: string;
@@ -148,14 +172,14 @@ const IncidentsScreen = () => {
 
   const buildParams = (page: number) => {
     const params: Record<string, any> = { page, limit: 20 };
-    if (activeStateId) params.current_state_id = activeStateId;
-    if (priority) params.priority = parseInt(priority);
-    if (severity) params.severity = parseInt(severity);
-    if (assignee_id) params.assignee_id = assignee_id;
-    if (department_id) params.department_id = department_id;
+    if (activeStateId) params.current_state_id = activeStateId.split(',');
+    if (priority) params.priority = priority.split(',').map(p => parseInt(p));
+    if (severity) params.severity = severity.split(',').map(s => parseInt(s));
+    if (assignee_id) params.assignee_id = assignee_id.split(',');
+    if (department_id) params.department_id = department_id.split(',');
     if (classification_ids) params.classification_id = classification_ids.split(',');
     if (location_ids) params.location_id = location_ids.split(',');
-    if (source) params.source = source;
+    if (source) params.source = source.split(',');
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
@@ -177,7 +201,13 @@ const IncidentsScreen = () => {
     if (page === 1) setLoading(true);
     setError('');
 
-    const params = buildParams(page);
+    let params = buildParams(page);
+    if (!params?.current_state_id || params?.current_state_id.length === 0) {
+      const statsResponse = await getIncidentStats();
+      if (statsResponse.success) {
+        params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
+      }
+    }
     const response = await getIncidents(params);
 
     if (response.success) {
@@ -277,13 +307,14 @@ const IncidentsScreen = () => {
   const FilterBadges = () => {
     if (!hasManualFilters) return null;
     const badges = [
-      state_id && state_name && { key: 'status', label: t('filter.status'), value: state_name },
-      priority && { key: 'priority', label: t('filter.priority'), value: t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
-      assignee_id && assignee_name && { key: 'assignee', label: t('filter.assignee'), value: assignee_name },
-      department_id && department_name && { key: 'dept', label: t('filter.department'), value: department_name },
+      state_id && { key: 'status', label: t('filter.status'), value: state_id.split(',').length > 1 ? `${state_id.split(',').length} selected` : (state_name || state_id) },
+      priority && { key: 'priority', label: t('filter.priority'), value: priority.split(',').length > 1 ? `${priority.split(',').length} selected` : t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
+      severity && { key: 'severity', label: t('filter.severity'), value: severity.split(',').length > 1 ? `${severity.split(',').length} selected` : t(`severities.${severityConfig[parseInt(severity)]?.key}`) },
+      assignee_id && { key: 'assignee', label: t('filter.assignee'), value: assignee_id.split(',').length > 1 ? `${assignee_id.split(',').length} selected` : (assignee_name || assignee_id) },
+      department_id && { key: 'dept', label: t('filter.department'), value: department_id.split(',').length > 1 ? `${department_id.split(',').length} selected` : (department_name || department_id) },
       classification_ids && { key: 'class', label: t('filter.classification'), value: classification_ids.split(',').length > 1 ? `${classification_ids.split(',').length} selected` : (classification_names?.split(',')[0] || classification_ids) },
       location_ids && { key: 'loc', label: t('filter.location'), value: location_ids.split(',').length > 1 ? `${location_ids.split(',').length} selected` : (location_names?.split(',')[0] || location_ids) },
-      source && { key: 'source', label: t('filter.source', 'Source'), value: source },
+      source && { key: 'source', label: t('filter.source', 'Source'), value: source.split(',').length > 1 ? `${source.split(',').length} selected` : (sources.find(s => s.value === source)?.label || source) },
     ].filter(Boolean) as { key: string; label: string; value: string }[];
 
     return (
@@ -340,7 +371,7 @@ const IncidentsScreen = () => {
         ) : (
           <>
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>{headerTitle}</Text>
+              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">{headerTitle}</Text>
             </View>
             <View style={styles.headerIcons}>
               <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
@@ -429,7 +460,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   headerTitleContainer: { flex: 1 },
-  headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold' },
+  headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold', maxWidth: 200 },
   headerIcons: { flexDirection: 'row', gap: 12 },
   headerIcon: {
     width: 40, height: 40, borderRadius: 20,

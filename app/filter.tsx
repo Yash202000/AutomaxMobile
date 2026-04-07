@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Platform, Modal } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { getAllStates } from '@/src/api/workflow';
-import { getDepartments } from '@/src/api/departments';
-import { getUsers } from '@/src/api/users';
 import { getClassificationsTree } from '@/src/api/classifications';
+import { getDepartments } from '@/src/api/departments';
+import { getIncidentStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
+import { getUsers } from '@/src/api/users';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FilterState {
-  state_id: string | null;
-  state_name: string | null;
-  priority: number | null;
-  severity: number | null;
-  assignee_id: string | null;
-  assignee_name: string | null;
-  department_id: string | null;
-  department_name: string | null;
+  state_ids: string[];
+  state_names: string[];
+  priorities: number[];
+  severities: number[];
+  assignee_ids: string[];
+  assignee_names: string[];
+  department_ids: string[];
+  department_names: string[];
   classification_ids: string[];
   classification_names: string[];
   location_ids: string[];
   location_names: string[];
-  source: string | null;
+  sources: string[];
   start_date: string | null;
   end_date: string | null;
 }
@@ -100,19 +100,19 @@ const FilterScreen = () => {
   const [loadingClassifications, setLoadingClassifications] = useState(true);
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
-    state_id: params.state_id || null,
-    state_name: params.state_name || null,
-    priority: params.priority ? parseInt(params.priority) : null,
-    severity: params.severity ? parseInt(params.severity) : null,
-    assignee_id: params.assignee_id || null,
-    assignee_name: params.assignee_name || null,
-    department_id: params.department_id || null,
-    department_name: params.department_name || null,
+    state_ids: params.state_id ? params.state_id.split(',') : states.map(s => s.id),
+    state_names: params.state_name ? params.state_name.split(',') : [],
+    priorities: params.priority ? params.priority.split(',').map(p => parseInt(p)) : [],
+    severities: params.severity ? params.severity.split(',').map(s => parseInt(s)) : [],
+    assignee_ids: params.assignee_id ? params.assignee_id.split(',') : [],
+    assignee_names: params.assignee_name ? params.assignee_name.split(',') : [],
+    department_ids: params.department_id ? params.department_id.split(',') : [],
+    department_names: params.department_name ? params.department_name.split(',') : [],
     classification_ids: params.classification_ids ? params.classification_ids.split(',') : [],
     classification_names: params.classification_names ? params.classification_names.split(',') : [],
     location_ids: params.location_ids ? params.location_ids.split(',') : [],
     location_names: params.location_names ? params.location_names.split(',') : [],
-    source: params.source || null,
+    sources: params.source ? params.source.split(',') : [],
     start_date: params.start_date || null,
     end_date: params.end_date || null,
   });
@@ -130,9 +130,9 @@ const FilterScreen = () => {
 
   const fetchStates = async () => {
     setLoadingStates(true);
-    const response = await getAllStates();
+    const response = await getIncidentStats();
     if (response.success) {
-      setStates(response.data || []);
+      setStates(response.data.by_state_details || []);
     }
     setLoadingStates(false);
   };
@@ -178,48 +178,75 @@ const FilterScreen = () => {
   };
 
   const selectState = (state: any) => {
-    if (filters.state_id === state.id) {
-      setFilters({ ...filters, state_id: null, state_name: null });
+    const isSelected = filters.state_ids.includes(state.id);
+    if (isSelected) {
+      setFilters({
+        ...filters,
+        state_ids: filters.state_ids.filter(id => id !== state.id),
+        state_names: filters.state_names.filter(name => name !== state.name),
+      });
     } else {
-      setFilters({ ...filters, state_id: state.id, state_name: state.name });
+      setFilters({
+        ...filters,
+        state_ids: [...filters.state_ids, state.id],
+        state_names: [...filters.state_names, state.name],
+      });
     }
-    setExpandedSection(null);
   };
 
   const selectPriority = (priority: number) => {
-    if (filters.priority === priority) {
-      setFilters({ ...filters, priority: null });
-    } else {
-      setFilters({ ...filters, priority });
-    }
-    setExpandedSection(null);
+    const isSelected = filters.priorities.includes(priority);
+    setFilters({
+      ...filters,
+      priorities: isSelected
+        ? filters.priorities.filter(p => p !== priority)
+        : [...filters.priorities, priority],
+    });
   };
 
   const selectSeverity = (severity: number) => {
-    if (filters.severity === severity) {
-      setFilters({ ...filters, severity: null });
-    } else {
-      setFilters({ ...filters, severity });
-    }
-    setExpandedSection(null);
+    const isSelected = filters.severities.includes(severity);
+    setFilters({
+      ...filters,
+      severities: isSelected
+        ? filters.severities.filter(s => s !== severity)
+        : [...filters.severities, severity],
+    });
   };
 
   const selectAssignee = (user: any) => {
-    if (filters.assignee_id === user.id) {
-      setFilters({ ...filters, assignee_id: null, assignee_name: null });
+    const userName = `${user.first_name} ${user.last_name}`;
+    const isSelected = filters.assignee_ids.includes(user.id);
+    if (isSelected) {
+      setFilters({
+        ...filters,
+        assignee_ids: filters.assignee_ids.filter(id => id !== user.id),
+        assignee_names: filters.assignee_names.filter(name => name !== userName),
+      });
     } else {
-      setFilters({ ...filters, assignee_id: user.id, assignee_name: `${user.first_name} ${user.last_name}` });
+      setFilters({
+        ...filters,
+        assignee_ids: [...filters.assignee_ids, user.id],
+        assignee_names: [...filters.assignee_names, userName],
+      });
     }
-    setExpandedSection(null);
   };
 
   const selectDepartment = (department: any) => {
-    if (filters.department_id === department.id) {
-      setFilters({ ...filters, department_id: null, department_name: null });
+    const isSelected = filters.department_ids.includes(department.id);
+    if (isSelected) {
+      setFilters({
+        ...filters,
+        department_ids: filters.department_ids.filter(id => id !== department.id),
+        department_names: filters.department_names.filter(name => name !== department.name),
+      });
     } else {
-      setFilters({ ...filters, department_id: department.id, department_name: department.name });
+      setFilters({
+        ...filters,
+        department_ids: [...filters.department_ids, department.id],
+        department_names: [...filters.department_names, department.name],
+      });
     }
-    setExpandedSection(null);
   };
 
   const handleClassificationMultiSelect = (nodes: any[]) => {
@@ -238,30 +265,35 @@ const FilterScreen = () => {
     });
   };
 
-  const selectSource = (source: string | null) => {
-    setFilters({ ...filters, source });
-    setExpandedSection(null);
+  const selectSource = (source: string) => {
+    const isSelected = filters.sources.includes(source);
+    setFilters({
+      ...filters,
+      sources: isSelected
+        ? filters.sources.filter(s => s !== source)
+        : [...filters.sources, source],
+    });
   };
 
   const applyFilters = () => {
     const queryParams: any = {};
-    if (filters.state_id) {
-      queryParams.state_id = filters.state_id;
-      queryParams.state_name = filters.state_name;
+    if (filters.state_ids.length > 0) {
+      queryParams.state_id = filters.state_ids.join(',');
+      queryParams.state_name = filters.state_names.join(',');
     }
-    if (filters.priority) {
-      queryParams.priority = filters.priority.toString();
+    if (filters.priorities.length > 0) {
+      queryParams.priority = filters.priorities.join(',');
     }
-    if (filters.severity) {
-      queryParams.severity = filters.severity.toString();
+    if (filters.severities.length > 0) {
+      queryParams.severity = filters.severities.join(',');
     }
-    if (filters.assignee_id) {
-      queryParams.assignee_id = filters.assignee_id;
-      queryParams.assignee_name = filters.assignee_name;
+    if (filters.assignee_ids.length > 0) {
+      queryParams.assignee_id = filters.assignee_ids.join(',');
+      queryParams.assignee_name = filters.assignee_names.join(',');
     }
-    if (filters.department_id) {
-      queryParams.department_id = filters.department_id;
-      queryParams.department_name = filters.department_name;
+    if (filters.department_ids.length > 0) {
+      queryParams.department_id = filters.department_ids.join(',');
+      queryParams.department_name = filters.department_names.join(',');
     }
     if (filters.classification_ids.length > 0) {
       queryParams.classification_ids = filters.classification_ids.join(',');
@@ -271,7 +303,7 @@ const FilterScreen = () => {
       queryParams.location_ids = filters.location_ids.join(',');
       queryParams.location_names = filters.location_names.join(',');
     }
-    if (filters.source) queryParams.source = filters.source;
+    if (filters.sources.length > 0) queryParams.source = filters.sources.join(',');
     if (filters.start_date) queryParams.start_date = filters.start_date;
     if (filters.end_date) queryParams.end_date = filters.end_date;
 
@@ -285,9 +317,9 @@ const FilterScreen = () => {
     router.replace({ pathname: '/(tabs)/incident' });
   };
 
-  const hasActiveFilters = filters.state_id || filters.priority || filters.severity ||
-    filters.assignee_id || filters.department_id || filters.classification_ids.length > 0 ||
-    filters.location_ids.length > 0 || filters.source || filters.start_date || filters.end_date;
+  const hasActiveFilters = filters.state_ids.length > 0 || filters.priorities.length > 0 || filters.severities.length > 0 ||
+    filters.assignee_ids.length > 0 || filters.department_ids.length > 0 || filters.classification_ids.length > 0 ||
+    filters.location_ids.length > 0 || filters.sources.length > 0 || filters.start_date || filters.end_date;
 
   const formatDisplayDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -295,40 +327,49 @@ const FilterScreen = () => {
   };
 
   const getSelectedStateName = () => {
-    if (!filters.state_id) return t('filter.all');
-    return filters.state_name || t('filter.selected');
+    if (filters.state_ids.length === 0) return t('filter.all');
+    if (filters.state_ids.length === 1) return filters.state_names[0] || t('filter.selected');
+    return `${filters.state_ids.length} ${t('filter.selected')}`;
   };
 
   const getSelectedPriorityLabel = () => {
-    if (!filters.priority) return t('filter.all');
-    const priority = priorities.find(p => p.value === filters.priority);
-    return priority ? t(`priorities.${priority.key}`) : t('filter.selected');
+    if (filters.priorities.length === 0) return t('filter.all');
+    if (filters.priorities.length === 1) {
+      const priority = priorities.find(p => p.value === filters.priorities[0]);
+      return priority ? t(`priorities.${priority.key}`) : t('filter.selected');
+    }
+    return `${filters.priorities.length} ${t('filter.selected')}`;
   };
 
   const getSelectedSeverityLabel = () => {
-    if (!filters.severity) return t('filter.all');
-    const severity = severities.find(s => s.value === filters.severity);
-    return severity ? t(`severities.${severity.key}`) : t('filter.selected');
+    if (filters.severities.length === 0) return t('filter.all');
+    if (filters.severities.length === 1) {
+      const severity = severities.find(s => s.value === filters.severities[0]);
+      return severity ? t(`severities.${severity.key}`) : t('filter.selected');
+    }
+    return `${filters.severities.length} ${t('filter.selected')}`;
   };
 
   const getSelectedAssigneeName = () => {
-    if (!filters.assignee_id) return t('filter.all');
-    return filters.assignee_name || t('filter.selected');
+    if (filters.assignee_ids.length === 0) return t('filter.all');
+    if (filters.assignee_ids.length === 1) return filters.assignee_names[0] || t('filter.selected');
+    return `${filters.assignee_ids.length} ${t('filter.selected')}`;
   };
 
   const getSelectedDepartmentName = () => {
-    if (!filters.department_id) return t('filter.all');
-    return filters.department_name || t('filter.selected');
+    if (filters.department_ids.length === 0) return t('filter.all');
+    if (filters.department_ids.length === 1) return filters.department_names[0] || t('filter.selected');
+    return `${filters.department_ids.length} ${t('filter.selected')}`;
   };
 
   const getSelectedClassificationName = () => {
-    if (!filters.classification_id) return t('filter.all');
-    return filters.classification_name || t('filter.selected');
+    if (filters.classification_ids.length === 0) return t('filter.all');
+    return `${filters.classification_ids.length} ${t('filter.selected')}`;
   };
 
   const getSelectedLocationName = () => {
-    if (!filters.location_id) return t('filter.all');
-    return filters.location_name || t('filter.selected');
+    if (filters.location_ids.length === 0) return t('filter.all');
+    return `${filters.location_ids.length} ${t('filter.selected')}`;
   };
 
   return (
@@ -352,7 +393,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.status')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.state_id && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.state_ids.length > 0 && styles.filterValueActive]}>
                 {getSelectedStateName()}
               </Text>
               <Ionicons
@@ -370,27 +411,27 @@ const FilterScreen = () => {
               ) : (
                 <>
                   <TouchableOpacity
-                    style={[styles.filterOption, !filters.state_id && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, state_id: null, state_name: null })}
+                    style={[styles.filterOption, filters.state_ids.length === 0 && styles.filterOptionSelected]}
+                    onPress={() => setFilters({ ...filters, state_ids: [], state_names: [] })}
                   >
-                    <Text style={[styles.filterOptionText, !filters.state_id && styles.filterOptionTextSelected]}>
+                    <Text style={[styles.filterOptionText, filters.state_ids.length === 0 && styles.filterOptionTextSelected]}>
                       {t('filter.allStatuses')}
                     </Text>
-                    {!filters.state_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    {filters.state_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
                   {states.map((state) => (
                     <TouchableOpacity
                       key={state.id}
-                      style={[styles.filterOption, filters.state_id === state.id && styles.filterOptionSelected]}
+                      style={[styles.filterOption, filters.state_ids.includes(state.id) && styles.filterOptionSelected]}
                       onPress={() => selectState(state)}
                     >
                       <View style={styles.stateOption}>
                         <View style={[styles.stateColor, { backgroundColor: state.color || '#6366f1' }]} />
-                        <Text style={[styles.filterOptionText, filters.state_id === state.id && styles.filterOptionTextSelected]}>
+                        <Text style={[styles.filterOptionText, filters.state_ids.includes(state.id) && styles.filterOptionTextSelected]}>
                           {state.name}
                         </Text>
                       </View>
-                      {filters.state_id === state.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      {filters.state_ids.includes(state.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                     </TouchableOpacity>
                   ))}
                 </>
@@ -410,7 +451,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.priority')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.priority && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.priorities.length > 0 && styles.filterValueActive]}>
                 {getSelectedPriorityLabel()}
               </Text>
               <Ionicons
@@ -424,27 +465,27 @@ const FilterScreen = () => {
           {expandedSection === 'priority' && (
             <View style={styles.filterOptions}>
               <TouchableOpacity
-                style={[styles.filterOption, !filters.priority && styles.filterOptionSelected]}
-                onPress={() => setFilters({ ...filters, priority: null })}
+                style={[styles.filterOption, filters.priorities.length === 0 && styles.filterOptionSelected]}
+                onPress={() => setFilters({ ...filters, priorities: [] })}
               >
-                <Text style={[styles.filterOptionText, !filters.priority && styles.filterOptionTextSelected]}>
+                <Text style={[styles.filterOptionText, filters.priorities.length === 0 && styles.filterOptionTextSelected]}>
                   {t('filter.allPriorities')}
                 </Text>
-                {!filters.priority && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                {filters.priorities.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
               {priorities.map((priority) => (
                 <TouchableOpacity
                   key={priority.value}
-                  style={[styles.filterOption, filters.priority === priority.value && styles.filterOptionSelected]}
+                  style={[styles.filterOption, filters.priorities.includes(priority.value) && styles.filterOptionSelected]}
                   onPress={() => selectPriority(priority.value)}
                 >
                   <View style={styles.priorityOption}>
                     <View style={[styles.priorityDot, { backgroundColor: priority.color }]} />
-                    <Text style={[styles.filterOptionText, filters.priority === priority.value && styles.filterOptionTextSelected]}>
+                    <Text style={[styles.filterOptionText, filters.priorities.includes(priority.value) && styles.filterOptionTextSelected]}>
                       {t(`priorities.${priority.key}`)}
                     </Text>
                   </View>
-                  {filters.priority === priority.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                  {filters.priorities.includes(priority.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -465,7 +506,7 @@ const FilterScreen = () => {
               value=""
               data={classifications}
               loading={loadingClassifications}
-              onSelect={() => {}}
+              onSelect={() => { }}
               leafOnly={true}
               placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : t('filter.allClassifications')}
               iconType="classification"
@@ -490,7 +531,7 @@ const FilterScreen = () => {
               value=""
               data={locations}
               loading={loadingLocations}
-              onSelect={() => {}}
+              onSelect={() => { }}
               leafOnly={true}
               placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : t('filter.allLocations')}
               iconType="location"
@@ -512,7 +553,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.assignee')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.assignee_id && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.assignee_ids.length > 0 && styles.filterValueActive]}>
                 {getSelectedAssigneeName()}
               </Text>
               <Ionicons
@@ -530,18 +571,18 @@ const FilterScreen = () => {
               ) : (
                 <>
                   <TouchableOpacity
-                    style={[styles.filterOption, !filters.assignee_id && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, assignee_id: null, assignee_name: null })}
+                    style={[styles.filterOption, filters.assignee_ids.length === 0 && styles.filterOptionSelected]}
+                    onPress={() => setFilters({ ...filters, assignee_ids: [], assignee_names: [] })}
                   >
-                    <Text style={[styles.filterOptionText, !filters.assignee_id && styles.filterOptionTextSelected]}>
+                    <Text style={[styles.filterOptionText, filters.assignee_ids.length === 0 && styles.filterOptionTextSelected]}>
                       {t('filter.allAssignees')}
                     </Text>
-                    {!filters.assignee_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    {filters.assignee_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
                   {users.map((user) => (
                     <TouchableOpacity
                       key={user.id}
-                      style={[styles.filterOption, filters.assignee_id === user.id && styles.filterOptionSelected]}
+                      style={[styles.filterOption, filters.assignee_ids.includes(user.id) && styles.filterOptionSelected]}
                       onPress={() => selectAssignee(user)}
                     >
                       <View style={styles.stateOption}>
@@ -550,11 +591,11 @@ const FilterScreen = () => {
                             {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
                           </Text>
                         </View>
-                        <Text style={[styles.filterOptionText, filters.assignee_id === user.id && styles.filterOptionTextSelected]}>
+                        <Text style={[styles.filterOptionText, filters.assignee_ids.includes(user.id) && styles.filterOptionTextSelected]}>
                           {user.first_name} {user.last_name}
                         </Text>
                       </View>
-                      {filters.assignee_id === user.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      {filters.assignee_ids.includes(user.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                     </TouchableOpacity>
                   ))}
                 </>
@@ -574,7 +615,7 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.department')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.department_id && styles.filterValueActive]}>
+              <Text style={[styles.filterValue, filters.department_ids.length > 0 && styles.filterValueActive]}>
                 {getSelectedDepartmentName()}
               </Text>
               <Ionicons
@@ -592,24 +633,24 @@ const FilterScreen = () => {
               ) : (
                 <>
                   <TouchableOpacity
-                    style={[styles.filterOption, !filters.department_id && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, department_id: null, department_name: null })}
+                    style={[styles.filterOption, filters.department_ids.length === 0 && styles.filterOptionSelected]}
+                    onPress={() => setFilters({ ...filters, department_ids: [], department_names: [] })}
                   >
-                    <Text style={[styles.filterOptionText, !filters.department_id && styles.filterOptionTextSelected]}>
+                    <Text style={[styles.filterOptionText, filters.department_ids.length === 0 && styles.filterOptionTextSelected]}>
                       {t('filter.allDepartments')}
                     </Text>
-                    {!filters.department_id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    {filters.department_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
                   {departments.map((department) => (
                     <TouchableOpacity
                       key={department.id}
-                      style={[styles.filterOption, filters.department_id === department.id && styles.filterOptionSelected]}
+                      style={[styles.filterOption, filters.department_ids.includes(department.id) && styles.filterOptionSelected]}
                       onPress={() => selectDepartment(department)}
                     >
-                      <Text style={[styles.filterOptionText, filters.department_id === department.id && styles.filterOptionTextSelected]}>
+                      <Text style={[styles.filterOptionText, filters.department_ids.includes(department.id) && styles.filterOptionTextSelected]}>
                         {department.name}
                       </Text>
-                      {filters.department_id === department.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      {filters.department_ids.includes(department.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                     </TouchableOpacity>
                   ))}
                 </>
@@ -629,8 +670,8 @@ const FilterScreen = () => {
               <Text style={styles.filterLabel}>{t('filter.source', 'Source')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.source && styles.filterValueActive]}>
-                {filters.source ? (sources.find(s => s.value === filters.source)?.label || filters.source) : t('filter.all', 'All')}
+              <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
+                {filters.sources.length === 0 ? t('filter.all', 'All') : (filters.sources.length === 1 ? (sources.find(s => s.value === filters.sources[0])?.label || filters.sources[0]) : `${filters.sources.length} ${t('filter.selected')}`)}
               </Text>
               <Ionicons
                 name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
@@ -642,24 +683,24 @@ const FilterScreen = () => {
           {expandedSection === 'source' && (
             <View style={styles.filterOptions}>
               <TouchableOpacity
-                style={[styles.filterOption, !filters.source && styles.filterOptionSelected]}
-                onPress={() => selectSource(null)}
+                style={[styles.filterOption, filters.sources.length === 0 && styles.filterOptionSelected]}
+                onPress={() => setFilters({ ...filters, sources: [] })}
               >
-                <Text style={[styles.filterOptionText, !filters.source && styles.filterOptionTextSelected]}>
+                <Text style={[styles.filterOptionText, filters.sources.length === 0 && styles.filterOptionTextSelected]}>
                   All Sources
                 </Text>
-                {!filters.source && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                {filters.sources.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
               {sources.map((s) => (
                 <TouchableOpacity
                   key={s.value}
-                  style={[styles.filterOption, filters.source === s.value && styles.filterOptionSelected]}
+                  style={[styles.filterOption, filters.sources.includes(s.value) && styles.filterOptionSelected]}
                   onPress={() => selectSource(s.value)}
                 >
-                  <Text style={[styles.filterOptionText, filters.source === s.value && styles.filterOptionTextSelected]}>
+                  <Text style={[styles.filterOptionText, filters.sources.includes(s.value) && styles.filterOptionTextSelected]}>
                     {s.label}
                   </Text>
-                  {filters.source === s.value && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                  {filters.sources.includes(s.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                 </TouchableOpacity>
               ))}
             </View>
