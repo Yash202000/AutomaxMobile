@@ -1,5 +1,4 @@
 export function handleNotification(data: any, navigation: any) {
-    console.log(data, 'ss')
     if (data?.type) {
         switch (data.type) {
             case "INCIDENT":
