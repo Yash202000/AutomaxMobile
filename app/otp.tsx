@@ -1,21 +1,89 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import apiClient from '@/src/api/client';
+import { useAuth } from '@/src/context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const OtpScreen = () => {
+  const { t } = useTranslation();
   const router = useRouter();
+  const { phoneNumber, sessionId: initialSessionId, channel: initialChannel } = useLocalSearchParams<{ phoneNumber: string, sessionId: string, channel: 'sms' | 'whatsapp' }>();
+  const [sessionId, setSessionId] = useState(initialSessionId);
+  const [channel, setChannel] = useState(initialChannel || 'sms');
+  const { login } = useAuth();
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
   const inputs = useRef<(TextInput | null)[]>([]);
 
-  const handleVerify = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [timer, setTimer] = useState(60);
+
+  React.useEffect(() => {
+    let interval: any;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  const handleVerify = async () => {
     const enteredOtp = otp.join('');
-    // TODO: Implement OTP verification logic
-    // On success, navigate to the main app or a new password screen
-    router.push('/explore');
+    if (enteredOtp.length < 6) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Updated OTP verify endpoint and payload
+      const response = await apiClient.post('/otp/verify', {
+        phone: phoneNumber,
+        session_id: sessionId,
+        otp: enteredOtp
+      });
+      console.log(response.data);
+      if (response.data && response.data.success) {
+        const { token, refresh_token } = response.data.data;
+        await login(token, refresh_token);
+        router.replace('/(tabs)/explore');
+      } else {
+        setError('Invalid OTP');
+        alert('Invalid OTP');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Verification failed');
+      alert(err.response?.data?.error || 'Verification failed');
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    // TODO: Implement resend code logic
+  const handleResend = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiClient.post('/otp/send', {
+        phone: phoneNumber,
+        channel: channel
+      });
+
+      if (response.data && response.data.session_id) {
+        setSessionId(response.data.session_id);
+        setOtp(new Array(6).fill(''));
+        setTimer(60);
+        inputs.current[0]?.focus();
+      } else {
+        setError(t('auth.otpSentFailed', 'Failed to resend OTP'));
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || t('auth.otpSentFailed', 'Failed to resend OTP'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (text: string, index: number) => {
@@ -55,21 +123,46 @@ const OtpScreen = () => {
             onKeyPress={(e) => handleKeyPress(e, index)}
             keyboardType="numeric"
             maxLength={1}
-            ref={(ref) => (inputs.current[index] = ref)}
+            ref={(ref) => { inputs.current[index] = ref; }}
           />
         ))}
       </View>
 
-      <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
-        <Text style={styles.verifyButtonText}>VERIFY</Text>
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
+
+      <TouchableOpacity
+        style={[styles.verifyButton, (loading || otp.join('').length < 6) && styles.disabledButton]}
+        onPress={handleVerify}
+        disabled={loading || otp.join('').length < 6}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.verifyButtonText}>{t('auth.verifyOTP')}</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.resendContainer}>
         <Text style={styles.resendText}>Didn&apos;t receive code?</Text>
-        <Pressable onPress={handleResend}>
-          <Text style={styles.resendLink}>Resend Code</Text>
+        <Pressable
+          onPress={handleResend}
+          disabled={timer > 0 || loading}
+        >
+          <Text style={[styles.resendLink, (timer > 0 || loading) && styles.disabledLink]}>
+            {timer > 0 ? `Resend Code in ${timer}s` : 'Resend Code'}
+          </Text>
         </Pressable>
       </View>
+
+      <TouchableOpacity
+        style={styles.backToLoginButton}
+        onPress={() => router.replace('/login')}
+      >
+        <Ionicons name="arrow-back" size={20} color="#666" />
+        <Text style={styles.backToLoginText}>Back to Login</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -125,6 +218,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2EC4B6',
     fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  errorText: {
+    color: '#E74C3C',
+    textAlign: 'center',
+    marginBottom: 15,
+    fontSize: 14,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  disabledLink: {
+    color: '#999',
+  },
+  backToLoginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+  },
+  backToLoginText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    fontWeight: '500',
   },
 });
 

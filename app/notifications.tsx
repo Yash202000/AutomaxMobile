@@ -1,8 +1,11 @@
 import { getNotifications } from "@/src/api/notifications";
+import { useAuth } from "@/src/context/AuthContext";
+import { handleNotification } from "@/src/utils/notificationRouter";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+
 import {
     ActivityIndicator,
     FlatList,
@@ -17,13 +20,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Notification {
     id: string;
-    subject: string;
+    subject?: string;
     body: string;
     status: string;
     channel: string;
     created_at: string;
-    sent_at?: string;
-    metadata?: any;
+    category?: string;
+    direction?: string;
+    is_read?: boolean;
+    meta?: { type: string, id: string };
+    recipients?: { channel: string; status: string; type: string }[];
 }
 
 interface PaginationInfo {
@@ -35,6 +41,7 @@ interface PaginationInfo {
 
 const NotificationCard = ({ notification }: { notification: Notification }) => {
     const { t } = useTranslation();
+    const router = useRouter();
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -55,7 +62,10 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
 
     const getChannelIcon = (channel: string) => {
         switch (channel.toLowerCase()) {
+            case "whatsapp":
+                return "logo-whatsapp";
             case "push-notification":
+            case "notification":
             case "push":
                 return "notifications-outline";
             case "sms":
@@ -67,23 +77,41 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         }
     };
 
+    const getChannelColor = (channel: string) => {
+        if (channel.toLowerCase() === 'whatsapp') return "#25D366";
+        return "#666";
+    };
+
+    const displayTitle = notification.subject ||
+        (notification.category ? t(`notifications.category.${notification.category.toLowerCase()}`, notification.category.charAt(0).toUpperCase() + notification.category.slice(1)) : t("notifications.defaultTitle"));
+
     return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() => { handleNotification(notification?.meta, router) }}>
             <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(notification.status) }]} />
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
                     <View style={styles.channelRow}>
-                        <Ionicons name={getChannelIcon(notification.channel) as any} size={14} color="#666" />
-                        <Text style={styles.channelText}>
-                            {t(`notifications.channel.${notification.channel.split('-')[0]}` || notification.channel)}
+                        <Ionicons
+                            name={getChannelIcon(notification.channel) as any}
+                            size={14}
+                            color={getChannelColor(notification.channel)}
+                        />
+                        <Text style={[styles.channelText, { color: getChannelColor(notification.channel) }]}>
+                            {t(`notifications.channel.${notification.channel.split('-')[0].toLowerCase()}`, notification.channel)}
                         </Text>
                     </View>
                     <Text style={styles.dateText}>
                         {new Date(notification.created_at).toLocaleString()}
                     </Text>
                 </View>
-                <Text style={styles.title} numberOfLines={1}>{notification.subject}</Text>
-                <Text style={styles.body} numberOfLines={2}>{notification.body}</Text>
+                <Text style={styles.title} numberOfLines={1}>{displayTitle}</Text>
+                <Text style={styles.body}>{notification.body}</Text>
+
+                {/* {notification.recipients && notification.recipients.length > 0 && (
+                    <Text style={styles.recipientText} numberOfLines={1}>
+                        {t('notifications.to')}: {notification.recipients.map(r => r.channel).join(', ')}
+                    </Text>
+                )} */}
 
                 {(notification.status.toLowerCase() === "failed" || notification.status.toLowerCase() === "error") && (
                     <View style={styles.failedBadge}>
@@ -92,7 +120,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                     </View>
                 )}
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
@@ -110,6 +138,7 @@ const NotificationsScreen = () => {
         total_items: 0,
         total_pages: 0,
     });
+    const { user } = useAuth();
 
     const isLoadingMore = useRef(false);
 
@@ -120,8 +149,7 @@ const NotificationsScreen = () => {
         setError("");
 
         // You can add more filters here if needed
-        const response = await getNotifications({ page, limit: 20 });
-
+        const response = await getNotifications({ page, limit: 20, channel: "notification", category: "inbox", received_by: user?.id });
         if (response.success) {
             if (append) {
                 setNotifications((prev) => [...prev, ...response.data]);
@@ -337,6 +365,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#666",
         lineHeight: 18,
+    },
+    recipientText: {
+        fontSize: 12,
+        color: "#888",
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     failedBadge: {
         flexDirection: "row",
