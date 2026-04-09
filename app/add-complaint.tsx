@@ -247,7 +247,7 @@ const AddComplaintScreen = () => {
         if ((recording as any)._interval) {
           clearInterval((recording as any)._interval);
         }
-        recording.stopAndUnloadAsync().catch(() => {});
+        recording.stopAndUnloadAsync().catch(() => { });
       }
     };
   }, [recording]);
@@ -256,7 +256,7 @@ const AddComplaintScreen = () => {
     setLoadingData(true);
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getClassificationsTree('complaint'),
+        getClassificationsTree('mobile'),
         getLocations(),
         getWorkflows(true, 'complaint'),
         getUsers(),
@@ -582,7 +582,7 @@ const AddComplaintScreen = () => {
     setAudioFiles(prev => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -682,7 +682,7 @@ const AddComplaintScreen = () => {
         // Delete audio temp files from device cache after upload
         audioFiles.forEach(audio => {
           if (audio?.uri) {
-            FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(() => {});
+            FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(() => { });
           }
         });
       }

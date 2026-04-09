@@ -1,40 +1,40 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ActionSheetIOS,
-  Linking,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { getClassificationsTree } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
-import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
+import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
+import { getLocations } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
+import { getUsers } from '@/src/api/users';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
-import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
-import * as FileSystem from 'expo-file-system/legacy';
+import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
 import { compressImage } from '@/src/utils/imageCompression';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownOption {
   id: string;
@@ -260,7 +260,7 @@ const AddRequestScreen = () => {
     setLoadingData(true);
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getClassificationsTree('request'),
+        getClassificationsTree('mobile'),
         getLocations(),
         getWorkflows(true, 'request'),
         getUsers(),
@@ -846,7 +846,7 @@ const AddRequestScreen = () => {
     setAttachments(prev => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -935,7 +935,7 @@ const AddRequestScreen = () => {
         // Clean up temp files after upload
         attachments.forEach(file => {
           if (file?.uri) {
-            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
           }
         });
       }
@@ -1047,7 +1047,7 @@ const AddRequestScreen = () => {
               label={t('addRequest.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
-              onSelect={() => {}} // No-op, field is not editable
+              onSelect={() => { }} // No-op, field is not editable
               required={isFieldRequired('source')}
               error={errors.source}
               disabled={true}

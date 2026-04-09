@@ -1,41 +1,41 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ActionSheetIOS,
-  Linking,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { Audio } from 'expo-av';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
-import { createQuery, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
 import { getClassificationsTree } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
-import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { createQuery, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
+import { getLocations } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
+import { getUsers } from '@/src/api/users';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
-import * as FileSystem from 'expo-file-system/legacy';
+import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
 import { compressImage } from '@/src/utils/imageCompression';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface DropdownOption {
   id: string;
@@ -285,10 +285,8 @@ const AddQueryScreen = () => {
     setLoadingData(true);
     try {
       // Fetch classifications with 'query', 'both', and 'all' types
-      const [queryClassRes, bothClassRes, allClassRes] = await Promise.all([
-        getClassificationsTree('query'),
-        getClassificationsTree('both'),
-        getClassificationsTree('all'),
+      const [queryClassRes] = await Promise.all([
+        getClassificationsTree('mobile')
       ]);
 
       // Fetch workflows with 'query', 'both', and 'all' types
@@ -309,8 +307,6 @@ const AddQueryScreen = () => {
       // Combine and deduplicate classifications
       const allClassifications = [
         ...(queryClassRes.success && queryClassRes.data ? queryClassRes.data : []),
-        ...(bothClassRes.success && bothClassRes.data ? bothClassRes.data : []),
-        ...(allClassRes.success && allClassRes.data ? allClassRes.data : []),
       ];
 
       // Deduplicate by ID
@@ -1062,7 +1058,7 @@ const AddQueryScreen = () => {
     setAttachments(prev => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -1133,7 +1129,7 @@ const AddQueryScreen = () => {
         // Clean up temp files after upload
         attachments.forEach(file => {
           if (file?.uri) {
-            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
           }
         });
       }
@@ -1322,7 +1318,7 @@ const AddQueryScreen = () => {
               label={t('addQuery.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
-              onSelect={() => {}} // No-op, field is not editable
+              onSelect={() => { }} // No-op, field is not editable
               required={isFieldRequired('source')}
               error={errors.source}
               disabled={true}

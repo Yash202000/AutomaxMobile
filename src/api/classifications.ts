@@ -13,7 +13,7 @@ export const getClassifications = async (type?: 'incident' | 'request' | 'compla
   }
 };
 
-export const getClassificationsTree = async (type?: 'incident' | 'request' | 'complaint' | 'query' | 'both' | 'all') => {
+export const getClassificationsTree = async (type?: 'incident' | 'request' | 'complaint' | 'query' | 'both' | 'all' | 'mobile' | 'ivr') => {
   try {
     const url = type ? `/admin/classifications/tree?type=${type}` : '/admin/classifications/tree';
     const response = await apiClient.get(url);
@@ -24,4 +24,4 @@ export const getClassificationsTree = async (type?: 'incident' | 'request' | 'co
   } catch (error: any) {
     return { success: false, error: error.response?.data?.message || error.message };
   }
-};
+};  
