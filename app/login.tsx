@@ -260,8 +260,9 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
       style={styles.keyboardView}
+      keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}
     >
       <LinearGradient
         colors={['#F8FFFE', '#FFFFFF']}
@@ -644,6 +645,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
+    // backgroundColor: '#F8FFFE',
   },
   container: {
     flex: 1,
