@@ -274,9 +274,9 @@ const AddIncidentScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      // Get classifications filtered by incident type
+      // Get classifications filtered by mobile type
       const results = await Promise.all([
-        getClassificationsTree('incident').catch(err => ({ success: false, error: err.message })),
+        getClassificationsTree('mobile').catch(err => ({ success: false, error: err.message })),
         getLocationsTree().catch(err => ({ success: false, error: err.message })),
         getWorkflows(true, 'incident').catch(err => ({ success: false, error: err.message })),
         getUsers().catch(err => ({ success: false, error: err.message })),
