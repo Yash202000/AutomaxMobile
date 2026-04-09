@@ -175,7 +175,7 @@ const QueriesScreen = () => {
         if (!params?.current_state_id || params?.current_state_id.length === 0) {
             const statsResponse = await getQueryStats();
             if (statsResponse.success) {
-                params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
+                params.current_state_id = statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
             }
         }
         const response = await getQueries(params);
