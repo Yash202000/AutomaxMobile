@@ -59,7 +59,9 @@ const EditProfileScreen = () => {
     const router = useRouter();
     const { t } = useTranslation();
     const [firstName, setFirstName] = useState('');
+    const [originalFirstName, setOriginalFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [originalLastName, setOriginalLastName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [originalPhone, setOriginalPhone] = useState('');
@@ -86,7 +88,9 @@ const EditProfileScreen = () => {
                     const { first_name, last_name, email, phone, roles: userRoles, mobile_verified } = response.data;
                     setData(response.data);
                     setFirstName(first_name || '');
+                    setOriginalFirstName(first_name || '');
                     setLastName(last_name || '');
+                    setOriginalLastName(last_name || '');
                     setEmail(email || '');
                     setPhone(phone || '');
                     setOriginalPhone(phone || '');
@@ -108,19 +112,24 @@ const EditProfileScreen = () => {
 
     const handleSave = async () => {
         setSaving(true);
-        const profileData = { ...data, first_name: firstName, last_name: lastName, phone: phone, extension: data.extension || "" };
+        const isPhoneChanged = phone !== originalPhone;
+        const profileData = {
+            ...data,
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone,
+            extension: data.extension || "",
+            mobile_verified: isPhoneChanged ? false : mobileVerified
+        };
         const response = await updateProfile(profileData);
         setSaving(false);
-        //in payload its not passing the new value of phone
-        console.log(profileData, "payload")
-        console.log(response.data, "response")
         if (response.success) {
             setOriginalPhone(phone);
-            // If phone changed, it might be unverified now (depending on backend, but let's assume it needs re-verification if handled manually)
-            // Or the backend returns the new mobile_verified status
+            setOriginalFirstName(firstName);
+            setOriginalLastName(lastName);
             if (response.data && response.data.mobile_verified !== undefined) {
                 setMobileVerified(response.data.mobile_verified);
-            } else if (phone !== originalPhone) {
+            } else if (isPhoneChanged) {
                 setMobileVerified(false);
             }
             Alert.alert(t('common.success'), t('profile.profileUpdated'), [
@@ -223,14 +232,20 @@ const EditProfileScreen = () => {
     }
 
     const isPhoneChanged = phone !== originalPhone;
+    const hasChanges = isPhoneChanged || firstName !== originalFirstName || lastName !== originalLastName;
 
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
-                <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.form}>
                         <CustomInput label={t('profile.firstName')} value={firstName} onChangeText={setFirstName} />
                         <CustomInput label={t('profile.lastName')} value={lastName} onChangeText={setLastName} />
@@ -250,16 +265,22 @@ const EditProfileScreen = () => {
                             }]}
                         />
                         <CustomInput label={t('profile.roles')} value={roles} editable={false} />
+
+                        {/* Placeholder to ensure content is not hidden by floating footer if any, 
+                            though here footer is part of KAV */}
+                        <View style={{ height: 100 }} />
                     </View>
                 </ScrollView>
 
-                <TouchableOpacity
-                    style={[styles.saveButton, (saving || (!isPhoneChanged && firstName === firstName && lastName === lastName)) && styles.disabledButton]}
-                    onPress={handleSave}
-                    disabled={saving}
-                >
-                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{t('profile.save')}</Text>}
-                </TouchableOpacity>
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.saveButton, (saving || !hasChanges) && styles.disabledButton]}
+                        onPress={handleSave}
+                        disabled={saving || !hasChanges}
+                    >
+                        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{t('profile.save')}</Text>}
+                    </TouchableOpacity>
+                </View>
             </KeyboardAvoidingView>
 
             {/* OTP Verification Modal */}
@@ -394,17 +415,25 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         backgroundColor: '#F0FFFE',
     },
+    footer: {
+        backgroundColor: 'white',
+        borderTopWidth: 1,
+        borderTopColor: '#EEE',
+        padding: 15,
+        paddingBottom: Platform.OS === 'ios' ? 0 : 15, // SafeAreaView handles iOS
+    },
     saveButton: {
         backgroundColor: '#2EC4B6',
-        padding: 20,
+        padding: 15,
+        borderRadius: 12,
         alignItems: 'center',
     },
     disabledButton: {
-        backgroundColor: '#999',
+        backgroundColor: '#CCC',
     },
     saveButtonText: {
         color: 'white',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
     },
     modalOverlay: {
