@@ -19,6 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ImageViewing from 'react-native-image-viewing';
 import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
@@ -210,6 +211,8 @@ const AddIncidentScreen = () => {
   // Attachments state
   const [attachments, setAttachments] = useState<any[]>([]);
   const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
 
   // Watermark processing state
   interface PendingWatermark {
@@ -552,7 +555,7 @@ const AddIncidentScreen = () => {
     attachments: 'Attachments',
   };
 
-  const validate = (): boolean => {
+  const validate = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
@@ -664,7 +667,7 @@ const AddIncidentScreen = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const showAttachmentOptions = () => {
@@ -1031,14 +1034,23 @@ const AddIncidentScreen = () => {
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(prev => {
-      const file = prev[index];
-      // Delete the temp file from device cache when the user removes it
-      if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
-      }
-      return prev.filter((_, i) => i !== index);
-    });
+    const file = attachments[index];
+    // Delete the temp file from device cache when the user removes it
+    if (file?.uri) {
+      FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openImagePreview = (index: number) => {
+    const imageAttachments = attachments.filter(f => f.type?.startsWith('image/'));
+    const imageIndex = attachments
+      .slice(0, index + 1)
+      .filter(f => f.type?.startsWith('image/')).length - 1;
+    if (imageAttachments.length > 0 && imageIndex >= 0) {
+      setImageViewerIndex(imageIndex);
+      setImageViewerVisible(true);
+    }
   };
 
   const handleLocationChange = (location: LocationData | undefined) => {
@@ -1073,12 +1085,10 @@ const AddIncidentScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validate()) {
-      // Show first error
-      const firstError = Object.values(errors)[0];
-      if (firstError) {
-        Alert.alert('Validation Error', firstError);
-      }
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      const firstError = Object.values(validationErrors)[0];
+      Alert.alert('Validation Error', firstError);
       return;
     }
 
@@ -1537,15 +1547,23 @@ const AddIncidentScreen = () => {
                     <View style={styles.attachmentsList}>
                       {attachments.map((file, index) => (
                         <View key={index} style={styles.attachmentItem}>
-                          <View style={styles.attachmentInfo}>
-                            <Ionicons name="document-attach" size={20} color="#2EC4B6" />
+                          <TouchableOpacity
+                            style={styles.attachmentInfo}
+                            onPress={() => openImagePreview(index)}
+                            activeOpacity={file.type?.startsWith('image/') ? 0.6 : 1}
+                          >
+                            <Ionicons
+                              name={file.type?.startsWith('image/') ? 'image-outline' : 'document-attach'}
+                              size={20}
+                              color="#2EC4B6"
+                            />
                             <Text style={styles.attachmentName} numberOfLines={1}>
                               {file.name}
                             </Text>
                             <Text style={styles.attachmentSize}>
                               ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
                             </Text>
-                          </View>
+                          </TouchableOpacity>
                           <TouchableOpacity onPress={() => removeAttachment(index)}>
                             <Ionicons name="close-circle" size={22} color="#E74C3C" />
                           </TouchableOpacity>
@@ -1638,6 +1656,15 @@ const AddIncidentScreen = () => {
               )}
             </TouchableOpacity>
           </View>
+
+          <ImageViewing
+            images={attachments
+              .filter(f => f.type?.startsWith('image/'))
+              .map(f => ({ uri: f.uri }))}
+            imageIndex={imageViewerIndex}
+            visible={imageViewerVisible}
+            onRequestClose={() => setImageViewerVisible(false)}
+          />
         </>
       )}
 

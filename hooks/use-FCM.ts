@@ -57,10 +57,14 @@ export function useFCM(navigation: any) {
         });
 
 
+        // Cold-start: app opened from a killed state via notification.
+        // Delay navigation so auth state and the router both finish loading first.
         getInitialNotification(messaging)
             .then(remoteMessage => {
                 if (remoteMessage?.data) {
-                    handleNotification(remoteMessage.data, navigation);
+                    setTimeout(() => {
+                        handleNotification(remoteMessage.data, navigation);
+                    }, 1000);
                 }
             });
 

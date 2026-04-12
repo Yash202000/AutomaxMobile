@@ -6,6 +6,7 @@ import {
 } from "@/src/api/incidents";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -533,6 +534,9 @@ const DashboardScreen = () => {
           <View style={styles.bottomPadding} />
         </ScrollView>
       </View>
+
+      {/* Chatbot / Voice Agent floating button — outside contentWrapper to avoid overflow:hidden clipping */}
+      <ChatbotWidget />
     </SafeAreaView>
   );
 };
