@@ -16,6 +16,7 @@ import { compressImage } from '@/src/utils/imageCompression';
 import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
