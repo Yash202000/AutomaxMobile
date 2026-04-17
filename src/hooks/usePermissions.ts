@@ -1,5 +1,5 @@
-import { useAuth } from '../context/AuthContext';
 import { PERMISSIONS } from '../constants/permissions';
+import { useAuth } from '../context/AuthContext';
 
 export const usePermissions = () => {
   const { user, hasPermission, hasAnyPermission, hasAllPermissions, hasRole } = useAuth();
@@ -13,6 +13,7 @@ export const usePermissions = () => {
 
     // User state
     isSuperAdmin: user?.is_super_admin ?? false,
+    isViewer: user?.roles?.findIndex(x => x.code === 'viewer') !== -1,
     isAuthenticated: !!user,
 
     // Incident permissions

@@ -12,6 +12,7 @@ import { useFCM } from '@/hooks/use-FCM';
 import { registerToken } from '@/src/api/notifications';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import usePermissions from '@/src/hooks/usePermissions';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
@@ -22,6 +23,7 @@ import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { isViewer } = usePermissions()
   const segments = useSegments();
   const router = useRouter();
   useFCM(router);
@@ -35,8 +37,12 @@ function RootLayoutNav() {
       // Redirect to login if not authenticated and not in auth group
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup && segments[0] !== 'otp') {
-      // Redirect to tabs if authenticated and in auth group (except OTP)
-      router.replace('/(tabs)/explore');
+      console.log(isViewer)
+      if (isViewer) {
+        router.replace('/viewer/(tabs)/incident');
+      } else {
+        router.replace('/(tabs)/explore');
+      }
     }
   }, [isAuthenticated, isLoading, segments]);
 
@@ -115,6 +121,7 @@ function RootLayoutNav() {
         <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />
         <Stack.Screen name="change-password" options={{ title: 'Change Password' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="viewer/(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="complaint-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
