@@ -257,12 +257,12 @@ const EditProfileScreen = () => {
                                 setPhone(text);
                             }}
                             isVerified={mobileVerified && !isPhoneChanged}
-                            actionButton={[{
-                                id: 'verify-btn',
-                                label: t('profile.verify'),
-                                onPress: handleSendOTP,
-                                show: !isPhoneChanged && !mobileVerified
-                            }]}
+                        // actionButton={[{
+                        //     id: 'verify-btn',
+                        //     label: t('profile.verify'),
+                        //     onPress: handleSendOTP,
+                        //     show: !isPhoneChanged && !mobileVerified
+                        // }]}
                         />
                         <CustomInput label={t('profile.roles')} value={roles} editable={false} />
 
@@ -317,13 +317,13 @@ const EditProfileScreen = () => {
 
                         {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
 
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             style={[styles.verifyButton, (verifying || otp.join('').length < 6) && styles.disabledButton]}
                             onPress={handleVerifyOTP}
                             disabled={verifying || otp.join('').length < 6}
                         >
                             {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.verifyButtonText}>{t('profile.verify')}</Text>}
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
                 </View>
             </Modal>

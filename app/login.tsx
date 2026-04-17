@@ -314,7 +314,7 @@ const LoginScreen = () => {
             </View>
 
             {/* Login Type Tabs */}
-            <View style={styles.tabContainer}>
+            {/* <View style={styles.tabContainer}>
               <TouchableOpacity
                 style={[
                   styles.tabButton,
@@ -347,9 +347,9 @@ const LoginScreen = () => {
                   {t('auth.citizenLogin')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
 
-            <View style={styles.methodToggleContainer}>
+            {/* <View style={styles.methodToggleContainer}>
               <TouchableOpacity
                 onPress={() => {
                   setLoginMethod(loginMethod === 'email' ? 'phone' : 'email');
@@ -372,11 +372,10 @@ const LoginScreen = () => {
                     : t('auth.loginEmail')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
 
-            {/* Input Fields Container */}
             <View style={styles.inputsContainer}>
-              {loginMethod === 'email' ? (
+              {/* {loginMethod === 'email' ? ( */}
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
@@ -454,8 +453,8 @@ const LoginScreen = () => {
                     </Animated.View>
                   </View>
                 </>
-              ) : (
-                /* Phone Number Input */
+              {/* ) : (
+                // Phone Number Input
                 <>
                   <View style={styles.inputWrapper}>
                     <Text style={styles.inputLabel}>{t('auth.phone')}</Text>
@@ -487,7 +486,7 @@ const LoginScreen = () => {
                     </Animated.View>
                   </View>
 
-                  {/* OTP Channel Selection */}
+                  // OTP Channel Selection
                   <View style={styles.inputWrapper}>
                     <Text style={styles.inputLabel}>{t('auth.otpChannel')}</Text>
                     <View style={styles.channelContainer}>
@@ -536,10 +535,10 @@ const LoginScreen = () => {
                     </View>
                   </View>
                 </>
-              )}
+              )} */}
 
               {/* Forgot Password - Only for email login */}
-              {(loginMethod === 'email') && (
+              {/* {(loginMethod === 'email') && ( */}
                 <TouchableOpacity
                   onPress={() => router.push('/forgot-password')}
                   style={styles.forgotPasswordContainer}
@@ -548,7 +547,7 @@ const LoginScreen = () => {
                     {t('auth.forgotPassword')}
                   </Text>
                 </TouchableOpacity>
-              )}
+              {/* )} */}
             </View>
 
             {/* Error Message */}
