@@ -1,4 +1,4 @@
-package com.automax.mobile
+package com.automax.vdcop
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
