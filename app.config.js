@@ -13,10 +13,10 @@ module.exports = {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.mobile',
+      bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.vdcop',
     },
     android: {
-      package: process.env.ANDROID_PACKAGE || 'com.automax.mobile',
+      package: process.env.ANDROID_PACKAGE || 'com.automax.vdcop',
       versionCode: parseInt(process.env.APP_VERSION_CODE || '1', 10),
       supportsRTL: true,
       adaptiveIcon: {
