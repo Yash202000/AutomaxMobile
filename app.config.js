@@ -14,11 +14,13 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.vdcop',
+      googleServicesFile: "./GoogleService-Info.plist",
     },
     android: {
       package: process.env.ANDROID_PACKAGE || 'com.automax.vdcop',
       versionCode: parseInt(process.env.APP_VERSION_CODE || '1', 10),
       supportsRTL: true,
+      googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: appIcon,
         backgroundColor: process.env.APP_ICON_BG_COLOR || '#ffffff',
@@ -42,6 +44,20 @@ module.exports = {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static",
+            forceStaticLinking: [
+              "RNFBApp",
+              "RNFBMessaging"
+            ]
+          },
+        },
+      ],
       './plugins/withAndroidGoogleServices',
       'expo-router',
       [
