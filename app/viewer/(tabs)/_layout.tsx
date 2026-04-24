@@ -19,16 +19,7 @@ export default function TabLayout() {
   const {
     canViewIncidents,
     canViewAllIncidents,
-    canCreateIncidents,
-    canViewRequests,
-    canViewAllRequests,
-    canCreateRequests,
-    canViewComplaints,
-    canViewAllComplaints,
-    canCreateComplaints,
-    canViewQueries,
-    canViewAllQueries,
-    canCreateQueries,
+    canCreateIncidents
   } = usePermissions();
 
   const tabBarHeight =
@@ -97,7 +88,7 @@ export default function TabLayout() {
           ),
           href:
             canViewIncidents() || canViewAllIncidents() || canCreateIncidents()
-              ? "/(tabs)/incident"
+              ? "/viewer/(tabs)/incident"
               : null,
         }}
       />

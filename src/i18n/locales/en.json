@@ -186,7 +186,9 @@
     "ratingGood": "Good",
     "ratingVeryGood": "Very Good",
     "ratingExcellent": "Excellent",
-    "source": "Source"
+    "source": "Source",
+    "selectClassification": "Select Classification",
+    "selectAll": "Select All"
   },
   "requests": {
     "title": "Requests",

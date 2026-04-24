@@ -187,7 +187,9 @@
     "ratingGood": "جيد",
     "ratingVeryGood": "جيد جداً",
     "ratingExcellent": "ممتاز",
-    "source": "المصدر"
+    "source": "المصدر",
+    "selectClassification": "اختر التصنيف",
+    "selectAll": "اختر الكل"
   },
   "requests": {
     "title": "الطلبات",

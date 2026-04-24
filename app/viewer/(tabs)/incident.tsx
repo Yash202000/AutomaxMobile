@@ -1,17 +1,18 @@
-import { getIncidents, getIncidentStats } from '@/src/api/incidents';
-import { usePermissions } from '@/src/hooks/usePermissions';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getIncidents } from '@/src/api/incidents';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, ImageBackground, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   primary: '#1A237E',
-  accent: '#2EC4B6',
+  accent: '#1D8FA0C2',
   background: '#F5F7FA',
   white: '#FFFFFF',
+  secondary: '#EDF1FF',
   text: {
     primary: '#1A1A2E',
     secondary: '#64748B',
@@ -140,18 +141,18 @@ const IncidentCard = ({ incident, t }: { incident: Incident; t: any }) => {
 const IncidentsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { canCreateIncidents } = usePermissions();
-  const {
-    state_id, state_name, priority, severity, assignee_id, assignee_name,
-    department_id, department_name, classification_ids, classification_names,
-    location_ids, location_names, source, start_date, end_date
-  } = useLocalSearchParams<{
-    state_id?: string; state_name?: string; priority?: string; severity?: string;
-    assignee_id?: string; assignee_name?: string; department_id?: string;
-    department_name?: string; classification_ids?: string; classification_names?: string;
-    location_ids?: string; location_names?: string; source?: string;
-    start_date?: string; end_date?: string;
-  }>();
+  // const {
+  //   state_id, state_name, priority, severity, assignee_id, assignee_name,
+  //   department_id, department_name, classification_ids, classification_names,
+  //   location_ids, location_names, source, start_date, end_date
+  // } = useLocalSearchParams<{
+  //   state_id?: string; state_name?: string; priority?: string; severity?: string;
+  //   assignee_id?: string; assignee_name?: string; department_id?: string;
+  //   department_name?: string; classification_ids?: string; classification_names?: string;
+  //   location_ids?: string; location_names?: string; source?: string;
+  //   start_date?: string; end_date?: string;
+  // }>();
+  let classification_ids: string = ""
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,23 +166,14 @@ const IncidentsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
-
-  // Don't apply default status filter - show ALL incidents unless explicitly filtered
-  const activeStateId = state_id;
-  const activeStateName = state_name;
+  const [selectedClassification, setSelectedClassification] = useState<string[]>([]);
+  const [shadowClassification, setShadowClassification] = useState<any[]>([]);
+  const [showIncidents, setShowIncidents] = useState(false);
+  const [classifications, setClassifications] = useState<any[]>([]);
 
   const buildParams = (page: number) => {
     const params: Record<string, any> = { page, limit: 20 };
-    if (activeStateId) params.current_state_id = activeStateId.split(',');
-    if (priority) params.priority = priority.split(',').map(p => parseInt(p));
-    if (severity) params.severity = severity.split(',').map(s => parseInt(s));
-    if (assignee_id) params.assignee_id = assignee_id.split(',');
-    if (department_id) params.department_id = department_id.split(',');
     if (classification_ids) params.classification_id = classification_ids.split(',');
-    if (location_ids) params.location_id = location_ids.split(',');
-    if (source) params.source = source.split(',');
-    if (start_date) params.start_date = start_date;
-    if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
     return params;
   };
@@ -202,12 +194,6 @@ const IncidentsScreen = () => {
     setError('');
 
     let params = buildParams(page);
-    if (!params?.current_state_id || params?.current_state_id.length === 0) {
-      const statsResponse = await getIncidentStats();
-      if (statsResponse.success) {
-        params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
-      }
-    }
     const response = await getIncidents(params);
 
     if (response.success) {
@@ -236,12 +222,6 @@ const IncidentsScreen = () => {
     fetchIncidents(1, false);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchIncidents(1, false);
-    }, [activeStateId, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date, searchQuery])
-  );
-
   const handleSearchToggle = () => {
     setShowSearch(!showSearch);
     if (!showSearch) {
@@ -257,9 +237,9 @@ const IncidentsScreen = () => {
 
   const clearFilter = () => router.replace('/(tabs)/incident');
 
-  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_ids || location_ids || source || start_date || end_date;
-  const headerTitle = activeStateName || t('incidents.title');
-  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date].filter(Boolean).length;
+  const hasManualFilters = classification_ids;
+  const headerTitle = t('incidents.title');
+  const activeFilterCount = [classification_ids].filter(Boolean).length;
 
   const renderFooter = () => {
     if (!loadingMore) return null;
@@ -295,7 +275,7 @@ const IncidentsScreen = () => {
       <Text style={styles.foundText}>
         {hasManualFilters
           ? t('incidents.incidentsFound', { count: pagination.total_items }) + ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`
-          : `${pagination.total_items} ${activeStateName || ''} ${pagination.total_items !== 1 ? t('tabs.incident').toLowerCase() : t('tabs.incident').toLowerCase().slice(0, -1)}`
+          : `${pagination.total_items} ${pagination.total_items !== 1 ? t('tabs.incident').toLowerCase() : t('tabs.incident').toLowerCase().slice(0, -1)}`
         }
       </Text>
       {pagination.total_pages > 1 && (
@@ -307,15 +287,10 @@ const IncidentsScreen = () => {
   const FilterBadges = () => {
     if (!hasManualFilters) return null;
     const badges = [
-      state_id && { key: 'status', label: t('filter.status'), value: state_id.split(',').length > 1 ? `${state_id.split(',').length} selected` : (state_name || state_id) },
-      priority && { key: 'priority', label: t('filter.priority'), value: priority.split(',').length > 1 ? `${priority.split(',').length} selected` : t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
-      severity && { key: 'severity', label: t('filter.severity'), value: severity.split(',').length > 1 ? `${severity.split(',').length} selected` : t(`severities.${severityConfig[parseInt(severity)]?.key}`) },
-      assignee_id && { key: 'assignee', label: t('filter.assignee'), value: assignee_id.split(',').length > 1 ? `${assignee_id.split(',').length} selected` : (assignee_name || assignee_id) },
-      department_id && { key: 'dept', label: t('filter.department'), value: department_id.split(',').length > 1 ? `${department_id.split(',').length} selected` : (department_name || department_id) },
-      classification_ids && { key: 'class', label: t('filter.classification'), value: classification_ids.split(',').length > 1 ? `${classification_ids.split(',').length} selected` : (classification_names?.split(',')[0] || classification_ids) },
-      location_ids && { key: 'loc', label: t('filter.location'), value: location_ids.split(',').length > 1 ? `${location_ids.split(',').length} selected` : (location_names?.split(',')[0] || location_ids) },
-      source && { key: 'source', label: t('filter.source', 'Source'), value: source.split(',').length > 1 ? `${source.split(',').length} selected` : (sources.find(s => s.value === source)?.label || source) },
+      classification_ids && { key: 'class', label: t('filter.classification'), value: classification_ids.split(',').length > 1 ? `${classification_ids.split(',').length} selected` : classification_ids },
     ].filter(Boolean) as { key: string; label: string; value: string }[];
+
+
 
     return (
       <View style={styles.filterBadgeContainer}>
@@ -340,97 +315,197 @@ const IncidentsScreen = () => {
     );
   };
 
+
+  const viewIncidentClicked = () => {
+    if (!selectedClassification.length) {
+      Alert.alert(t('common.error'), t('incidents.selectClassification'))
+      return
+    }
+    setShowIncidents(true);
+    classification_ids = selectedClassification.join(',')
+    fetchIncidents(1, false);
+  }
+
+  const fetchClassifications = () => {
+    getClassificationsTree("all").then(x => {
+      setClassifications(x.data)
+    })
+  }
+
+  const goBack = () => {
+    setShowIncidents(false)
+    setSelectedClassification([])
+  }
+
+  const classificationClicked = (classification: any) => {
+    if (selectedClassification.includes(classification.id)) {
+      setSelectedClassification(selectedClassification.filter((id) => id !== classification.id))
+    } else {
+      setSelectedClassification([...selectedClassification, classification.id])
+    }
+  }
+
+  useEffect(() => {
+    fetchClassifications()
+  }, [])
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
-        {showSearch ? (
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-              <TextInput
-                ref={searchInputRef}
-                style={styles.searchInput}
-                placeholder={t('common.search', 'Search...')}
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearchSubmit}
-                returnKeyType="search"
-                autoCapitalize="none"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="#999" />
+      <View style={{ flex: 1, backgroundColor: COLORS.white }}>
+
+        <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+          {showSearch ? (
+            <View style={styles.searchContainer}>
+              <View style={styles.searchInputContainer}>
+                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder={t('common.search', 'Search...')}
+                  placeholderTextColor="#999"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onSubmitEditing={handleSearchSubmit}
+                  returnKeyType="search"
+                  autoCapitalize="none"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={20} color="#999" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity style={styles.searchCancelButton} onPress={handleSearchToggle}>
+                <Text style={styles.searchCancelText}>{t('common.cancel', 'Cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <View style={styles.headerTitleContainer}>
+                <TouchableOpacity onPress={() => { goBack() }}>
+                  <Ionicons name="arrow-back" size={22} color="white" />
                 </TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity style={styles.searchCancelButton} onPress={handleSearchToggle}>
-              <Text style={styles.searchCancelText}>{t('common.cancel', 'Cancel')}</Text>
-            </TouchableOpacity>
+                <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">{headerTitle}</Text>
+              </View>
+              <View style={styles.headerIcons}>
+                <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
+                  pathname: '/map-view',
+                  params: { type: 'incident', classification_ids }
+                })}>
+                  <Ionicons name="map-outline" size={22} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>
+                  <Ionicons name="search-outline" size={24} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
+                  onPress={() => router.push({
+                    pathname: '/filter',
+                    params: { classification_ids }
+                  })}
+                >
+                  <Ionicons name="filter" size={22} color="white" />
+                  {hasManualFilters && <View style={styles.filterDot} />}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </ImageBackground>
+
+        <FilterBadges />
+        {
+          showIncidents &&
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>{t('incidents.loadingIncidents')}</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.centered}>
+                <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
+                <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={() => fetchIncidents(1, false)}>
+                  <Ionicons name="refresh" size={20} color={COLORS.white} />
+                  <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={incidents}
+                renderItem={({ item }) => <IncidentCard incident={item} t={t} />}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                ListHeaderComponent={renderHeader}
+                ListFooterComponent={renderFooter}
+                ListEmptyComponent={renderEmpty}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
           </View>
-        ) : (
-          <>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">{headerTitle}</Text>
+        }
+        {
+          !showIncidents &&
+          (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              {/*create tree structure of classification*/}
+              <View style={{ marginVertical: 10, width: '100%', paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: COLORS.primary, textAlign: 'center', fontWeight: 'bold' }}>{t('incidents.selectClassification')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ color: COLORS.primary, textAlign: 'center', fontWeight: 'bold' }}>{t('incidents.selectAll')}</Text>
+                  {/* <TouchableOpacity onPress={() => {
+                    if (selectedClassification.length === classifications.length) {
+                      setSelectedClassification([])
+                    } else {
+                      setSelectedClassification(classifications.map((classification) => classification.id))
+                    }
+                  }}>
+                    <Ionicons name="checkmark" size={20} color={selectedClassification.length === classifications.length ? COLORS.white : COLORS.primary} />
+                  </TouchableOpacity> */}
+                </View>
+              </View>
+              <ScrollView style={{ flex: 1, width: '100%', paddingHorizontal: 16 }}>
+                <View style={{ gap: 16, paddingVertical: 16, paddingBottom: 120 }}>
+                  {
+                    classifications.map((classification) => (
+                      <View key={classification.id}>
+                        <View key={classification.id}>
+                          <Text>{classification.name}</Text>
+                        </View>
+                        {classification?.children?.map((child: any) => (
+                          <TouchableOpacity onPress={() => { classificationClicked(child) }} key={child.id} style={{ marginLeft: 16, marginVertical: 6, backgroundColor: selectedClassification.includes(child.id) ? COLORS.accent : COLORS.secondary, padding: 8, paddingVertical: 12, borderRadius: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ color: selectedClassification.includes(child.id) ? COLORS.white : COLORS.primary }}>{child.name}</Text>
+                            <Ionicons name="checkmark" size={20} color={selectedClassification.includes(child.id) ? COLORS.white : COLORS.primary} />
+                          </TouchableOpacity>
+                        ))}
+                        {
+                          (!classification?.children?.length || !classification?.children) && (
+                            <Text style={{ color: COLORS.primary, marginLeft: 18, marginTop: 5 }}>No children classification found</Text>
+                          )
+                        }
+                      </View>
+                    ))
+                  }
+                </View>
+              </ScrollView>
+              <View style={styles.btnContainer}>
+                <TouchableOpacity style={styles.clearBtn} onPress={() => setSelectedClassification([])}>
+                  <Text style={{ color: COLORS.primary, textAlign: 'center', fontWeight: 'bold' }}>Clear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.viewIncidentButton} onPress={() => viewIncidentClicked()}>
+                  <Text style={{ color: COLORS.white, textAlign: 'center', fontWeight: 'bold' }}>View Incident</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
-                pathname: '/map-view',
-                params: { type: 'incident', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date }
-              })}>
-                <Ionicons name="map-outline" size={22} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>
-                <Ionicons name="search-outline" size={24} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
-                onPress={() => router.push({
-                  pathname: '/filter',
-                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_ids, classification_names, location_ids, location_names, source, start_date, end_date }
-                })}
-              >
-                <Ionicons name="filter" size={22} color="white" />
-                {hasManualFilters && <View style={styles.filterDot} />}
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </ImageBackground>
+          )
+        }
+      </View>
 
-      <FilterBadges />
-
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>{t('incidents.loadingIncidents')}</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
-          <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchIncidents(1, false)}>
-            <Ionicons name="refresh" size={20} color={COLORS.white} />
-            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={incidents}
-          renderItem={({ item }) => <IncidentCard incident={item} t={t} />}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListHeaderComponent={renderHeader}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmpty}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
     </SafeAreaView>
   );
 };
@@ -547,6 +622,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  clearBtn: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 8,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  viewIncidentButton: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 8,
+    color: COLORS.white,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    flex: 1
+  },
+  btnContainer: {
+    flexDirection: 'row',
+    gap: 5,
+    // marginHorizontal: 16,
+    position: "absolute",
+    bottom: 70,
+    right: 16,
+    left: 16,
+  }
 });
 
 export default IncidentsScreen;
