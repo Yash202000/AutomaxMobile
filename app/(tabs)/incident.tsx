@@ -141,7 +141,7 @@ const IncidentsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { canCreateIncidents } = usePermissions();
-  const {
+  let {
     state_id, state_name, priority, severity, assignee_id, assignee_name,
     department_id, department_name, classification_ids, classification_names,
     location_ids, location_names, source, start_date, end_date
@@ -200,27 +200,31 @@ const IncidentsScreen = () => {
 
     if (page === 1) setLoading(true);
     setError('');
-
-    let params = buildParams(page);
-    if (!params?.current_state_id || params?.current_state_id.length === 0) {
-      const statsResponse = await getIncidentStats();
-      if (statsResponse.success) {
-        params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
+    try {
+      let params = buildParams(page);
+      if (!params?.current_state_id || params?.current_state_id.length === 0) {
+        const statsResponse = await getIncidentStats();
+        if (statsResponse.success) {
+          params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
+          state_id = params.current_state_id.join(',');
+        }
       }
+      const response = await getIncidents(params);
+      if (response.success) {
+        setIncidents(append ? prev => [...prev, ...response.data] : response.data);
+        setPagination(response.pagination);
+      } else {
+        setError(response.error || t('errors.fetchFailed'));
+      }
+    } catch (err) {
+      console.log(err)
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
+      isLoadingMore.current = false;
     }
-    const response = await getIncidents(params);
 
-    if (response.success) {
-      setIncidents(append ? prev => [...prev, ...response.data] : response.data);
-      setPagination(response.pagination);
-    } else {
-      setError(response.error || t('errors.fetchFailed'));
-    }
-
-    setLoading(false);
-    setLoadingMore(false);
-    setRefreshing(false);
-    isLoadingMore.current = false;
   };
 
   const handleLoadMore = () => {
@@ -376,7 +380,7 @@ const IncidentsScreen = () => {
             <View style={styles.headerIcons}>
               <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
                 pathname: '/map-view',
-                params: { type: 'incident', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date }
+                params: { type: 'incident', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date, search: searchQuery }
               })}>
                 <Ionicons name="map-outline" size={22} color="white" />
               </TouchableOpacity>

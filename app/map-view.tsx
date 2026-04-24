@@ -1,4 +1,4 @@
-import { getIncidents, getRequests } from "@/src/api/incidents";
+import { getComplaints, getComplaintStats, getIncidents, getIncidentStats, getQueries, getQueryStats, getRequests, getRequestStats } from "@/src/api/incidents";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -161,11 +161,12 @@ const MapViewScreen = () => {
   const router = useRouter();
   const {
     type, state_id, priority, severity, assignee_id, department_id,
-    classification_ids, location_ids, source, start_date, end_date,
+    classification_ids, location_ids, source, start_date, end_date, search,
   } = useLocalSearchParams<{
     type?: string; state_id?: string; priority?: string; severity?: string;
     assignee_id?: string; department_id?: string; classification_ids?: string;
     location_ids?: string; source?: string; start_date?: string; end_date?: string;
+    search?: string;
   }>();
   const recordType = type || "incident";
   const webViewRef = useRef<WebView>(null);
@@ -197,17 +198,33 @@ const MapViewScreen = () => {
     if (source) params.source = source.split(',');
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
+    if (search && search.trim().length >= 3) params.search = search.trim();
     return params;
   };
 
   const fetchIncidentsWithLocation = async () => {
     setLoading(true);
     try {
-      const fetchFunction =
-        recordType === "request" ? getRequests : getIncidents;
+      const fetchFunction = recordType === "request" ? getRequests :
+        recordType === "complaint" ? getComplaints :
+          recordType === "query" ? getQueries : getIncidents;
+
+      const statsFunction = recordType === "request" ? getRequestStats :
+        recordType === "complaint" ? getComplaintStats :
+          recordType === "query" ? getQueryStats : getIncidentStats;
+
+      let filterParams = buildFilterParams();
+
+      // Handle default states if no state_id is provided
+      if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
+        const statsResponse = await statsFunction();
+        if (statsResponse.success) {
+          filterParams.current_state_id = statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
+        }
+      }
 
       // First fetch to get total count
-      const countResponse = await fetchFunction({ page: 1, limit: 1, ...buildFilterParams() });
+      const countResponse = await fetchFunction({ page: 1, limit: 1, ...filterParams });
       const total = countResponse.success ? (countResponse.pagination?.total_items ?? 0) : 0;
       setTotalCount(total);
 
@@ -220,7 +237,7 @@ const MapViewScreen = () => {
         const response = await fetchFunction({
           page,
           limit: PAGE_SIZE,
-          ...buildFilterParams(),
+          ...filterParams,
         });
         if (response.success && response.data) {
           allData.push(...response.data);
@@ -272,7 +289,9 @@ const MapViewScreen = () => {
         setMapReady(true);
       } else if (data.type === "markerClicked") {
         const detailsPage =
-          recordType === "request" ? "/request-details" : "/incident-details";
+          recordType === "request" ? "/request-details" :
+            recordType === "complaint" ? "/complaint-details" :
+              recordType === "query" ? "/query-details" : "/incident-details";
         router.push(`${detailsPage}?id=${data.id}`);
       }
     } catch (error) {
@@ -293,7 +312,11 @@ const MapViewScreen = () => {
         <Text style={styles.headerTitle}>
           {recordType === "request"
             ? t("map.requests", "Requests Map")
-            : t("map.incidents", "Incidents Map")}
+            : recordType === "complaint"
+              ? t("map.complaints", "Complaints Map")
+              : recordType === "query"
+                ? t("map.queries", "Queries Map")
+                : t("map.incidents", "Incidents Map")}
         </Text>
         <TouchableOpacity
           onPress={fetchIncidentsWithLocation}
@@ -329,7 +352,11 @@ const MapViewScreen = () => {
               {incidents.length}{totalCount > incidents.length ? `/${totalCount}` : ""}{" "}
               {recordType === "request"
                 ? t("map.requestsOnMap", "requests on map")
-                : t("map.incidentsOnMap", "incidents on map")}
+                : recordType === "complaint"
+                  ? t("map.complaintsOnMap", "complaints on map")
+                  : recordType === "query"
+                    ? t("map.queriesOnMap", "queries on map")
+                    : t("map.incidentsOnMap", "incidents on map")}
             </Text>
           </View>
 

@@ -107,6 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       // Import setLoggingOut here to avoid circular dependency
+      router.replace('/login');
       const { setLoggingOut } = await import('../api/client');
 
       // Set flag FIRST to block any new requests from other components
@@ -119,7 +120,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Navigate to login BEFORE setting user to null
       // This unmounts components before they can react to user change
-      router.replace('/login');
 
       // Small delay to allow navigation to start
       await new Promise(resolve => setTimeout(resolve, 100));
