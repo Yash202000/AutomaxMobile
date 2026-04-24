@@ -20,7 +20,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import ImageViewing from 'react-native-image-viewing';
 import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
@@ -38,6 +37,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import ImageViewing from 'react-native-image-viewing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownOption {
@@ -83,6 +83,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -108,7 +109,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { paddingBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -1543,7 +1544,7 @@ const AddIncidentScreen = () => {
                 <Text style={styles.sectionTitle}>
                   {t('incidents.attachments')} <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError]}>
+                <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError, { marginBottom: insets.bottom }]}>
                   {attachments.length > 0 && (
                     <View style={styles.attachmentsList}>
                       {attachments.map((file, index) => (
@@ -1572,7 +1573,7 @@ const AddIncidentScreen = () => {
                       ))}
                     </View>
                   )}
-                  <TouchableOpacity style={styles.attachmentButton} onPress={handleTakePhoto}>
+                  <TouchableOpacity style={[styles.attachmentButton]} onPress={handleTakePhoto}>
                     <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
                     <Text style={styles.attachmentButtonText}>
                       {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}

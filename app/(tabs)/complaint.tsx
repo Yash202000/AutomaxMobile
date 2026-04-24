@@ -339,6 +339,12 @@ const ComplaintsScreen = () => {
                             <Text style={styles.headerTitle}>{headerTitle}</Text>
                         </View>
                         <View style={styles.headerIcons}>
+                            <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
+                                pathname: '/map-view',
+                                params: { type: 'complaint', state_id, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date, search: searchQuery }
+                            })}>
+                                <Ionicons name="map-outline" size={22} color="white" />
+                            </TouchableOpacity>
                             <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>
                                 <Ionicons name="search-outline" size={24} color="white" />
                             </TouchableOpacity>
