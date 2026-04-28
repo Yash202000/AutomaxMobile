@@ -1,11 +1,12 @@
 import apiClient from '@/src/api/client';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Keyboard,
@@ -16,26 +17,29 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenHeight < 700;
 
-const ForgotPasswordScreen = () => {
+const ResetPasswordScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [identifier, setIdentifier] = useState('');
-  const [otpChannel, setOtpChannel] = useState<'sms' | 'email'>('sms');
+  const { resetToken, phoneNumber } = useLocalSearchParams<{ resetToken: string, phoneNumber: string }>();
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const inputFocusAnim = useRef(new Animated.Value(0)).current;
+  const passwordFocusAnim = useRef(new Animated.Value(0)).current;
+  const confirmPasswordFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -54,56 +58,81 @@ const ForgotPasswordScreen = () => {
     ]).start();
   }, []);
 
-  const handleSendOTP = async () => {
+  const handleResetPassword = async () => {
     Keyboard.dismiss();
     setError('');
+    console.log(password, confirmPassword)
+    if (!password || !confirmPassword) {
+      setError(t('resetPassword.required'));
+      return;
+    }
 
-    if (!identifier) {
-      setError(t('errors.validationError'));
+    if (password.length < 8) {
+      setError(t('resetPassword.tooShort'));
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError(t('resetPassword.mismatch'));
       return;
     }
 
     setLoading(true);
     try {
-      const response = await apiClient.post('/auth/forgot-password', {
-        value: identifier,
-        channel: otpChannel,
+      const response = await apiClient.post('/auth/reset-password', {
+        resetToken: resetToken,
+        newPassword: password,
       });
-      if (response.data.data && response.data.data.sessionID) {
-        router.push({
-          pathname: '/otp',
-          params: {
-            phoneNumber: identifier, // Still using this param name for compatibility with otp.tsx logic
-            sessionId: response.data.data.sessionID,
-            channel: otpChannel,
-            isForgotPassword: 'true',
-          },
-        });
+      if (response.data && response.data.success) {
+        Alert.alert(
+          t('common.success'),
+          t('resetPassword.success'),
+          [{ text: t('common.ok'), onPress: () => router.replace('/login') }]
+        );
       } else {
-        setError(t('forgotPassword.otpFailed'));
+        setError(t('errors.unknownError'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || t('forgotPassword.otpFailed'));
+      setError(err.response?.data?.error || t('errors.unknownError'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputFocus = () => {
-    Animated.spring(inputFocusAnim, {
+  const handlePasswordFocus = () => {
+    Animated.spring(passwordFocusAnim, {
       toValue: 1,
       useNativeDriver: false,
     }).start();
   };
 
-  const handleInputBlur = () => {
-    Animated.spring(inputFocusAnim, {
+  const handlePasswordBlur = () => {
+    Animated.spring(passwordFocusAnim, {
       toValue: 0,
       useNativeDriver: false,
     }).start();
   };
 
-  const inputBorderColor = inputFocusAnim.interpolate({
+  const handleConfirmPasswordFocus = () => {
+    Animated.spring(confirmPasswordFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleConfirmPasswordBlur = () => {
+    Animated.spring(confirmPasswordFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const passwordBorderColor = passwordFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#E5E5E5', '#2EC4B6'],
+  });
+
+  const confirmPasswordBorderColor = confirmPasswordFocusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['#E5E5E5', '#2EC4B6'],
   });
@@ -139,109 +168,96 @@ const ForgotPasswordScreen = () => {
               },
             ]}
           >
-            {/* Back Button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-
             <View style={styles.headerContainer}>
-              <Text style={styles.titleText}>{t('forgotPassword.title')}</Text>
-              <Text style={styles.subtitleText}>{t('forgotPassword.subtitle')}</Text>
+              <Text style={styles.titleText}>{t('resetPassword.title')}</Text>
+              <Text style={styles.subtitleText}>{t('resetPassword.subtitle')}</Text>
             </View>
 
             <View style={styles.inputsContainer}>
+              {/* New Password Input */}
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>
-                  {otpChannel === 'sms' ? t('auth.phone') : t('auth.email')}
-                </Text>
+                <Text style={styles.inputLabel}>{t('resetPassword.newPassword')}</Text>
                 <Animated.View
                   style={[
                     styles.inputContainer,
                     {
-                      borderColor: inputBorderColor,
+                      borderColor: passwordBorderColor,
                       borderWidth: 2,
                     },
                   ]}
                 >
                   <Ionicons
-                    name={otpChannel === 'sms' ? 'call-outline' : 'mail-outline'}
+                    name="lock-closed-outline"
                     size={20}
                     color="#666"
                     style={styles.inputIcon}
                   />
                   <TextInput
                     style={styles.textInput}
-                    placeholder={
-                      otpChannel === 'sms'
-                        ? t('forgotPassword.phonePlaceholder')
-                        : t('forgotPassword.emailPlaceholder')
-                    }
+                    placeholder={t('resetPassword.placeholder')}
                     placeholderTextColor="#999"
-                    value={identifier}
-                    onChangeText={setIdentifier}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    keyboardType={otpChannel === 'sms' ? 'phone-pad' : 'email-address'}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={handlePasswordFocus}
+                    onBlur={handlePasswordBlur}
                     autoCapitalize="none"
                   />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
                 </Animated.View>
               </View>
 
+              {/* Confirm Password Input */}
               <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>{t('auth.otpChannel')}</Text>
-                <View style={styles.channelContainer}>
+                <Text style={styles.inputLabel}>{t('resetPassword.confirmPassword')}</Text>
+                <Animated.View
+                  style={[
+                    styles.inputContainer,
+                    {
+                      borderColor: confirmPasswordBorderColor,
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#666"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={t('resetPassword.placeholder')}
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showConfirmPassword}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    onFocus={handleConfirmPasswordFocus}
+                    onBlur={handleConfirmPasswordBlur}
+                    autoCapitalize="none"
+                  />
                   <TouchableOpacity
-                    style={[
-                      styles.channelButton,
-                      otpChannel === 'sms' && styles.activeChannel,
-                    ]}
-                    onPress={() => {
-                      setOtpChannel('sms');
-                      setIdentifier('');
-                    }}
+                    style={styles.eyeButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="call-outline"
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={20}
-                      color={otpChannel === 'sms' ? '#2EC4B6' : '#666'}
+                      color="#666"
                     />
-                    <Text
-                      style={[
-                        styles.channelText,
-                        otpChannel === 'sms' && styles.activeChannelText,
-                      ]}
-                    >
-                      {t('auth.sms')}
-                    </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.channelButton,
-                      otpChannel === 'email' && styles.activeChannel,
-                    ]}
-                    onPress={() => {
-                      setOtpChannel('email');
-                      setIdentifier('');
-                    }}
-                  >
-                    <Ionicons
-                      name="mail-outline"
-                      size={20}
-                      color={otpChannel === 'email' ? '#2EC4B6' : '#666'}
-                    />
-                    <Text
-                      style={[
-                        styles.channelText,
-                        otpChannel === 'email' && styles.activeChannelText,
-                      ]}
-                    >
-                      {t('auth.emailOtp')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                </Animated.View>
               </View>
             </View>
 
@@ -255,13 +271,13 @@ const ForgotPasswordScreen = () => {
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
               <TouchableOpacity
                 activeOpacity={0.9}
-                onPress={handleSendOTP}
-                disabled={loading || !identifier}
+                onPress={handleResetPassword}
+                disabled={loading || !password || !confirmPassword}
                 style={styles.submitButton}
               >
                 <LinearGradient
                   colors={
-                    loading || !identifier
+                    loading || !password || !confirmPassword
                       ? ['#CCCCCC', '#AAAAAA']
                       : ['#2EC4B6', '#20B2A3']
                   }
@@ -273,7 +289,7 @@ const ForgotPasswordScreen = () => {
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={styles.submitButtonText}>
-                      {t('forgotPassword.sendOTP')}
+                      {t('resetPassword.submit')}
                     </Text>
                   )}
                 </LinearGradient>
@@ -320,20 +336,6 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 125,
     backgroundColor: 'rgba(46, 196, 182, 0.04)',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   headerContainer: {
     marginBottom: 40,
@@ -383,33 +385,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  channelContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  channelButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    gap: 8,
-  },
-  activeChannel: {
-    backgroundColor: '#F0FBFA',
-    borderColor: '#2EC4B6',
-  },
-  channelText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  activeChannelText: {
-    color: '#2EC4B6',
+  eyeButton: {
+    padding: 8,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -444,4 +421,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ForgotPasswordScreen;
+export default ResetPasswordScreen;
