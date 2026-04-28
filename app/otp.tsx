@@ -9,7 +9,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TouchableOpa
 const OtpScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { phoneNumber, sessionId: initialSessionId, channel: initialChannel } = useLocalSearchParams<{ phoneNumber: string, sessionId: string, channel: 'sms' | 'whatsapp' }>();
+  const { phoneNumber, sessionId: initialSessionId, channel: initialChannel, isForgotPassword } = useLocalSearchParams<{ phoneNumber: string, sessionId: string, channel: 'sms' | 'whatsapp' | 'email', isForgotPassword?: string }>();
   const [sessionId, setSessionId] = useState(initialSessionId);
   const [channel, setChannel] = useState(initialChannel || 'sms');
   const { login } = useAuth();
@@ -38,20 +38,38 @@ const OtpScreen = () => {
     setError('');
 
     try {
-      // Updated OTP verify endpoint and payload
-      const response = await apiClient.post('/otp/verify', {
-        phone: phoneNumber,
-        session_id: sessionId,
-        otp: enteredOtp
-      });
-      console.log(response.data);
-      if (response.data && response.data.success) {
-        const { token, refresh_token } = response.data.data;
-        await login(token, refresh_token);
-        router.replace('/(tabs)/explore');
+      if (isForgotPassword === 'true') {
+        const response = await apiClient.post('/auth/verify-reset-otp', {
+          value: phoneNumber,
+          session_id: sessionId,
+          otp: enteredOtp,
+          channel: channel
+        });
+        if (response.data.data && response.data.data.resetToken) {
+          router.push({
+            pathname: '/reset-password',
+            params: { resetToken: response.data.data.resetToken, phoneNumber }
+          });
+        } else {
+          setError('Invalid OTP');
+          alert('Invalid OTP');
+        }
       } else {
-        setError('Invalid OTP');
-        alert('Invalid OTP');
+        // Updated OTP verify endpoint and payload
+        const response = await apiClient.post('/otp/verify', {
+          phone: phoneNumber,
+          session_id: sessionId,
+          otp: enteredOtp
+        });
+
+        if (response.data && response.data.success) {
+          const { token, refresh_token } = response.data.data;
+          await login(token, refresh_token);
+          router.replace('/(tabs)/explore');
+        } else {
+          setError('Invalid OTP');
+          alert('Invalid OTP');
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Verification failed');
@@ -66,13 +84,23 @@ const OtpScreen = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await apiClient.post('/otp/send', {
-        phone: phoneNumber,
-        channel: channel
-      });
+      let response;
+      if (isForgotPassword === 'true') {
+        response = await apiClient.post('/auth/forgot-password', {
+          value: phoneNumber,
+          channel: channel
+        });
+      } else {
+        response = await apiClient.post('/otp/send', {
+          phone: phoneNumber,
+          channel: channel
+        });
+      }
 
-      if (response.data && response.data.session_id) {
-        setSessionId(response.data.session_id);
+      const sessionID = isForgotPassword === 'true' ? response.data.data?.sessionID : response.data.session_id;
+
+      if (response.data && (response.data.session_id || response.data.data?.sessionID)) {
+        setSessionId(sessionID);
         setOtp(new Array(6).fill(''));
         setTimer(60);
         inputs.current[0]?.focus();
@@ -110,7 +138,7 @@ const OtpScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.instructions}>
-        Please enter the OTP which is send to your mobile number
+        {t('auth.otpInstructions')}
       </Text>
 
       <View style={styles.otpContainer}>

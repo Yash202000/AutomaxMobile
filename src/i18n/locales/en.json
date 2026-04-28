@@ -62,9 +62,11 @@
     "password": "Password",
     "phone": "Phone Number",
     "forgotPassword": "Forgot Password?",
+    "otpInstructions": "Please enter the OTP which was sent to your registered phone or email",
     "otpChannel": "Select OTP Channel",
-    "sms": "SMS",
-    "whatsapp": "WhatsApp",
+    "sms": "Registered Phone",
+    "emailOtp": "Registered Email",
+    "whatsapp": "Whatsapp",
     "loginButton": "LOGIN",
     "getStarted": "GET STARTED",
     "loggingIn": "Signing in...",
@@ -97,6 +99,27 @@
       "complaints": "Complaints",
       "queries": "Queries"
     }
+  },
+  "forgotPassword": {
+    "title": "Forgot Password",
+    "subtitle": "Select how you would like to receive your OTP",
+    "sendOTP": "SEND OTP",
+    "phonePlaceholder": "Enter your phone number",
+    "emailPlaceholder": "Enter your registered email",
+    "otpSent": "OTP sent successfully",
+    "otpFailed": "Failed to send OTP. Please try again."
+  },
+  "resetPassword": {
+    "title": "Reset Password",
+    "subtitle": "Create a strong new password for your account",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "placeholder": "••••••••",
+    "submit": "RESET PASSWORD",
+    "success": "Password reset successfully",
+    "mismatch": "Passwords do not match",
+    "required": "Password is required",
+    "tooShort": "Password must be at least 8 characters"
   },
   "myIncidents": {
     "title": "My Tickets",
