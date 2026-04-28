@@ -44,6 +44,7 @@ module.exports = {
     plugins: [
       './plugins/withAndroidGoogleServices',
       'expo-router',
+      'expo-font',
       [
         'expo-location',
         {

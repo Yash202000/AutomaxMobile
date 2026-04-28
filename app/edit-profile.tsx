@@ -261,7 +261,7 @@ const EditProfileScreen = () => {
                                 id: 'verify-btn',
                                 label: t('profile.verify'),
                                 onPress: handleSendOTP,
-                                show: !isPhoneChanged && !mobileVerified
+                                show: !isPhoneChanged && !mobileVerified && (phone ? true : false)
                             }]}
                         />
                         <CustomInput label={t('profile.roles')} value={roles} editable={false} />
