@@ -60,6 +60,7 @@ module.exports = {
       ],
       './plugins/withAndroidGoogleServices',
       'expo-router',
+      'expo-font',
       [
         'expo-location',
         {
