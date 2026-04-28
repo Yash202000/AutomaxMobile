@@ -29,7 +29,8 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'forgot-password' || segments[0] === 'otp' || segments[0] === 'reset-password';
+    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password'];
+    const inAuthGroup = authScreens.includes(segments[0] as string);
 
     if (!isAuthenticated && !inAuthGroup) {
       // Redirect to login if not authenticated and not in auth group
