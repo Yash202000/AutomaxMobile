@@ -7,10 +7,11 @@ import { Audio } from 'expo-av';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COLORS = {
   primary: '#1A237E',
@@ -49,7 +50,7 @@ const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { ic
       <Ionicons name={icon as any} size={18} color={iconColor} />
       <Text style={styles.infoLabel}>{label}</Text>
     </View>
-    <Text style={styles.infoValue}>{value || 'N/A'}</Text>
+    <Text style={styles.infoValue}>{value || t('common.na')}</Text>
   </View>
 );
 
@@ -62,6 +63,7 @@ const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
 
 const ComplaintDetailsScreen = () => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [complaint, setComplaint] = useState<any>(null);
@@ -94,26 +96,32 @@ const ComplaintDetailsScreen = () => {
     if (!complaintId) return;
 
     setLoading(true);
-    const [detailsResponse, transitionsResponse] = await Promise.all([
-      getIncidentById(complaintId),
-      getAvailableTransitions(complaintId),
-    ]);
+    try {
+      const [detailsResponse, transitionsResponse] = await Promise.all([
+        getIncidentById(complaintId),
+        getAvailableTransitions(complaintId),
+      ]);
 
-    if (detailsResponse.success) {
-      setComplaint(detailsResponse.data);
-      setAttachments(detailsResponse.data.attachments || []);
-    } else {
-      setError(detailsResponse.error);
-      Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      if (detailsResponse.success) {
+        setComplaint(detailsResponse.data);
+        setAttachments(detailsResponse.data.attachments || []);
+      } else {
+        setError(detailsResponse.error);
+        Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      }
+
+      if (transitionsResponse.success) {
+        setAvailableTransitions(transitionsResponse.data.filter((t: any) => t.can_execute));
+      } else {
+        setAvailableTransitions([]);
+      }
+    } catch (err: any) {
+      if (err?.isLogoutCancel) return;
+      console.error('Error fetching complaint details:', err);
+      setError('Failed to load complaint details');
+    } finally {
+      setLoading(false);
     }
-
-    if (transitionsResponse.success) {
-      setAvailableTransitions(transitionsResponse.data.filter((t: any) => t.can_execute));
-    } else {
-      setAvailableTransitions([]);
-    }
-
-    setLoading(false);
   }, [id, t]);
 
   useFocusEffect(
@@ -149,7 +157,7 @@ const ComplaintDetailsScreen = () => {
       setPlayingAudioId(audioId);
     } catch (error) {
       console.error('Error playing audio:', error);
-      Alert.alert('Error', 'Failed to play audio');
+      Alert.alert(t('common.error'), t('errors.audioPlayFailed'));
     }
   };
 
@@ -442,7 +450,7 @@ const ComplaintDetailsScreen = () => {
       {/* Update Button */}
       {availableTransitions.length > 0 && (
         <TouchableOpacity
-          style={styles.updateButton}
+          style={[styles.updateButton, { marginBottom: insets.bottom }]}
           onPress={() => router.push({
             pathname: '/update-status',
             params: {
@@ -498,7 +506,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 
-  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 1 },
+  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 20 },
 
   titleCard: {
     backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: -10,

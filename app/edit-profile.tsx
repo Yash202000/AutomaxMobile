@@ -2,6 +2,7 @@ import apiClient from '@/src/api/client';
 import { getProfile, updateProfile } from '@/src/api/user';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { t } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, I18nManager, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -26,7 +27,7 @@ const CustomInput = ({ label, value, onChangeText, editable = true, actionButton
                     {isVerified && (
                         <View style={styles.verifiedBadge}>
                             <Ionicons name="checkmark-circle" size={16} color="#2EC4B6" />
-                            <Text style={styles.verifiedText}>Verified</Text>
+                            <Text style={styles.verifiedText}>{t('profile.verified')}</Text>
                         </View>
                     )}
                 </View>

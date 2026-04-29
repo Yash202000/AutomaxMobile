@@ -1,6 +1,14 @@
 {
   "common": {
+    "collapseAll": "Collapse All",
+    "expandAll": "Expand All",
+    "select": "Select",
+    "tapOnMap": "Tap on the map to select a location, or use 'Get Current Location'",
+    "searchAddress": "Search for an address or place...",
+    "enter": "Enter",
+    "selectIncident": "Select an Incident...",
     "loading": "Loading...",
+    "recording": "Recording",
     "error": "Error",
     "retry": "Retry",
     "cancel": "Cancel",
@@ -9,6 +17,7 @@
     "edit": "Edit",
     "create": "Create",
     "search": "Search",
+    "searchPlaceholder": "Search...",
     "filter": "Filter",
     "clear": "Clear",
     "submit": "Submit",
@@ -23,6 +32,9 @@
     "close": "Close",
     "refresh": "Refresh",
     "noData": "No data available",
+    "clearSelection": "Clear selection",
+    "noOptions": "No options available",
+    "unknownUser": "Unknown User",
     "success": "Success",
     "failed": "Failed",
     "viewDetails": "View Details",
@@ -30,7 +42,15 @@
     "incidentStatusUpdated": "Incident status updated successfully",
     "requestStatusUpdated": "Request status updated successfully",
     "complaintStatusUpdated": "Complaint status updated successfully",
-    "queryStatusUpdated": "Query status updated successfully"
+    "queryStatusUpdated": "Query status updated successfully",
+    "na": "N/A",
+    "conflictDetected": "Conflict Detected",
+    "incidentModifiedByAnother": "This incident was modified by another user. Please review and try again.",
+    "ok": "OK",
+    "refresh": "Refresh",
+    "tapLeafToSelectMultiple": "Tap leaf items to select multiple",
+    "onlyItemWithoutChildren": "Only items without children can be selected",
+    "searchByIncidentNumOrTitle": "Search by Incident number or title..."
   },
   "map": {
     "incidents": "Incidents Map",
@@ -71,7 +91,13 @@
     "getStarted": "GET STARTED",
     "loggingIn": "Signing in...",
     "loginError": "Login failed. Please try again.",
-    "invalidCredentials": "Invalid email or password"
+    "invalidCredentials": "Invalid email or password",
+    "invalidOTP": "Invalid OTP",
+    "verificationFailed": "Verification failed",
+    "didNotReceiveCode": "Didn't receive code?",
+    "resendCodeIn": "Resend Code in {{timer}}s",
+    "resendCode": "Resend Code",
+    "backToLogin": "Back to Login"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -148,6 +174,8 @@
     "noCreatedDesc": "You have not created any {{type}} yet"
   },
   "incidents": {
+    "autoTitle": "Title is automatically generated from selected classification, location, and area",
+    "titlePlaceholder": "Auto-generated from classification, location, and area",
     "title": "Incidents",
     "allIncidents": "All Incidents",
     "myIncidents": "My Incidents",
@@ -209,7 +237,22 @@
     "ratingGood": "Good",
     "ratingVeryGood": "Very Good",
     "ratingExcellent": "Excellent",
-    "source": "Source"
+    "source": "Source",
+    "sources": {
+      "web": "Web Portal",
+      "mobile": "Mobile App",
+      "email": "Email",
+      "phone": "Phone",
+      "walk_in": "Walk-in",
+      "api": "API Integration",
+      "social_media": "Social Media",
+      "940_system": "940 System",
+      "940_manual": "940 Manual",
+      "field": "Field",
+      "manual": "Manual Entry",
+      "viusional": "Viusional",
+      "other": "Other"
+    }
   },
   "requests": {
     "title": "Requests",
@@ -287,8 +330,13 @@
     "changeLanguage": "Change Language",
     "language": "Language",
     "english": "English",
-    "arabic": "Arabic",
+    "arabic": "العربية",
+    "langChangeTitle": "Success",
+    "langChangeMessage": "Language changed. The app will restart to apply changes.",
+    "restartRequired": "Restart Required",
+    "restartMessage": "Please close and reopen the app to apply language changes.",
     "diagnostics": "Diagnostics",
+    "verified": "Verified",
     "shareLogs": "Share Logs",
     "deleteLogs": "Delete Logs",
     "version": "Version",
@@ -312,6 +360,7 @@
     "lastName": "Last Name",
     "email": "Email",
     "enterYourEmail": "Enter your email",
+    "noEmail": "No email",
     "phone": "Phone",
     "mobileNo": "Mobile No.",
     "username": "Username",
@@ -336,8 +385,15 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "changePassword": "Change Password",
-    "passwordChanged": "Password changed successfully",
-    "passwordMismatch": "Passwords do not match"
+    "passwordChanged": "Password updated successfully. Please log in again.",
+    "passwordMismatch": "Passwords do not match",
+    "securityTitle": "Password security",
+    "minLength": "Password minimum length",
+    "requirements": "Password must contains",
+    "digitLowerSymbol": "Digit, Lowercase, Symbol",
+    "updateButton": "UPDATE PASSWORD",
+    "fillAllFields": "Please fill out all fields.",
+    "minLengthError": "New password must be at least 8 characters."
   },
   "filter": {
     "title": "Filter Incidents",
@@ -352,7 +408,7 @@
     "applyFilters": "APPLY FILTERS",
     "reset": "Reset",
     "all": "All",
-    "selected": "Selected",
+    "selected": "selected",
     "clearAll": "Clear All",
     "selectStatus": "Select Status",
     "selectPriority": "Select Priority",
@@ -400,7 +456,14 @@
     "createButton": "CREATE INCIDENT",
     "creating": "Creating incident...",
     "created": "Incident created successfully",
-    "createFailed": "Failed to create incident"
+    "createFailed": "Failed to create incident",
+    "waitingForLocation": "Please wait for your location to be detected before taking a photo, or click 'Get Current Location' button.",
+    "gettingLocationDetails": "Getting Location Details",
+    "waitingForAddress": "Please wait while we get your address...",
+    "addressUnavailable": "Location Address Unavailable",
+    "addressUnavailableDesc": "We have your GPS coordinates but couldn't get the street address. Continue with coordinates only?",
+    "waitPlease": "Please wait",
+    "loadingDepts": "Loading departments..."
   },
   "addRequest": {
     "title": "Add Request",
@@ -451,10 +514,21 @@
     "createButton": "CREATE COMPLAINT",
     "creating": "Creating complaint...",
     "created": "Complaint created successfully",
-    "createFailed": "Failed to create complaint"
+    "createFailed": "Failed to create complaint",
+    "voiceRecording": "Voice Recording",
+    "recordAudio": "Record Audio",
+    "stopRecording": "Stop Recording",
+    "startRecording": "Start Recording",
+    "micPermissionRequired": "Please allow microphone access to record audio",
+    "selectSourceIncident": "Select Source Incident",
+    "workflowHint": "Select classification, location, or source to auto-match a workflow"
   },
   "addQuery": {
     "title": "Add Query",
+    "noIncidentsFound": "No Incidents found",
+    "channel": "Channel",
+    "sourceIncident": "Source Incident Reference",
+    "autoWorkflow": "Select classification, location, or source to auto-match a workflow",
     "queryTitle": "Title",
     "titlePlaceholder": "Enter query title",
     "description": "Description",
@@ -477,7 +551,14 @@
     "createButton": "CREATE QUERY",
     "creating": "Creating query...",
     "created": "Query created successfully",
-    "createFailed": "Failed to create query"
+    "createFailed": "Failed to create query",
+    "workflowHint": "Select classification, location, or source to auto-match a workflow"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search...",
+    "minCharsTitle": "Keep Typing...",
+    "minCharsDesc": "Enter at least 3 characters to search"
   },
   "errors": {
     "networkError": "Network error. Please check your connection.",
@@ -487,10 +568,18 @@
     "validationError": "Please check your input.",
     "unknownError": "An unknown error occurred.",
     "fetchStatsFailed": "Failed to load statistics",
-    "oops": "Oops!"
+    "oops": "Oops!",
+    "oopsTitle": "Oops! Something went wrong",
+    "unexpectedError": "The app encountered an unexpected error. This has been logged for our team to review.",
+    "devModeDetails": "Error Details (Dev Mode):",
+    "stackTrace": "Stack Trace:",
+    "componentStack": "Component Stack:",
+    "reloadApp": "Reload App",
+    "audioPlayFailed": "Failed to play audio"
   },
   "notifications": {
     "title": "Notifications",
+    "defaultTitle": "Notification",
     "noNotifications": "No Notifications",
     "noNotificationsDesc": "You don't have any notifications yet.",
     "failedToFetch": "Failed to load notifications",

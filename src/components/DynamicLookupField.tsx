@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import { LookupCategory } from '@/src/api/lookups';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { t } from 'i18next';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
+  FlatList,
+  Modal,
+  Platform,
+  StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Switch,
-  Platform,
-  Modal,
-  FlatList,
+  View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { LookupCategory } from '@/src/api/lookups';
+import i18n from '../i18n';
 
 interface DynamicLookupFieldProps {
   category: LookupCategory;
@@ -49,9 +51,11 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
 
   const renderLabel = () => (
     <Text style={styles.label}>
-      {category.name} {required && <Text style={styles.required}>*</Text>}
+      {(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)} {required && <Text style={styles.required}>*</Text>}
     </Text>
   );
+
+  useEffect(() => { console.log(category) }, [])
 
   switch (fieldType) {
     case 'text':
@@ -62,7 +66,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             style={[styles.input, error && styles.inputError]}
             value={value || ''}
             onChangeText={handleChange}
-            placeholder={category.description || `Enter ${category.name}`}
+            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             placeholderTextColor="#999"
             maxLength={validationRules.maxLength}
           />
@@ -78,7 +82,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             style={[styles.textArea, error && styles.inputError]}
             value={value || ''}
             onChangeText={handleChange}
-            placeholder={category.description || `Enter ${category.name}`}
+            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             placeholderTextColor="#999"
             multiline
             numberOfLines={4}
@@ -99,7 +103,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               const num = parseFloat(text);
               handleChange(isNaN(num) ? null : num);
             }}
-            placeholder={category.description || `Enter ${category.name}`}
+            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             placeholderTextColor="#999"
             keyboardType="numeric"
           />
@@ -116,7 +120,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={value ? styles.dateText : styles.placeholderText}>
-              {value ? new Date(value).toLocaleString() : `Select ${category.name}`}
+              {value ? new Date(value).toLocaleString() : `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             </Text>
             <Ionicons name="calendar-outline" size={20} color="#666" />
           </TouchableOpacity>
@@ -143,7 +147,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
         <View style={styles.container}>
           <View style={styles.checkboxRow}>
             <Text style={styles.label}>
-              {category.name} {required && <Text style={styles.required}>*</Text>}
+              {(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)} {required && <Text style={styles.required}>*</Text>}
             </Text>
             <Switch
               value={value || false}
@@ -169,7 +173,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             onPress={() => setModalVisible(true)}
           >
             <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
-              {selectOptions.find(opt => opt.id === value)?.name || `Select ${category.name}`}
+              {selectOptions.find(opt => opt.id === value)?.name || `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             </Text>
             <FontAwesome name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>

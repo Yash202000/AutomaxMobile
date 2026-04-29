@@ -51,8 +51,8 @@ const OtpScreen = () => {
             params: { resetToken: response.data.data.resetToken, phoneNumber }
           });
         } else {
-          setError('Invalid OTP');
-          alert('Invalid OTP');
+          setError(t('auth.invalidOTP'));
+          alert(t('auth.invalidOTP'));
         }
       } else {
         // Updated OTP verify endpoint and payload
@@ -67,13 +67,13 @@ const OtpScreen = () => {
           await login(token, refresh_token);
           router.replace('/(tabs)/explore');
         } else {
-          setError('Invalid OTP');
-          alert('Invalid OTP');
+          setError(t('auth.invalidOTP'));
+          alert(t('auth.invalidOTP'));
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Verification failed');
-      alert(err.response?.data?.error || 'Verification failed');
+      setError(err.response?.data?.error || t('auth.verificationFailed'));
+      alert(err.response?.data?.error || t('auth.verificationFailed'));
       setLoading(false);
     } finally {
       setLoading(false);
@@ -173,13 +173,13 @@ const OtpScreen = () => {
       </TouchableOpacity>
 
       <View style={styles.resendContainer}>
-        <Text style={styles.resendText}>Didn&apos;t receive code?</Text>
+        <Text style={styles.resendText}>{t('auth.didNotReceiveCode')}</Text>
         <Pressable
           onPress={handleResend}
           disabled={timer > 0 || loading}
         >
           <Text style={[styles.resendLink, (timer > 0 || loading) && styles.disabledLink]}>
-            {timer > 0 ? `Resend Code in ${timer}s` : 'Resend Code'}
+            {timer > 0 ? t('auth.resendCodeIn', { timer }) : t('auth.resendCode')}
           </Text>
         </Pressable>
       </View>
@@ -189,7 +189,7 @@ const OtpScreen = () => {
         onPress={() => router.replace('/login')}
       >
         <Ionicons name="arrow-back" size={20} color="#666" />
-        <Text style={styles.backToLoginText}>Back to Login</Text>
+        <Text style={styles.backToLoginText}>{t('auth.backToLogin')}</Text>
       </TouchableOpacity>
     </View>
   );

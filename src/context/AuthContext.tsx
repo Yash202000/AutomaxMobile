@@ -54,6 +54,7 @@ interface AuthContextType {
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   hasRole: (roleCode: string) => boolean;
+  isLoggingOut: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +66,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -106,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
+      setIsLoggingOut(true);
       // Import setLoggingOut here to avoid circular dependency
       router.replace('/login');
       const { setLoggingOut } = await import('../api/client');
@@ -122,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // This unmounts components before they can react to user change
 
       // Small delay to allow navigation to start
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Now set user to null
       setUser(null);
@@ -130,13 +133,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Reset flag after navigation completes
       setTimeout(() => {
         setLoggingOut(false);
-      }, 500);
+        setIsLoggingOut(false);
+      }, 1000);
     } catch (error) {
       // If import fails, just clear tokens and navigate
       await SecureStore.deleteItemAsync('authToken');
       await SecureStore.deleteItemAsync('refreshToken');
       router.replace('/login');
       setUser(null);
+      setIsLoggingOut(false);
     }
   }, []);
 
@@ -181,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasAnyPermission,
     hasAllPermissions,
     hasRole,
+    isLoggingOut,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
