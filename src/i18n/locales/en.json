@@ -425,7 +425,9 @@
     "allDepartments": "All Departments",
     "allClassifications": "All Classifications",
     "allLocations": "All Locations",
-    "allSlaStatuses": "All SLA Statuses"
+    "allSlaStatuses": "All SLA Statuses",
+    "invalidDateRange": "Start date cannot be after end date",
+    "invalidDateRangeTitle": "Invalid Date Range"
   },
   "addIncident": {
     "title": "Add Incident",
