@@ -29,7 +29,8 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'forgot-password' || segments[0] === 'otp';
+    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password'];
+    const inAuthGroup = authScreens.includes(segments[0] as string);
 
     if (!isAuthenticated && !inAuthGroup) {
       // Redirect to login if not authenticated and not in auth group
@@ -102,6 +103,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ title: 'Forgot Password?' }} />
         <Stack.Screen name="otp" options={{ title: 'Verification' }} />
+        <Stack.Screen name="reset-password" options={{ title: 'Reset Password' }} />
         <Stack.Screen name="incident-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-incident" options={{ headerShown: false }} />
         <Stack.Screen name="my-incidents" options={{ headerShown: false }} />

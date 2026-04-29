@@ -116,7 +116,6 @@ const LoginScreen = () => {
     setError('');
 
     const isEmail = loginMethod === 'email';
-
     if (isEmail) {
       // Email Login Logic
       const trimmedEmail = email.trim();
@@ -143,7 +142,14 @@ const LoginScreen = () => {
           setError(t('auth.loginError'));
         }
       } catch (err: any) {
-        setError(err.response?.data?.error || t('auth.loginError'));
+        let errorMessage = t('auth.loginError');
+        if (err.response?.data) {
+          const remoteError = err.response.data.error || err.response.data.message;
+          if (remoteError) {
+            errorMessage = typeof remoteError === 'string' ? remoteError : JSON.stringify(remoteError);
+          }
+        }
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -157,9 +163,8 @@ const LoginScreen = () => {
       setLoading(true);
       try {
         const authResponse = await apiClient.post('/auth/login', { phone: phoneNumber });
-
         if (!authResponse.data || !authResponse.data.success) {
-          setError(authResponse.data.message);
+          setError(authResponse.data?.message || t('auth.loginError'));
           return;
         }
         // Updated OTP send endpoint and payload based on user curl
@@ -167,8 +172,6 @@ const LoginScreen = () => {
           phone: phoneNumber,
           channel: otpChannel
         });
-
-        console.log(response.data);
 
         if (response.data && response.data.session_id) {
           router.push({
