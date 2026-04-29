@@ -1,40 +1,42 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  ActionSheetIOS,
-  Linking,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { getClassificationsTree } from '@/src/api/classifications';
-import { getLocations } from '@/src/api/locations';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { getUsers } from '@/src/api/users';
 import { getDepartments } from '@/src/api/departments';
-import { getLookupCategories, LookupCategory, LookupValue } from '@/src/api/lookups';
+import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
+import { getLocations } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
+import { getUsers } from '@/src/api/users';
+import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
-import { generateWatermarkedFilename, createWatermarkText, WatermarkInfo } from '@/src/utils/watermarkUtils';
-import * as FileSystem from 'expo-file-system/legacy';
+import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { compressImage } from '@/src/utils/imageCompression';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { t } from 'i18next';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DropdownOption {
   id: string;
@@ -124,14 +126,14 @@ const Dropdown: React.FC<DropdownProps> = ({
                   setModalVisible(false);
                 }}
               >
-                <Text style={styles.clearOptionText}>Clear selection</Text>
+                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
 
             {options.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>No options available</Text>
+                <Text style={styles.emptyText}>{t('common.noOptions')}</Text>
               </View>
             ) : (
               <FlatList
@@ -160,28 +162,6 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-const priorityOptions: DropdownOption[] = [
-  { id: '1', name: 'Critical' },
-  { id: '2', name: 'High' },
-  { id: '3', name: 'Medium' },
-  { id: '4', name: 'Low' },
-  { id: '5', name: 'Very Low' },
-];
-
-const severityOptions: DropdownOption[] = [
-  { id: '1', name: 'Critical' },
-  { id: '2', name: 'Major' },
-  { id: '3', name: 'Moderate' },
-  { id: '4', name: 'Minor' },
-  { id: '5', name: 'Cosmetic' },
-];
-
-const sourceOptions: DropdownOption[] = [
-  { id: 'mobile', name: 'Mobile App' }, // Only mobile option for mobile app
-];
-
-
-// File size limit: 10MB (adjust based on your server configuration)
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
@@ -191,6 +171,26 @@ const AddRequestScreen = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
 
+  const priorityOptions: DropdownOption[] = [
+    { id: '1', name: t('priorities.critical') },
+    { id: '2', name: t('priorities.high') },
+    { id: '3', name: t('priorities.medium') },
+    { id: '4', name: t('priorities.low') },
+    { id: '5', name: t('priorities.veryLow') },
+  ];
+
+  const severityOptions: DropdownOption[] = [
+    { id: '1', name: t('severities.critical') },
+    { id: '2', name: t('severities.major') },
+    { id: '3', name: t('severities.moderate') },
+    { id: '4', name: t('severities.minor') },
+    { id: '5', name: t('severities.cosmetic') },
+  ];
+
+  const sourceOptions: DropdownOption[] = [
+    { id: 'mobile', name: t('incidents.sources.mobile') },
+  ];
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [comment, setComment] = useState('');
@@ -198,7 +198,7 @@ const AddRequestScreen = () => {
   const [reporterEmail, setReporterEmail] = useState('');
   const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
-  const [selectedSource] = useState<DropdownOption>({ id: 'mobile', name: 'Mobile App' }); // Fixed to mobile, non-editable
+  const [selectedSource] = useState<DropdownOption>(sourceOptions[0]); // Fixed to mobile, non-editable
   const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
@@ -339,7 +339,7 @@ const AddRequestScreen = () => {
       if (userRes.success && userRes.data) {
         setUsers(userRes.data.map((u: any) => ({
           id: u.id,
-          name: `${u.first_name} ${u.last_name}`.trim() || u.email
+          name: `${u.first_name} ${u.last_name}`.trim() || u.email || t('common.unknownUser')
         })));
       }
       if (deptRes.success && deptRes.data) {
@@ -425,26 +425,26 @@ const AddRequestScreen = () => {
   };
 
   const fieldLabels: Record<string, string> = {
-    description: 'Description',
-    comment: 'Comment',
-    classification_id: 'Classification',
-    priority: 'Priority',
-    severity: 'Severity',
-    source: 'Source',
-    assignee_id: 'Assignee',
-    department_id: 'Department',
-    location_id: 'Location',
-    geolocation: 'Geolocation',
-    reporter_name: 'Reporter Name',
-    reporter_email: 'Reporter Email',
-    attachments: 'Attachments',
+    description: t('addRequest.description'),
+    comment: t('incidents.comment'),
+    classification_id: t('incidents.classification'),
+    priority: t('incidents.priority'),
+    severity: t('incidents.severity'),
+    source: t('incidents.source'),
+    assignee_id: t('incidents.assignee'),
+    department_id: t('incidents.department'),
+    location_id: t('incidents.location'),
+    geolocation: t('details.geolocation'),
+    reporter_name: t('addRequest.reporterName'),
+    reporter_email: t('addRequest.reporterEmail'),
+    attachments: t('incidents.attachments'),
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('addRequest.titlePlaceholder');
     }
 
     if (!matchedWorkflow) {
@@ -465,7 +465,7 @@ const AddRequestScreen = () => {
     }
 
     if (!selectedPriority) {
-      newErrors.priority = 'Priority is required';
+      newErrors.priority = t('addRequest.selectPriority');
     }
 
     for (const field of requiredFields) {
@@ -486,7 +486,7 @@ const AddRequestScreen = () => {
       // Check attachments separately
       if (field === 'attachments') {
         if (attachments.length === 0) {
-          newErrors.attachments = 'At least one attachment is required';
+          newErrors.attachments = t('addRequest.requiredFields');
         }
         continue;
       }
@@ -570,9 +570,9 @@ const AddRequestScreen = () => {
       // If location is required but not available at all
       if (!locationData?.latitude) {
         Alert.alert(
-          'Location Required',
-          'Please wait for your location to be detected before taking a photo, or click "Get Current Location" button.',
-          [{ text: 'OK' }]
+          t('addIncident.addressUnavailable'),
+          t('addIncident.waitingForLocation'),
+          [{ text: t('common.ok') }]
         );
         return;
       }
@@ -581,9 +581,9 @@ const AddRequestScreen = () => {
       if (locationData?.latitude && !locationData?.address && !locationData?.city) {
         // Show loading alert
         Alert.alert(
-          'Getting Location Details',
-          'Please wait while we get your address...',
-          [{ text: 'OK' }]
+          t('addIncident.gettingLocationDetails'),
+          t('addIncident.waitingForAddress'),
+          [{ text: t('common.ok') }]
         );
 
         // Wait up to 3 seconds for address
@@ -592,11 +592,11 @@ const AddRequestScreen = () => {
         // Check again after waiting (need to add ref to add-request.tsx)
         if (locationData?.latitude && !locationData?.address && !locationData?.city) {
           Alert.alert(
-            'Location Address Unavailable',
-            'We have your GPS coordinates but couldn\'t get the street address. Continue with coordinates only?',
+            t('addIncident.addressUnavailable'),
+            t('addIncident.addressUnavailableDesc'),
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Continue', onPress: () => handleTakePhoto() } // Retry
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('common.next'), onPress: () => handleTakePhoto() } // Retry
             ]
           );
           return;
@@ -846,7 +846,7 @@ const AddRequestScreen = () => {
     setAttachments(prev => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -935,7 +935,7 @@ const AddRequestScreen = () => {
         // Clean up temp files after upload
         attachments.forEach(file => {
           if (file?.uri) {
-            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
           }
         });
       }
@@ -956,7 +956,7 @@ const AddRequestScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Request</Text>
+        <Text style={styles.headerTitle}>{t('addRequest.title')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -965,7 +965,7 @@ const AddRequestScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#9B59B6" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
@@ -982,7 +982,7 @@ const AddRequestScreen = () => {
                 </View>
               ) : (
                 <Text style={styles.workflowHint}>
-                  Select classification, location, or source to auto-match a workflow
+                  {t('addRequest.workflowHint')}
                 </Text>
               )}
               {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
@@ -993,12 +993,12 @@ const AddRequestScreen = () => {
             </Text>
             <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
               <Text style={[styles.autoGeneratedText, !title && styles.placeholderText]}>
-                {title || 'Auto-generated from classification, location, and area'}
+                {title || t('incidents.titlePlaceholder')}
               </Text>
               <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
             </View>
             <Text style={styles.helperText}>
-              Title is automatically generated from selected classification, location, and area
+              {t('incidents.autoTitle')}
             </Text>
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
@@ -1006,7 +1006,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('classification_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Classification <Text style={styles.required}>*</Text>
+                  {t('incidents.classification')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TreeSelect
                   label={t('addRequest.selectClassification')}
@@ -1026,7 +1026,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('location_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Location <Text style={styles.required}>*</Text>
+                  {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
                   label={t('addRequest.selectLocation')}
@@ -1041,13 +1041,13 @@ const AddRequestScreen = () => {
 
             {/* Source field - always mobile for mobile app, non-editable */}
             <Text style={styles.sectionTitle}>
-              Source {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+              {t('incidents.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
             </Text>
             <Dropdown
               label={t('addRequest.selectSource')}
               value={selectedSource?.name || ''}
               options={sourceOptions}
-              onSelect={() => {}} // No-op, field is not editable
+              onSelect={() => { }} // No-op, field is not editable
               required={isFieldRequired('source')}
               error={errors.source}
               disabled={true}
@@ -1071,10 +1071,10 @@ const AddRequestScreen = () => {
               return (
                 <View key={category.id}>
                   <Text style={styles.sectionTitle}>
-                    {category.name} <Text style={styles.required}>*</Text>
+                    {i18n.language === 'en' ? category.name : category.name_ar} <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={`Select ${category.name.toLowerCase()}`}
+                    label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category.name_ar}`}
                     value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
                     options={options}
                     onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
@@ -1091,7 +1091,7 @@ const AddRequestScreen = () => {
                 {isFieldRequired('priority') && (
                   <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Priority <Text style={styles.required}>*</Text>
+                      {t('incidents.priority')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
                       label={t('addRequest.selectPriority')}
@@ -1105,7 +1105,7 @@ const AddRequestScreen = () => {
                 {isFieldRequired('severity') && (
                   <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Severity <Text style={styles.required}>*</Text>
+                      {t('incidents.severity')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
                       label={t('addRequest.selectSeverity')}
@@ -1123,7 +1123,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('assignee_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Assignee <Text style={styles.required}>*</Text>
+                  {t('incidents.assignee')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
                   label={t('addRequest.selectAssignee')}
@@ -1140,7 +1140,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('department_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Department <Text style={styles.required}>*</Text>
+                  {t('incidents.department')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
                   label={t('addRequest.selectDepartment')}
@@ -1157,7 +1157,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('description') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Description <Text style={styles.required}>*</Text>
+                  {t('incidents.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError]}
@@ -1179,11 +1179,11 @@ const AddRequestScreen = () => {
             {isFieldRequired('comment') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Comment <Text style={styles.required}>*</Text>
+                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError]}
-                  placeholder="Add a comment..."
+                  placeholder={t('addRequest.commentPlaceholder')}
                   multiline
                   value={comment}
                   onChangeText={(text) => {
@@ -1201,7 +1201,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('reporter_name') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Name <Text style={styles.required}>*</Text>
+                  {t('addRequest.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError]}
@@ -1221,7 +1221,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('reporter_email') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Email <Text style={styles.required}>*</Text>
+                  {t('addRequest.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError]}
@@ -1243,7 +1243,7 @@ const AddRequestScreen = () => {
             {isFieldRequired('attachments') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Attachments <Text style={styles.required}>*</Text>
+                  {t('incidents.attachments')} <Text style={styles.required}>*</Text>
                 </Text>
                 <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError]}>
                   {attachments.length > 0 && (
@@ -1269,7 +1269,7 @@ const AddRequestScreen = () => {
                   <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
                     <Ionicons name="cloud-upload-outline" size={24} color="#9B59B6" />
                     <Text style={styles.attachmentButtonText}>
-                      {attachments.length > 0 ? 'Add more files' : 'Tap to upload files'}
+                      {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
                     </Text>
                   </TouchableOpacity>
                 </View>

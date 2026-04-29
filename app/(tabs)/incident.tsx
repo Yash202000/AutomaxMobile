@@ -1,5 +1,6 @@
 import { getIncidents, getIncidentStats } from '@/src/api/incidents';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
@@ -49,20 +50,20 @@ const severityConfig: Record<number, { key: string; color: string }> = {
   5: { key: 'cosmetic', color: '#2ECC71' },
 };
 
-const sources = [
-  { value: 'web', label: 'Web Portal' },
-  { value: 'mobile', label: 'Mobile App' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'walk_in', label: 'Walk-in' },
-  { value: 'api', label: 'API Integration' },
-  { value: 'social_media', label: 'Social Media' },
-  { value: '940_system', label: '940 System' },
-  { value: '940_manual', label: '940 Manual' },
-  { value: 'field', label: 'Field' },
-  { value: 'manual', label: 'Manual Entry' },
-  { value: 'viusional', label: 'Viusional' },
-  { value: 'other', label: 'Other' },
+const getSources = (t: any) => [
+  { value: 'web', label: t('sources.web') },
+  { value: 'mobile', label: t('sources.mobile') },
+  { value: 'email', label: t('sources.email') },
+  { value: 'phone', label: t('sources.phone') },
+  { value: 'walk_in', label: t('sources.walk_in') },
+  { value: 'api', label: t('sources.api') },
+  { value: 'social_media', label: t('sources.social_media') },
+  { value: '940_system', label: t('sources.940_system') },
+  { value: '940_manual', label: t('sources.940_manual') },
+  { value: 'field', label: t('sources.field') },
+  { value: 'manual', label: t('sources.manual') },
+  { value: 'viusional', label: t('sources.viusional') },
+  { value: 'other', label: t('sources.other') },
 ];
 
 interface Incident {
@@ -77,6 +78,7 @@ interface Incident {
     category: { code: string; name: string };
     code: string;
     name: string;
+    name_ar: string;
     color: string;
   }>;
 }
@@ -102,7 +104,7 @@ const IncidentCard = ({ incident, t }: { incident: Incident; t: any }) => {
 
   if (priorityLookup) {
     config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-    priorityText = priorityLookup.name;
+    priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
   }
 
   return (
@@ -123,7 +125,7 @@ const IncidentCard = ({ incident, t }: { incident: Incident; t: any }) => {
           </View>
         </View>
         <Text style={styles.dateTime}>{new Date(incident.created_at).toLocaleString()}</Text>
-        <Text style={styles.statusText}>{t('incidents.status')}: {incident.current_state?.name || 'N/A'}</Text>
+        <Text style={styles.statusText}>{t('incidents.status')}: {incident.current_state?.name || t('common.na')}</Text>
         <View style={styles.detailRow}>
           <Ionicons name="alert-circle" size={16} color={COLORS.incident} style={styles.detailIcon} />
           <Text style={styles.detailText} numberOfLines={1}>{incident.title}</Text>
@@ -216,8 +218,10 @@ const IncidentsScreen = () => {
       } else {
         setError(response.error || t('errors.fetchFailed'));
       }
-    } catch (err) {
-      console.log(err)
+    } catch (err: any) {
+      if (!err?.isLogoutCancel) {
+        console.log(err);
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -283,11 +287,11 @@ const IncidentsScreen = () => {
       <View style={styles.emptyContainer}>
         <Ionicons name={isShortSearch ? 'search-outline' : 'document-text-outline'} size={64} color={COLORS.text.muted} />
         <Text style={styles.emptyTitle}>
-          {isShortSearch ? t('search.minCharsTitle', 'Keep Typing...') : t('incidents.noIncidents')}
+          {isShortSearch ? t('search.minCharsTitle') : t('incidents.noIncidents')}
         </Text>
         <Text style={styles.emptySubtitle}>
           {isShortSearch
-            ? t('search.minCharsDesc', 'Enter at least 3 characters to search')
+            ? t('search.minCharsDesc')
             : hasManualFilters ? t('incidents.adjustFilters') : t('incidents.noIncidentsDesc')}
         </Text>
       </View>
@@ -311,14 +315,14 @@ const IncidentsScreen = () => {
   const FilterBadges = () => {
     if (!hasManualFilters) return null;
     const badges = [
-      state_id && { key: 'status', label: t('filter.status'), value: state_id.split(',').length > 1 ? `${state_id.split(',').length} selected` : (state_name || state_id) },
-      priority && { key: 'priority', label: t('filter.priority'), value: priority.split(',').length > 1 ? `${priority.split(',').length} selected` : t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
-      severity && { key: 'severity', label: t('filter.severity'), value: severity.split(',').length > 1 ? `${severity.split(',').length} selected` : t(`severities.${severityConfig[parseInt(severity)]?.key}`) },
-      assignee_id && { key: 'assignee', label: t('filter.assignee'), value: assignee_id.split(',').length > 1 ? `${assignee_id.split(',').length} selected` : (assignee_name || assignee_id) },
-      department_id && { key: 'dept', label: t('filter.department'), value: department_id.split(',').length > 1 ? `${department_id.split(',').length} selected` : (department_name || department_id) },
-      classification_ids && { key: 'class', label: t('filter.classification'), value: classification_ids.split(',').length > 1 ? `${classification_ids.split(',').length} selected` : (classification_names?.split(',')[0] || classification_ids) },
-      location_ids && { key: 'loc', label: t('filter.location'), value: location_ids.split(',').length > 1 ? `${location_ids.split(',').length} selected` : (location_names?.split(',')[0] || location_ids) },
-      source && { key: 'source', label: t('filter.source', 'Source'), value: source.split(',').length > 1 ? `${source.split(',').length} selected` : (sources.find(s => s.value === source)?.label || source) },
+      state_id && { key: 'status', label: t('filter.status'), value: state_id.split(',').length > 1 ? `${state_id.split(',').length} ${t('filter.selected')}` : (state_name || state_id) },
+      priority && { key: 'priority', label: t('filter.priority'), value: priority.split(',').length > 1 ? `${priority.split(',').length} ${t('filter.selected')}` : t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
+      severity && { key: 'severity', label: t('filter.severity'), value: severity.split(',').length > 1 ? `${severity.split(',').length} ${t('filter.selected')}` : t(`severities.${severityConfig[parseInt(severity)]?.key}`) },
+      assignee_id && { key: 'assignee', label: t('filter.assignee'), value: assignee_id.split(',').length > 1 ? `${assignee_id.split(',').length} ${t('filter.selected')}` : (assignee_name || assignee_id) },
+      department_id && { key: 'dept', label: t('filter.department'), value: department_id.split(',').length > 1 ? `${department_id.split(',').length} ${t('filter.selected')}` : (department_name || department_id) },
+      classification_ids && { key: 'class', label: t('filter.classification'), value: classification_ids.split(',').length > 1 ? `${classification_ids.split(',').length} ${t('filter.selected')}` : (classification_names?.split(',')[0] || classification_ids) },
+      location_ids && { key: 'loc', label: t('filter.location'), value: location_ids.split(',').length > 1 ? `${location_ids.split(',').length} ${t('filter.selected')}` : (location_names?.split(',')[0] || location_ids) },
+      source && { key: 'source', label: t('filter.source'), value: source.split(',').length > 1 ? `${source.split(',').length} ${t('filter.selected')}` : (getSources(t).find(s => s.value === source)?.label || source) },
     ].filter(Boolean) as { key: string; label: string; value: string }[];
 
     return (
@@ -354,7 +358,7 @@ const IncidentsScreen = () => {
               <TextInput
                 ref={searchInputRef}
                 style={styles.searchInput}
-                placeholder={t('common.search', 'Search...')}
+                placeholder={t('search.placeholder')}
                 placeholderTextColor="#999"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -369,7 +373,7 @@ const IncidentsScreen = () => {
               )}
             </View>
             <TouchableOpacity style={styles.searchCancelButton} onPress={handleSearchToggle}>
-              <Text style={styles.searchCancelText}>{t('common.cancel', 'Cancel')}</Text>
+              <Text style={styles.searchCancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         ) : (

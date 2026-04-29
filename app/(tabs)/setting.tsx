@@ -141,23 +141,19 @@ const SettingsScreen = () => {
 
       // Always prompt for restart when changing language (RTL changes require restart)
       Alert.alert(
-        langCode === 'ar' ? 'نجاح' : 'Success',
-        langCode === 'ar'
-          ? 'تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات.'
-          : 'Language changed. The app will restart to apply changes.',
+        t('settings.langChangeTitle'),
+        t('settings.langChangeMessage'),
         [
           {
-            text: langCode === 'ar' ? 'موافق' : 'OK',
+            text: t('common.ok'),
             onPress: async () => {
               try {
                 await Updates.reloadAsync();
               } catch {
                 // If Updates.reloadAsync fails, just notify user to restart manually
                 Alert.alert(
-                  langCode === 'ar' ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
-                  langCode === 'ar'
-                    ? 'يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة.'
-                    : 'Please close and reopen the app to apply language changes.'
+                  t('settings.restartRequired'),
+                  t('settings.restartMessage')
                 );
               }
             }
@@ -275,9 +271,9 @@ const SettingsScreen = () => {
               </View>
               <View>
                 <Text style={styles.profileName}>
-                  {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : 'User'}
+                  {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : t('common.user', 'User')}
                 </Text>
-                <Text style={styles.profileEmail}>{user?.email || 'No email'}</Text>
+                <Text style={styles.profileEmail}>{user?.email || t('profile.noEmail')}</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />

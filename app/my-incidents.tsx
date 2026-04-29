@@ -5,8 +5,9 @@ import {
 import { getProfile } from "@/src/api/user";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { RelativePathString, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +19,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
 
 const priorityMap: Record<number, { key: string; color: string }> = {
   1: { key: "critical", color: "#E74C3C" },
@@ -89,7 +89,7 @@ const IncidentCard = ({
   return (
     <TouchableOpacity
       style={styles.incidentCard}
-      onPress={() => router.push(getDetailRoute())}
+      onPress={() => router.push(getDetailRoute() as RelativePathString)}
       activeOpacity={0.7}
     >
       <View style={[styles.incidentPriorityBar, { backgroundColor: priority.color }]} />
@@ -107,7 +107,7 @@ const IncidentCard = ({
           {new Date(incident.created_at).toLocaleString()}
         </Text>
         <Text style={styles.statusText}>
-          {t('incidents.status')}: {incident.current_state?.name || 'N/A'}
+          {t('incidents.status')}: {incident.current_state?.name || t('common.na')}
         </Text>
         <View style={styles.detailRow}>
           <Ionicons name="alert-circle" size={16} color="#10B981" style={styles.detailIcon} />
@@ -279,9 +279,9 @@ const MyIncidentsScreen = () => {
 
     // Get the ticket type name for description
     const ticketTypeName = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
-                           ticketType === "request" ? t('tabs.request').toLowerCase() :
-                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
-                           t('tabs.query').toLowerCase();
+      ticketType === "request" ? t('tabs.request').toLowerCase() :
+        ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
+          t('tabs.query').toLowerCase();
 
     return (
       <View style={styles.emptyContainer}>
@@ -308,9 +308,9 @@ const MyIncidentsScreen = () => {
 
   const renderHeader = () => {
     const ticketTypeLabel = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
-                           ticketType === "request" ? t('tabs.request').toLowerCase() :
-                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
-                           t('tabs.query').toLowerCase();
+      ticketType === "request" ? t('tabs.request').toLowerCase() :
+        ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
+          t('tabs.query').toLowerCase();
 
     const statusLabel = activeTab === "assigned" ? t('myIncidents.assigned') : t('myIncidents.created');
 
@@ -461,7 +461,7 @@ const MyIncidentsScreen = () => {
               style={styles.retryButton}
               onPress={() => fetchIncidents(1, false)}
             >
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : (

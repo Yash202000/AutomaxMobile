@@ -4,9 +4,9 @@ import {
   getQueryStats,
   getRequestStats,
 } from "@/src/api/incidents";
+import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
-import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface StateDetail {
   id: string;
@@ -56,6 +56,7 @@ const COLORS = {
 
 const DashboardScreen = () => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
   const {
@@ -115,8 +116,10 @@ const DashboardScreen = () => {
         ) {
           setError(t("errors.fetchStatsFailed"));
         }
-      } catch {
-        setError(t("errors.fetchStatsFailed"));
+      } catch (err: any) {
+        if (!err?.isLogoutCancel) {
+          setError(t("errors.fetchStatsFailed"));
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -449,7 +452,7 @@ const DashboardScreen = () => {
       {renderHeader()}
       <View style={styles.contentWrapper}>
         <ScrollView
-          style={styles.content}
+          style={[styles.content, { marginBottom: insets.bottom }]}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={

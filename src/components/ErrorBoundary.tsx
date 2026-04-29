@@ -1,8 +1,9 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
+import { Ionicons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Props {
   children: ReactNode;
@@ -41,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
     });
 
     // Log to crash logger
-    crashLogger.logCrash(error, true, errorInfo.componentStack).catch((logError) => {
+    crashLogger.logCrash(error, true, errorInfo.componentStack || "").catch((logError) => {
       console.error('[ErrorBoundary] Failed to log crash:', logError);
     });
   }
@@ -61,6 +62,18 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Basic check: if the error matches our logout cancellation, just show loading
+      const isLogoutError = this.state.error?.message?.includes('logging out') ||
+        (this.state.error as any)?.isLogoutCancel;
+
+      if (isLogoutError) {
+        return (
+          <View style={styles.container}>
+            <ActivityIndicator size="large" color="#2EC4B6" />
+          </View>
+        );
+      }
+
       return (
         <View style={styles.container}>
           <View style={styles.content}>
@@ -68,24 +81,24 @@ class ErrorBoundary extends Component<Props, State> {
               <Ionicons name="alert-circle" size={64} color="#E74C3C" />
             </View>
 
-            <Text style={styles.title}>Oops! Something went wrong</Text>
+            <Text style={styles.title}>{i18n.t('errors.oopsTitle')}</Text>
             <Text style={styles.subtitle}>
-              The app encountered an unexpected error. This has been logged for our team to review.
+              {i18n.t('errors.unexpectedError')}
             </Text>
 
             {__DEV__ && this.state.error && (
               <ScrollView style={styles.errorDetailsContainer}>
-                <Text style={styles.errorTitle}>Error Details (Dev Mode):</Text>
+                <Text style={styles.errorTitle}>{i18n.t('errors.devModeDetails')}</Text>
                 <Text style={styles.errorText}>{this.state.error.toString()}</Text>
                 {this.state.error.stack && (
                   <>
-                    <Text style={styles.errorTitle}>Stack Trace:</Text>
+                    <Text style={styles.errorTitle}>{i18n.t('errors.stackTrace')}</Text>
                     <Text style={styles.errorText}>{this.state.error.stack}</Text>
                   </>
                 )}
                 {this.state.errorInfo && this.state.errorInfo.componentStack && (
                   <>
-                    <Text style={styles.errorTitle}>Component Stack:</Text>
+                    <Text style={styles.errorTitle}>{i18n.t('errors.componentStack')}</Text>
                     <Text style={styles.errorText}>{this.state.errorInfo.componentStack}</Text>
                   </>
                 )}
@@ -94,7 +107,7 @@ class ErrorBoundary extends Component<Props, State> {
 
             <TouchableOpacity style={styles.reloadButton} onPress={this.handleReload}>
               <Ionicons name="refresh" size={20} color="#FFFFFF" />
-              <Text style={styles.reloadButtonText}>Reload App</Text>
+              <Text style={styles.reloadButtonText}>{i18n.t('errors.reloadApp')}</Text>
             </TouchableOpacity>
           </View>
         </View>
