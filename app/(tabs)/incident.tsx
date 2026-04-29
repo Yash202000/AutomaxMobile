@@ -9,45 +9,45 @@ import { ActivityIndicator, FlatList, ImageBackground, Platform, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
-  primary: '#1A237E',
-  accent: '#2EC4B6',
-  background: '#F5F7FA',
-  white: '#FFFFFF',
+  primary: "#1A237E",
+  accent: "#2EC4B6",
+  background: "#F5F7FA",
+  white: "#FFFFFF",
   text: {
-    primary: '#1A1A2E',
-    secondary: '#64748B',
-    muted: '#94A3B8',
+    primary: "#1A1A2E",
+    secondary: "#64748B",
+    muted: "#94A3B8",
   },
-  incident: '#10B981',
+  incident: "#10B981",
   priority: {
-    critical: '#DC2626',
-    high: '#EA580C',
-    medium: '#F59E0B',
-    low: '#3B82F6',
-    veryLow: '#22C55E',
+    critical: "#DC2626",
+    high: "#EA580C",
+    medium: "#F59E0B",
+    low: "#3B82F6",
+    veryLow: "#22C55E",
   },
 };
 
 const priorityConfig: Record<number, { key: string; color: string }> = {
-  1: { key: 'critical', color: COLORS.priority.critical },
-  2: { key: 'high', color: COLORS.priority.high },
-  3: { key: 'medium', color: COLORS.priority.medium },
-  4: { key: 'low', color: COLORS.priority.low },
-  5: { key: 'veryLow', color: COLORS.priority.veryLow },
+  1: { key: "critical", color: COLORS.priority.critical },
+  2: { key: "high", color: COLORS.priority.high },
+  3: { key: "medium", color: COLORS.priority.medium },
+  4: { key: "low", color: COLORS.priority.low },
+  5: { key: "veryLow", color: COLORS.priority.veryLow },
 };
 
 const slaStatusConfig: Record<string, { key: string; color: string }> = {
-  'on_track': { key: 'onTrack', color: '#22C55E' },
-  'at_risk': { key: 'atRisk', color: '#F59E0B' },
-  'breached': { key: 'breached', color: '#DC2626' },
+  on_track: { key: "onTrack", color: "#22C55E" },
+  at_risk: { key: "atRisk", color: "#F59E0B" },
+  breached: { key: "breached", color: "#DC2626" },
 };
 
 const severityConfig: Record<number, { key: string; color: string }> = {
-  1: { key: 'critical', color: '#E74C3C' },
-  2: { key: 'major', color: '#E67E22' },
-  3: { key: 'moderate', color: '#F1C40F' },
-  4: { key: 'minor', color: '#3498DB' },
-  5: { key: 'cosmetic', color: '#2ECC71' },
+  1: { key: "critical", color: "#E74C3C" },
+  2: { key: "major", color: "#E67E22" },
+  3: { key: "moderate", color: "#F1C40F" },
+  4: { key: "minor", color: "#3498DB" },
+  5: { key: "cosmetic", color: "#2ECC71" },
 };
 
 const getSources = (t: any) => [
@@ -81,6 +81,7 @@ interface Incident {
     name_ar: string;
     color: string;
   }>;
+  transition_history?: Array<any>;
 }
 
 interface PaginationInfo {
@@ -90,23 +91,37 @@ interface PaginationInfo {
   total_pages: number;
 }
 
-const IncidentCard = ({ incident, t }: { incident: Incident; t: any }) => {
+const IncidentCard = ({ incident }: { incident: Incident }) => {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Extract priority from lookup_values if available
   const priorityLookup = incident.lookup_values?.find(
-    lv => lv.category.code === 'PRIORITY'
+    (lv) => lv.category.code === "PRIORITY",
   );
 
   // Use lookup value color and name if available, otherwise fallback to old config
-  let config = priorityConfig[incident.priority] || { key: 'unknown', color: '#94A3B8' };
+  let config = priorityConfig[incident.priority] || {
+    key: "unknown",
+    color: "#94A3B8",
+  };
   let priorityText = t(`priorities.${config.key}`, config.key);
 
   if (priorityLookup) {
     config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
     priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
   }
+  const latestTransition = incident.transition_history?.reduce(
+    (latest, current): any => {
+      if (!latest) return current;
 
+      const currentTime = new Date(current.transitioned_at).getTime();
+      const latestTime = new Date(latest.transitioned_at).getTime();
+
+      return currentTime > latestTime ? current : latest;
+    },
+    undefined,
+  );
   return (
     <TouchableOpacity
       style={styles.card}
@@ -120,19 +135,44 @@ const IncidentCard = ({ incident, t }: { incident: Incident; t: any }) => {
             <View style={[styles.dot, { backgroundColor: config.color }]} />
             <Text style={styles.idText}>{incident.incident_number}</Text>
           </View>
-          <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+          <View
+            style={[styles.priorityBadge, { backgroundColor: config.color }]}
+          >
             <Text style={styles.priorityText}>{priorityText}</Text>
           </View>
         </View>
         <Text style={styles.dateTime}>{new Date(incident.created_at).toLocaleString()}</Text>
+        {latestTransition && (
+          <Text style={styles.rejectText}>
+            {latestTransition?.transition?.name} {t("details.by")}{" "}
+            {latestTransition?.transition?.performed_by?.first_name +
+              " " +
+              latestTransition?.transition?.performed_by?.last_name ||
+              latestTransition?.performed_by?.username}
+          </Text>
+        )}
         <Text style={styles.statusText}>{t('incidents.status')}: {incident.current_state?.name || t('common.na')}</Text>
         <View style={styles.detailRow}>
-          <Ionicons name="alert-circle" size={16} color={COLORS.incident} style={styles.detailIcon} />
-          <Text style={styles.detailText} numberOfLines={1}>{incident.title}</Text>
+          <Ionicons
+            name="alert-circle"
+            size={16}
+            color={COLORS.incident}
+            style={styles.detailIcon}
+          />
+          <Text style={styles.detailText} numberOfLines={1}>
+            {incident.title}
+          </Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="location" size={16} color={COLORS.priority.low} style={styles.detailIcon} />
-          <Text style={styles.detailText}>{incident.location?.name || t('common.noData')}</Text>
+          <Ionicons
+            name="location"
+            size={16}
+            color={COLORS.priority.low}
+            style={styles.detailIcon}
+          />
+          <Text style={styles.detailText}>
+            {incident.location?.name || t("common.noData")}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -144,27 +184,52 @@ const IncidentsScreen = () => {
   const router = useRouter();
   const { canCreateIncidents } = usePermissions();
   let {
-    state_id, state_name, priority, severity, assignee_id, assignee_name,
-    department_id, department_name, classification_ids, classification_names,
-    location_ids, location_names, source, start_date, end_date
+    state_id,
+    state_name,
+    priority,
+    severity,
+    assignee_id,
+    assignee_name,
+    department_id,
+    department_name,
+    classification_ids,
+    classification_names,
+    location_ids,
+    location_names,
+    source,
+    start_date,
+    end_date,
   } = useLocalSearchParams<{
-    state_id?: string; state_name?: string; priority?: string; severity?: string;
-    assignee_id?: string; assignee_name?: string; department_id?: string;
-    department_name?: string; classification_ids?: string; classification_names?: string;
-    location_ids?: string; location_names?: string; source?: string;
-    start_date?: string; end_date?: string;
+    state_id?: string;
+    state_name?: string;
+    priority?: string;
+    severity?: string;
+    assignee_id?: string;
+    assignee_name?: string;
+    department_id?: string;
+    department_name?: string;
+    classification_ids?: string;
+    classification_names?: string;
+    location_ids?: string;
+    location_names?: string;
+    source?: string;
+    start_date?: string;
+    end_date?: string;
   }>();
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [pagination, setPagination] = useState<PaginationInfo>({
-    page: 1, limit: 20, total_items: 0, total_pages: 0,
+    page: 1,
+    limit: 20,
+    total_items: 0,
+    total_pages: 0,
   });
   const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
 
@@ -174,14 +239,15 @@ const IncidentsScreen = () => {
 
   const buildParams = (page: number) => {
     const params: Record<string, any> = { page, limit: 20 };
-    if (activeStateId) params.current_state_id = activeStateId.split(',');
-    if (priority) params.priority = priority.split(',').map(p => parseInt(p));
-    if (severity) params.severity = severity.split(',').map(s => parseInt(s));
-    if (assignee_id) params.assignee_id = assignee_id.split(',');
-    if (department_id) params.department_id = department_id.split(',');
-    if (classification_ids) params.classification_id = classification_ids.split(',');
-    if (location_ids) params.location_id = location_ids.split(',');
-    if (source) params.source = source.split(',');
+    if (activeStateId) params.current_state_id = activeStateId.split(",");
+    if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
+    if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
+    if (assignee_id) params.assignee_id = assignee_id.split(",");
+    if (department_id) params.department_id = department_id.split(",");
+    if (classification_ids)
+      params.classification_id = classification_ids.split(",");
+    if (location_ids) params.location_id = location_ids.split(",");
+    if (source) params.source = source.split(",");
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
@@ -201,22 +267,26 @@ const IncidentsScreen = () => {
     }
 
     if (page === 1) setLoading(true);
-    setError('');
+    setError("");
     try {
       let params = buildParams(page);
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
         const statsResponse = await getIncidentStats();
         if (statsResponse.success) {
-          params.current_state_id = statsResponse.data.by_state_details.map((s: any) => s.id);
-          state_id = params.current_state_id.join(',');
+          params.current_state_id = statsResponse.data.by_state_details.map(
+            (s: any) => s.id,
+          );
+          state_id = params.current_state_id.join(",");
         }
       }
       const response = await getIncidents(params);
       if (response.success) {
-        setIncidents(append ? prev => [...prev, ...response.data] : response.data);
+        setIncidents(
+          append ? (prev) => [...prev, ...response.data] : response.data,
+        );
         setPagination(response.pagination);
       } else {
-        setError(response.error || t('errors.fetchFailed'));
+        setError(response.error || t("errors.fetchFailed"));
       }
     } catch (err: any) {
       if (!err?.isLogoutCancel) {
@@ -228,7 +298,6 @@ const IncidentsScreen = () => {
       setRefreshing(false);
       isLoadingMore.current = false;
     }
-
   };
 
   const handleLoadMore = () => {
@@ -247,7 +316,19 @@ const IncidentsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchIncidents(1, false);
-    }, [activeStateId, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date, searchQuery])
+    }, [
+      activeStateId,
+      priority,
+      severity,
+      assignee_id,
+      department_id,
+      classification_ids,
+      location_ids,
+      source,
+      start_date,
+      end_date,
+      searchQuery,
+    ]),
   );
 
   const handleSearchToggle = () => {
@@ -255,7 +336,7 @@ const IncidentsScreen = () => {
     if (!showSearch) {
       setTimeout(() => searchInputRef.current?.focus(), 100);
     } else {
-      setSearchQuery('');
+      setSearchQuery("");
     }
   };
 
@@ -263,18 +344,41 @@ const IncidentsScreen = () => {
     fetchIncidents(1, false);
   };
 
-  const clearFilter = () => router.replace('/(tabs)/incident');
+  const clearFilter = () => router.replace("/(tabs)/incident");
 
-  const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_ids || location_ids || source || start_date || end_date;
-  const headerTitle = activeStateName || t('incidents.title');
-  const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date].filter(Boolean).length;
+  const hasManualFilters =
+    state_id ||
+    priority ||
+    severity ||
+    assignee_id ||
+    department_id ||
+    classification_ids ||
+    location_ids ||
+    source ||
+    start_date ||
+    end_date;
+  const headerTitle = activeStateName || t("incidents.title");
+  const activeFilterCount = [
+    state_id,
+    priority,
+    severity,
+    assignee_id,
+    department_id,
+    classification_ids,
+    location_ids,
+    source,
+    start_date,
+    end_date,
+  ].filter(Boolean).length;
 
   const renderFooter = () => {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={COLORS.primary} />
-        <Text style={styles.footerLoaderText}>{t('incidents.loadingMore')}</Text>
+        <Text style={styles.footerLoaderText}>
+          {t("incidents.loadingMore")}
+        </Text>
       </View>
     );
   };
@@ -285,7 +389,11 @@ const IncidentsScreen = () => {
     const isShortSearch = trimmedSearch.length > 0 && trimmedSearch.length < 3;
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name={isShortSearch ? 'search-outline' : 'document-text-outline'} size={64} color={COLORS.text.muted} />
+        <Ionicons
+          name={isShortSearch ? "search-outline" : "document-text-outline"}
+          size={64}
+          color={COLORS.text.muted}
+        />
         <Text style={styles.emptyTitle}>
           {isShortSearch ? t('search.minCharsTitle') : t('incidents.noIncidents')}
         </Text>
@@ -302,12 +410,17 @@ const IncidentsScreen = () => {
     <View style={styles.listHeader}>
       <Text style={styles.foundText}>
         {hasManualFilters
-          ? t('incidents.incidentsFound', { count: pagination.total_items }) + ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`
-          : `${pagination.total_items} ${activeStateName || ''} ${pagination.total_items !== 1 ? t('tabs.incident').toLowerCase() : t('tabs.incident').toLowerCase().slice(0, -1)}`
-        }
+          ? t("incidents.incidentsFound", { count: pagination.total_items }) +
+          ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
+          : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
       </Text>
       {pagination.total_pages > 1 && (
-        <Text style={styles.paginationText}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+        <Text style={styles.paginationText}>
+          {t("incidents.page", {
+            current: pagination.page,
+            total: pagination.total_pages,
+          })}
+        </Text>
       )}
     </View>
   );
@@ -341,8 +454,14 @@ const IncidentsScreen = () => {
           keyExtractor={(item) => item.key}
         />
         <TouchableOpacity onPress={clearFilter} style={styles.clearAllButton}>
-          <Ionicons name="close-circle" size={18} color={COLORS.priority.critical} />
-          <Text style={styles.clearAllText}>{t('filter.clearAll')} ({activeFilterCount})</Text>
+          <Ionicons
+            name="close-circle"
+            size={18}
+            color={COLORS.priority.critical}
+          />
+          <Text style={styles.clearAllText}>
+            {t("filter.clearAll")} ({activeFilterCount})
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -350,11 +469,19 @@ const IncidentsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground
+        source={require("@/assets/images/background.png")}
+        style={styles.header}
+      >
         {showSearch ? (
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <Ionicons
+                name="search"
+                size={20}
+                color="#666"
+                style={styles.searchIcon}
+              />
               <TextInput
                 ref={searchInputRef}
                 style={styles.searchInput}
@@ -367,7 +494,7 @@ const IncidentsScreen = () => {
                 autoCapitalize="none"
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
                   <Ionicons name="close-circle" size={20} color="#999" />
                 </TouchableOpacity>
               )}
@@ -379,24 +506,72 @@ const IncidentsScreen = () => {
         ) : (
           <>
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">{headerTitle}</Text>
+              <Text
+                style={styles.headerTitle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {headerTitle}
+              </Text>
             </View>
             <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
-                pathname: '/map-view',
-                params: { type: 'incident', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, source, start_date, end_date, search: searchQuery }
-              })}>
+              <TouchableOpacity
+                style={styles.headerIcon}
+                onPress={() =>
+                  router.push({
+                    pathname: "/map-view",
+                    params: {
+                      type: "incident",
+                      state_id,
+                      priority,
+                      severity,
+                      assignee_id,
+                      department_id,
+                      classification_ids,
+                      location_ids,
+                      source,
+                      start_date,
+                      end_date,
+                      search: searchQuery,
+                    },
+                  })
+                }
+              >
                 <Ionicons name="map-outline" size={22} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerIcon} onPress={handleSearchToggle}>
+              <TouchableOpacity
+                style={styles.headerIcon}
+                onPress={handleSearchToggle}
+              >
                 <Ionicons name="search-outline" size={24} color="white" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
-                onPress={() => router.push({
-                  pathname: '/filter',
-                  params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_ids, classification_names, location_ids, location_names, source, start_date, end_date }
-                })}
+                style={[
+                  styles.headerIcon,
+                  hasManualFilters && styles.filterIconActive,
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/filter",
+                    params: {
+                      state_id,
+                      state_name,
+                      priority,
+                      severity,
+                      assignee_id,
+                      assignee_name,
+                      department_id,
+                      department_name,
+                      classification_ids,
+                      classification_names,
+                      location_ids,
+                      location_names,
+                      source,
+                      start_date,
+                      end_date,
+                    },
+                  })
+                }
               >
                 <Ionicons name="filter" size={22} color="white" />
                 {hasManualFilters && <View style={styles.filterDot} />}
@@ -411,22 +586,31 @@ const IncidentsScreen = () => {
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>{t('incidents.loadingIncidents')}</Text>
+          <Text style={styles.loadingText}>
+            {t("incidents.loadingIncidents")}
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
-          <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={64}
+            color={COLORS.text.muted}
+          />
+          <Text style={styles.errorTitle}>{t("errors.oops")}</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchIncidents(1, false)}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchIncidents(1, false)}
+          >
             <Ionicons name="refresh" size={20} color={COLORS.white} />
-            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={incidents}
-          renderItem={({ item }) => <IncidentCard incident={item} t={t} />}
+          renderItem={({ item }) => <IncidentCard incident={item} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={renderHeader}
@@ -441,7 +625,11 @@ const IncidentsScreen = () => {
       )}
 
       {canCreateIncidents() && (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add-incident')} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push("/add-incident")}
+          activeOpacity={0.8}
+        >
           <Ionicons name="add" size={28} color="white" />
         </TouchableOpacity>
       )}
@@ -452,94 +640,212 @@ const IncidentsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.primary },
   centered: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: COLORS.background, paddingHorizontal: 40,
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 40,
   },
   loadingText: { marginTop: 12, color: COLORS.text.secondary, fontSize: 14 },
-  errorTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text.primary, marginTop: 16 },
-  errorText: { fontSize: 14, color: COLORS.text.secondary, textAlign: 'center', marginTop: 8 },
-  retryButton: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary,
-    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 24, gap: 8,
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: COLORS.text.primary,
+    marginTop: 16,
   },
-  retryButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.text.secondary,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 24,
+    gap: 8,
+  },
+  retryButtonText: { color: COLORS.white, fontSize: 16, fontWeight: "600" },
   header: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   headerTitleContainer: { flex: 1 },
-  headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold', maxWidth: 200 },
-  headerIcons: { flexDirection: 'row', gap: 12 },
+  headerTitle: {
+    color: "white",
+    fontSize: 22,
+    fontWeight: "bold",
+    maxWidth: 200,
+  },
+  headerIcons: { flexDirection: "row", gap: 12 },
   headerIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   filterBadgeContainer: {
-    backgroundColor: COLORS.background, paddingHorizontal: 16, paddingVertical: 12,
-    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
   },
   filterBadgeScroll: { flex: 1 },
   filterBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE',
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginRight: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#DBEAFE",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
   },
-  filterBadgeLabel: { fontSize: 12, color: COLORS.text.secondary, marginRight: 4 },
-  filterBadgeValue: { fontSize: 12, fontWeight: 'bold', color: COLORS.primary },
-  clearAllButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, gap: 4 },
-  clearAllText: { fontSize: 12, color: COLORS.priority.critical, fontWeight: '600' },
-  filterIconActive: { position: 'relative' },
+  filterBadgeLabel: {
+    fontSize: 12,
+    color: COLORS.text.secondary,
+    marginRight: 4,
+  },
+  filterBadgeValue: { fontSize: 12, fontWeight: "bold", color: COLORS.primary },
+  clearAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  clearAllText: {
+    fontSize: 12,
+    color: COLORS.priority.critical,
+    fontWeight: "600",
+  },
+  filterIconActive: { position: "relative" },
   filterDot: {
-    position: 'absolute', top: 6, right: 6, width: 8, height: 8,
-    borderRadius: 4, backgroundColor: COLORS.accent,
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.accent,
   },
-  listContent: { padding: 16, paddingBottom: 100, backgroundColor: COLORS.background, flexGrow: 1 },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+    backgroundColor: COLORS.background,
+    flexGrow: 1,
+  },
   listHeader: { marginBottom: 16 },
-  foundText: { fontSize: 15, color: COLORS.text.secondary, fontWeight: '500' },
+  foundText: { fontSize: 15, color: COLORS.text.secondary, fontWeight: "500" },
   paginationText: { fontSize: 12, color: COLORS.text.muted, marginTop: 4 },
   card: {
-    backgroundColor: COLORS.white, borderRadius: 14, marginBottom: 12, flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    marginBottom: 12,
+    flexDirection: "row",
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
       android: { elevation: 2 },
     }),
   },
   cardBar: { width: 4, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
   cardContent: { flex: 1, padding: 16 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  idContainer: { flexDirection: 'row', alignItems: 'center' },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  idContainer: { flexDirection: "row", alignItems: "center" },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  idText: { fontSize: 16, fontWeight: 'bold', color: COLORS.text.primary },
+  idText: { fontSize: 16, fontWeight: "bold", color: COLORS.text.primary },
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  priorityText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
+  priorityText: { color: "white", fontSize: 11, fontWeight: "bold" },
   dateTime: { fontSize: 12, color: COLORS.text.muted, marginBottom: 8 },
-  statusText: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary, marginBottom: 10 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text.primary,
+    marginBottom: 10,
+  },
+  detailRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   detailIcon: { marginRight: 8 },
   detailText: { fontSize: 14, color: COLORS.text.secondary, flex: 1 },
   fab: {
-    position: 'absolute', width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.accent,
-    justifyContent: 'center', alignItems: 'center', bottom: 120, right: 20,
+    position: "absolute",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.accent,
+    justifyContent: "center",
+    alignItems: "center",
+    bottom: 120,
+    right: 20,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
       android: { elevation: 8 },
     }),
   },
-  footerLoader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 20 },
-  footerLoaderText: { marginLeft: 10, color: COLORS.text.secondary, fontSize: 14 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: COLORS.text.secondary, marginTop: 8, textAlign: 'center' },
+  footerLoader: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  footerLoaderText: {
+    marginLeft: 10,
+    color: COLORS.text.secondary,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: COLORS.text.primary,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: COLORS.text.secondary,
+    marginTop: 8,
+    textAlign: "center",
+  },
   searchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   searchInputContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 44,
@@ -550,16 +856,25 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   searchCancelButton: {
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
   searchCancelText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
+  },
+  rejectText: {
+    color: "red",
+    fontWeight: "600",
+    marginBottom: 4,
+    backgroundColor: "rgba(220, 38, 38, 0.1)",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
 });
 
