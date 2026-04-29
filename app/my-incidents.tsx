@@ -7,6 +7,7 @@ import { usePermissions } from "@/src/hooks/usePermissions";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +19,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
 
 const priorityMap: Record<number, { key: string; color: string }> = {
   1: { key: "critical", color: "#E74C3C" },
@@ -40,7 +40,21 @@ interface Incident {
   location?: { name: string };
   assignee?: { first_name?: string; username: string };
   department?: { name: string };
-  lookup_values?: Array<{ category: { code: string }; code: string; name: string; color: string }>;
+  lookup_values?: Array<{
+    category: { code: string };
+    code: string;
+    name: string;
+    color: string;
+  }>;
+  transition_history?: Array<{
+    transition?: { name: string; code: string };
+    performed_by?: {
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+    };
+    transitioned_at: string;
+  }>;
 }
 
 interface PaginationInfo {
@@ -61,17 +75,23 @@ const IncidentCard = ({
   const { t } = useTranslation();
   // Extract priority from lookup_values if available
   const priorityLookup = incident.lookup_values?.find(
-    (lv) => lv.category.code === 'PRIORITY'
+    (lv) => lv.category.code === "PRIORITY",
   );
-  let priority = priorityMap[parseInt(String(incident.priority))] || { key: "unknown", color: "#95A5A6" };
+  let priority = priorityMap[parseInt(String(incident.priority))] || {
+    key: "unknown",
+    color: "#95A5A6",
+  };
   let priorityText = t(`priorities.${priority.key}`);
   if (priorityLookup) {
-    priority = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
+    priority = {
+      key: priorityLookup.code.toLowerCase(),
+      color: priorityLookup.color,
+    };
     priorityText = priorityLookup.name;
   }
 
   // Determine the correct detail page based on ticket type
-  const getDetailRoute = () => {
+  const getDetailRoute: any = () => {
     switch (ticketType) {
       case "incident":
         return `/incident-details?id=${incident.id}`;
@@ -86,36 +106,93 @@ const IncidentCard = ({
     }
   };
 
+  const latestTransition = incident.transition_history?.reduce(
+    (latest, current): any => {
+      if (!latest) return current;
+
+      const currentTime = new Date(current.transitioned_at).getTime();
+      const latestTime = new Date(latest.transitioned_at).getTime();
+
+      return currentTime > latestTime ? current : latest;
+    },
+    undefined,
+  );
+
   return (
     <TouchableOpacity
       style={styles.incidentCard}
       onPress={() => router.push(getDetailRoute())}
       activeOpacity={0.7}
     >
-      <View style={[styles.incidentPriorityBar, { backgroundColor: priority.color }]} />
+      <View
+        style={[
+          styles.incidentPriorityBar,
+          { backgroundColor: priority.color },
+        ]}
+      />
       <View style={styles.incidentCardContent}>
         <View style={styles.incidentCardHeader}>
           <View style={styles.incidentIdContainer}>
-            <View style={[styles.incidentDot, { backgroundColor: priority.color }]} />
+            <View
+              style={[styles.incidentDot, { backgroundColor: priority.color }]}
+            />
             <Text style={styles.incidentId}>{incident.incident_number}</Text>
           </View>
-          <View style={[styles.incidentTag, { backgroundColor: priority.color }]}>
+          <View
+            style={[styles.incidentTag, { backgroundColor: priority.color }]}
+          >
             <Text style={styles.incidentTagText}>{priorityText}</Text>
           </View>
         </View>
         <Text style={styles.dateTime}>
           {new Date(incident.created_at).toLocaleString()}
         </Text>
+        {latestTransition && (
+          <Text
+            style={[
+              styles.rejectText,
+              ...(latestTransition?.transition?.code !== "reject"
+                ? [
+                    {
+                      backgroundColor: "rgba(38, 102, 220, 0.1)",
+                      color: "#2666DC",
+                    },
+                  ]
+                : []),
+            ]}
+          >
+            {latestTransition?.transition?.name} {t("details.by")}{" "}
+            {latestTransition?.performed_by?.first_name +
+              " " +
+              latestTransition?.performed_by?.last_name ||
+              latestTransition?.performed_by?.username}
+          </Text>
+        )}
+
         <Text style={styles.statusText}>
-          {t('incidents.status')}: {incident.current_state?.name || 'N/A'}
+          {t("incidents.status")}: {incident.current_state?.name || "N/A"}
         </Text>
         <View style={styles.detailRow}>
-          <Ionicons name="alert-circle" size={16} color="#10B981" style={styles.detailIcon} />
-          <Text style={styles.detailText} numberOfLines={1}>{incident.title}</Text>
+          <Ionicons
+            name="alert-circle"
+            size={16}
+            color="#10B981"
+            style={styles.detailIcon}
+          />
+          <Text style={styles.detailText} numberOfLines={1}>
+            {incident.title}
+          </Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="location" size={16} color="#3B82F6" style={styles.detailIcon} />
-          <Text style={styles.detailText}>{incident.location?.name || t('common.noData')}</Text>
+          <Ionicons
+            name="location"
+            size={16}
+            color="#3B82F6"
+            style={styles.detailIcon}
+          />
+          <Text style={styles.detailText}>
+            {incident.location?.name || t("common.noData")}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -130,12 +207,24 @@ const MyIncidentsScreen = () => {
     initialType === "created" ? "created" : "assigned",
   );
   const {
-    canCreateIncidents, canUpdateIncidents, canTransitionIncidents,
-    canCreateRequests, canUpdateRequests, canTransitionRequests,
-    canCreateComplaints, canUpdateComplaints, canTransitionComplaints,
-    canCreateQueries, canUpdateQueries, canTransitionQueries,
+    canCreateIncidents,
+    canUpdateIncidents,
+    canTransitionIncidents,
+    canCreateRequests,
+    canUpdateRequests,
+    canTransitionRequests,
+    canCreateComplaints,
+    canUpdateComplaints,
+    canTransitionComplaints,
+    canCreateQueries,
+    canUpdateQueries,
+    canTransitionQueries,
   } = usePermissions();
-  const canSeeAssignedTab = () => canTransitionIncidents() || canTransitionRequests() || canTransitionComplaints() || canTransitionQueries();
+  const canSeeAssignedTab = () =>
+    canTransitionIncidents() ||
+    canTransitionRequests() ||
+    canTransitionComplaints() ||
+    canTransitionQueries();
   const getDefaultTicketType = () => {
     if (canCreateIncidents() || canUpdateIncidents()) return "incident";
     if (canCreateRequests() || canUpdateRequests()) return "request";
@@ -143,7 +232,9 @@ const MyIncidentsScreen = () => {
     if (canCreateQueries() || canUpdateQueries()) return "query";
     return "incident";
   };
-  const [ticketType, setTicketType] = useState<"incident" | "request" | "complaint" | "query">(getDefaultTicketType);
+  const [ticketType, setTicketType] = useState<
+    "incident" | "request" | "complaint" | "query"
+  >(getDefaultTicketType);
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,15 +288,17 @@ const MyIncidentsScreen = () => {
     if (response.success) {
       // Filter by selected ticket type
       const prefixMap = {
-        incident: 'INC',
-        request: 'REQ',
-        complaint: 'COMP',
-        query: 'QUERY'
+        incident: "INC",
+        request: "REQ",
+        complaint: "COMP",
+        query: "QUERY",
       };
       const prefix = prefixMap[ticketType];
       const filteredData = (response.data || []).filter((item: any) => {
-        const itemNumber = item.incident_number || item.number || '';
-        return itemNumber.startsWith(prefix) || itemNumber.startsWith(`${prefix}-`);
+        const itemNumber = item.incident_number || item.number || "";
+        return (
+          itemNumber.startsWith(prefix) || itemNumber.startsWith(`${prefix}-`)
+        );
       });
 
       if (append) {
@@ -219,9 +312,12 @@ const MyIncidentsScreen = () => {
         total_pages: Math.ceil(filteredData.length / 20),
       });
     } else {
-      setError(response.error || t('myIncidents.fetchFailed'));
+      setError(response.error || t("myIncidents.fetchFailed"));
       if (!append) {
-        Alert.alert(t('common.error'), response.error || t('myIncidents.fetchFailed'));
+        Alert.alert(
+          t("common.error"),
+          response.error || t("myIncidents.fetchFailed"),
+        );
       }
     }
 
@@ -254,7 +350,9 @@ const MyIncidentsScreen = () => {
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color="#1A237E" />
-        <Text style={styles.footerLoaderText}>{t('myIncidents.loadingMore')}</Text>
+        <Text style={styles.footerLoaderText}>
+          {t("myIncidents.loadingMore")}
+        </Text>
       </View>
     );
   };
@@ -265,23 +363,29 @@ const MyIncidentsScreen = () => {
     // Get the translation key based on ticket type and tab
     const getTitleKey = () => {
       if (activeTab === "assigned") {
-        if (ticketType === "incident") return 'myIncidents.noAssignedIncidents';
-        if (ticketType === "request") return 'myIncidents.noAssignedRequests';
-        if (ticketType === "complaint") return 'myIncidents.noAssignedComplaints';
-        return 'myIncidents.noAssignedQueries';
+        if (ticketType === "incident") return "myIncidents.noAssignedIncidents";
+        if (ticketType === "request") return "myIncidents.noAssignedRequests";
+        if (ticketType === "complaint")
+          return "myIncidents.noAssignedComplaints";
+        return "myIncidents.noAssignedQueries";
       } else {
-        if (ticketType === "incident") return 'myIncidents.noCreatedIncidents';
-        if (ticketType === "request") return 'myIncidents.noCreatedRequests';
-        if (ticketType === "complaint") return 'myIncidents.noCreatedComplaints';
-        return 'myIncidents.noCreatedQueries';
+        if (ticketType === "incident") return "myIncidents.noCreatedIncidents";
+        if (ticketType === "request") return "myIncidents.noCreatedRequests";
+        if (ticketType === "complaint")
+          return "myIncidents.noCreatedComplaints";
+        return "myIncidents.noCreatedQueries";
       }
     };
 
     // Get the ticket type name for description
-    const ticketTypeName = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
-                           ticketType === "request" ? t('tabs.request').toLowerCase() :
-                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
-                           t('tabs.query').toLowerCase();
+    const ticketTypeName =
+      ticketType === "incident"
+        ? t("tabs.incident").toLowerCase()
+        : ticketType === "request"
+          ? t("tabs.request").toLowerCase()
+          : ticketType === "complaint"
+            ? t("tabs.complaint").toLowerCase()
+            : t("tabs.query").toLowerCase();
 
     return (
       <View style={styles.emptyContainer}>
@@ -294,25 +398,30 @@ const MyIncidentsScreen = () => {
             color="#1A237E"
           />
         </View>
-        <Text style={styles.emptyTitle}>
-          {t(getTitleKey())}
-        </Text>
+        <Text style={styles.emptyTitle}>{t(getTitleKey())}</Text>
         <Text style={styles.emptySubtitle}>
           {activeTab === "assigned"
-            ? t('myIncidents.noAssignedDesc', { type: ticketTypeName })
-            : t('myIncidents.noCreatedDesc', { type: ticketTypeName })}
+            ? t("myIncidents.noAssignedDesc", { type: ticketTypeName })
+            : t("myIncidents.noCreatedDesc", { type: ticketTypeName })}
         </Text>
       </View>
     );
   };
 
   const renderHeader = () => {
-    const ticketTypeLabel = ticketType === "incident" ? t('tabs.incident').toLowerCase() :
-                           ticketType === "request" ? t('tabs.request').toLowerCase() :
-                           ticketType === "complaint" ? t('tabs.complaint').toLowerCase() :
-                           t('tabs.query').toLowerCase();
+    const ticketTypeLabel =
+      ticketType === "incident"
+        ? t("tabs.incident").toLowerCase()
+        : ticketType === "request"
+          ? t("tabs.request").toLowerCase()
+          : ticketType === "complaint"
+            ? t("tabs.complaint").toLowerCase()
+            : t("tabs.query").toLowerCase();
 
-    const statusLabel = activeTab === "assigned" ? t('myIncidents.assigned') : t('myIncidents.created');
+    const statusLabel =
+      activeTab === "assigned"
+        ? t("myIncidents.assigned")
+        : t("myIncidents.created");
 
     return (
       <View style={styles.listHeader}>
@@ -321,7 +430,8 @@ const MyIncidentsScreen = () => {
         </Text>
         {pagination.total_pages > 1 && (
           <Text style={styles.paginationText}>
-            {t('myIncidents.page')} {pagination.page} {t('myIncidents.of')} {pagination.total_pages}
+            {t("myIncidents.page")} {pagination.page} {t("myIncidents.of")}{" "}
+            {pagination.total_pages}
           </Text>
         )}
       </View>
@@ -341,10 +451,10 @@ const MyIncidentsScreen = () => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{t('myIncidents.title')}</Text>
+          <Text style={styles.headerTitle}>{t("myIncidents.title")}</Text>
           {currentUser && (
             <Text style={styles.headerSubtitle}>
-              {t('myIncidents.loggedInAs')} {currentUser.email}
+              {t("myIncidents.loggedInAs")} {currentUser.email}
             </Text>
           )}
         </View>
@@ -377,7 +487,7 @@ const MyIncidentsScreen = () => {
                   activeTab === "assigned" && styles.activeTabText,
                 ]}
               >
-                {t('myIncidents.assignedToMe')}
+                {t("myIncidents.assignedToMe")}
               </Text>
             </TouchableOpacity>
           )}
@@ -397,7 +507,7 @@ const MyIncidentsScreen = () => {
                   activeTab === "created" && styles.activeTabText,
                 ]}
               >
-                {t('myIncidents.createdByMe')}
+                {t("myIncidents.createdByMe")}
               </Text>
             </TouchableOpacity>
           )}
@@ -407,41 +517,73 @@ const MyIncidentsScreen = () => {
         <View style={styles.ticketTypeContainer}>
           {(canCreateIncidents() || canUpdateIncidents()) && (
             <TouchableOpacity
-              style={[styles.ticketTypeTab, ticketType === "incident" && styles.activeTicketTypeTab]}
+              style={[
+                styles.ticketTypeTab,
+                ticketType === "incident" && styles.activeTicketTypeTab,
+              ]}
               onPress={() => setTicketType("incident")}
             >
-              <Text style={[styles.ticketTypeText, ticketType === "incident" && styles.activeTicketTypeText]}>
-                {t('tabs.incident')}
+              <Text
+                style={[
+                  styles.ticketTypeText,
+                  ticketType === "incident" && styles.activeTicketTypeText,
+                ]}
+              >
+                {t("tabs.incident")}
               </Text>
             </TouchableOpacity>
           )}
           {(canCreateRequests() || canUpdateRequests()) && (
             <TouchableOpacity
-              style={[styles.ticketTypeTab, ticketType === "request" && styles.activeTicketTypeTab]}
+              style={[
+                styles.ticketTypeTab,
+                ticketType === "request" && styles.activeTicketTypeTab,
+              ]}
               onPress={() => setTicketType("request")}
             >
-              <Text style={[styles.ticketTypeText, ticketType === "request" && styles.activeTicketTypeText]}>
-                {t('tabs.request')}
+              <Text
+                style={[
+                  styles.ticketTypeText,
+                  ticketType === "request" && styles.activeTicketTypeText,
+                ]}
+              >
+                {t("tabs.request")}
               </Text>
             </TouchableOpacity>
           )}
           {(canCreateComplaints() || canUpdateComplaints()) && (
             <TouchableOpacity
-              style={[styles.ticketTypeTab, ticketType === "complaint" && styles.activeTicketTypeTab]}
+              style={[
+                styles.ticketTypeTab,
+                ticketType === "complaint" && styles.activeTicketTypeTab,
+              ]}
               onPress={() => setTicketType("complaint")}
             >
-              <Text style={[styles.ticketTypeText, ticketType === "complaint" && styles.activeTicketTypeText]}>
-                {t('tabs.complaint')}
+              <Text
+                style={[
+                  styles.ticketTypeText,
+                  ticketType === "complaint" && styles.activeTicketTypeText,
+                ]}
+              >
+                {t("tabs.complaint")}
               </Text>
             </TouchableOpacity>
           )}
           {(canCreateQueries() || canUpdateQueries()) && (
             <TouchableOpacity
-              style={[styles.ticketTypeTab, ticketType === "query" && styles.activeTicketTypeTab]}
+              style={[
+                styles.ticketTypeTab,
+                ticketType === "query" && styles.activeTicketTypeTab,
+              ]}
               onPress={() => setTicketType("query")}
             >
-              <Text style={[styles.ticketTypeText, ticketType === "query" && styles.activeTicketTypeText]}>
-                {t('tabs.query')}
+              <Text
+                style={[
+                  styles.ticketTypeText,
+                  ticketType === "query" && styles.activeTicketTypeText,
+                ]}
+              >
+                {t("tabs.query")}
               </Text>
             </TouchableOpacity>
           )}
@@ -451,7 +593,9 @@ const MyIncidentsScreen = () => {
           <View style={styles.loadingContainer}>
             <View style={styles.loaderCard}>
               <ActivityIndicator size="large" color="#1A237E" />
-              <Text style={styles.loadingText}>{t('myIncidents.loadingTickets')}</Text>
+              <Text style={styles.loadingText}>
+                {t("myIncidents.loadingTickets")}
+              </Text>
             </View>
           </View>
         ) : error ? (
@@ -468,10 +612,7 @@ const MyIncidentsScreen = () => {
           <FlatList
             data={incidents}
             renderItem={({ item }) => (
-              <IncidentCard
-                incident={item}
-                ticketType={ticketType}
-              />
+              <IncidentCard incident={item} ticketType={ticketType} />
             )}
             keyExtractor={(item) => item.id}
             style={styles.flatList}
@@ -790,6 +931,15 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     fontWeight: "600",
+  },
+  rejectText: {
+    color: "red",
+    fontWeight: "600",
+    marginBottom: 4,
+    backgroundColor: "rgba(220, 38, 38, 0.1)",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
 });
 
