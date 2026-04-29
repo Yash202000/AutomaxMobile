@@ -60,7 +60,7 @@ apiClient.interceptors.request.use(
     const token = await SecureStore.getItemAsync('authToken');
 
     // If no token and not a public endpoint, reject the request
-    const publicEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/logout', '/otp/send', '/otp/verify'];
+    const publicEndpoints = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/verify-reset-otp', '/auth/reset-password', '/auth/logout', '/otp/send', '/otp/verify'];
     const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
 
     if (!token && !isPublicEndpoint) {
@@ -169,6 +169,10 @@ apiClient.interceptors.response.use(
 
     // If no config or error is not 401 or request already retried, reject
     if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    if (originalRequest.url?.includes('/auth/login')) {
       return Promise.reject(error);
     }
 
