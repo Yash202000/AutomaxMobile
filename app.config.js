@@ -5,7 +5,7 @@ module.exports = {
   expo: {
     name: appName,
     slug: 'AutomaxMobile',
-    version: process.env.APP_VERSION || '1.0.0',
+    version: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
     orientation: 'portrait',
     icon: appIcon,
     scheme: 'automaxmobile',
@@ -15,10 +15,11 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.vdcop',
       googleServicesFile: "./GoogleService-Info.plist",
+      buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
     },
     android: {
       package: process.env.ANDROID_PACKAGE || 'com.automax.vdcop',
-      versionCode: parseInt(process.env.APP_VERSION_CODE || '1', 10),
+      versionCode: parseInt(process.env.EXPO_PUBLIC_APP_VERSION_CODE || '1', 10),
       supportsRTL: true,
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
