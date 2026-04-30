@@ -7,7 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FilterState {
@@ -62,6 +63,7 @@ const isSmallScreen = screenHeight < 700;
 const ComplaintFilterScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
@@ -275,6 +277,16 @@ const ComplaintFilterScreen = () => {
   };
 
   const applyFilters = () => {
+    if (filters.start_date && filters.end_date) {
+      if (new Date(filters.start_date) > new Date(filters.end_date)) {
+        Alert.alert(
+          t('filter.invalidDateRangeTitle', 'Invalid Date Range'),
+          t('filter.invalidDateRange', 'Start date cannot be after end date')
+        );
+        return;
+      }
+    }
+
     const queryParams: any = {};
     if (filters.state_ids.length > 0) { queryParams.state_id = filters.state_ids.join(','); queryParams.state_name = filters.state_names.join(','); }
     if (filters.priorities.length > 0) queryParams.priority = filters.priorities.join(',');

@@ -140,12 +140,12 @@ const ForgotPasswordScreen = () => {
             ]}
           >
             {/* Back Button */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <View style={styles.headerContainer}>
               <Text style={styles.titleText}>{t('forgotPassword.title')}</Text>

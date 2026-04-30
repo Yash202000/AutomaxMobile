@@ -423,7 +423,9 @@
     "allDepartments": "كل الأقسام",
     "allClassifications": "كل التصنيفات",
     "allLocations": "كل المواقع",
-    "allSlaStatuses": "كل حالات SLA"
+    "allSlaStatuses": "كل حالات SLA",
+    "invalidDateRange": "تاريخ البدء لا يمكن أن يكون بعد تاريخ الانتهاء",
+    "invalidDateRangeTitle": "نطاق تاريخ غير صالح"
   },
   "addIncident": {
     "title": "إضافة حادثة",
