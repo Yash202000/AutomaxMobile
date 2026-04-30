@@ -2,6 +2,7 @@ import apiClient from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { getCurrentLanguage, setLanguage } from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
@@ -43,6 +44,7 @@ const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [otpChannel, setOtpChannel] = useState<'sms' | 'whatsapp'>('sms');
+  const version = Constants.expoConfig?.version
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -638,7 +640,7 @@ const LoginScreen = () => {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.versionText}>V.3.0</Text>
+          <Text style={styles.versionText}>V.{version}</Text>
         </View>
       </LinearGradient>
     </KeyboardAvoidingView>
