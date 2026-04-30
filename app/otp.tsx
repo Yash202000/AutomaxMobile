@@ -1,6 +1,5 @@
 import apiClient from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -184,13 +183,13 @@ const OtpScreen = () => {
         </Pressable>
       </View>
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.backToLoginButton}
         onPress={() => router.replace('/login')}
       >
         <Ionicons name="arrow-back" size={20} color="#666" />
         <Text style={styles.backToLoginText}>{t('auth.backToLogin')}</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };

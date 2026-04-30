@@ -388,10 +388,10 @@ const IncidentDetailsScreen = () => {
           <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
           <View style={styles.titleCardContent}>
             <View style={styles.titleHeader}>
-              <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+              {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
                 <Ionicons name="flag" size={12} color={COLORS.white} />
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
-              </View>
+              </View> */}
               <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString()}</Text>
             </View>
             <Text style={styles.incidentTitle}>{incident.title}</Text>
