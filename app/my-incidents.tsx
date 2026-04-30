@@ -118,6 +118,13 @@ const IncidentCard = ({
     undefined,
   );
 
+  const performer = latestTransition?.performed_by;
+
+  const displayName =
+    performer?.first_name || performer?.last_name
+      ? [performer?.first_name, performer?.last_name].filter(Boolean).join(" ")
+      : performer?.username;
+
   return (
     <TouchableOpacity
       style={styles.incidentCard}
@@ -147,7 +154,7 @@ const IncidentCard = ({
         <Text style={styles.dateTime}>
           {new Date(incident.created_at).toLocaleString()}
         </Text>
-        {latestTransition && (
+        {latestTransition?.transition && (
           <Text
             style={[
               styles.rejectText,
@@ -161,11 +168,7 @@ const IncidentCard = ({
                 : []),
             ]}
           >
-            {latestTransition?.transition?.name} {t("details.by")}{" "}
-            {latestTransition?.performed_by?.first_name +
-              " " +
-              latestTransition?.performed_by?.last_name ||
-              latestTransition?.performed_by?.username}
+            {latestTransition?.transition?.name} {t("details.by")} {displayName}
           </Text>
         )}
 
