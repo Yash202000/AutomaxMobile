@@ -6,10 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COLORS = {
   primary: '#1A237E',
@@ -60,7 +61,7 @@ const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { ic
       <Ionicons name={icon as any} size={18} color={iconColor} />
       <Text style={styles.infoLabel}>{label}</Text>
     </View>
-    <Text style={styles.infoValue}>{value || 'N/A'}</Text>
+    <Text style={styles.infoValue}>{value || t('common.na')}</Text>
   </View>
 );
 
@@ -73,6 +74,7 @@ const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
 
 const RequestDetailsScreen = () => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [request, setRequest] = useState<any>(null);
@@ -100,26 +102,32 @@ const RequestDetailsScreen = () => {
     if (!requestId) return;
 
     setLoading(true);
-    const [detailsResponse, transitionsResponse] = await Promise.all([
-      getIncidentById(requestId),
-      getAvailableTransitions(requestId),
-    ]);
+    try {
+      const [detailsResponse, transitionsResponse] = await Promise.all([
+        getIncidentById(requestId),
+        getAvailableTransitions(requestId),
+      ]);
 
-    if (detailsResponse.success) {
-      setRequest(detailsResponse.data);
-      setAttachments(detailsResponse.data.attachments || []);
-    } else {
-      setError(detailsResponse.error);
-      Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      if (detailsResponse.success) {
+        setRequest(detailsResponse.data);
+        setAttachments(detailsResponse.data.attachments || []);
+      } else {
+        setError(detailsResponse.error);
+        Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+      }
+
+      if (transitionsResponse.success) {
+        setAvailableTransitions(transitionsResponse.data.filter((t: any) => t.can_execute));
+      } else {
+        setAvailableTransitions([]);
+      }
+    } catch (err: any) {
+      if (err?.isLogoutCancel) return;
+      console.error('Error fetching request details:', err);
+      setError('Failed to load request details');
+    } finally {
+      setLoading(false);
     }
-
-    if (transitionsResponse.success) {
-      setAvailableTransitions(transitionsResponse.data.filter((t: any) => t.can_execute));
-    } else {
-      setAvailableTransitions([]);
-    }
-
-    setLoading(false);
   }, [id, t]);
 
   useFocusEffect(
@@ -282,7 +290,7 @@ const RequestDetailsScreen = () => {
                 return allFields.map((field) => {
                   let displayValue = field.value || 'N/A';
                   if (field.field_type === 'checkbox') {
-                    displayValue = field.value ? 'Yes' : 'No';
+                    displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
                     displayValue = new Date(field.value).toLocaleDateString();
                   }
@@ -451,7 +459,7 @@ const RequestDetailsScreen = () => {
       {/* Update Button */}
       {availableTransitions.length > 0 && (
         <TouchableOpacity
-          style={styles.updateButton}
+          style={[styles.updateButton, { marginBottom: insets.bottom }]}
           onPress={() => router.push({
             pathname: '/update-status',
             params: {
@@ -507,7 +515,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 
-  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 10 },
+  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 20 },
 
   titleCard: {
     backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: -10,

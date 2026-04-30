@@ -1,5 +1,6 @@
 import { getComplaints, getComplaintStats } from '@/src/api/incidents';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
@@ -45,6 +46,7 @@ interface Complaint {
         code: string;
         name: string;
         color: string;
+        name_ar: string;
     }>;
 }
 
@@ -69,7 +71,7 @@ const ComplaintCard = ({ complaint, t }: { complaint: Complaint; t: any }) => {
 
     if (priorityLookup) {
         config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-        priorityText = priorityLookup.name;
+        priorityText = i18n.language === 'ar' ? priorityLookup.name_ar : priorityLookup.name;
     }
 
     return (

@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,19 +15,20 @@ import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
+import { t } from 'i18next';
 
 
 
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isLoggingOut } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   useFCM(router);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isLoggingOut) return;
 
     const authScreens = ['login', 'forgot-password', 'otp', 'reset-password'];
     const inAuthGroup = authScreens.includes(segments[0] as string);
@@ -39,7 +40,7 @@ function RootLayoutNav() {
       // Redirect to tabs if authenticated and in auth group (except OTP)
       router.replace('/(tabs)/explore');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, isLoggingOut]);
 
   useEffect(() => {
     createChannel();
@@ -47,7 +48,7 @@ function RootLayoutNav() {
 
   // Register FCM token with backend only after the user is authenticated
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isLoggingOut) return;
     const setup = async () => {
       // Check if notifications are enabled
       const enabled = await AsyncStorage.getItem('notificationsEnabled');
@@ -85,25 +86,17 @@ function RootLayoutNav() {
     return () => {
       cleanup.then(unsub => unsub && unsub());
     };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, isLoggingOut]);
 
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2EC4B6" />
-      </View>
-    );
-  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="forgot-password" options={{ title: 'Forgot Password?' }} />
-        <Stack.Screen name="otp" options={{ title: 'Verification' }} />
-        <Stack.Screen name="reset-password" options={{ title: 'Reset Password' }} />
+        <Stack.Screen name="forgot-password" options={{ title: t('forgotPassword.title') }} />
+        <Stack.Screen name="otp" options={{ title: t('auth.verifyOTP') }} />
+        <Stack.Screen name="reset-password" options={{ title: t('resetPassword.title') }} />
         <Stack.Screen name="incident-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-incident" options={{ headerShown: false }} />
         <Stack.Screen name="my-incidents" options={{ headerShown: false }} />
@@ -114,8 +107,8 @@ function RootLayoutNav() {
         <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
         <Stack.Screen name="query-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-query" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />
-        <Stack.Screen name="change-password" options={{ title: 'Change Password' }} />
+        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile') }} />
+        <Stack.Screen name="change-password" options={{ title: t('settings.changePassword') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="complaint-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
@@ -123,8 +116,13 @@ function RootLayoutNav() {
         <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal') }} />
       </Stack>
+      {(isLoading || isLoggingOut) && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colorScheme === 'dark' ? '#000' : '#FFF', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }]}>
+          <ActivityIndicator size="large" color="#2EC4B6" />
+        </View>
+      )}
       <StatusBar style="auto" />
     </ThemeProvider>
   );

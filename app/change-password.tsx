@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { changePassword } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const PasswordInput = ({ label, value, onChangeText }) => {
+const PasswordInput = ({ label, value, onChangeText }: any) => {
     const [visible, setVisible] = useState(false);
     return (
         <View style={styles.inputContainer}>
@@ -28,59 +29,60 @@ const PasswordInput = ({ label, value, onChangeText }) => {
 
 
 const ChangePasswordScreen = () => {
-  const router = useRouter();
-  const { logout } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+    const { t } = useTranslation();
+    const router = useRouter();
+    const { logout } = useAuth();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  const handleUpdate = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        Alert.alert('Error', 'Please fill out all fields.');
-        return;
-    }
-    if (newPassword.length < 8) {
-        Alert.alert('Error', 'New password must be at least 8 characters.');
-        return;
-    }
-    if (newPassword !== confirmPassword) {
-        Alert.alert('Error', 'New passwords do not match.');
-        return;
-    }
-    setLoading(true);
-    const response = await changePassword({ old_password: currentPassword, new_password: newPassword });
-    setLoading(false);
+    const handleUpdate = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Alert.alert(t('common.error'), t('password.fillAllFields'));
+            return;
+        }
+        if (newPassword.length < 8) {
+            Alert.alert(t('common.error'), t('password.minLengthError'));
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            Alert.alert(t('common.error'), t('password.passwordMismatch'));
+            return;
+        }
+        setLoading(true);
+        const response = await changePassword({ old_password: currentPassword, new_password: newPassword });
+        setLoading(false);
 
-    if (response.success) {
-        Alert.alert('Success', 'Password updated successfully. Please log in again.', [
-            { text: 'OK', onPress: () => logout() }
-        ]);
-    } else {
-        Alert.alert('Error', response.error || 'Failed to update password.');
-    }
-  };
+        if (response.success) {
+            Alert.alert(t('common.success'), t('password.passwordChanged'), [
+                { text: t('common.ok'), onPress: () => logout() }
+            ]);
+        } else {
+            Alert.alert(t('common.error'), response.error || t('password.updateProfileFailed'));
+        }
+    };
 
-  return (
-    <SafeAreaView style={styles.container}>
-        <ScrollView>
-            <View style={styles.form}>
-                <PasswordInput label="Current password" value={currentPassword} onChangeText={setCurrentPassword} />
-                <PasswordInput label="New password" value={newPassword} onChangeText={setNewPassword} />
-                <PasswordInput label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} />
+    return (
+        <SafeAreaView style={styles.container}>
+            <ScrollView>
+                <View style={styles.form}>
+                    <PasswordInput label={t('password.currentPassword')} value={currentPassword} onChangeText={setCurrentPassword} />
+                    <PasswordInput label={t('password.newPassword')} value={newPassword} onChangeText={setNewPassword} />
+                    <PasswordInput label={t('password.confirmPassword')} value={confirmPassword} onChangeText={setConfirmPassword} />
 
-                <View style={styles.securityInfo}>
-                    <Text style={styles.securityTitle}>Password security</Text>
-                    <Text style={styles.securityText}>Password minimum length: <Text style={{fontWeight: 'bold'}}>8</Text></Text>
-                    <Text style={styles.securityText}>Password must contains: <Text style={{color: '#E74C3C'}}>Digit, Lowercase, Symbol</Text></Text>
+                    <View style={styles.securityInfo}>
+                        <Text style={styles.securityTitle}>{t('password.securityTitle')}</Text>
+                        <Text style={styles.securityText}>{t('password.minLength')}: <Text style={{ fontWeight: 'bold' }}>8</Text></Text>
+                        <Text style={styles.securityText}>{t('password.requirements')}: <Text style={{ color: '#E74C3C' }}>{t('password.digitLowerSymbol')}</Text></Text>
+                    </View>
                 </View>
-            </View>
-        </ScrollView>
-        <TouchableOpacity style={[styles.updateButton, loading && styles.disabledButton]} onPress={handleUpdate} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.updateButtonText}>UPDATE PASSWORD</Text>}
-        </TouchableOpacity>
-    </SafeAreaView>
-  );
+            </ScrollView>
+            <TouchableOpacity style={[styles.updateButton, loading && styles.disabledButton]} onPress={handleUpdate} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.updateButtonText}>{t('password.updateButton')}</Text>}
+            </TouchableOpacity>
+        </SafeAreaView>
+    );
 };
 
 const styles = StyleSheet.create({

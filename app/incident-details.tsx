@@ -8,6 +8,7 @@ import { AudioSource, useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -169,7 +170,7 @@ const InfoRow = ({ icon, label, value, iconColor = COLORS.text.secondary }: { ic
       <Ionicons name={icon as any} size={18} color={iconColor} />
       <Text style={styles.infoLabel}>{label}</Text>
     </View>
-    <Text style={styles.infoValue}>{value || 'N/A'}</Text>
+    <Text style={styles.infoValue}>{value || t('common.na')}</Text>
   </View>
 );
 
@@ -252,21 +253,23 @@ const IncidentDetailsScreen = () => {
       } else {
         setAvailableTransitions([]);
       }
-    } catch (error) {
-      console.error('Error fetching incident details:', error);
+    } catch (err: any) {
+      if (err?.isLogoutCancel) return;
+
+      console.error('Error fetching incident details:', err);
 
       // Log unexpected error
-      crashLogger.logError(error as Error, {
+      crashLogger.logError(err as Error, {
         screen: 'IncidentDetailsScreen',
         action: 'fetchDetails',
         incidentId: incidentId,
         context: 'Unexpected error while fetching incident details',
-      }).catch(err => console.error('Failed to log error:', err));
+      }).catch(logErr => console.error('Failed to log error:', logErr));
 
       setError('Failed to load incident details');
       Alert.alert(
         t('common.error'),
-        'An unexpected error occurred while loading incident details. Please try again.'
+        t('errors.unknownError')
       );
     } finally {
       setLoading(false);
@@ -329,7 +332,7 @@ const IncidentDetailsScreen = () => {
 
           Alert.alert(
             t('common.error'),
-            'Failed to open maps. Please check if you have a maps app installed.'
+            t('errors.mapsFailed', 'Failed to open maps. Please check if you have a maps app installed.')
           );
         });
     }
@@ -495,7 +498,7 @@ const IncidentDetailsScreen = () => {
                 return allFields.map((field) => {
                   let displayValue = field.value || 'N/A';
                   if (field.field_type === 'checkbox') {
-                    displayValue = field.value ? 'Yes' : 'No';
+                    displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
                     displayValue = new Date(field.value).toLocaleDateString();
                   }
@@ -717,7 +720,7 @@ const IncidentDetailsScreen = () => {
               <Text style={styles.reporterName}>
                 {incident.reporter?.first_name
                   ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
-                  : incident.reporter?.username || incident.reporter_name || 'Unknown'}
+                  : incident.reporter?.username || incident.reporter_name || t('common.unknown', 'Unknown')}
               </Text>
               {(incident.reporter_email || incident.reporter?.email) && (
                 <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
@@ -769,7 +772,7 @@ const IncidentDetailsScreen = () => {
                   onPress={() => setShowAllComments(!showAllComments)}
                 >
                   <Text style={styles.seeMoreText}>
-                    {showAllComments ? t('common.showLess') || 'Show Less' : `${t('common.viewAll') || 'See More'} (${incident.comments.length})`}
+                    {showAllComments ? t('common.showLess') : `${t('common.viewAll')} (${incident.comments.length})`}
                   </Text>
                   <Ionicons
                     name={showAllComments ? 'chevron-up' : 'chevron-down'}

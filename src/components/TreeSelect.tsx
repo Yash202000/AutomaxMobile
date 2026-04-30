@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { t } from 'i18next';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
   ActivityIndicator,
   Dimensions,
+  Modal,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -103,16 +104,16 @@ const TreeItem: React.FC<TreeItemProps> = ({
               iconType === 'classification'
                 ? (hasChildren ? 'layers' : 'alert-circle')
                 : iconType === 'location'
-                ? (hasChildren ? 'map' : 'location')
-                : (hasChildren ? 'folder' : 'document')
+                  ? (hasChildren ? 'map' : 'location')
+                  : (hasChildren ? 'folder' : 'document')
             }
             size={18}
             color={
               iconType === 'classification'
                 ? (hasChildren ? '#8B5CF6' : '#EC4899')
                 : iconType === 'location'
-                ? (hasChildren ? '#10B981' : '#3B82F6')
-                : (hasChildren ? '#F39C12' : '#3498DB')
+                  ? (hasChildren ? '#10B981' : '#3B82F6')
+                  : (hasChildren ? '#F39C12' : '#3498DB')
             }
             style={styles.nodeIcon}
           />
@@ -341,8 +342,8 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     ? selectedIdsProp.length === 0
       ? placeholder || label
       : selectedIdsProp.length === 1
-      ? (findNodeById(data, selectedIdsProp[0])?.name || `1 selected`)
-      : `${selectedIdsProp.length} selected`
+        ? (findNodeById(data, selectedIdsProp[0])?.name || `1 selected`)
+        : `${selectedIdsProp.length} selected`
     : value || placeholder || label;
 
   const hasValue = multiSelect ? selectedIdsProp.length > 0 : !!value;
@@ -382,7 +383,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
               </Text>
               {multiSelect ? (
                 <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
-                  <Text style={styles.doneButtonText}>Done</Text>
+                  <Text style={styles.doneButtonText}>{t('common.done')}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -395,16 +396,16 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
             <View style={styles.toolbar}>
               <TouchableOpacity style={styles.toolbarButton} onPress={expandAll}>
                 <Ionicons name="expand" size={16} color="#666" />
-                <Text style={styles.toolbarButtonText}>Expand All</Text>
+                <Text style={styles.toolbarButtonText}>{t('common.expandAll')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.toolbarButton} onPress={collapseAll}>
                 <Ionicons name="contract" size={16} color="#666" />
-                <Text style={styles.toolbarButtonText}>Collapse All</Text>
+                <Text style={styles.toolbarButtonText}>{t('common.collapseAll')}</Text>
               </TouchableOpacity>
               {multiSelect && (pendingIds.size > 0 || (!multiSelect && !!value)) && (
                 <TouchableOpacity style={styles.toolbarButton} onPress={handleClear}>
                   <Ionicons name="close-circle-outline" size={16} color="#E74C3C" />
-                  <Text style={[styles.toolbarButtonText, { color: '#E74C3C' }]}>Clear</Text>
+                  <Text style={[styles.toolbarButtonText, { color: '#E74C3C' }]}>{t('common.clear')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -412,7 +413,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
             {/* Clear option (single select) */}
             {!multiSelect && value && (
               <TouchableOpacity style={styles.clearOption} onPress={handleClear}>
-                <Text style={styles.clearOptionText}>Clear selection</Text>
+                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
@@ -423,15 +424,15 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
                 <Ionicons name="information-circle" size={16} color="#666" />
                 <Text style={styles.hintText}>
                   {multiSelect
-                    ? 'Tap leaf items to select multiple'
-                    : 'Only items without children can be selected'}
+                    ? t('common.tapLeafToSelectMultiple')
+                    : t('common.onlyItemWithoutChildren')}
                 </Text>
               </View>
             )}
 
             {data.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>No options available</Text>
+                <Text style={styles.emptyText}>{t('common.noOption')}</Text>
               </View>
             ) : (
               <ScrollView

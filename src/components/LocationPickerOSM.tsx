@@ -1,17 +1,17 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
 
 export interface LocationData {
   latitude: number;
@@ -286,7 +286,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       if (isMountedRef.current && Object.keys(addressData).length > 0) {
         onChange({ ...locationData, ...addressData });
       }
-    } catch {}
+    } catch { }
   }, [onChange]);
 
   const handleSearch = useCallback(async () => {
@@ -350,7 +350,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         if (isMountedRef.current && Object.keys(addressData).length > 0) {
           onChange({ ...locationData, ...addressData });
         }
-      } catch {}
+      } catch { }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setSearchError(errorMessage);
@@ -449,7 +449,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={handleSearchQueryChange}
-            placeholder="Search for an address or place..."
+            placeholder={t('common.searchAddress')}
             placeholderTextColor="#999"
             returnKeyType="search"
             onSubmitEditing={handleSearch}
@@ -541,7 +541,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       </View>
 
       <Text style={styles.hint}>
-        Tap on the map to select a location, or use "Get Current Location"
+        {t('common.tapOnMap')}
       </Text>
 
       {/* Location Details */}

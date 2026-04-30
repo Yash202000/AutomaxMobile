@@ -1,6 +1,14 @@
 {
   "common": {
+    "collapseAll": "طي الكل",
+    "expandAll": "فتح الكل",
+    "select": "اختر",
+    "enter": "أدخل",
+    "tapOnMap": "انقر على الخريطة لتحديد موقع، أو استخدم 'الحصول على الموقع الحالي'",
+    "searchAddress": "ابحث عن عنوان أو مكان...",
+    "selectIncident": "اختر حادثة...",
     "loading": "جاري التحميل...",
+    "recording": "تسجيل",
     "error": "خطأ",
     "retry": "إعادة المحاولة",
     "cancel": "إلغاء",
@@ -9,6 +17,7 @@
     "edit": "تعديل",
     "create": "إنشاء",
     "search": "بحث",
+    "searchPlaceholder": "بحث...",
     "filter": "تصفية",
     "clear": "مسح",
     "submit": "إرسال",
@@ -23,6 +32,9 @@
     "close": "إغلاق",
     "refresh": "تحديث",
     "noData": "لا توجد بيانات",
+    "clearSelection": "مسح الاختيار",
+    "noOptions": "لا توجد خيارات متاحة",
+    "unknownUser": "مستخدم غير معروف",
     "success": "نجاح",
     "failed": "فشل",
     "viewDetails": "عرض التفاصيل",
@@ -30,7 +42,13 @@
     "incidentStatusUpdated": "تم تحديث حالة الحادثة بنجاح",
     "requestStatusUpdated": "تم تحديث حالة الطلب بنجاح",
     "complaintStatusUpdated": "تم تحديث حالة الشكوى بنجاح",
-    "queryStatusUpdated": "تم تحديث حالة الاستفسار بنجاح"
+    "queryStatusUpdated": "تم تحديث حالة الاستفسار بنجاح",
+    "na": "غير متاح",
+    "conflictDetected": "تم اكتشاف تعارض",
+    "incidentModifiedByAnother": "تم تعديل هذا الحادث من قبل مستخدم آخر. يرجى المراجعة والمحاولة مرة أخرى.",
+    "tapLeafToSelectMultiple": "انقر على العناصر الطرفية لتحديد عناصر متعددة",
+    "onlyItemWithoutChildren": "يمكن فقط اختيار العناصر التي ليس لها فروع",
+    "searchByIncidentNumOrTitle": "بحث برقم الحادث أو العنوان..."
   },
   "map": {
     "incidents": "خريطة الحوادث",
@@ -71,7 +89,13 @@
     "getStarted": "ابدأ الآن",
     "loggingIn": "جاري تسجيل الدخول...",
     "loginError": "فشل تسجيل الدخول. حاول مرة أخرى.",
-    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "invalidOTP": "رمز التحقق غير صالح",
+    "verificationFailed": "فشل التحقق",
+    "didNotReceiveCode": "لم تستلم الرمز؟",
+    "resendCodeIn": "إعادة إرسال الرمز خلال {{timer}} ثانية",
+    "resendCode": "إعادة إرسال الرمز",
+    "backToLogin": "العودة لتسجيل الدخول"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -151,6 +175,8 @@
     "title": "الحوادث",
     "allIncidents": "جميع الحوادث",
     "myIncidents": "حوادثي",
+    "autoTitle": "يتم إنشاء العنوان تلقائياً من التصنيف والموقع والمنطقة المحددة",
+    "titlePlaceholder": "يتم إنشاء العنوان تلقائياً من التصنيف والموقع والمنطقة المحددة",
     "newIncident": "حادثة جديدة",
     "addIncident": "إضافة حادثة",
     "incidentDetails": "تفاصيل الحادثة",
@@ -210,7 +236,22 @@
     "ratingGood": "جيد",
     "ratingVeryGood": "جيد جداً",
     "ratingExcellent": "ممتاز",
-    "source": "المصدر"
+    "source": "المصدر",
+    "sources": {
+      "web": "بوابة الويب",
+      "mobile": "تطبيق الجوال",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "walk_in": "زيارة شخصية",
+      "api": "تكامل البرمجيات",
+      "social_media": "وسائل التواصل الاجتماعي",
+      "940_system": "نظام 940",
+      "940_manual": "940 يدوي",
+      "field": "ميداني",
+      "manual": "إدخال يدوي",
+      "viusional": "Viusional",
+      "other": "آخر"
+    }
   },
   "requests": {
     "title": "الطلبات",
@@ -257,7 +298,8 @@
     "fetchError": "فشل تحميل التفاصيل",
     "reporter": "المُبلِّغ",
     "geolocation": "الموقع الجغرافي",
-    "directions": "الاتجاهات"
+    "directions": "الاتجاهات",
+    "additionalInfo": "معلومات إضافية"
   },
   "priorities": {
     "critical": "حرج",
@@ -288,6 +330,10 @@
     "language": "اللغة",
     "english": "الإنجليزية",
     "arabic": "العربية",
+    "langChangeTitle": "نجاح",
+    "langChangeMessage": "تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات.",
+    "restartRequired": "إعادة التشغيل مطلوبة",
+    "restartMessage": "يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة.",
     "diagnostics": "التشخيصات",
     "shareLogs": "مشاركة السجلات",
     "deleteLogs": "حذف السجلات",
@@ -312,6 +358,7 @@
     "lastName": "اسم العائلة",
     "email": "البريد الإلكتروني",
     "enterYourEmail": "أدخل بريدك الإلكتروني",
+    "noEmail": "لا يوجد بريد إلكتروني",
     "phone": "الهاتف",
     "mobileNo": "رقم الجوال",
     "username": "اسم المستخدم",
@@ -336,8 +383,15 @@
     "newPassword": "كلمة المرور الجديدة",
     "confirmPassword": "تأكيد كلمة المرور",
     "changePassword": "تغيير كلمة المرور",
-    "passwordChanged": "تم تغيير كلمة المرور بنجاح",
-    "passwordMismatch": "كلمات المرور غير متطابقة"
+    "passwordChanged": "تم تحديث كلمة المرور بنجاح. يرجى تسجيل الدخول مرة أخرى.",
+    "passwordMismatch": "كلمات المرور غير متطابقة",
+    "securityTitle": "أمان كلمة المرور",
+    "minLength": "الحد الأدنى لطول كلمة المرور",
+    "requirements": "يجب أن تحتوي كلمة المرور على",
+    "digitLowerSymbol": "رقم، حرف صغير، رمز",
+    "updateButton": "تحديث كلمة المرور",
+    "fillAllFields": "يرجى ملء جميع الحقول.",
+    "minLengthError": "يجب أن تكون كلمة المرور الجديدة 8 أحرف على الأقل."
   },
   "filter": {
     "title": "تصفية الحوادث",
@@ -400,7 +454,14 @@
     "createButton": "إنشاء حادثة",
     "creating": "جاري إنشاء الحادثة...",
     "created": "تم إنشاء الحادثة بنجاح",
-    "createFailed": "فشل إنشاء الحادثة"
+    "createFailed": "فشل إنشاء الحادثة",
+    "waitingForLocation": "يرجى الانتظار حتى يتم اكتشاف موقعك قبل التقاط صورة، أو النقر على زر 'الحصول على الموقع الحالي'.",
+    "gettingLocationDetails": "جاري الحصول على تفاصيل الموقع",
+    "waitingForAddress": "يرجى الانتظار بينما نحصل على عنوانك...",
+    "addressUnavailable": "عنوان الموقع غير متاح",
+    "addressUnavailableDesc": "لدينا إحداثيات GPS الخاصة بك ولكن لم نتمكن من الحصول على عنوان الشارع. هل تريد الاستمرار بالإحداثيات فقط؟",
+    "waitPlease": "يرجى الانتظار",
+    "loadingDepts": "جاري تحميل الأقسام..."
   },
   "addRequest": {
     "title": "إضافة طلب",
@@ -429,6 +490,7 @@
   },
   "addComplaint": {
     "title": "إضافة شكوى",
+    "startRecording": "بدء التسجيل",
     "complaintTitle": "العنوان",
     "titlePlaceholder": "أدخل عنوان الشكوى",
     "description": "الوصف",
@@ -451,10 +513,20 @@
     "createButton": "إنشاء شكوى",
     "creating": "جاري إنشاء الشكوى...",
     "created": "تم إنشاء الشكوى بنجاح",
-    "createFailed": "فشل إنشاء الشكوى"
+    "createFailed": "فشل إنشاء الشكوى",
+    "voiceRecording": "تسجيل صوتي",
+    "recordAudio": "تسجيل الصوت",
+    "stopRecording": "إيقاف التسجيل",
+    "micPermissionRequired": "يرجى السماح بالوصول للميكروفون لتسجيل الصوت",
+    "selectSourceIncident": "اختر الحادث المصدر",
+    "workflowHint": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً"
   },
   "addQuery": {
     "title": "إضافة استفسار",
+    "channel": "القناة",
+    "noIncidentsFound": "لا يوجد حوادث",
+    "sourceIncident": "مرجع الحادث المصدر",
+    "autoWorkflow": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً",
     "queryTitle": "العنوان",
     "titlePlaceholder": "أدخل عنوان الاستفسار",
     "description": "الوصف",
@@ -477,7 +549,14 @@
     "createButton": "إنشاء استفسار",
     "creating": "جاري إنشاء الاستفسار...",
     "created": "تم إنشاء الاستفسار بنجاح",
-    "createFailed": "فشل إنشاء الاستفسار"
+    "createFailed": "فشل إنشاء الاستفسار",
+    "workflowHint": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً"
+  },
+  "search": {
+    "title": "بحث",
+    "placeholder": "بحث...",
+    "minCharsTitle": "استمر في الكتابة...",
+    "minCharsDesc": "أدخل 3 أحرف على الأقل للبحث"
   },
   "errors": {
     "networkError": "خطأ في الشبكة. تحقق من اتصالك.",
@@ -488,10 +567,18 @@
     "unknownError": "حدث خطأ غير معروف.",
     "fetchStatsFailed": "فشل تحميل الإحصائيات",
     "fetchFailed": "فشل التحميل",
-    "oops": "عذراً!"
+    "oops": "عذراً!",
+    "oopsTitle": "عذراً! حدث خطأ ما",
+    "unexpectedError": "واجه التطبيق خطأ غير متوقع. تم تسجيل هذا ليراجعه فريقنا.",
+    "devModeDetails": "تفاصيل الخطأ (وضع التطوير):",
+    "stackTrace": "تتبع المكدس:",
+    "componentStack": "مكدس المكونات:",
+    "reloadApp": "إعادة تحميل التطبيق",
+    "audioPlayFailed": "فشل تشغيل الصوت"
   },
   "notifications": {
     "title": "الإشعارات",
+    "defaultTitle": "إشعار",
     "noNotifications": "لا توجد إشعارات",
     "noNotificationsDesc": "ليس لديك أي إشعارات حتى الآن.",
     "failedToFetch": "فشل في تحميل الإشعارات",

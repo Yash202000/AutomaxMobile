@@ -19,6 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -129,14 +130,14 @@ const Dropdown: React.FC<DropdownProps> = ({
                   setModalVisible(false);
                 }}
               >
-                <Text style={styles.clearOptionText}>Clear selection</Text>
+                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
 
             {options.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>No options available</Text>
+                <Text style={styles.emptyText}>{t('common.noOptions')}</Text>
               </View>
             ) : (
               <FlatList
@@ -165,28 +166,6 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-const priorityOptions: DropdownOption[] = [
-  { id: '1', name: 'Critical' },
-  { id: '2', name: 'High' },
-  { id: '3', name: 'Medium' },
-  { id: '4', name: 'Low' },
-  { id: '5', name: 'Very Low' },
-];
-
-const severityOptions: DropdownOption[] = [
-  { id: '1', name: 'Critical' },
-  { id: '2', name: 'Major' },
-  { id: '3', name: 'Moderate' },
-  { id: '4', name: 'Minor' },
-  { id: '5', name: 'Cosmetic' },
-];
-
-const sourceOptions: DropdownOption[] = [
-  { id: 'mobile', name: 'Mobile App' }, // Only mobile option for mobile app
-];
-
-
-// File size limit: 10MB (adjust based on your server configuration)
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
@@ -196,6 +175,26 @@ const AddIncidentScreen = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
 
+  const priorityOptions: DropdownOption[] = [
+    { id: '1', name: t('priorities.critical') },
+    { id: '2', name: t('priorities.high') },
+    { id: '3', name: t('priorities.medium') },
+    { id: '4', name: t('priorities.low') },
+    { id: '5', name: t('priorities.veryLow') },
+  ];
+
+  const severityOptions: DropdownOption[] = [
+    { id: '1', name: t('severities.critical') },
+    { id: '2', name: t('severities.major') },
+    { id: '3', name: t('severities.moderate') },
+    { id: '4', name: t('severities.minor') },
+    { id: '5', name: t('severities.cosmetic') },
+  ];
+
+  const sourceOptions: DropdownOption[] = [
+    { id: 'mobile', name: t('incidents.sources.mobile') },
+  ];
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -204,7 +203,7 @@ const AddIncidentScreen = () => {
   const [reporterEmail, setReporterEmail] = useState('');
   const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
-  const [selectedSource] = useState<DropdownOption>({ id: 'mobile', name: 'Mobile App' }); // Fixed to mobile, non-editable
+  const [selectedSource] = useState<DropdownOption>(sourceOptions[0]); // Fixed to mobile, non-editable
   const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]); // Medium
@@ -291,7 +290,7 @@ const AddIncidentScreen = () => {
 
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = results;
 
-      if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
+      if (classRes.success && classRes?.data && Array.isArray(classRes.data)) {
         // Filter to only show classifications that can be used for incidents
         // Types: 'incident', 'all', or no type (legacy)
         const filterForIncidents = (nodes: TreeNode[]): TreeNode[] => {
@@ -421,13 +420,13 @@ const AddIncidentScreen = () => {
       } else {
         setLocations([]);
       }
-      if (workflowRes.success && workflowRes.data) {
-        setAllWorkflows(workflowRes.data);
+      if (workflowRes.success && workflowRes?.data) {
+        setAllWorkflows(workflowRes?.data);
       }
       if (userRes.success && userRes.data) {
         setUsers(userRes.data.map((u: any) => ({
           id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'Unknown User'
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || t('common.unknownUser')
         })));
       }
       if (deptRes.success && deptRes.data) {
@@ -445,8 +444,8 @@ const AddIncidentScreen = () => {
           'Warning',
           'Failed to load workflows. You may not be able to create incidents until workflows are available.',
           [
-            { text: 'Retry', onPress: () => fetchAllData() },
-            { text: 'Go Back', onPress: () => router.back() }
+            { text: t('common.retry'), onPress: () => fetchAllData() },
+            { text: t('common.back'), onPress: () => router.back() }
           ]
         );
       }
@@ -542,26 +541,26 @@ const AddIncidentScreen = () => {
   };
 
   const fieldLabels: Record<string, string> = {
-    description: 'Description',
-    comment: 'Comment',
-    classification_id: 'Classification',
-    priority: 'Priority',
-    severity: 'Severity',
-    source: 'Source',
-    assignee_id: 'Assignee',
-    department_id: 'Department',
-    location_id: 'Location',
-    geolocation: 'Geolocation',
-    reporter_name: 'Reporter Name',
-    reporter_email: 'Reporter Email',
-    attachments: 'Attachments',
+    description: t('incidents.description'),
+    comment: t('incidents.comment'),
+    classification_id: t('incidents.classification'),
+    priority: t('incidents.priority'),
+    severity: t('incidents.severity'),
+    source: t('incidents.source'),
+    assignee_id: t('incidents.assignee'),
+    department_id: t('incidents.department'),
+    location_id: t('incidents.location'),
+    geolocation: t('details.geolocation'),
+    reporter_name: t('addIncident.reporterName'),
+    reporter_email: t('addIncident.reporterEmail'),
+    attachments: t('incidents.attachments'),
   };
 
   const validate = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('addIncident.titlePlaceholder');
     }
 
     if (!matchedWorkflow) {
@@ -582,7 +581,7 @@ const AddIncidentScreen = () => {
     }
 
     if (!selectedPriority) {
-      newErrors.priority = 'Priority is required';
+      newErrors.priority = t('addIncident.selectPriority');
     }
 
     // Validate workflow-specific required fields
@@ -613,7 +612,7 @@ const AddIncidentScreen = () => {
       if (field === 'attachments') {
         // Check attachments separately
         if (attachments.length === 0) {
-          newErrors.attachments = 'At least one attachment is required';
+          newErrors.attachments = t('addIncident.requiredFields');
         }
         continue;
       }
@@ -704,9 +703,9 @@ const AddIncidentScreen = () => {
       // If location is required but not available at all
       if (!locationData?.latitude) {
         Alert.alert(
-          'Location Required',
-          'Please wait for your location to be detected before taking a photo, or click "Get Current Location" button.',
-          [{ text: 'OK' }]
+          t('addIncident.addressUnavailable'),
+          t('addIncident.waitingForLocation'),
+          [{ text: t('common.ok') }]
         );
         return;
       }
@@ -716,9 +715,9 @@ const AddIncidentScreen = () => {
 
         // Show loading alert
         Alert.alert(
-          'Getting Location Details',
-          'Please wait while we get your address...',
-          [{ text: 'OK' }]
+          t('addIncident.gettingLocationDetails'),
+          t('addIncident.waitingForAddress'),
+          [{ text: t('common.ok') }]
         );
 
         // Wait up to 3 seconds for address
@@ -1261,7 +1260,7 @@ const AddIncidentScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Incident</Text>
+        <Text style={styles.headerTitle}>{t('addIncident.title')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -1300,12 +1299,12 @@ const AddIncidentScreen = () => {
             </Text>
             <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
               <Text style={[styles.autoGeneratedText, !title && styles.placeholderText]}>
-                {title || 'Auto-generated from classification, location, and area'}
+                {title || t('incidents.titlePlaceholder')}
               </Text>
               <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
             </View>
             <Text style={styles.helperText}>
-              Title is automatically generated from selected classification, location, and area
+              {t('incidents.autoTitle')}
             </Text>
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 

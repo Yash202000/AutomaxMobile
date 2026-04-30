@@ -24,7 +24,7 @@ const UpdateStatusModal = () => {
   const { user } = useAuth();
   const { id, type, transitions, incident: incidentParam } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
-  const ticketType = Array.isArray(type) ? type[0] : (type || 'incident');
+  const ticketType = Array.isArray(type) ? type[0] : (type || t('details.incident', 'incident'));
 
   // Safely parse JSON — wrapped in useMemo so the object reference is stable across renders
   const availableTransitions = useMemo(() => {
@@ -754,7 +754,7 @@ const UpdateStatusModal = () => {
           ]
         );
       } else {
-        Alert.alert('Error', `Failed to update status: ${response.error}`);
+        Alert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
       }
     }
   };
