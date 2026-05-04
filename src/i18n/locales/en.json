@@ -1,5 +1,10 @@
 {
   "common": {
+    "chooseTransition": "Choose the action you want to perform",
+    "isRequired": "is required",
+    "allSources": "All Sources",
+    "photoPreview": "Photo Preview",
+    "photoPreviewDesc": "Review your photo with watermark",
     "collapseAll": "Collapse All",
     "expandAll": "Expand All",
     "select": "Select",
@@ -26,11 +31,10 @@
     "done": "Done",
     "yes": "Yes",
     "no": "No",
-    "ok": "OK",
+    "partialSuccess": "Partial Success",
     "viewAll": "View All",
     "showLess": "Show Less",
     "close": "Close",
-    "refresh": "Refresh",
     "noData": "No data available",
     "clearSelection": "Clear selection",
     "noOptions": "No options available",
@@ -427,10 +431,15 @@
     "allLocations": "All Locations",
     "allSlaStatuses": "All SLA Statuses",
     "invalidDateRange": "Start date cannot be after end date",
-    "invalidDateRangeTitle": "Invalid Date Range"
+    "invalidDateRangeTitle": "Invalid Date Range",
+    "dateRange": "Date Range",
+    "from": "From",
+    "to": "To",
+    "anyDate": "Any Date"
   },
   "addIncident": {
     "title": "Add Incident",
+    "createdAttErr": "Incident created failed to upload attachment",
     "incidentTitle": "Title",
     "titlePlaceholder": "Enter incident title",
     "description": "Description",
@@ -490,7 +499,8 @@
     "createButton": "CREATE REQUEST",
     "creating": "Creating request...",
     "created": "Request created successfully",
-    "createFailed": "Failed to create request"
+    "createFailed": "Failed to create request",
+    "workflowHint": "Workflow will be auto matched"
   },
   "addComplaint": {
     "title": "Add Complaint",

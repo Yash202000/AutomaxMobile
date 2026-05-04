@@ -31,19 +31,19 @@ interface FilterState {
 }
 
 const sources = [
-  { value: 'web', label: 'Web Portal' },
-  { value: 'mobile', label: 'Mobile App' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'walk_in', label: 'Walk-in' },
-  { value: 'api', label: 'API Integration' },
-  { value: 'social_media', label: 'Social Media' },
-  { value: '940_system', label: '940 System' },
-  { value: '940_manual', label: '940 Manual' },
-  { value: 'field', label: 'Field' },
-  { value: 'manual', label: 'Manual Entry' },
-  { value: 'viusional', label: 'Viusional' },
-  { value: 'other', label: 'Other' },
+  { value: 'web', label: 'بوابة الويب' },
+  { value: 'mobile', label: 'تطبيق الجوال' },
+  { value: 'email', label: 'البريد الإلكتروني' },
+  { value: 'phone', label: 'الهاتف' },
+  { value: 'walk_in', label: 'زيارة مباشرة' },
+  { value: 'api', label: 'تكامل API' },
+  { value: 'social_media', label: 'وسائل التواصل الاجتماعي' },
+  { value: '940_system', label: 'نظام 940' },
+  { value: '940_manual', label: '940 يدوي' },
+  { value: 'field', label: 'ميداني' },
+  { value: 'manual', label: 'إدخال يدوي' },
+  { value: 'viusional', label: 'فيوجنال' },
+  { value: 'other', label: 'أخرى' }
 ];
 
 const priorities = [
@@ -465,7 +465,7 @@ const RequestFilterScreen = () => {
           <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="calendar-outline" size={20} color="#9B59B6" />
-              <Text style={styles.filterLabel}>Date Range</Text>
+              <Text style={styles.filterLabel}>{t('filter.dateRange')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
@@ -478,9 +478,9 @@ const RequestFilterScreen = () => {
             <View style={styles.filterOptions}>
               <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
                 <Ionicons name="calendar" size={18} color="#9B59B6" />
-                <Text style={styles.dateLabel}>From</Text>
+                <Text style={styles.dateLabel}>{t('filter.from')}</Text>
                 <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
-                  {filters.start_date ? formatDisplayDate(filters.start_date) : 'Any date'}
+                  {filters.start_date ? formatDisplayDate(filters.start_date) : t('filter.anyDate')}
                 </Text>
                 {filters.start_date ? (
                   <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
@@ -490,9 +490,9 @@ const RequestFilterScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
                 <Ionicons name="calendar" size={18} color="#9B59B6" />
-                <Text style={styles.dateLabel}>To</Text>
+                <Text style={styles.dateLabel}>{t('filter.to')}</Text>
                 <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
-                  {filters.end_date ? formatDisplayDate(filters.end_date) : 'Any date'}
+                  {filters.end_date ? formatDisplayDate(filters.end_date) : t('filter.anyDate')}
                 </Text>
                 {filters.end_date ? (
                   <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>

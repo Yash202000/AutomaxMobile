@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Modal, Pressable, Alert, ActivityIndicator, ScrollView, Linking } from 'react-native';
-import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useTranslation } from 'react-i18next';
-import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
-import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
-import { getLocationsTree } from '@/src/api/locations';
 import { getClassificationsTree } from '@/src/api/classifications';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { WatermarkProcessor, WatermarkData } from '@/src/components/WatermarkProcessor';
-import { WatermarkPreview } from '@/src/components/WatermarkPreview';
+import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
+import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
+import { getLocationsTree } from '@/src/api/locations';
 import { LocationData } from '@/src/components/LocationPickerOSM';
-import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { WatermarkPreview } from '@/src/components/WatermarkPreview';
+import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
-import * as Location from 'expo-location';
 import { compressImage } from '@/src/utils/imageCompression';
+import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const UpdateStatusModal = () => {
   const router = useRouter();
@@ -203,7 +203,7 @@ const UpdateStatusModal = () => {
       } catch (error: any) {
         // Handle location services disabled or other errors
         if (error?.message?.includes('Location services are disabled') ||
-            error?.message?.includes('unavailable')) {
+          error?.message?.includes('unavailable')) {
           Alert.alert(
             t('common.locationServicesDisabled', 'Location Services Disabled'),
             t('common.enableLocationServices', 'Please enable location services in your device settings to add GPS coordinates to photos.'),
@@ -735,9 +735,11 @@ const UpdateStatusModal = () => {
       }
 
       Alert.alert(t('common.success'), successMessage, [
-        { text: t('common.ok'), onPress: () => {
-          router.back();
-        }},
+        {
+          text: t('common.ok'), onPress: () => {
+            router.back();
+          }
+        },
       ]);
     } else {
       // Check for version conflict
@@ -869,7 +871,7 @@ const UpdateStatusModal = () => {
           {!selectedTransition && (
             <>
               <Text style={styles.stepLabel}>{t('incidents.selectStatus')}</Text>
-              <Text style={styles.stepHint}>Choose the action you want to perform</Text>
+              <Text style={styles.stepHint}>{t('common.chooseTransition')}</Text>
               {availableTransitions.map((trans) => (
                 <TouchableOpacity
                   key={trans.transition.id}
