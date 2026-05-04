@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { t } from 'i18next';
+import React from 'react';
+import { Dimensions, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface WatermarkData {
   latitude?: number;
@@ -89,8 +90,8 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Photo Preview</Text>
-          <Text style={styles.headerSubtitle}>Review your photo with watermark</Text>
+          <Text style={styles.headerTitle}>{t('common.photoPreview')}</Text>
+          <Text style={styles.headerSubtitle}>{t('common.photoPreviewDesc')}</Text>
         </View>
 
         {/* Image with watermark overlay */}
@@ -117,12 +118,12 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
             <Ionicons name="refresh" size={24} color="#E74C3C" />
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
             <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-            <Text style={styles.acceptButtonText}>Save</Text>
+            <Text style={styles.acceptButtonText}>{t('common.save')}</Text>
           </TouchableOpacity>
         </View>
       </View>

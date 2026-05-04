@@ -1,5 +1,10 @@
 {
   "common": {
+    "chooseTransition": "اختر الإجراء الذي تريد تنفيذه",
+    "isRequired": "مطلوب",
+    "allSources": "جميع المصادر",
+    "photoPreview": "معاينة الصورة",
+    "photoPreviewDesc": "راجع صورتك بالعلامة المائية",
     "collapseAll": "طي الكل",
     "expandAll": "فتح الكل",
     "select": "اختر",
@@ -12,6 +17,7 @@
     "error": "خطأ",
     "retry": "إعادة المحاولة",
     "cancel": "إلغاء",
+    "partialSuccess": "نجاح جزئي",
     "save": "حفظ",
     "delete": "حذف",
     "edit": "تعديل",
@@ -425,11 +431,16 @@
     "allLocations": "كل المواقع",
     "allSlaStatuses": "كل حالات SLA",
     "invalidDateRange": "تاريخ البدء لا يمكن أن يكون بعد تاريخ الانتهاء",
-    "invalidDateRangeTitle": "نطاق تاريخ غير صالح"
+    "invalidDateRangeTitle": "نطاق تاريخ غير صالح",
+    "dateRange": "النطاق الزمني",
+    "from": "من",
+    "to": "إلى",
+    "anyDate": "أي تاريخ"
   },
   "addIncident": {
     "title": "إضافة حادثة",
     "incidentTitle": "العنوان",
+    "createdAttErr": "فشل رفع المرفق عند إنشاء الحادث",
     "titlePlaceholder": "أدخل عنوان الحادثة",
     "description": "الوصف",
     "descriptionPlaceholder": "صف الحادثة...",
@@ -488,7 +499,8 @@
     "createButton": "إنشاء طلب",
     "creating": "جاري إنشاء الطلب...",
     "created": "تم إنشاء الطلب بنجاح",
-    "createFailed": "فشل إنشاء الطلب"
+    "createFailed": "فشل إنشاء الطلب",
+    "workflowHint": "سيتم مطابقة سير العمل تلقائيًا"
   },
   "addComplaint": {
     "title": "إضافة شكوى",
