@@ -1,6 +1,7 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { Ionicons } from '@expo/vector-icons';
@@ -385,7 +386,7 @@ const IncidentDetailsScreen = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Title Card */}
         <View style={styles.titleCard}>
-          <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
+          {/* <View style={[styles.priorityBar, { backgroundColor: config.color }]} /> */}
           <View style={styles.titleCardContent}>
             <View style={styles.titleHeader}>
               {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
@@ -437,7 +438,7 @@ const IncidentDetailsScreen = () => {
             {incident.lookup_values && incident.lookup_values.length > 0 && (() => {
               const grouped: Record<string, LookupValue[]> = {};
               incident.lookup_values.forEach(value => {
-                const categoryName = value.category?.name || 'Other';
+                const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
                 if (!grouped[categoryName]) {
                   grouped[categoryName] = [];
                 }
@@ -468,7 +469,7 @@ const IncidentDetailsScreen = () => {
                             { color: value.color || COLORS.text.primary },
                           ]}
                         >
-                          {value.name}
+                          {i18n.language === 'en' ? value.name : value.name_ar}
                         </Text>
                       </View>
                     ))}

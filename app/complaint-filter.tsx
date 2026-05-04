@@ -47,14 +47,14 @@ const severities = [
 
 
 const channels = [
-  { value: 'phone', label: 'Phone' },
-  { value: 'email', label: 'Email' },
-  { value: 'web', label: 'Web Portal' },
-  { value: 'mobile', label: 'Mobile App' },
-  { value: 'social_media', label: 'Social Media' },
-  { value: 'in_person', label: 'In Person' },
-  { value: 'viusional', label: 'Viusional' },
-  { value: 'other', label: 'Other' },
+  { value: 'phone', label: 'الهاتف' },
+  { value: 'email', label: 'البريد الإلكتروني' },
+  { value: 'web', label: 'بوابة الويب' },
+  { value: 'mobile', label: 'تطبيق الجوال' },
+  { value: 'social_media', label: 'وسائل التواصل الاجتماعي' },
+  { value: 'in_person', label: 'حضورياً' },
+  { value: 'viusional', label: 'فيوجنال' },
+  { value: 'other', label: 'أخرى' },
 ];
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -463,7 +463,7 @@ const ComplaintFilterScreen = () => {
           <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="calendar-outline" size={20} color="#E74C3C" />
-              <Text style={styles.filterLabel}>Date Range</Text>
+              <Text style={styles.filterLabel}>{t('filter.dateRange')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
@@ -476,9 +476,9 @@ const ComplaintFilterScreen = () => {
             <View style={styles.filterOptions}>
               <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
                 <Ionicons name="calendar" size={18} color="#E74C3C" />
-                <Text style={styles.dateLabel}>From</Text>
+                <Text style={styles.dateLabel}>{t('filter.from')}</Text>
                 <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
-                  {filters.start_date ? formatDisplayDate(filters.start_date) : 'Any date'}
+                  {filters.start_date ? formatDisplayDate(filters.start_date) : t('filter.anyDate')}
                 </Text>
                 {filters.start_date ? (
                   <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
@@ -488,9 +488,9 @@ const ComplaintFilterScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
                 <Ionicons name="calendar" size={18} color="#E74C3C" />
-                <Text style={styles.dateLabel}>To</Text>
+                <Text style={styles.dateLabel}>{t('filter.to')}</Text>
                 <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
-                  {filters.end_date ? formatDisplayDate(filters.end_date) : 'Any date'}
+                  {filters.end_date ? formatDisplayDate(filters.end_date) : t('filter.anyDate')}
                 </Text>
                 {filters.end_date ? (
                   <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>

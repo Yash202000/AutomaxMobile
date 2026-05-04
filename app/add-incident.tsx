@@ -11,6 +11,7 @@ import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { compressImage } from '@/src/utils/imageCompression';
 import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
@@ -569,19 +570,19 @@ const AddIncidentScreen = () => {
 
     // Always require classification, location, source, and priority on mobile
     if (!selectedClassification) {
-      newErrors.classification_id = 'Classification is required';
+      newErrors.classification_id = `${t('incidents.classification')} ${t('common.isRequired')}`;
     }
 
     if (!selectedLocation) {
-      newErrors.location_id = 'Location is required';
+      newErrors.location_id = `${t('incidents.location')} ${t('common.isRequired')}`;
     }
 
     if (!selectedSource) {
-      newErrors.source = 'Source is required';
+      newErrors.source = `${t('incidents.source')} ${t('common.isRequired')}`;
     }
 
     if (!selectedPriority) {
-      newErrors.priority = t('addIncident.selectPriority');
+      newErrors.priority = t(`addIncident.selectPriority`);
     }
 
     // Validate workflow-specific required fields
@@ -600,10 +601,10 @@ const AddIncidentScreen = () => {
           // For multiselect, check if array is empty
           if (category.field_type === 'multiselect') {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              newErrors[field] = `${category.name} is required`;
+              newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
             }
           } else if (!value) {
-            newErrors[field] = `${category.name} is required`;
+            newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
           }
         }
         continue;
@@ -620,7 +621,7 @@ const AddIncidentScreen = () => {
       if (field === 'geolocation') {
         // Check geolocation - locationData must be set
         if (!locationData) {
-          newErrors.geolocation = 'Geolocation is required';
+          newErrors.geolocation = `Geolocation ${t('common.isRequired')}`;
         }
         continue;
       }
@@ -663,7 +664,7 @@ const AddIncidentScreen = () => {
       }
 
       if (!value || (typeof value === 'string' && !value.trim())) {
-        newErrors[field] = `${fieldLabels[field] || field} is required`;
+        newErrors[field] = `${fieldLabels[field] || field} ${t('common.isRequired')}`;
       }
     }
 
@@ -1183,8 +1184,8 @@ const AddIncidentScreen = () => {
             if (!uploadResult.success && uploadResult.errors) {
               const serverError = uploadResult.errors?.[0]?.error
               Alert.alert(
-                'Partial Success',
-                `Incident created but some attachments failed to upload. ${serverError}`,
+                t('common.partialSuccess'),
+                `${t('addIncident.createdAttErr')}. ${serverError}`,
                 [{ text: 'OK', onPress: () => router.back() }]
               );
               setSubmitting(false);
@@ -1203,8 +1204,8 @@ const AddIncidentScreen = () => {
             }).catch(err => console.error('Failed to log error:', err));
 
             Alert.alert(
-              'Partial Success',
-              'Incident created but attachment upload failed.',
+              t('common.partialSuccess'),
+              t('addIncident.createdAttErr'),
               [{ text: 'OK', onPress: () => router.back() }]
             );
             setSubmitting(false);
@@ -1220,7 +1221,7 @@ const AddIncidentScreen = () => {
         });
 
         setSubmitting(false);
-        Alert.alert('Success', 'Incident created successfully.', [
+        Alert.alert(t('common.success'), t('addIncident.created'), [
           { text: 'OK', onPress: () => router.back() },
         ]);
       } else {
