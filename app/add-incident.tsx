@@ -1270,7 +1270,7 @@ const AddIncidentScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2EC4B6" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading', 'Loading...')}</Text>
         </View>
       ) : (
         <>
@@ -1279,7 +1279,7 @@ const AddIncidentScreen = () => {
             <View style={styles.workflowCard}>
               <View style={styles.workflowHeader}>
                 <Ionicons name="git-branch" size={20} color="#2EC4B6" />
-                <Text style={styles.workflowLabel}>Workflow</Text>
+                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
               </View>
               {matchedWorkflow ? (
                 <View style={styles.workflowMatched}>
@@ -1359,7 +1359,6 @@ const AddIncidentScreen = () => {
             {lookupCategories.map(category => {
               const lookupFieldKey = `lookup:${category.code}`;
               const isRequired = requiredFields.includes(lookupFieldKey);
-
               // Only show if required by workflow
               if (!isRequired) return null;
 
@@ -1452,11 +1451,11 @@ const AddIncidentScreen = () => {
             {isFieldRequired('comment') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Comment <Text style={styles.required}>*</Text>
+                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError]}
-                  placeholder="Add a comment..."
+                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
                   onChangeText={(text) => {
@@ -1600,7 +1599,7 @@ const AddIncidentScreen = () => {
               onPress={() => setAttachmentPickerVisible(false)}
             >
               <View style={styles.pickerModalContent}>
-                <Text style={styles.pickerModalTitle}>Add Attachment</Text>
+                <Text style={styles.pickerModalTitle}>{t('incidents.addAttachment', 'Add Attachment')}</Text>
 
                 <TouchableOpacity
                   style={styles.pickerOption}
@@ -1610,7 +1609,7 @@ const AddIncidentScreen = () => {
                   }}
                 >
                   <Ionicons name="camera" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>Take Photo</Text>
+                  <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
                 </TouchableOpacity>
 
                 {/* <TouchableOpacity
@@ -1621,7 +1620,7 @@ const AddIncidentScreen = () => {
                   }}
                 >
                   <Ionicons name="images" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>Choose from Gallery</Text>
+                  <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1632,14 +1631,14 @@ const AddIncidentScreen = () => {
                   }}
                 >
                   <Ionicons name="document" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>Choose File</Text>
+                  <Text style={styles.pickerOptionText}>{t('common.chooseFile', 'Choose File')}</Text>
                 </TouchableOpacity> */}
 
                 <TouchableOpacity
                   style={styles.pickerCancelButton}
                   onPress={() => setAttachmentPickerVisible(false)}
                 >
-                  <Text style={styles.pickerCancelText}>Cancel</Text>
+                  <Text style={styles.pickerCancelText}>{t('common.cancel', 'Cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

@@ -534,7 +534,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color="#2EC4B6" />
-              <Text style={styles.loadingText}>Loading map...</Text>
+              <Text style={styles.loadingText}>{t('locationPicker.loadingMap', 'Loading map...')}</Text>
             </View>
           )}
         />
@@ -559,32 +559,32 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           ) : isLoading ? (
             <Text style={styles.addressLoading}>{t('addIncident.fetchingLocation')}</Text>
           ) : (
-            <Text style={styles.addressUnavailable}>Address unavailable (coordinates saved)</Text>
+            <Text style={styles.addressUnavailable}>{t('locationPicker.addressUnavailable', 'Address unavailable (coordinates saved)')}</Text>
           )}
 
           {(value.city || value.state || value.country) && (
             <View style={styles.detailsGrid}>
               {value.city && (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>City:</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.city', 'City:')}</Text>
                   <Text style={styles.detailValue}>{value.city}</Text>
                 </View>
               )}
               {value.state && (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>State:</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.state', 'State:')}</Text>
                   <Text style={styles.detailValue}>{value.state}</Text>
                 </View>
               )}
               {value.country && (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Country:</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.country', 'Country:')}</Text>
                   <Text style={styles.detailValue}>{value.country}</Text>
                 </View>
               )}
               {value.postal_code && (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Postal Code:</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.postalCode', 'Postal Code:')}</Text>
                   <Text style={styles.detailValue}>{value.postal_code}</Text>
                 </View>
               )}

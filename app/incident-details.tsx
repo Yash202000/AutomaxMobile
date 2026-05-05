@@ -1,5 +1,6 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
+import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -198,6 +199,7 @@ const IncidentDetailsScreen = () => {
   const [mapZoom, setMapZoom] = useState<number>(15);
   const [showAllComments, setShowAllComments] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const mapRef = useRef<WebView>(null);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
@@ -282,6 +284,14 @@ const IncidentDetailsScreen = () => {
       fetchDetails();
     }, [fetchDetails])
   );
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const cat = await getLookupCategories();
+      setCategories(cat.data);
+    };
+    fetchCategories();
+  }, [])
 
   const handleZoomIn = () => {
     const newZoom = Math.min(mapZoom + 1, 19);
@@ -429,7 +439,7 @@ const IncidentDetailsScreen = () => {
               <InfoRow
                 icon="git-network-outline"
                 label={t('incidents.source')}
-                value={incident.source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                value={t(`incidents.sources.${incident.source}`).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 iconColor="#0EA5E9"
               />
             )}
@@ -486,10 +496,11 @@ const IncidentDetailsScreen = () => {
 
                 // Extract all custom fields
                 Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                  const ld = categories.find((c: any) => c.id === fieldData.category_id);
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: fieldData.label || key.replace('lookup:', ''),
+                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });

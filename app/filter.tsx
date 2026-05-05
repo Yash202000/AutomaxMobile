@@ -31,19 +31,19 @@ interface FilterState {
 }
 
 const sources = [
-  { value: 'web', label: 'بوابة الويب' },
-  { value: 'mobile', label: 'تطبيق الجوال' },
-  { value: 'email', label: 'البريد الإلكتروني' },
-  { value: 'phone', label: 'الهاتف' },
-  { value: 'walk_in', label: 'زيارة مباشرة' },
-  { value: 'api', label: 'تكامل API' },
-  { value: 'social_media', label: 'وسائل التواصل الاجتماعي' },
-  { value: '940_system', label: 'نظام 940' },
-  { value: '940_manual', label: '940 يدوي' },
-  { value: 'field', label: 'ميداني' },
-  { value: 'manual', label: 'إدخال يدوي' },
-  { value: 'viusional', label: 'فيوجنال' },
-  { value: 'other', label: 'أخرى' },
+  { value: 'web' },
+  { value: 'mobile' },
+  { value: 'email' },
+  { value: 'phone' },
+  { value: 'walk_in' },
+  { value: 'api' },
+  { value: 'social_media' },
+  { value: '940_system' },
+  { value: '940_manual' },
+  { value: 'field' },
+  { value: 'manual' },
+  { value: 'viusional' },
+  { value: 'other' },
 ];
 
 const priorities = [
@@ -677,11 +677,11 @@ const FilterScreen = () => {
           >
             <View style={styles.filterHeaderLeft}>
               <Ionicons name="git-network-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('addIncident.source', 'Source')}</Text>
+              <Text style={styles.filterLabel}>{t('filter.source', 'Source')}</Text>
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
-                {filters.sources.length === 0 ? t('filter.all', 'All') : (filters.sources.length === 1 ? (sources.find(s => s.value === filters.sources[0])?.label || filters.sources[0]) : `${filters.sources.length} ${t('filter.selected')}`)}
+                {filters.sources.length === 0 ? t('filter.all', 'All') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : `${filters.sources.length} ${t('filter.selected')}`)}
               </Text>
               <Ionicons
                 name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
@@ -697,7 +697,7 @@ const FilterScreen = () => {
                 onPress={() => setFilters({ ...filters, sources: [] })}
               >
                 <Text style={[styles.filterOptionText, filters.sources.length === 0 && styles.filterOptionTextSelected]}>
-                  {t('common.allSources')}
+                  {t('filter.allSources')}
                 </Text>
                 {filters.sources.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
               </TouchableOpacity>
@@ -708,7 +708,7 @@ const FilterScreen = () => {
                   onPress={() => selectSource(s.value)}
                 >
                   <Text style={[styles.filterOptionText, filters.sources.includes(s.value) && styles.filterOptionTextSelected]}>
-                    {s.label}
+                    {t(`incidents.sources.${s.value}`)}
                   </Text>
                   {filters.sources.includes(s.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                 </TouchableOpacity>
@@ -775,7 +775,7 @@ const FilterScreen = () => {
                     {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
                   </Text>
                   <TouchableOpacity onPress={() => setShowDatePicker(null)}>
-                    <Text style={styles.dateModalDone}>Done</Text>
+                    <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker

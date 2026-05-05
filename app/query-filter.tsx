@@ -30,31 +30,31 @@ interface FilterState {
 }
 
 const priorities = [
-  { value: 1, label: 'Critical', color: '#E74C3C' },
-  { value: 2, label: 'High', color: '#E67E22' },
-  { value: 3, label: 'Medium', color: '#F1C40F' },
-  { value: 4, label: 'Low', color: '#3498DB' },
-  { value: 5, label: 'Very Low', color: '#2ECC71' },
+  { value: 1, key: 'critical', color: '#E74C3C' },
+  { value: 2, key: 'high', color: '#E67E22' },
+  { value: 3, key: 'medium', color: '#F1C40F' },
+  { value: 4, key: 'low', color: '#3498DB' },
+  { value: 5, key: 'veryLow', color: '#2ECC71' },
 ];
 
 const severities = [
-  { value: 1, label: 'Critical', color: '#E74C3C' },
-  { value: 2, label: 'Major', color: '#E67E22' },
-  { value: 3, label: 'Moderate', color: '#F1C40F' },
-  { value: 4, label: 'Minor', color: '#3498DB' },
-  { value: 5, label: 'Cosmetic', color: '#2ECC71' },
+  { value: 1, key: 'critical', color: '#E74C3C' },
+  { value: 2, key: 'major', color: '#E67E22' },
+  { value: 3, key: 'moderate', color: '#F1C40F' },
+  { value: 4, key: 'minor', color: '#3498DB' },
+  { value: 5, key: 'cosmetic', color: '#2ECC71' },
 ];
 
 
 const channels = [
-  { value: 'phone', label: 'الهاتف' },
-  { value: 'email', label: 'البريد الإلكتروني' },
-  { value: 'web', label: 'بوابة الويب' },
-  { value: 'mobile', label: 'تطبيق الجوال' },
-  { value: 'social_media', label: 'وسائل التواصل الاجتماعي' },
-  { value: 'in_person', label: 'حضورياً' },
-  { value: 'viusional', label: 'فيوجنال' },
-  { value: 'other', label: 'أخرى' },
+  { value: 'phone' },
+  { value: 'email' },
+  { value: 'web' },
+  { value: 'mobile' },
+  { value: 'social_media' },
+  { value: 'in_person' },
+  { value: 'viusional' },
+  { value: 'other' },
 ];
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -341,30 +341,30 @@ const QueryFilterScreen = () => {
   return (
     <View style={[styles.container, { marginTop: isSmallScreen ? 60 : 100 }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Filter Queries</Text>
+        <Text style={styles.headerTitle}>{t('filter.filterQueries', 'Filter Queries')}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.optionsContainer}>
-        {renderFilterSection('channel', 'Channel', 'megaphone-outline',
-          filters.channels.length === 0 ? 'All' : (filters.channels.length === 1 ? (channels.find(c => c.value === filters.channels[0])?.label || 'Selected') : `${filters.channels.length} selected`),
+        {renderFilterSection('channel', t('complaints.channel', 'Channel'), 'megaphone-outline',
+          filters.channels.length === 0 ? t('filter.allLabel', 'All') : (filters.channels.length === 1 ? t(`incidents.channels.${filters.channels[0]}`) : t('filter.nSelected', '{{count}} selected', { count: filters.channels.length })),
           false,
-          [{ value: null, label: 'All Channels' }, ...channels],
+          [{ value: null, label: t('filter.allChannels', 'All Channels') }, ...channels],
           (c) => (
             <TouchableOpacity key={c.value || 'all'} style={[styles.filterOption, (c.value ? filters.channels.includes(c.value) : filters.channels.length === 0) && styles.filterOptionSelected]}
               onPress={() => c.value ? selectChannel(c.value) : setFilters({ ...filters, channels: [] })}>
-              <Text style={styles.filterOptionText}>{c.label}</Text>
+              <Text style={styles.filterOptionText}>{c.value ? t(`incidents.channels.${c.value}`) : c.label}</Text>
               {(c.value ? filters.channels.includes(c.value) : filters.channels.length === 0) && <Ionicons name="checkmark" size={20} color="#3498DB" />}
             </TouchableOpacity>
           )
         )}
 
-        {renderFilterSection('status', 'Status', 'flag-outline',
-          filters.state_ids.length === 0 ? 'All' : (filters.state_ids.length === 1 ? filters.state_names[0] : `${filters.state_ids.length} selected`),
+        {renderFilterSection('status', t('filter.status', 'Status'), 'flag-outline',
+          filters.state_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.state_ids.length === 1 ? filters.state_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.state_ids.length })),
           loadingStates,
-          [{ id: null, name: 'All Statuses' }, ...states],
+          [{ id: null, name: t('filter.allStatuses', 'All Statuses') }, ...states],
           (state) => (
             <TouchableOpacity key={state.id || 'all'} style={[styles.filterOption, (state.id ? filters.state_ids.includes(state.id) : filters.state_ids.length === 0) && styles.filterOptionSelected]}
               onPress={() => state.id ? selectState(state) : setFilters({ ...filters, state_ids: [], state_names: [] })}>
@@ -374,55 +374,55 @@ const QueryFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('priority', 'Priority', 'alert-circle-outline',
-          filters.priorities.length === 0 ? 'All' : (filters.priorities.length === 1 ? (priorities.find(p => p.value === filters.priorities[0])?.label || 'Selected') : `${filters.priorities.length} selected`),
+        {renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
+          filters.priorities.length === 0 ? t('filter.allLabel', 'All') : (filters.priorities.length === 1 ? t(`priorities.${priorities.find(p => p.value === filters.priorities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.priorities.length })),
           false,
-          [{ value: null, label: 'All Priorities' }, ...priorities],
+          [{ value: null, label: t('filter.allPriorities', 'All Priorities') }, ...priorities],
           (p) => (
             <TouchableOpacity key={p.value || 'all'} style={[styles.filterOption, (p.value ? filters.priorities.includes(p.value) : filters.priorities.length === 0) && styles.filterOptionSelected]}
               onPress={() => p.value ? selectPriority(p.value) : setFilters({ ...filters, priorities: [] })}>
               <View style={styles.priorityOption}>
                 {p.color && <View style={[styles.priorityDot, { backgroundColor: p.color }]} />}
-                <Text style={styles.filterOptionText}>{p.label}</Text>
+                <Text style={styles.filterOptionText}>{p.value ? t(`priorities.${p.key}`) : p.label}</Text>
               </View>
               {(p.value ? filters.priorities.includes(p.value) : filters.priorities.length === 0) && <Ionicons name="checkmark" size={20} color="#3498DB" />}
             </TouchableOpacity>
           )
         )}
 
-        {renderFilterSection('severity', 'Severity', 'warning-outline',
-          filters.severities.length === 0 ? 'All' : (filters.severities.length === 1 ? (severities.find(s => s.value === filters.severities[0])?.label || 'Selected') : `${filters.severities.length} selected`),
+        {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
+          filters.severities.length === 0 ? t('filter.allLabel', 'All') : (filters.severities.length === 1 ? t(`severities.${severities.find(s => s.value === filters.severities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.severities.length })),
           false,
-          [{ value: null, label: 'All Severities' }, ...severities],
+          [{ value: null, label: t('filter.allSeverities', 'All Severities') }, ...severities],
           (s) => (
             <TouchableOpacity key={s.value || 'all'} style={[styles.filterOption, (s.value ? filters.severities.includes(s.value) : filters.severities.length === 0) && styles.filterOptionSelected]}
               onPress={() => s.value ? selectSeverity(s.value) : setFilters({ ...filters, severities: [] })}>
               <View style={styles.priorityOption}>
                 {s.color && <View style={[styles.priorityDot, { backgroundColor: s.color }]} />}
-                <Text style={styles.filterOptionText}>{s.label}</Text>
+                <Text style={styles.filterOptionText}>{s.value ? t(`severities.${s.key}`) : s.label}</Text>
               </View>
               {(s.value ? filters.severities.includes(s.value) : filters.severities.length === 0) && <Ionicons name="checkmark" size={20} color="#3498DB" />}
             </TouchableOpacity>
           )
         )}
 
-        {renderFilterSection('assignee', 'Assignee', 'person-outline',
-          filters.assignee_ids.length === 0 ? 'All' : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : `${filters.assignee_ids.length} selected`),
+        {renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
+          filters.assignee_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.assignee_ids.length })),
           loadingUsers,
-          [{ id: null, first_name: 'All', last_name: 'Assignees' }, ...users],
+          [{ id: null, first_name: t('filter.allLabel', 'All'), last_name: t('filter.assignee', 'Assignees') }, ...users],
           (user) => (
             <TouchableOpacity key={user.id || 'all'} style={[styles.filterOption, (user.id ? filters.assignee_ids.includes(user.id) : filters.assignee_ids.length === 0) && styles.filterOptionSelected]}
               onPress={() => user.id ? selectAssignee(user) : setFilters({ ...filters, assignee_ids: [], assignee_names: [] })}>
-              <Text style={styles.filterOptionText}>{user.id ? `${user.first_name} ${user.last_name}` : 'All Assignees'}</Text>
+              <Text style={styles.filterOptionText}>{user.id ? `${user.first_name} ${user.last_name}` : t('filter.allAssignees', 'All Assignees')}</Text>
               {(user.id ? filters.assignee_ids.includes(user.id) : filters.assignee_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#3498DB" />}
             </TouchableOpacity>
           )
         )}
 
-        {renderFilterSection('department', 'Department', 'business-outline',
-          filters.department_ids.length === 0 ? 'All' : (filters.department_ids.length === 1 ? filters.department_names[0] : `${filters.department_ids.length} selected`),
+        {renderFilterSection('department', t('filter.department', 'Department'), 'business-outline',
+          filters.department_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.department_ids.length === 1 ? filters.department_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.department_ids.length })),
           loadingDepartments,
-          [{ id: null, name: 'All Departments' }, ...departments],
+          [{ id: null, name: t('filter.allDepartments', 'All Departments') }, ...departments],
           (dept) => (
             <TouchableOpacity key={dept.id || 'all'} style={[styles.filterOption, (dept.id ? filters.department_ids.includes(dept.id) : filters.department_ids.length === 0) && styles.filterOptionSelected]}
               onPress={() => dept.id ? selectDepartment(dept) : setFilters({ ...filters, department_ids: [], department_names: [] })}>
@@ -432,10 +432,10 @@ const QueryFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('classification', 'Classification', 'layers-outline',
-          filters.classification_ids.length === 0 ? 'All' : (filters.classification_ids.length === 1 ? filters.classification_names[0] : `${filters.classification_ids.length} selected`),
+        {renderFilterSection('classification', t('filter.classification', 'Classification'), 'layers-outline',
+          filters.classification_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.classification_ids.length === 1 ? filters.classification_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.classification_ids.length })),
           loadingClassifications,
-          [{ id: null, name: 'All Classifications' }, ...classifications],
+          [{ id: null, name: t('filter.allClassifications', 'All Classifications') }, ...classifications],
           (item) => (
             <TouchableOpacity key={item.id || 'all'} style={[styles.filterOption, (item.id ? filters.classification_ids.includes(item.id) : filters.classification_ids.length === 0) && styles.filterOptionSelected]}
               onPress={() => item.id ? selectClassification(item) : setFilters({ ...filters, classification_ids: [], classification_names: [] })}>
@@ -445,10 +445,10 @@ const QueryFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('location', 'Location', 'location-outline',
-          filters.location_ids.length === 0 ? 'All' : (filters.location_ids.length === 1 ? filters.location_names[0] : `${filters.location_ids.length} selected`),
+        {renderFilterSection('location', t('filter.location', 'Location'), 'location-outline',
+          filters.location_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.location_ids.length === 1 ? filters.location_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.location_ids.length })),
           loadingLocations,
-          [{ id: null, name: 'All Locations' }, ...locations],
+          [{ id: null, name: t('filter.allLocations', 'All Locations') }, ...locations],
           (item) => (
             <TouchableOpacity key={item.id || 'all'} style={[styles.filterOption, (item.id ? filters.location_ids.includes(item.id) : filters.location_ids.length === 0) && styles.filterOptionSelected]}
               onPress={() => item.id ? selectLocation(item) : setFilters({ ...filters, location_ids: [], location_names: [] })}>
@@ -515,7 +515,7 @@ const QueryFilterScreen = () => {
                     {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
                   </Text>
                   <TouchableOpacity onPress={() => setShowDatePicker(null)}>
-                    <Text style={styles.dateModalDone}>Done</Text>
+                    <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker
@@ -571,10 +571,10 @@ const QueryFilterScreen = () => {
 
       <View style={[styles.footer, { paddingBottom: Math.max(15, insets.bottom + 10) }]}>
         <TouchableOpacity style={[styles.resetButton, !hasActiveFilters && styles.resetButtonDisabled]} onPress={resetFilters} disabled={!hasActiveFilters}>
-          <Text style={[styles.resetButtonText, !hasActiveFilters && styles.resetButtonTextDisabled]}>Reset</Text>
+          <Text style={[styles.resetButtonText, !hasActiveFilters && styles.resetButtonTextDisabled]}>{t('filter.reset', 'Reset')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterButton} onPress={applyFilters}>
-          <Text style={styles.filterButtonText}>APPLY FILTERS</Text>
+          <Text style={styles.filterButtonText}>{t('filter.applyFilters', 'APPLY FILTERS')}</Text>
         </TouchableOpacity>
       </View>
     </View>
