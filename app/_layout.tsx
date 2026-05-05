@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
+import { Ionicons } from '@expo/vector-icons';
 import { t } from 'i18next';
 
 
@@ -91,32 +92,44 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="login" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="forgot-password" options={{ title: t('forgotPassword.title'), headerBackTitle: ' ' }} />
-        <Stack.Screen name="otp" options={{ title: t('auth.verifyOTP'), headerBackTitle: ' ' }} />
-        <Stack.Screen name="reset-password" options={{ title: t('resetPassword.title'), headerBackTitle: '' }} />
-        <Stack.Screen name="incident-details" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="add-incident" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="my-incidents" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="map-view" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="request-details" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="add-request" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="complaint-details" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="add-complaint" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="query-details" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="add-query" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile'), headerBackTitle: ' ' }} />
-        <Stack.Screen name="change-password" options={{ title: t('settings.changePassword'), headerBackTitle: ' ' }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="complaint-filter" options={{ presentation: 'transparentModal', headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="notifications" options={{ headerShown: false, headerBackTitle: ' ' }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal'), headerBackTitle: ' ' }} />
+      <Stack screenOptions={{
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color="#333"
+            />
+          </TouchableOpacity>
+        ),
+        headerBackVisible: false,
+        headerTitleAlign: 'center',
+      }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ title: '' }} />
+        <Stack.Screen name="otp" options={{ title: '' }} />
+        <Stack.Screen name="reset-password" options={{ title: '' }} />
+        <Stack.Screen name="incident-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-incident" options={{ headerShown: false }} />
+        <Stack.Screen name="my-incidents" options={{ headerShown: false }} />
+        <Stack.Screen name="map-view" options={{ headerShown: false }} />
+        <Stack.Screen name="request-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-request" options={{ headerShown: false }} />
+        <Stack.Screen name="complaint-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
+        <Stack.Screen name="query-details" options={{ headerShown: false }} />
+        <Stack.Screen name="add-query" options={{ headerShown: false }} />
+        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile') }} />
+        <Stack.Screen name="change-password" options={{ title: t('settings.changePassword') }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="complaint-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal') }} />
       </Stack>
       {(isLoading || isLoggingOut) && (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colorScheme === 'dark' ? '#000' : '#FFF', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }]}>
