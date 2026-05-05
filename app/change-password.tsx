@@ -1,11 +1,14 @@
 import { changePassword } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const PasswordInput = ({ label, value, onChangeText }: any) => {
     const [visible, setVisible] = useState(false);
@@ -14,7 +17,7 @@ const PasswordInput = ({ label, value, onChangeText }: any) => {
             <Text style={styles.inputLabel}>{label}</Text>
             <View style={styles.inputRow}>
                 <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     value={value}
                     onChangeText={onChangeText}
                     secureTextEntry={!visible}
@@ -39,15 +42,15 @@ const ChangePasswordScreen = () => {
 
     const handleUpdate = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert(t('common.error'), t('password.fillAllFields'));
+            CustomAlert.alert(t('common.error'), t('password.fillAllFields'));
             return;
         }
         if (newPassword.length < 8) {
-            Alert.alert(t('common.error'), t('password.minLengthError'));
+            CustomAlert.alert(t('common.error'), t('password.minLengthError'));
             return;
         }
         if (newPassword !== confirmPassword) {
-            Alert.alert(t('common.error'), t('password.passwordMismatch'));
+            CustomAlert.alert(t('common.error'), t('password.passwordMismatch'));
             return;
         }
         setLoading(true);
@@ -55,11 +58,11 @@ const ChangePasswordScreen = () => {
         setLoading(false);
 
         if (response.success) {
-            Alert.alert(t('common.success'), t('password.passwordChanged'), [
+            CustomAlert.alert(t('common.success'), t('password.passwordChanged'), [
                 { text: t('common.ok'), onPress: () => logout() }
             ]);
         } else {
-            Alert.alert(t('common.error'), response.error || t('password.updateProfileFailed'));
+            CustomAlert.alert(t('common.error'), response.error || t('password.updateProfileFailed'));
         }
     };
 

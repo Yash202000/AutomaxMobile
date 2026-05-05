@@ -40,6 +40,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface DropdownOption {
   id: string;
@@ -640,7 +642,7 @@ const AddQueryScreen = () => {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('common.permissionRequired'), t('addComplaint.micPermissionRequired'));
+        CustomAlert.alert(t('common.permissionRequired'), t('addComplaint.micPermissionRequired'));
         return;
       }
 
@@ -665,10 +667,10 @@ const AddQueryScreen = () => {
       (newRecording as any)._interval = interval;
 
       // Show alert that recording has started
-      Alert.alert(t('addComplaint.voiceRecording'), t('addComplaint.recordAudio'));
+      CustomAlert.alert(t('addComplaint.voiceRecording'), t('addComplaint.recordAudio'));
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert('Error', 'Failed to start recording');
     }
   };
 
@@ -704,7 +706,7 @@ const AddQueryScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert('Error', 'Failed to stop recording');
     }
   };
 
@@ -747,7 +749,7 @@ const AddQueryScreen = () => {
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.addressUnavailable'),
           t('addIncident.waitingForLocation'),
           [{ text: t('common.ok') }]
@@ -759,7 +761,7 @@ const AddQueryScreen = () => {
       if (locationData?.latitude && !locationData?.address && !locationData?.city) {
 
         // Show loading alert
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.gettingLocationDetails'),
           t('addIncident.waitingForAddress'),
           [{ text: t('common.ok') }]
@@ -771,7 +773,7 @@ const AddQueryScreen = () => {
         // Check again after waiting
         const finalLocation = locationDataRef.current;
         if (finalLocation?.latitude && !finalLocation?.address && !finalLocation?.city) {
-          Alert.alert(
+          CustomAlert.alert(
             t('addIncident.addressUnavailable'),
             t('addIncident.addressUnavailableDesc'),
             [
@@ -793,7 +795,7 @@ const AddQueryScreen = () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
           [
@@ -872,7 +874,7 @@ const AddQueryScreen = () => {
       }
     } catch (error) {
       console.error('❌ [Camera] Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert('Error', 'Failed to take photo');
     }
   };
 
@@ -942,7 +944,7 @@ const AddQueryScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
           [
@@ -1002,7 +1004,7 @@ const AddQueryScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -1011,7 +1013,7 @@ const AddQueryScreen = () => {
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      Alert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert('Error', 'Failed to pick from gallery');
     }
   };
 
@@ -1052,7 +1054,7 @@ const AddQueryScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -1061,7 +1063,7 @@ const AddQueryScreen = () => {
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert('Error', 'Failed to pick document');
     }
   };
 
@@ -1079,7 +1081,7 @@ const AddQueryScreen = () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
       if (firstError) {
-        Alert.alert('Validation Error', firstError);
+        CustomAlert.alert(t('common.validationError'), firstError);
       }
       return;
     }
@@ -1146,12 +1148,12 @@ const AddQueryScreen = () => {
       }
 
       setSubmitting(false);
-      Alert.alert('Success', 'Query created successfully.', [
+      CustomAlert.alert('Success', 'Query created successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      Alert.alert('Error', `Failed to create query: ${response.error}`);
+      CustomAlert.alert('Error', `Failed to create query: ${response.error}`);
     }
   };
 
@@ -1197,7 +1199,7 @@ const AddQueryScreen = () => {
               {t('incidents.title')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
-              style={[styles.input, errors.title && styles.inputError]}
+              style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               placeholder={t('addQuery.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
@@ -1241,7 +1243,7 @@ const AddQueryScreen = () => {
                     <View style={styles.searchInputContainer}>
                       <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
                       <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                         placeholder={t('common.searchByIncidentNumOrTitle')}
                         value={incidentSearch}
                         onChangeText={setIncidentSearch}
@@ -1442,7 +1444,7 @@ const AddQueryScreen = () => {
                   {t('incidents.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addQuery.descriptionPlaceholder')}
                   multiline
                   value={description}
@@ -1464,7 +1466,7 @@ const AddQueryScreen = () => {
                   {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError]}
+                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
@@ -1486,7 +1488,7 @@ const AddQueryScreen = () => {
                   {t('addQuery.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addQuery.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
@@ -1506,7 +1508,7 @@ const AddQueryScreen = () => {
                   {t('addQuery.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addQuery.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {

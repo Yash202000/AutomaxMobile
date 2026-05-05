@@ -63,7 +63,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
         <View style={styles.container}>
           {renderLabel()}
           <TextInput
-            style={[styles.input, error && styles.inputError]}
+            style={[styles.input, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={value || ''}
             onChangeText={handleChange}
             placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
@@ -79,7 +79,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
         <View style={styles.container}>
           {renderLabel()}
           <TextInput
-            style={[styles.textArea, error && styles.inputError]}
+            style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={value || ''}
             onChangeText={handleChange}
             placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
@@ -97,7 +97,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
         <View style={styles.container}>
           {renderLabel()}
           <TextInput
-            style={[styles.input, error && styles.inputError]}
+            style={[styles.input, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={value?.toString() || ''}
             onChangeText={(text) => {
               const num = parseFloat(text);

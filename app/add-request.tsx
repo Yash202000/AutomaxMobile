@@ -37,6 +37,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface DropdownOption {
   id: string;
@@ -569,7 +571,7 @@ const AddRequestScreen = () => {
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.addressUnavailable'),
           t('addIncident.waitingForLocation'),
           [{ text: t('common.ok') }]
@@ -580,7 +582,7 @@ const AddRequestScreen = () => {
       // If we have coordinates but no address yet (still loading)
       if (locationData?.latitude && !locationData?.address && !locationData?.city) {
         // Show loading alert
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.gettingLocationDetails'),
           t('addIncident.waitingForAddress'),
           [{ text: t('common.ok') }]
@@ -591,7 +593,7 @@ const AddRequestScreen = () => {
 
         // Check again after waiting (need to add ref to add-request.tsx)
         if (locationData?.latitude && !locationData?.address && !locationData?.city) {
-          Alert.alert(
+          CustomAlert.alert(
             t('addIncident.addressUnavailable'),
             t('addIncident.addressUnavailableDesc'),
             [
@@ -608,7 +610,7 @@ const AddRequestScreen = () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
           [
@@ -678,7 +680,7 @@ const AddRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert('Error', 'Failed to take photo');
     }
   };
 
@@ -719,7 +721,7 @@ const AddRequestScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
           [
@@ -779,7 +781,7 @@ const AddRequestScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -788,7 +790,7 @@ const AddRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      Alert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert('Error', 'Failed to pick from gallery');
     }
   };
 
@@ -829,7 +831,7 @@ const AddRequestScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -838,7 +840,7 @@ const AddRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert('Error', 'Failed to pick document');
     }
   };
 
@@ -887,7 +889,7 @@ const AddRequestScreen = () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
       if (firstError) {
-        Alert.alert('Validation Error', firstError);
+        CustomAlert.alert(t('common.validationError'), firstError);
       }
       return;
     }
@@ -941,12 +943,12 @@ const AddRequestScreen = () => {
       }
 
       setSubmitting(false);
-      Alert.alert('Success', 'Request created successfully.', [
+      CustomAlert.alert('Success', 'Request created successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      Alert.alert('Error', `Failed to create request: ${response.error}`);
+      CustomAlert.alert('Error', `Failed to create request: ${response.error}`);
     }
   };
 
@@ -1160,7 +1162,7 @@ const AddRequestScreen = () => {
                   {t('incidents.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addRequest.descriptionPlaceholder')}
                   multiline
                   value={description}
@@ -1182,7 +1184,7 @@ const AddRequestScreen = () => {
                   {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError]}
+                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addRequest.commentPlaceholder')}
                   multiline
                   value={comment}
@@ -1204,7 +1206,7 @@ const AddRequestScreen = () => {
                   {t('addRequest.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addRequest.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
@@ -1224,7 +1226,7 @@ const AddRequestScreen = () => {
                   {t('addRequest.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addRequest.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {

@@ -1,4 +1,6 @@
+import { CustomAlert } from '@/src/components/CustomAlert';
 import apiClient from '@/src/api/client';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -84,7 +86,7 @@ const ResetPasswordScreen = () => {
         newPassword: password,
       });
       if (response.data && response.data.success) {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.success'),
           t('resetPassword.success'),
           [{ text: t('common.ok'), onPress: () => router.replace('/login') }]
@@ -193,7 +195,7 @@ const ResetPasswordScreen = () => {
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     placeholder={t('resetPassword.placeholder')}
                     placeholderTextColor="#999"
                     secureTextEntry={!showPassword}
@@ -236,7 +238,7 @@ const ResetPasswordScreen = () => {
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     placeholder={t('resetPassword.placeholder')}
                     placeholderTextColor="#999"
                     secureTextEntry={!showConfirmPassword}

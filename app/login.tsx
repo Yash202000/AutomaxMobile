@@ -25,6 +25,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const { height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenHeight < 700;
@@ -85,7 +87,7 @@ const LoginScreen = () => {
       await setLanguage(langCode);
       setCurrentLang(langCode);
 
-      Alert.alert(
+      CustomAlert.alert(
         langCode === 'ar' ? 'نجاح' : 'Success',
         langCode === 'ar'
           ? 'تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات.'
@@ -97,7 +99,7 @@ const LoginScreen = () => {
               try {
                 await Updates.reloadAsync();
               } catch {
-                Alert.alert(
+                CustomAlert.alert(
                   langCode === 'ar' ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
                   langCode === 'ar'
                     ? 'يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة.'
@@ -109,7 +111,7 @@ const LoginScreen = () => {
         ]
       );
     } catch (error) {
-      Alert.alert(t('common.error'), t('errors.unknownError'));
+      CustomAlert.alert(t('common.error'), t('errors.unknownError'));
     }
   };
 
@@ -402,7 +404,7 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={styles.textInput}
+                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
                         placeholder={t('auth.emailPlaceholder', 'user@example.com')}
                         placeholderTextColor="#999"
                         value={email}
@@ -435,7 +437,7 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={styles.textInput}
+                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
                         placeholder={t('auth.passwordPlaceholder', '••••••••')}
                         placeholderTextColor="#999"
                         secureTextEntry={!showPassword}
@@ -480,7 +482,7 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={styles.textInput}
+                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
                         placeholder={t('auth.phonePlaceholder', '+1234567890')}
                         placeholderTextColor="#999"
                         value={phoneNumber}

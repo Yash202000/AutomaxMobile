@@ -1,4 +1,5 @@
 import apiClient from '@/src/api/client';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -173,7 +174,7 @@ const ForgotPasswordScreen = () => {
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     placeholder={
                       otpChannel === 'sms'
                         ? t('forgotPassword.phonePlaceholder')

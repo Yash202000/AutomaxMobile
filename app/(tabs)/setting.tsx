@@ -7,10 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import * as Updates from 'expo-updates';
+import { t } from 'i18next';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const COLORS = {
   primary: '#2EC4B6',
@@ -39,7 +42,7 @@ const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
     </View>
     <View style={styles.optionValueContainer}>
       {value && <Text style={styles.optionValue}>{value}</Text>}
-      <Ionicons name={hasDropdown ? 'chevron-down' : 'chevron-forward'} size={18} color={COLORS.textMuted} />
+      <Ionicons name={hasDropdown ? 'chevron-down' : t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />
     </View>
   </TouchableOpacity>
 );
@@ -100,7 +103,7 @@ const SettingsScreen = () => {
         if (response.success) {
           setUser(response.data);
         } else {
-          Alert.alert(t('common.error'), t('errors.unknownError'));
+          CustomAlert.alert(t('common.error'), t('errors.unknownError'));
         }
         setLoading(false);
       };
@@ -140,7 +143,7 @@ const SettingsScreen = () => {
       setCurrentLang(langCode);
 
       // Always prompt for restart when changing language (RTL changes require restart)
-      Alert.alert(
+      CustomAlert.alert(
         t('settings.langChangeTitle'),
         t('settings.langChangeMessage'),
         [
@@ -151,7 +154,7 @@ const SettingsScreen = () => {
                 await Updates.reloadAsync();
               } catch {
                 // If Updates.reloadAsync fails, just notify user to restart manually
-                Alert.alert(
+                CustomAlert.alert(
                   t('settings.restartRequired'),
                   t('settings.restartMessage')
                 );
@@ -161,7 +164,7 @@ const SettingsScreen = () => {
         ]
       );
     } catch (error) {
-      Alert.alert(t('common.error'), t('errors.unknownError'));
+      CustomAlert.alert(t('common.error'), t('errors.unknownError'));
     }
   };
 
@@ -172,7 +175,7 @@ const SettingsScreen = () => {
 
   const handleShareLogs = async () => {
     if (!hasLogs) {
-      Alert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      CustomAlert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
       return;
     }
 
@@ -182,7 +185,7 @@ const SettingsScreen = () => {
       const logFileUri = await crashLogger.getLogFileUri();
 
       if (!logFileUri) {
-        Alert.alert(t('common.error'), t('settings.logs.failedToShare'));
+        CustomAlert.alert(t('common.error'), t('settings.logs.failedToShare'));
         setSharingLogs(false);
         return;
       }
@@ -190,7 +193,7 @@ const SettingsScreen = () => {
       // Check if sharing is available
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.error'),
           t('settings.logs.sharingNotAvailable')
         );
@@ -208,7 +211,7 @@ const SettingsScreen = () => {
       setSharingLogs(false);
     } catch (error) {
       console.error('Failed to share logs:', error);
-      Alert.alert(
+      CustomAlert.alert(
         t('common.error'),
         t('settings.logs.failedToShare')
       );
@@ -218,11 +221,11 @@ const SettingsScreen = () => {
 
   const handleDeleteLogs = async () => {
     if (!hasLogs) {
-      Alert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      CustomAlert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
       return;
     }
 
-    Alert.alert(
+    CustomAlert.alert(
       t('settings.logs.deleteConfirmTitle'),
       t('settings.logs.deleteConfirmMessage'),
       [
@@ -237,14 +240,14 @@ const SettingsScreen = () => {
             try {
               const success = await crashLogger.clearLogs();
               if (success) {
-                Alert.alert(t('common.success'), t('settings.logs.logsDeleted'));
+                CustomAlert.alert(t('common.success'), t('settings.logs.logsDeleted'));
                 await loadLogInfo();
               } else {
-                Alert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+                CustomAlert.alert(t('common.error'), t('settings.logs.failedToDelete'));
               }
             } catch (error) {
               console.error('Failed to delete logs:', error);
-              Alert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+              CustomAlert.alert(t('common.error'), t('settings.logs.failedToDelete'));
             }
           },
         },
@@ -276,7 +279,7 @@ const SettingsScreen = () => {
                 <Text style={styles.profileEmail}>{user?.email || t('profile.noEmail')}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            <Ionicons name={t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
         )}
 

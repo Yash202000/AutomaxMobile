@@ -11,6 +11,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const COLORS = {
   primary: '#1A237E',
@@ -113,7 +115,7 @@ const RequestDetailsScreen = () => {
         setAttachments(detailsResponse.data.attachments || []);
       } else {
         setError(detailsResponse.error);
-        Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+        CustomAlert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
       }
 
       if (transitionsResponse.success) {
@@ -171,7 +173,7 @@ const RequestDetailsScreen = () => {
       {/* Header */}
       <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+          <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>{request.incident_number}</Text>

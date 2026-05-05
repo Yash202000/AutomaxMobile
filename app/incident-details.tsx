@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const COLORS = {
   primary: '#1A237E',
@@ -241,7 +243,7 @@ const IncidentDetailsScreen = () => {
           error: detailsResponse.error,
         }).catch(err => console.error('Failed to log warning:', err));
 
-        Alert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
+        CustomAlert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
       }
 
       if (historyResponse.success) {
@@ -270,7 +272,7 @@ const IncidentDetailsScreen = () => {
       }).catch(logErr => console.error('Failed to log error:', logErr));
 
       setError('Failed to load incident details');
-      Alert.alert(
+      CustomAlert.alert(
         t('common.error'),
         t('errors.unknownError')
       );
@@ -341,7 +343,7 @@ const IncidentDetailsScreen = () => {
             context: 'Failed to open maps directions',
           }).catch(err => console.error('Failed to log error:', err));
 
-          Alert.alert(
+          CustomAlert.alert(
             t('common.error'),
             t('errors.mapsFailed', 'Failed to open maps. Please check if you have a maps app installed.')
           );
@@ -384,7 +386,7 @@ const IncidentDetailsScreen = () => {
       {/* Header */}
       <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.white} />
+          <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>{incident.incident_number}</Text>

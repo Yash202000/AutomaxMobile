@@ -1,5 +1,6 @@
 import apiClient from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -144,7 +145,7 @@ const OtpScreen = () => {
         {otp.map((digit, index) => (
           <TextInput
             key={index}
-            style={styles.otpInput}
+            style={[styles.otpInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={digit}
             onChangeText={(text) => handleChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}

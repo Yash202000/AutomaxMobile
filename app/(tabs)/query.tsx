@@ -316,7 +316,7 @@ const QueriesScreen = () => {
                             <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
                             <TextInput
                                 ref={searchInputRef}
-                                style={styles.searchInput}
+                                style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                                 placeholder={t('common.search', 'Search...')}
                                 placeholderTextColor="#999"
                                 value={searchQuery}

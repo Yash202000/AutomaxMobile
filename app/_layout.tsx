@@ -10,8 +10,10 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFCM } from '@/hooks/use-FCM';
 import { registerToken } from '@/src/api/notifications';
+import { CustomAlertComponent } from '@/src/components/CustomAlert';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
@@ -94,16 +96,16 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{
         headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: i18n.language === 'ar' ? 0 : 4, marginRight: i18n.language === 'ar' ? 4 : 0 }}>
             <Ionicons
-              name="chevron-back"
+              name={t('common.icons.chevronBack') as any}
               size={28}
               color="#333"
             />
           </TouchableOpacity>
         ),
         headerBackVisible: false,
-        headerTitleAlign: 'center',
+        headerTitleAlign: 'center'
       }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -120,7 +122,7 @@ function RootLayoutNav() {
         <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
         <Stack.Screen name="query-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-query" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile') }} />
+        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile'), headerTitle: '' }} />
         <Stack.Screen name="change-password" options={{ title: t('settings.changePassword') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
@@ -161,6 +163,7 @@ export default function RootLayout() {
       <AuthProvider>
         <RootLayoutNav />
       </AuthProvider>
+      <CustomAlertComponent />
     </ErrorBoundary>
   );
 }
