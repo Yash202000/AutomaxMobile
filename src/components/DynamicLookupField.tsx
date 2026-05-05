@@ -163,7 +163,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     case 'select':
       const selectOptions = (category.values || [])
         .filter(v => v.is_active)
-        .map(v => ({ id: v.id, name: v.name }));
+        .map(v => ({ id: v.id, name: (i18n.language === 'en' && v.name) || (i18n.language === 'ar' && v.name_ar) }));
 
       return (
         <View style={styles.container}>
@@ -192,7 +192,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             >
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{category.name}</Text>
+                  <Text style={styles.modalTitle}>{renderLabel()}</Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>

@@ -1178,7 +1178,7 @@ const AddQueryScreen = () => {
             <View style={styles.workflowCard}>
               <View style={styles.workflowHeader}>
                 <Ionicons name="git-branch" size={20} color="#3498DB" />
-                <Text style={styles.workflowLabel}>Workflow</Text>
+                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
               </View>
               {matchedWorkflow ? (
                 <View style={styles.workflowMatched}>
@@ -1373,7 +1373,7 @@ const AddQueryScreen = () => {
                 {isFieldRequired('priority') && (
                   <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Priority <Text style={styles.required}>*</Text>
+                      {t('incidents.priority')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
                       label={t('addQuery.selectPriority')}
@@ -1387,7 +1387,7 @@ const AddQueryScreen = () => {
                 {isFieldRequired('severity') && (
                   <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
                     <Text style={styles.sectionTitle}>
-                      Severity <Text style={styles.required}>*</Text>
+                      {t('incidents.severity')} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
                       label={t('addQuery.selectSeverity')}
@@ -1405,7 +1405,7 @@ const AddQueryScreen = () => {
             {isFieldRequired('assignee_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Assignee <Text style={styles.required}>*</Text>
+                  {t('incidents.assignee')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
                   label={t('addQuery.selectAssignee')}
@@ -1422,7 +1422,7 @@ const AddQueryScreen = () => {
             {isFieldRequired('department_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Department <Text style={styles.required}>*</Text>
+                  {t('incidents.department')} <Text style={styles.required}>*</Text>
                 </Text>
                 <Dropdown
                   label={t('addQuery.selectDepartment')}
@@ -1461,11 +1461,11 @@ const AddQueryScreen = () => {
             {isFieldRequired('comment') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Comment <Text style={styles.required}>*</Text>
+                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError]}
-                  placeholder="Add a comment..."
+                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
                   onChangeText={(text) => {
@@ -1483,7 +1483,7 @@ const AddQueryScreen = () => {
             {isFieldRequired('reporter_name') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Name <Text style={styles.required}>*</Text>
+                  {t('addQuery.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError]}
@@ -1503,7 +1503,7 @@ const AddQueryScreen = () => {
             {isFieldRequired('reporter_email') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Email <Text style={styles.required}>*</Text>
+                  {t('addQuery.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError]}
@@ -1624,7 +1624,7 @@ const AddQueryScreen = () => {
               onPress={() => setAttachmentPickerVisible(false)}
             >
               <View style={styles.pickerModalContent}>
-                <Text style={styles.pickerModalTitle}>Add Attachment</Text>
+                <Text style={styles.pickerModalTitle}>{t('incidents.addAttachment', 'Add Attachment')}</Text>
 
                 <TouchableOpacity
                   style={styles.pickerOption}
@@ -1634,7 +1634,7 @@ const AddQueryScreen = () => {
                   }}
                 >
                   <Ionicons name="camera" size={24} color="#3498DB" />
-                  <Text style={styles.pickerOptionText}>Take Photo</Text>
+                  <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1645,7 +1645,7 @@ const AddQueryScreen = () => {
                   }}
                 >
                   <Ionicons name="images" size={24} color="#3498DB" />
-                  <Text style={styles.pickerOptionText}>Choose from Gallery</Text>
+                  <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1656,7 +1656,7 @@ const AddQueryScreen = () => {
                   }}
                 >
                   <Ionicons name="document" size={24} color="#3498DB" />
-                  <Text style={styles.pickerOptionText}>Choose File</Text>
+                  <Text style={styles.pickerOptionText}>{t('common.chooseFile', 'Choose File')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1667,14 +1667,14 @@ const AddQueryScreen = () => {
                   }}
                 >
                   <Ionicons name="mic" size={24} color="#3498DB" />
-                  <Text style={styles.pickerOptionText}>Record Voice</Text>
+                  <Text style={styles.pickerOptionText}>{t('common.recordVoice', 'Record Voice')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.pickerCancelButton}
                   onPress={() => setAttachmentPickerVisible(false)}
                 >
-                  <Text style={styles.pickerCancelText}>Cancel</Text>
+                  <Text style={styles.pickerCancelText}>{t('common.cancel', 'Cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Modal,
   View,
@@ -41,6 +42,7 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
   onRequestClose,
   token,
 }) => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(imageIndex);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -185,7 +187,7 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
           {/* Pinch to zoom hint */}
           <View style={styles.hintContainer}>
             <Ionicons name="expand-outline" size={16} color="#FFFFFF80" />
-            <Text style={styles.hintText}>Pinch to zoom</Text>
+            <Text style={styles.hintText}>{t('common.pinchToZoom', 'Pinch to zoom')}</Text>
           </View>
         </View>
       </GestureHandlerRootView>
