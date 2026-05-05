@@ -1,8 +1,10 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 /**
  * Downloads an authenticated attachment and opens/shares it
@@ -19,20 +21,20 @@ export const downloadAndOpenAttachment = async (
     const token = await SecureStore.getItemAsync('authToken');
 
     if (!token) {
-      Alert.alert('Error', 'Authentication required');
+      CustomAlert.alert('Error', 'Authentication required');
       return;
     }
 
     // Show loading alert
-    Alert.alert('Downloading', 'Please wait...');
+    CustomAlert.alert('Downloading', 'Please wait...');
 
     // Download the file with authentication
     const downloadUrl = `${baseURL}/attachments/${attachmentId}`;
-    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+    const destination = new File(Paths.document, fileName);
 
-    const downloadResult = await FileSystem.downloadAsync(
+    const downloadedFile = await File.downloadFileAsync(
       downloadUrl,
-      fileUri,
+      destination,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -40,20 +42,16 @@ export const downloadAndOpenAttachment = async (
       }
     );
 
-    if (downloadResult.status !== 200) {
-      throw new Error(`Download failed with status ${downloadResult.status}`);
-    }
-
     // Check if sharing is available
     const isAvailable = await Sharing.isAvailableAsync();
 
     if (!isAvailable) {
-      Alert.alert('Error', 'Sharing is not available on this device');
+      CustomAlert.alert('Error', 'Sharing is not available on this device');
       return;
     }
 
     // Share/open the file
-    await Sharing.shareAsync(downloadResult.uri, {
+    await Sharing.shareAsync(downloadedFile.uri, {
       mimeType: getMimeType(fileName),
       dialogTitle: 'Open with',
       UTI: getUTI(fileName),
@@ -61,7 +59,7 @@ export const downloadAndOpenAttachment = async (
 
   } catch (error: any) {
     console.error('Error downloading attachment:', error);
-    Alert.alert(
+    CustomAlert.alert(
       'Download Error',
       error.message || 'Failed to download attachment'
     );

@@ -1,18 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Modal,
-  View,
-  StyleSheet,
-  TouchableOpacity,
   Dimensions,
-  Text,
+  Modal,
   Platform,
   StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -149,7 +149,7 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
                 style={[styles.navButton, currentIndex === 0 && styles.navButtonDisabled]}
               >
                 <Ionicons
-                  name="chevron-back"
+                  name={t('common.icons.chevronBack') as any}
                   size={32}
                   color={currentIndex === 0 ? '#666' : '#FFFFFF'}
                 />
@@ -176,7 +176,7 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
                 ]}
               >
                 <Ionicons
-                  name="chevron-forward"
+                  name={t('common.icons.chevronForward') as any}
                   size={32}
                   color={currentIndex === images.length - 1 ? '#666' : '#FFFFFF'}
                 />

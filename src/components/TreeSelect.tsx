@@ -91,7 +91,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
           {hasChildren ? (
             <TouchableOpacity onPress={() => onToggle(node.id)} style={styles.expandButton}>
               <Ionicons
-                name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                name={isExpanded ? 'chevron-down' : t('common.icons.chevronForward') as any}
                 size={18}
                 color="#666"
               />

@@ -12,6 +12,9 @@ import {
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import i18n from '../i18n';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 export interface LocationData {
   latitude: number;
@@ -132,7 +135,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Location permission is required to get your current location.');
+        CustomAlert.alert('Permission Required', 'Location permission is required to get your current location.');
         setIsLoading(false);
         return;
       }
@@ -168,7 +171,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Error getting location:', error);
-      Alert.alert('Error', 'Failed to get current location. Please check your GPS is enabled.');
+      CustomAlert.alert('Error', 'Failed to get current location. Please check your GPS is enabled.');
       setIsLoading(false);
     }
   }, [onChange, onGpsLocation]);
@@ -291,7 +294,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
-      Alert.alert('Error', 'Please enter a location to search');
+      CustomAlert.alert('Error', 'Please enter a location to search');
       return;
     }
 
@@ -299,7 +302,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     const timeSinceLastSearch = now - lastSearchTime;
     if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
       const waitTime = MIN_SEARCH_INTERVAL - timeSinceLastSearch;
-      Alert.alert('Please Wait', `Please wait ${Math.ceil(waitTime / 1000)} second(s) before searching again.`);
+      CustomAlert.alert('Please Wait', `Please wait ${Math.ceil(waitTime / 1000)} second(s) before searching again.`);
       return;
     }
 
@@ -330,7 +333,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
 
       if (results.length === 0) {
         setSearchError('No results found');
-        Alert.alert('No Results', 'No location found for your search query. Try different keywords.');
+        CustomAlert.alert('No Results', 'No location found for your search query. Try different keywords.');
         setIsSearching(false);
         return;
       }
@@ -354,7 +357,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setSearchError(errorMessage);
-      Alert.alert('Search Failed', errorMessage);
+      CustomAlert.alert('Search Failed', errorMessage);
       setIsSearching(false);
     }
   }, [searchQuery, onChange]);
@@ -446,7 +449,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         <View style={styles.searchInputWrapper}>
           <Ionicons name="search" size={18} color="#666" style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={searchQuery}
             onChangeText={handleSearchQueryChange}
             placeholder={t('common.searchAddress')}

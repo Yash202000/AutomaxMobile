@@ -1,5 +1,6 @@
 import apiClient from '@/src/api/client';
 import { getProfile, updateProfile } from '@/src/api/user';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { t } from 'i18next';
@@ -7,6 +8,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, I18nManager, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface iCustomInputProps {
     label: string;
@@ -35,7 +38,8 @@ const CustomInput = ({ label, value, onChangeText, editable = true, actionButton
                     style={[
                         styles.textInput,
                         !editable && styles.disabledInput,
-                        isRTL && styles.textRTL
+                        isRTL && styles.textRTL,
+                        { textAlign: i18n.language === 'ar' ? 'right' : 'left' }
                     ]}
                     value={value}
                     onChangeText={onChangeText}
@@ -100,7 +104,7 @@ const EditProfileScreen = () => {
                         setRoles(userRoles.map(role => role.name).join(', '));
                     }
                 } else {
-                    Alert.alert(t('common.error'), t('profile.fetchProfileFailed'));
+                    CustomAlert.alert(t('common.error'), t('profile.fetchProfileFailed'));
                 }
             } catch (error) {
                 console.error('Fetch profile error:', error);
@@ -133,7 +137,7 @@ const EditProfileScreen = () => {
             } else if (isPhoneChanged) {
                 setMobileVerified(false);
             }
-            Alert.alert(t('common.success'), t('profile.profileUpdated'), [
+            CustomAlert.alert(t('common.success'), t('profile.profileUpdated'), [
                 {
                     text: t('common.ok'), onPress: () => {
                         // Stay on screen if they need to verify
@@ -141,13 +145,13 @@ const EditProfileScreen = () => {
                 }
             ]);
         } else {
-            Alert.alert(t('common.error'), response.error || t('profile.updateProfileFailed'));
+            CustomAlert.alert(t('common.error'), response.error || t('profile.updateProfileFailed'));
         }
     };
 
     const handleSendOTP = async () => {
         if (!phone || phone.length < 10) {
-            Alert.alert(t('common.error'), t('errors.validationError'));
+            CustomAlert.alert(t('common.error'), t('errors.validationError'));
             return;
         }
 
@@ -164,10 +168,10 @@ const EditProfileScreen = () => {
                 setOtp(new Array(6).fill(''));
                 setOtpError('');
             } else {
-                Alert.alert(t('common.error'), t('auth.otpSentFailed', 'Failed to send OTP'));
+                CustomAlert.alert(t('common.error'), t('auth.otpSentFailed', 'Failed to send OTP'));
             }
         } catch (err: any) {
-            Alert.alert(t('common.error'), err.response?.data?.error || t('auth.otpSentFailed', 'Failed to send OTP'));
+            CustomAlert.alert(t('common.error'), err.response?.data?.error || t('auth.otpSentFailed', 'Failed to send OTP'));
         } finally {
             setSaving(false);
         }
@@ -198,7 +202,7 @@ const EditProfileScreen = () => {
                     setMobileVerified(true);
                     setOriginalPhone(phone);
                     setShowOtpModal(false);
-                    Alert.alert(t('common.success'), t('profile.phoneVerified'));
+                    CustomAlert.alert(t('common.success'), t('profile.phoneVerified'));
                 } else {
                     setOtpError(updateRes.error || t('profile.updateProfileFailed'));
                 }
@@ -248,6 +252,10 @@ const EditProfileScreen = () => {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.form}>
+                        <View style={{ flexDirection: 'column', alignItems: 'flex-start', paddingVertical: 16, marginBottom: 16 }}>
+                            <Text style={{ fontSize: 22, fontWeight: 'bold' }}>{t('settings.editProfile')}</Text>
+                            <Text style={{ color: '#6c757d', fontWeight: '500' }}>{t('settings.updateProfileInfo')}</Text>
+                        </View>
                         <CustomInput label={t('profile.firstName')} value={firstName} onChangeText={setFirstName} />
                         <CustomInput label={t('profile.lastName')} value={lastName} onChangeText={setLastName} />
                         <CustomInput label={t('profile.enterYourEmail')} value={email} editable={false} />
@@ -305,7 +313,7 @@ const EditProfileScreen = () => {
                             {otp.map((digit, index) => (
                                 <TextInput
                                     key={index}
-                                    style={styles.otpInput}
+                                    style={[styles.otpInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                                     value={digit}
                                     onChangeText={(text) => handleOtpChange(text, index)}
                                     onKeyPress={(e) => handleOtpKeyPress(e, index)}
@@ -343,7 +351,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     form: {
-        padding: 20,
+        paddingHorizontal: 20,
     },
     inputWrapper: {
         flexDirection: 'row',
