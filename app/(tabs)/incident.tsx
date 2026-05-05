@@ -61,19 +61,19 @@ const severityConfig: Record<number, { key: string; color: string }> = {
 };
 
 const getSources = (t: any) => [
-  { value: "web", label: t("sources.web") },
-  { value: "mobile", label: t("sources.mobile") },
-  { value: "email", label: t("sources.email") },
-  { value: "phone", label: t("sources.phone") },
-  { value: "walk_in", label: t("sources.walk_in") },
-  { value: "api", label: t("sources.api") },
-  { value: "social_media", label: t("sources.social_media") },
-  { value: "940_system", label: t("sources.940_system") },
-  { value: "940_manual", label: t("sources.940_manual") },
-  { value: "field", label: t("sources.field") },
-  { value: "manual", label: t("sources.manual") },
-  { value: "viusional", label: t("sources.viusional") },
-  { value: "other", label: t("sources.other") },
+  { value: "web", label: t("incidents.sources.web") },
+  { value: "mobile", label: t("incidents.sources.mobile") },
+  { value: "email", label: t("incidents.sources.email") },
+  { value: "phone", label: t("incidents.sources.phone") },
+  { value: "walk_in", label: t("incidents.sources.walk_in") },
+  { value: "api", label: t("incidents.sources.api") },
+  { value: "social_media", label: t("incidents.sources.social_media") },
+  { value: "940_system", label: t("incidents.sources.940_system") },
+  { value: "940_manual", label: t("incidents.sources.940_manual") },
+  { value: "field", label: t("incidents.sources.field") },
+  { value: "manual", label: t("incidents.sources.manual") },
+  { value: "viusional", label: t("incidents.sources.viusional") },
+  { value: "other", label: t("incidents.sources.other") },
 ];
 
 interface Incident {
@@ -172,11 +172,11 @@ const IncidentCard = ({ incident }: { incident: Incident }) => {
               styles.rejectText,
               ...(latestTransition?.transition?.code !== "reject"
                 ? [
-                    {
-                      backgroundColor: "rgba(38, 102, 220, 0.1)",
-                      color: "#2666DC",
-                    },
-                  ]
+                  {
+                    backgroundColor: "rgba(38, 102, 220, 0.1)",
+                    color: "#2666DC",
+                  },
+                ]
                 : []),
             ]}
           >
@@ -450,7 +450,7 @@ const IncidentsScreen = () => {
       <Text style={styles.foundText}>
         {hasManualFilters
           ? t("incidents.incidentsFound", { count: pagination.total_items }) +
-            ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
+          ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
           : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
       </Text>
       {pagination.total_pages > 1 && (

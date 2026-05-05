@@ -403,7 +403,7 @@ const LoginScreen = () => {
                       />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="user@example.com"
+                        placeholder={t('auth.emailPlaceholder', 'user@example.com')}
                         placeholderTextColor="#999"
                         value={email}
                         onChangeText={setEmail}
@@ -436,7 +436,7 @@ const LoginScreen = () => {
                       />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="••••••••"
+                        placeholder={t('auth.passwordPlaceholder', '••••••••')}
                         placeholderTextColor="#999"
                         secureTextEntry={!showPassword}
                         value={password}
@@ -481,7 +481,7 @@ const LoginScreen = () => {
                       />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="+1234567890"
+                        placeholder={t('auth.phonePlaceholder', '+1234567890')}
                         placeholderTextColor="#999"
                         value={phoneNumber}
                         onChangeText={setPhoneNumber}

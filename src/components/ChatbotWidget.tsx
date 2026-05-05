@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Modal,
   Platform,
@@ -20,6 +21,7 @@ const TAB_BAR_HEIGHT = 70;
 type Tab = "chat" | "voice";
 
 export const ChatbotWidget: React.FC = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("chat");
@@ -55,7 +57,7 @@ export const ChatbotWidget: React.FC = () => {
               <View style={styles.headerIcon}>
                 <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
               </View>
-              <Text style={styles.headerTitle}>AI Assistant</Text>
+              <Text style={styles.headerTitle}>{t('common.aiAssistant', 'AI Assistant')}</Text>
             </View>
             <TouchableOpacity
               style={styles.closeBtn}

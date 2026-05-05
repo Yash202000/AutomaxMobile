@@ -702,7 +702,7 @@ const AddComplaintScreen = () => {
             <View style={styles.workflowCard}>
               <View style={styles.workflowHeader}>
                 <Ionicons name="git-branch" size={20} color="#E74C3C" />
-                <Text style={styles.workflowLabel}>Workflow</Text>
+                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
               </View>
               {matchedWorkflow ? (
                 <View style={styles.workflowMatched}>
@@ -1028,7 +1028,7 @@ const AddComplaintScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError]}
-                  placeholder="Add a comment..."
+                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
                   onChangeText={(text) => {

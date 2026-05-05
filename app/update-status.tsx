@@ -56,6 +56,7 @@ const UpdateStatusModal = () => {
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
+  const [autoSelectUser, setAutoSelectUser] = useState(false);
 
   // Department selection state (auto_detect_department)
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
@@ -245,7 +246,7 @@ const UpdateStatusModal = () => {
 
   // Check if user selection is needed (manual_select_user or auto_match_user with roles)
   const needsUserSelection =
-    (selectedTransition?.transition?.manual_select_user || selectedTransition?.transition?.auto_match_user) &&
+    (selectedTransition?.transition?.manual_select_user) &&
     selectedTransition?.transition?.assignment_roles?.length > 0;
 
   // Check if department selection is needed
@@ -256,13 +257,13 @@ const UpdateStatusModal = () => {
   const isReadyToClose = selectedTransition?.transition?.to_state?.is_ready_to_close === true;
 
   const readyToCloseDurationOptions = [
-    { label: '1 hour', value: '1h' },
-    { label: '2 hours', value: '2h' },
-    { label: '4 hours', value: '4h' },
-    { label: '8 hours', value: '8h' },
-    { label: '24 hours', value: '24h' },
-    { label: '48 hours', value: '48h' },
-    { label: '72 hours', value: '72h' },
+    { label: t('incidents.duration_1h', '1 hour'), value: '1h' },
+    { label: t('incidents.duration_2h', '2 hours'), value: '2h' },
+    { label: t('incidents.duration_4h', '4 hours'), value: '4h' },
+    { label: t('incidents.duration_8h', '8 hours'), value: '8h' },
+    { label: t('incidents.duration_24h', '24 hours'), value: '24h' },
+    { label: t('incidents.duration_48h', '48 hours'), value: '48h' },
+    { label: t('incidents.duration_72h', '72 hours'), value: '72h' },
   ];
 
   // Step wizard state
@@ -284,10 +285,10 @@ const UpdateStatusModal = () => {
   }, [selectedTransition]);
 
   const stepTitles: Record<string, string> = {
-    department: 'Department Assignment',
-    user: 'User Assignment',
-    field_changes: 'Field Changes',
-    duration: 'Auto-Revert Duration',
+    department: t('incidents.departmentAssignment', 'Department Assignment'),
+    user: t('incidents.userAssignment', 'User Assignment'),
+    field_changes: t('incidents.fieldChanges', 'Field Changes'),
+    duration: t('incidents.autoRevertDuration', 'Auto-Revert Duration'),
     attachment: t('incidents.attachment', 'Attachment'),
     feedback: t('incidents.feedback', 'Feedback'),
     comment: t('incidents.comment', 'Comment'),
@@ -303,12 +304,12 @@ const UpdateStatusModal = () => {
     if (currentStepKey === 'department') {
       // Block while still loading
       if (loadingDeptMatch) {
-        Alert.alert('Please wait', 'Loading departments...');
+        Alert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingDepartments', 'Loading departments...'));
         return false;
       }
       // Block if department selection is needed and nothing selected
       if (needsDeptSelection && !selectedDepartmentId) {
-        Alert.alert('Required', 'Please select a department to continue.');
+        Alert.alert(t('common.required', 'Required'), t('incidents.selectDepartmentRequired', 'Please select a department to continue.'));
         return false;
       }
     }
@@ -316,28 +317,28 @@ const UpdateStatusModal = () => {
     if (currentStepKey === 'user') {
       // Block while still loading
       if (loadingUsers) {
-        Alert.alert('Please wait', 'Loading matching users...');
+        Alert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingMatchingUsers', 'Loading matching users...'));
         return false;
       }
       // Block if user selection is needed and nothing selected (auto-single-match sets selectedUser automatically)
       if (needsUserSelection && !selectedUser && !trans.assign_user_id) {
-        Alert.alert('Required', 'Please select a user to continue.');
+        Alert.alert(t('common.required', 'Required'), t('incidents.selectUserRequired', 'Please select a user to continue.'));
         return false;
       }
     }
 
     if (currentStepKey === 'attachment' && transitionRequiresAttachment && attachments.length === 0) {
-      Alert.alert('Required', 'At least one attachment is required.');
+      Alert.alert(t('common.required', 'Required'), t('incidents.attachmentRequired', 'At least one attachment is required.'));
       return false;
     }
 
     if (currentStepKey === 'feedback' && transitionRequiresFeedback && feedbackRating === 0) {
-      Alert.alert('Required', 'Please provide a feedback rating.');
+      Alert.alert(t('common.required', 'Required'), t('incidents.feedbackRatingRequired2', 'Please provide a feedback rating.'));
       return false;
     }
 
     if (currentStepKey === 'comment' && transitionRequiresComment && !comment.trim()) {
-      Alert.alert('Required', 'A comment is required for this transition.');
+      Alert.alert(t('common.required', 'Required'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return false;
     }
 
@@ -345,7 +346,7 @@ const UpdateStatusModal = () => {
       const fcs = trans.field_changes || [];
       for (const fc of fcs) {
         if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-          Alert.alert('Required', `${fc.label || fc.field_name} is required.`);
+          Alert.alert(t('common.required', 'Required'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
           return false;
         }
       }
@@ -388,7 +389,7 @@ const UpdateStatusModal = () => {
   // Fetch matching users when a transition with user selection is needed
   useEffect(() => {
     const fetchMatchingUsers = async () => {
-      if (!needsUserSelection || !incident) return;
+      if (!selectedTransition || !incident) return;
 
       setLoadingUsers(true);
       const roleIds = selectedTransition.transition.assignment_roles?.map((r: any) => r.id) || [];
@@ -410,6 +411,8 @@ const UpdateStatusModal = () => {
         setSingleUserMatch(isSingle);
         if (isSingle && users.length === 1) {
           setSelectedUser(users[0]);
+        } else {
+          setSelectedUser(null)
         }
       } else {
         setMatchingUsers([]);
@@ -559,7 +562,7 @@ const UpdateStatusModal = () => {
         setPreviewVisible(true);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to take photo');
+      Alert.alert(t('common.error', 'Error'), t('common.takePhotoFailed', 'Failed to take photo'));
     }
   };
 
@@ -627,27 +630,27 @@ const UpdateStatusModal = () => {
 
   const handleUpdate = async () => {
     if (!selectedTransition) {
-      Alert.alert('Error', 'Please select a status to update.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.selectStatusError', 'Please select a status to update.'));
       return;
     }
     if (transitionRequiresComment && !comment.trim()) {
-      Alert.alert('Error', 'A comment is required for this transition.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return;
     }
     if (transitionRequiresFeedback && feedbackRating === 0) {
-      Alert.alert('Error', 'Please provide a feedback rating for this transition.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
     if (needsUserSelection && !selectedUser) {
-      Alert.alert('Error', 'Please select a user to assign this incident to.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
       return;
     }
     if (needsDeptSelection && !selectedDepartmentId) {
-      Alert.alert('Error', 'Please select a department for this transition.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.selectDepartmentError', 'Please select a department for this transition.'));
       return;
     }
     if (transitionRequiresAttachment && attachments.length === 0) {
-      Alert.alert('Error', 'At least one attachment is required for this transition.');
+      Alert.alert(t('common.error', 'Error'), t('incidents.attachmentRequiredError', 'At least one attachment is required for this transition.'));
       return;
     }
 
@@ -655,7 +658,7 @@ const UpdateStatusModal = () => {
     const fieldChanges = selectedTransition?.transition?.field_changes || [];
     for (const fc of fieldChanges) {
       if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-        Alert.alert('Error', `${fc.label || fc.field_name} is required for this transition.`);
+        Alert.alert(t('common.error', 'Error'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
         return;
       }
     }
@@ -666,27 +669,30 @@ const UpdateStatusModal = () => {
     // Upload attachments first if there are any
     if (attachments.length > 0) {
       setIsUploading(true);
-      setUploadProgress(`Uploading ${attachments.length} file(s)...`);
+      setUploadProgress(t('common.uploadingFiles', 'Uploading {{count}} file(s)...', { count: attachments.length }));
 
       const uploadResult = await uploadMultipleAttachments(incidentId, attachments);
 
       if (uploadResult.success) {
         uploadedAttachmentIds = uploadResult.data.map(att => att.id);
-        setUploadProgress('Upload complete!');
+        setUploadProgress(t('common.uploadComplete', 'Upload complete!'));
       } else if (uploadResult.partialSuccess) {
         // Some files uploaded successfully
         uploadedAttachmentIds = uploadResult.data.map(att => att.id);
         const failedCount = uploadResult.errors?.length || 0;
         Alert.alert(
-          'Partial Upload',
-          `${uploadResult.data.length} file(s) uploaded successfully. ${failedCount} file(s) failed.`
+          t('common.partialUpload', 'Partial Upload'),
+          t('common.partialUploadMessage', '{{uploaded}} file(s) uploaded successfully. {{failed}} file(s) failed.', {
+            uploaded: uploadResult.data.length,
+            failed: failedCount,
+          })
         );
       } else {
         // All uploads failed
         setLoading(false);
         setIsUploading(false);
         setUploadProgress('');
-        Alert.alert('Error', 'Failed to upload attachments. Please try again.');
+        Alert.alert(t('common.error', 'Error'), t('common.uploadFailed', 'Failed to upload attachments. Please try again.'));
         return;
       }
 
@@ -694,7 +700,7 @@ const UpdateStatusModal = () => {
     }
 
     // Execute the transition
-    setUploadProgress('Updating status...');
+    setUploadProgress(t('common.updatingStatus', 'Updating status...'));
 
     // Determine department_id: static assign or auto-detected selection
     let departmentId: string | undefined;
@@ -776,6 +782,7 @@ const UpdateStatusModal = () => {
     setReadyToCloseDuration('');
     setTransitionStep(0);
     setShowPicker(false);
+    setAutoSelectUser(trans.auto_match_user)
 
     // Pre-fetch tree data for field changes that need hierarchical pickers
     const fcs = trans.transition?.field_changes || [];
@@ -826,7 +833,7 @@ const UpdateStatusModal = () => {
             <Text style={styles.headerTitle}>{t('incidents.updateTheStatus')}</Text>
             {selectedTransition && transitionSteps.length > 0 && (
               <Text style={styles.stepCounter}>
-                Step {transitionStep + 1} of {transitionSteps.length}
+                {t('incidents.stepOf', 'Step {{current}} of {{total}}', { current: transitionStep + 1, total: transitionSteps.length })}
               </Text>
             )}
           </View>
@@ -841,13 +848,13 @@ const UpdateStatusModal = () => {
             <View style={styles.stateRow}>
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.from_state?.color || '#888') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.from_state?.color || '#888' }]}>
-                  {selectedTransition.transition.from_state?.name || 'Current'}
+                  {selectedTransition.transition.from_state?.name || t('incidents.currentStateFallback', 'Current')}
                 </Text>
               </View>
               <Ionicons name="arrow-forward" size={14} color="#888" style={{ marginHorizontal: 6 }} />
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.to_state?.color || '#2EC4B6') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.to_state?.color || '#2EC4B6' }]}>
-                  {selectedTransition.transition.to_state?.name || 'Next'}
+                  {selectedTransition.transition.to_state?.name || t('incidents.nextStateFallback', 'Next')}
                 </Text>
               </View>
             </View>
@@ -902,10 +909,16 @@ const UpdateStatusModal = () => {
             <View style={{ paddingBottom: 8 }}>
               {/* Step title */}
               <View style={styles.stepTitleRow}>
-                <Text style={styles.stepLabel}>{stepTitles[currentStepKey]}</Text>
+                <View style={{ marginVertical: 5 }}>
+                  <Text style={styles.stepLabel}>{stepTitles[currentStepKey]}</Text>
+                  {
+                    currentStepKey === 'user' && selectedTransition.transition.auto_match_user &&
+                    <Text>{t('incidents.usersAssignedToAll', 'User will be assigned to all users')}</Text>
+                  }
+                </View>
                 {isStepMandatory()
-                  ? <Text style={styles.stepRequired}>Required</Text>
-                  : <Text style={styles.stepOptional}>Optional</Text>
+                  ? <Text style={styles.stepRequired}>{t('incidents.stepRequired', 'Required')}</Text>
+                  : <Text style={styles.stepOptional}>{t('incidents.stepOptional', 'Optional')}</Text>
                 }
               </View>
 
@@ -916,29 +929,29 @@ const UpdateStatusModal = () => {
                     <View style={styles.autoAssignedCard}>
                       <Ionicons name="business-outline" size={20} color="#2EC4B6" />
                       <View style={{ flex: 1, marginLeft: 8 }}>
-                        <Text style={styles.autoAssignedName}>Department pre-configured</Text>
+                        <Text style={styles.autoAssignedName}>{t('incidents.departmentPreConfigured', 'Department pre-configured')}</Text>
                       </View>
-                      <Text style={styles.autoAssignedBadge}>Auto</Text>
+                      <Text style={styles.autoAssignedBadge}>{t('incidents.auto', 'Auto')}</Text>
                     </View>
                   ) : loadingDeptMatch ? (
                     <View style={styles.loadingContainer}>
                       <ActivityIndicator size="small" color="#2EC4B6" />
-                      <Text style={styles.loadingText}>Finding matching departments...</Text>
+                      <Text style={styles.loadingText}>{t('incidents.findingMatchingDepartments', 'Finding matching departments...')}</Text>
                     </View>
                   ) : departmentMatchResult?.single_match ? (
                     <View style={styles.autoAssignedCard}>
                       <Ionicons name="business-outline" size={20} color="#2EC4B6" />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={styles.autoAssignedName}>
-                          {departmentMatchResult.departments?.[0]?.name || 'Department auto-selected'}
+                          {departmentMatchResult.departments?.[0]?.name || t('incidents.autoSelected', 'Auto-selected')}
                         </Text>
                       </View>
-                      <Text style={styles.autoAssignedBadge}>Auto-selected</Text>
+                      <Text style={styles.autoAssignedBadge}>{t('incidents.autoSelected', 'Auto-selected')}</Text>
                     </View>
                   ) : departmentMatchResult?.departments?.length === 0 ? (
                     <View style={styles.noUsersContainer}>
                       <Ionicons name="business-outline" size={32} color="#CCC" />
-                      <Text style={styles.noUsersText}>No matching departments found</Text>
+                      <Text style={styles.noUsersText}>{t('incidents.noMatchingDepartments', 'No matching departments found')}</Text>
                     </View>
                   ) : departmentMatchResult ? (
                     departmentMatchResult.departments.map((dept: any) => (
@@ -968,7 +981,7 @@ const UpdateStatusModal = () => {
                   {loadingUsers ? (
                     <View style={styles.loadingContainer}>
                       <ActivityIndicator size="small" color="#2EC4B6" />
-                      <Text style={styles.loadingText}>Finding matching users...</Text>
+                      <Text style={styles.loadingText}>{t('incidents.findingMatchingUsers', 'Finding matching users...')}</Text>
                     </View>
                   ) : singleUserMatch && matchingUsers.length === 1 ? (
                     <View style={styles.autoAssignedCard}>
@@ -979,7 +992,7 @@ const UpdateStatusModal = () => {
                         </Text>
                         <Text style={styles.autoAssignedSub}>{matchingUsers[0].email}</Text>
                       </View>
-                      <Text style={styles.autoAssignedBadge}>Auto-selected</Text>
+                      <Text style={styles.autoAssignedBadge}>{t('incidents.autoSelected', 'Auto-selected')}</Text>
                     </View>
                   ) : matchingUsers.length > 0 ? (
                     matchingUsers.map((u: any) => (
@@ -987,6 +1000,7 @@ const UpdateStatusModal = () => {
                         key={u.id}
                         style={[styles.selectionRow, selectedUser?.id === u.id && styles.selectionRowSelected]}
                         onPress={() => setSelectedUser(u)}
+                        disabled={selectedTransition.transition.auto_match_user}
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.selectionRowTitle, selectedUser?.id === u.id && styles.selectionRowTitleSelected]}>
@@ -1002,7 +1016,7 @@ const UpdateStatusModal = () => {
                   ) : (
                     <View style={styles.noUsersContainer}>
                       <Ionicons name="person-outline" size={32} color="#CCC" />
-                      <Text style={styles.noUsersText}>No matching users found</Text>
+                      <Text style={styles.noUsersText}>{t('incidents.noMatchingUsers', 'No matching users found')}</Text>
                     </View>
                   )}
                 </>
@@ -1032,7 +1046,7 @@ const UpdateStatusModal = () => {
                         )}
                         {fc.field_name === 'department_id' && (
                           <TreeSelect
-                            label={fc.label || 'Department'}
+                            label={fc.label || t('incidents.departmentAssignment', 'Department')}
                             value={fieldChangeDisplayValues['department_id'] || ''}
                             data={fc.department_type_filter ? filterDeptTree(departmentsTree, fc.department_type_filter) : departmentsTree}
                             onSelect={(node) => {
@@ -1040,29 +1054,29 @@ const UpdateStatusModal = () => {
                               else { setFieldChangeValues(p => { const n = { ...p }; delete n.department_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.department_id; return n; }); }
                             }}
                             leafOnly={false}
-                            placeholder="Select department..."
+                            placeholder={t('incidents.selectDepartmentPlaceholder', 'Select department...')}
                           />
                         )}
                         {fc.field_name === 'location_id' && (
-                          <TreeSelect label={fc.label || 'Location'} value={fieldChangeDisplayValues['location_id'] || ''} data={locationsTree}
+                          <TreeSelect label={fc.label || t('incidents.location', 'Location')} value={fieldChangeDisplayValues['location_id'] || ''} data={locationsTree}
                             onSelect={(node) => {
                               if (node) { setFieldChangeValues(p => ({ ...p, location_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, location_id: node.name })); }
                               else { setFieldChangeValues(p => { const n = { ...p }; delete n.location_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.location_id; return n; }); }
-                            }} leafOnly={false} placeholder="Select location..." iconType="location" />
+                            }} leafOnly={false} placeholder={t('incidents.selectLocationPlaceholder', 'Select location...')} iconType="location" />
                         )}
                         {fc.field_name === 'classification_id' && (
-                          <TreeSelect label={fc.label || 'Classification'} value={fieldChangeDisplayValues['classification_id'] || ''} data={classificationsTree}
+                          <TreeSelect label={fc.label || t('incidents.classification', 'Classification')} value={fieldChangeDisplayValues['classification_id'] || ''} data={classificationsTree}
                             onSelect={(node) => {
                               if (node) { setFieldChangeValues(p => ({ ...p, classification_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, classification_id: node.name })); }
                               else { setFieldChangeValues(p => { const n = { ...p }; delete n.classification_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.classification_id; return n; }); }
-                            }} leafOnly={false} placeholder="Select classification..." iconType="classification" />
+                            }} leafOnly={false} placeholder={t('incidents.selectClassificationPlaceholder', 'Select classification...')} iconType="classification" />
                         )}
                         {fc.field_name === 'title' && (
-                          <TextInput style={styles.fieldInput} placeholder="Enter title..." placeholderTextColor="#999"
+                          <TextInput style={styles.fieldInput} placeholder={t('incidents.enterTitlePlaceholder', 'Enter title...')} placeholderTextColor="#999"
                             value={fieldChangeValues['title'] || ''} onChangeText={(t) => setFieldChangeValues(p => ({ ...p, title: t }))} />
                         )}
                         {fc.field_name === 'description' && (
-                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline]} placeholder="Enter description..."
+                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline]} placeholder={t('incidents.enterDescriptionPlaceholder', 'Enter description...')}
                             placeholderTextColor="#999" multiline value={fieldChangeValues['description'] || ''}
                             onChangeText={(t) => setFieldChangeValues(p => ({ ...p, description: t }))} />
                         )}
@@ -1075,7 +1089,7 @@ const UpdateStatusModal = () => {
               {currentStepKey === 'duration' && (
                 <>
                   <Text style={styles.stepHint}>
-                    If not closed within this duration, the incident will automatically revert.
+                    {t('incidents.autoRevertHint', 'If not closed within this duration, the incident will automatically revert.')}
                   </Text>
                   {readyToCloseDurationOptions.map(opt => (
                     <TouchableOpacity
@@ -1111,8 +1125,8 @@ const UpdateStatusModal = () => {
                   )}
                   <TouchableOpacity style={styles.attachmentBox} onPress={takePhotoWithCamera}>
                     <Ionicons name="cloud-upload-outline" size={32} color="#2EC4B6" />
-                    <Text style={styles.attachmentText}>{attachments.length > 0 ? 'Add more files' : 'Attach files'}</Text>
-                    <Text style={styles.attachmentSubText}>Max file size: 5 MB</Text>
+                    <Text style={styles.attachmentText}>{attachments.length > 0 ? t('incidents.addMoreFiles', 'Add more files') : t('incidents.attachFiles', 'Attach files')}</Text>
+                    <Text style={styles.attachmentSubText}>{t('incidents.maxFileSize', 'Max file size: 5 MB')}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1120,7 +1134,7 @@ const UpdateStatusModal = () => {
               {/* ── FEEDBACK STEP ── */}
               {currentStepKey === 'feedback' && (
                 <>
-                  <Text style={styles.stepHint}>Rate your experience with this resolution</Text>
+                  <Text style={styles.stepHint}>{t('incidents.rateYourExperience', 'Rate your experience with this resolution')}</Text>
                   <View style={styles.starRatingContainer}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <TouchableOpacity key={star} onPress={() => setFeedbackRating(star)} style={styles.starButton}>
@@ -1177,7 +1191,7 @@ const UpdateStatusModal = () => {
           <View style={styles.wizardFooter}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Ionicons name="arrow-back" size={18} color="#666" />
-              <Text style={styles.backButtonText}>{transitionStep === 0 ? 'Change' : 'Back'}</Text>
+              <Text style={styles.backButtonText}>{transitionStep === 0 ? t('common.change', 'Change') : t('common.back', 'Back')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.nextButton, loading && styles.disabledButton]}
@@ -1187,11 +1201,11 @@ const UpdateStatusModal = () => {
               {loading ? (
                 <View style={styles.buttonLoadingContainer}>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.nextButtonText}>{isUploading ? ' Uploading...' : ' Updating...'}</Text>
+                  <Text style={styles.nextButtonText}>{isUploading ? ` ${t('common.uploading', 'Uploading...')}` : ` ${t('common.updating', 'Updating...')}`}</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={styles.nextButtonText}>{isLastStep ? 'Execute' : 'Next'}</Text>
+                  <Text style={styles.nextButtonText}>{isLastStep ? t('common.execute', 'Execute') : t('common.next', 'Next')}</Text>
                   <Ionicons name={isLastStep ? 'checkmark' : 'arrow-forward'} size={18} color="#fff" />
                 </>
               )}
@@ -1210,15 +1224,15 @@ const UpdateStatusModal = () => {
         <Pressable style={styles.bottomSheetOverlay} onPress={() => setShowAttachmentOptions(false)}>
           <View style={styles.bottomSheet}>
             <View style={styles.bottomSheetHandle} />
-            <Text style={styles.bottomSheetTitle}>Add Attachment</Text>
+            <Text style={styles.bottomSheetTitle}>{t('incidents.addAttachment', 'Add Attachment')}</Text>
 
             <TouchableOpacity style={styles.bottomSheetOption} onPress={takePhotoWithCamera}>
               <View style={[styles.optionIconContainer, { backgroundColor: '#E8F5E9' }]}>
                 <Ionicons name="camera" size={28} color="#4CAF50" />
               </View>
               <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>Take Photo</Text>
-                <Text style={styles.optionSubtitle}>Use your camera to capture an image</Text>
+                <Text style={styles.optionTitle}>{t('incidents.takePhoto', 'Take Photo')}</Text>
+                <Text style={styles.optionSubtitle}>{t('incidents.takePhotoSubtitle', 'Use your camera to capture an image')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -1227,8 +1241,8 @@ const UpdateStatusModal = () => {
                 <Ionicons name="images" size={28} color="#2196F3" />
               </View>
               <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>Choose from Gallery</Text>
-                <Text style={styles.optionSubtitle}>Select images from your photo library</Text>
+                <Text style={styles.optionTitle}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                <Text style={styles.optionSubtitle}>{t('common.selectImagesFromLibrary', 'Select images from your photo library')}</Text>
               </View>
             </TouchableOpacity> */}
 
@@ -1236,7 +1250,7 @@ const UpdateStatusModal = () => {
               style={styles.cancelButton}
               onPress={() => setShowAttachmentOptions(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('common.cancel', 'Cancel')}</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
