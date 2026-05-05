@@ -85,6 +85,9 @@ export async function compressImage(
 
     // Get compressed file size
     const compressedInfo = await FileSystem.getInfoAsync(compressed.uri);
+    if (!compressedInfo.exists) {
+      throw new Error('Compressed file not found');
+    }
     const compressedSize = compressedInfo.size;
     const compressionRatio = compressedSize / originalSize;
 

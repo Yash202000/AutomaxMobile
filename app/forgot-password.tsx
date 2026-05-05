@@ -135,18 +135,10 @@ const ForgotPasswordScreen = () => {
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
-                paddingTop: isSmallScreen ? 40 : 80,
+                paddingTop: isSmallScreen ? 10 : 20,
               },
             ]}
           >
-            {/* Back Button */}
-            {/* <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity> */}
-
             <View style={styles.headerContainer}>
               <Text style={styles.titleText}>{t('forgotPassword.title')}</Text>
               <Text style={styles.subtitleText}>{t('forgotPassword.subtitle')}</Text>
