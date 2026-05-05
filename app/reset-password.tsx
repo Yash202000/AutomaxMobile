@@ -164,7 +164,7 @@ const ResetPasswordScreen = () => {
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
-                paddingTop: isSmallScreen ? 40 : 80,
+                paddingTop: isSmallScreen ? 10 : 20,
               },
             ]}
           >
