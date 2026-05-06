@@ -5,6 +5,7 @@
       "chevronForward": "chevron-back",
       "chevronBack": "chevron-forward"
     },
+    "gettingAddress": "جارى الحصول على تفاصيل العنوان...",
     "chooseTransition": "اختر الإجراء الذي تريد تنفيذه",
     "isRequired": "مطلوب",
     "allSources": "جميع المصادر",
