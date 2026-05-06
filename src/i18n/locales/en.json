@@ -1,5 +1,10 @@
 {
   "common": {
+    "validationError": "Validation Error",
+    "icons": {
+      "chevronBack": "chevron-back",
+      "chevronForward": "chevron-forward"
+    },
     "chooseTransition": "Choose the action you want to perform",
     "isRequired": "is required",
     "allSources": "All Sources",
@@ -447,6 +452,7 @@
     "shareLogs": "Share Logs",
     "deleteLogs": "Delete Logs",
     "version": "Version",
+    "updateProfileInfo": "Update your profile information",
     "logs": {
       "fileSize": "Log File Size",
       "status": "Status",

@@ -11,6 +11,8 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface FilterState {
   state_ids: string[];
@@ -262,7 +264,7 @@ const RequestFilterScreen = () => {
   const applyFilters = () => {
     if (filters.start_date && filters.end_date) {
       if (new Date(filters.start_date) > new Date(filters.end_date)) {
-        Alert.alert(
+        CustomAlert.alert(
           t('filter.invalidDateRangeTitle', 'Invalid Date Range'),
           t('filter.invalidDateRange', 'Start date cannot be after end date')
         );

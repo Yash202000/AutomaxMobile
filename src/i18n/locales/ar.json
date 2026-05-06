@@ -1,5 +1,10 @@
 {
   "common": {
+    "validationError": "خطأ في التحقق",
+    "icons": {
+      "chevronForward": "chevron-back",
+      "chevronBack": "chevron-forward"
+    },
     "chooseTransition": "اختر الإجراء الذي تريد تنفيذه",
     "isRequired": "مطلوب",
     "allSources": "جميع المصادر",
@@ -440,6 +445,7 @@
     "shareLogs": "مشاركة السجلات",
     "deleteLogs": "حذف السجلات",
     "version": "الإصدار",
+    "updateProfileInfo": "تحديث معلومات ملفك الشخصي",
     "logs": {
       "fileSize": "حجم ملف السجل",
       "status": "الحالة",

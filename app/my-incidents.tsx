@@ -19,6 +19,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const priorityMap: Record<number, { key: string; color: string }> = {
   1: { key: "critical", color: "#E74C3C" },
@@ -317,7 +319,7 @@ const MyIncidentsScreen = () => {
     } else {
       setError(response.error || t("myIncidents.fetchFailed"));
       if (!append) {
-        Alert.alert(
+        CustomAlert.alert(
           t("common.error"),
           response.error || t("myIncidents.fetchFailed"),
         );

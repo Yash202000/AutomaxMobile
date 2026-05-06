@@ -7,6 +7,7 @@ import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { compressImage } from '@/src/utils/imageCompression';
 import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 const UpdateStatusModal = () => {
   const router = useRouter();
@@ -137,7 +140,7 @@ const UpdateStatusModal = () => {
         }
 
         if (finalStatus !== 'granted') {
-          Alert.alert(
+          CustomAlert.alert(
             t('common.locationPermissionRequired', 'Location Permission Required'),
             t('common.locationNeededForWatermark', 'Location access is needed to watermark photos with GPS coordinates. Please enable location services in your device settings.'),
             [
@@ -205,7 +208,7 @@ const UpdateStatusModal = () => {
         // Handle location services disabled or other errors
         if (error?.message?.includes('Location services are disabled') ||
           error?.message?.includes('unavailable')) {
-          Alert.alert(
+          CustomAlert.alert(
             t('common.locationServicesDisabled', 'Location Services Disabled'),
             t('common.enableLocationServices', 'Please enable location services in your device settings to add GPS coordinates to photos.'),
             [
@@ -304,12 +307,12 @@ const UpdateStatusModal = () => {
     if (currentStepKey === 'department') {
       // Block while still loading
       if (loadingDeptMatch) {
-        Alert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingDepartments', 'Loading departments...'));
+        CustomAlert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingDepartments', 'Loading departments...'));
         return false;
       }
       // Block if department selection is needed and nothing selected
       if (needsDeptSelection && !selectedDepartmentId) {
-        Alert.alert(t('common.required', 'Required'), t('incidents.selectDepartmentRequired', 'Please select a department to continue.'));
+        CustomAlert.alert(t('common.required', 'Required'), t('incidents.selectDepartmentRequired', 'Please select a department to continue.'));
         return false;
       }
     }
@@ -317,28 +320,28 @@ const UpdateStatusModal = () => {
     if (currentStepKey === 'user') {
       // Block while still loading
       if (loadingUsers) {
-        Alert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingMatchingUsers', 'Loading matching users...'));
+        CustomAlert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingMatchingUsers', 'Loading matching users...'));
         return false;
       }
       // Block if user selection is needed and nothing selected (auto-single-match sets selectedUser automatically)
       if (needsUserSelection && !selectedUser && !trans.assign_user_id) {
-        Alert.alert(t('common.required', 'Required'), t('incidents.selectUserRequired', 'Please select a user to continue.'));
+        CustomAlert.alert(t('common.required', 'Required'), t('incidents.selectUserRequired', 'Please select a user to continue.'));
         return false;
       }
     }
 
     if (currentStepKey === 'attachment' && transitionRequiresAttachment && attachments.length === 0) {
-      Alert.alert(t('common.required', 'Required'), t('incidents.attachmentRequired', 'At least one attachment is required.'));
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.attachmentRequired', 'At least one attachment is required.'));
       return false;
     }
 
     if (currentStepKey === 'feedback' && transitionRequiresFeedback && feedbackRating === 0) {
-      Alert.alert(t('common.required', 'Required'), t('incidents.feedbackRatingRequired2', 'Please provide a feedback rating.'));
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.feedbackRatingRequired2', 'Please provide a feedback rating.'));
       return false;
     }
 
     if (currentStepKey === 'comment' && transitionRequiresComment && !comment.trim()) {
-      Alert.alert(t('common.required', 'Required'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return false;
     }
 
@@ -346,7 +349,7 @@ const UpdateStatusModal = () => {
       const fcs = trans.field_changes || [];
       for (const fc of fcs) {
         if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-          Alert.alert(t('common.required', 'Required'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
+          CustomAlert.alert(t('common.required', 'Required'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
           return false;
         }
       }
@@ -429,7 +432,7 @@ const UpdateStatusModal = () => {
   const requestCameraPermission = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      CustomAlert.alert(
         t('common.permissionRequired', 'Permission Required'),
         t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
         [
@@ -458,7 +461,7 @@ const UpdateStatusModal = () => {
   const requestMediaLibraryPermission = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      CustomAlert.alert(
         t('common.permissionRequired', 'Permission Required'),
         t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
         [
@@ -562,7 +565,7 @@ const UpdateStatusModal = () => {
         setPreviewVisible(true);
       }
     } catch (error) {
-      Alert.alert(t('common.error', 'Error'), t('common.takePhotoFailed', 'Failed to take photo'));
+      CustomAlert.alert(t('common.error', 'Error'), t('common.takePhotoFailed', 'Failed to take photo'));
     }
   };
 
@@ -630,27 +633,27 @@ const UpdateStatusModal = () => {
 
   const handleUpdate = async () => {
     if (!selectedTransition) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.selectStatusError', 'Please select a status to update.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectStatusError', 'Please select a status to update.'));
       return;
     }
     if (transitionRequiresComment && !comment.trim()) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return;
     }
     if (transitionRequiresFeedback && feedbackRating === 0) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
     if (needsUserSelection && !selectedUser) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
       return;
     }
     if (needsDeptSelection && !selectedDepartmentId) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.selectDepartmentError', 'Please select a department for this transition.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectDepartmentError', 'Please select a department for this transition.'));
       return;
     }
     if (transitionRequiresAttachment && attachments.length === 0) {
-      Alert.alert(t('common.error', 'Error'), t('incidents.attachmentRequiredError', 'At least one attachment is required for this transition.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.attachmentRequiredError', 'At least one attachment is required for this transition.'));
       return;
     }
 
@@ -658,7 +661,7 @@ const UpdateStatusModal = () => {
     const fieldChanges = selectedTransition?.transition?.field_changes || [];
     for (const fc of fieldChanges) {
       if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-        Alert.alert(t('common.error', 'Error'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
+        CustomAlert.alert(t('common.error', 'Error'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
         return;
       }
     }
@@ -680,7 +683,7 @@ const UpdateStatusModal = () => {
         // Some files uploaded successfully
         uploadedAttachmentIds = uploadResult.data.map(att => att.id);
         const failedCount = uploadResult.errors?.length || 0;
-        Alert.alert(
+        CustomAlert.alert(
           t('common.partialUpload', 'Partial Upload'),
           t('common.partialUploadMessage', '{{uploaded}} file(s) uploaded successfully. {{failed}} file(s) failed.', {
             uploaded: uploadResult.data.length,
@@ -692,7 +695,7 @@ const UpdateStatusModal = () => {
         setLoading(false);
         setIsUploading(false);
         setUploadProgress('');
-        Alert.alert(t('common.error', 'Error'), t('common.uploadFailed', 'Failed to upload attachments. Please try again.'));
+        CustomAlert.alert(t('common.error', 'Error'), t('common.uploadFailed', 'Failed to upload attachments. Please try again.'));
         return;
       }
 
@@ -740,7 +743,7 @@ const UpdateStatusModal = () => {
         successMessage = t('common.queryStatusUpdated');
       }
 
-      Alert.alert(t('common.success'), successMessage, [
+      CustomAlert.alert(t('common.success'), successMessage, [
         {
           text: t('common.ok'), onPress: () => {
             router.back();
@@ -751,7 +754,7 @@ const UpdateStatusModal = () => {
       // Check for version conflict
       const errorMessage = response.error || '';
       if (errorMessage.includes('conflict') || errorMessage.includes('modified by another user')) {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.conflictDetected') || 'Conflict Detected',
           t('common.incidentModifiedByAnother') || 'This incident was modified by another user. Please review and try again.',
           [
@@ -762,7 +765,7 @@ const UpdateStatusModal = () => {
           ]
         );
       } else {
-        Alert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
+        CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
       }
     }
   };
@@ -898,7 +901,7 @@ const UpdateStatusModal = () => {
                       </View>
                     )}
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#CCC" />
+                  <Ionicons name={t('common.icons.chevronForward') as any} size={20} color="#CCC" />
                 </TouchableOpacity>
               ))}
             </>
@@ -1072,11 +1075,12 @@ const UpdateStatusModal = () => {
                             }} leafOnly={false} placeholder={t('incidents.selectClassificationPlaceholder', 'Select classification...')} iconType="classification" />
                         )}
                         {fc.field_name === 'title' && (
-                          <TextInput style={styles.fieldInput} placeholder={t('incidents.enterTitlePlaceholder', 'Enter title...')} placeholderTextColor="#999"
+                          <TextInput style={[styles.fieldInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]} placeholder={t('incidents.enterTitlePlaceholder', 'Enter title...')} placeholderTextColor="#999"
                             value={fieldChangeValues['title'] || ''} onChangeText={(t) => setFieldChangeValues(p => ({ ...p, title: t }))} />
                         )}
                         {fc.field_name === 'description' && (
-                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline]} placeholder={t('incidents.enterDescriptionPlaceholder', 'Enter description...')}
+                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                            placeholder={t('incidents.enterDescriptionPlaceholder', 'Enter description...')}
                             placeholderTextColor="#999" multiline value={fieldChangeValues['description'] || ''}
                             onChangeText={(t) => setFieldChangeValues(p => ({ ...p, description: t }))} />
                         )}
@@ -1152,7 +1156,7 @@ const UpdateStatusModal = () => {
                     </Text>
                   )}
                   <TextInput
-                    style={styles.commentInput}
+                    style={[styles.commentInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     placeholder={t('incidents.feedbackCommentPlaceholder', 'Add feedback comment (optional)...')}
                     placeholderTextColor="#999"
                     multiline
@@ -1165,7 +1169,7 @@ const UpdateStatusModal = () => {
               {/* ── COMMENT STEP ── */}
               {currentStepKey === 'comment' && (
                 <TextInput
-                  style={[styles.commentInput, { minHeight: 120 }]}
+                  style={[styles.commentInput, { minHeight: 120, textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={transitionRequiresComment ? t('incidents.addCommentPlaceholder') + ' *' : t('incidents.addCommentPlaceholder')}
                   placeholderTextColor="#999"
                   multiline

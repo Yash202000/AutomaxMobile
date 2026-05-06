@@ -41,6 +41,8 @@ import {
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface DropdownOption {
   id: string;
@@ -441,7 +443,7 @@ const AddIncidentScreen = () => {
 
       // Check if critical workflow data failed to load
       if (!workflowRes.success || !workflowRes.data || workflowRes.data.length === 0) {
-        Alert.alert(
+        CustomAlert.alert(
           'Warning',
           'Failed to load workflows. You may not be able to create incidents until workflows are available.',
           [
@@ -460,7 +462,7 @@ const AddIncidentScreen = () => {
         context: 'Failed to load classifications, locations, workflows, users, or departments',
       }).catch(err => console.error('Failed to log error:', err));
 
-      Alert.alert(
+      CustomAlert.alert(
         'Error',
         'Failed to load required data. Please check your connection and try again.',
         [
@@ -703,7 +705,7 @@ const AddIncidentScreen = () => {
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.addressUnavailable'),
           t('addIncident.waitingForLocation'),
           [{ text: t('common.ok') }]
@@ -715,7 +717,7 @@ const AddIncidentScreen = () => {
       if (locationData?.latitude && !locationData?.address && !locationData?.city) {
 
         // Show loading alert
-        Alert.alert(
+        CustomAlert.alert(
           t('addIncident.gettingLocationDetails'),
           t('addIncident.waitingForAddress'),
           [{ text: t('common.ok') }]
@@ -727,7 +729,7 @@ const AddIncidentScreen = () => {
         // Check again after waiting
         const finalLocation = locationDataRef.current;
         if (finalLocation?.latitude && !finalLocation?.address && !finalLocation?.city) {
-          Alert.alert(
+          CustomAlert.alert(
             'Location Address Unavailable',
             'We have your GPS coordinates but couldn\'t get the street address. Continue with coordinates only?',
             [
@@ -749,7 +751,7 @@ const AddIncidentScreen = () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
           [
@@ -832,7 +834,7 @@ const AddIncidentScreen = () => {
         action: 'takePhoto',
         context: 'Failed to take photo with camera',
       }).catch(err => console.error('Failed to log error:', err));
-      Alert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert('Error', 'Failed to take photo');
     }
   };
 
@@ -902,7 +904,7 @@ const AddIncidentScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        CustomAlert.alert(
           t('common.permissionRequired', 'Permission Required'),
           t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
           [
@@ -962,7 +964,7 @@ const AddIncidentScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -976,7 +978,7 @@ const AddIncidentScreen = () => {
         action: 'pickFromGallery',
         context: 'Failed to pick image from gallery',
       }).catch(err => console.error('Failed to log error:', err));
-      Alert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert('Error', 'Failed to pick from gallery');
     }
   };
 
@@ -1017,7 +1019,7 @@ const AddIncidentScreen = () => {
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
-          Alert.alert(
+          CustomAlert.alert(
             'Files Too Large',
             `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
             [{ text: 'OK' }]
@@ -1031,7 +1033,7 @@ const AddIncidentScreen = () => {
         action: 'pickDocument',
         context: 'Failed to pick document',
       }).catch(err => console.error('Failed to log error:', err));
-      Alert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert('Error', 'Failed to pick document');
     }
   };
 
@@ -1090,7 +1092,7 @@ const AddIncidentScreen = () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       const firstError = Object.values(validationErrors)[0];
-      Alert.alert('Validation Error', firstError);
+      CustomAlert.alert(t('common.validationError'), firstError);
       return;
     }
 
@@ -1100,7 +1102,7 @@ const AddIncidentScreen = () => {
       // Double-check matchedWorkflow exists with valid id
       if (!matchedWorkflow || !matchedWorkflow.id) {
         setSubmitting(false);
-        Alert.alert('Error', 'No workflow matched. Please select classification, location, or source.');
+        CustomAlert.alert('Error', 'No workflow matched. Please select classification, location, or source.');
         return;
       }
 
@@ -1109,7 +1111,7 @@ const AddIncidentScreen = () => {
       const severityNum = parseInt(selectedSeverity.id);
       if (isNaN(priorityNum) || isNaN(severityNum)) {
         setSubmitting(false);
-        Alert.alert('Error', 'Invalid priority or severity selected.');
+        CustomAlert.alert('Error', 'Invalid priority or severity selected.');
         return;
       }
 
@@ -1183,7 +1185,7 @@ const AddIncidentScreen = () => {
             const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
             if (!uploadResult.success && uploadResult.errors) {
               const serverError = uploadResult.errors?.[0]?.error
-              Alert.alert(
+              CustomAlert.alert(
                 t('common.partialSuccess'),
                 `${t('addIncident.createdAttErr')}. ${serverError}`,
                 [{ text: 'OK', onPress: () => router.back() }]
@@ -1203,7 +1205,7 @@ const AddIncidentScreen = () => {
               context: 'Incident created but attachment upload failed',
             }).catch(err => console.error('Failed to log error:', err));
 
-            Alert.alert(
+            CustomAlert.alert(
               t('common.partialSuccess'),
               t('addIncident.createdAttErr'),
               [{ text: 'OK', onPress: () => router.back() }]
@@ -1221,13 +1223,13 @@ const AddIncidentScreen = () => {
         });
 
         setSubmitting(false);
-        Alert.alert(t('common.success'), t('addIncident.created'), [
+        CustomAlert.alert(t('common.success'), t('addIncident.created'), [
           { text: 'OK', onPress: () => router.back() },
         ]);
       } else {
         setSubmitting(false);
         const errorMsg = response.error || 'Unknown error occurred';
-        Alert.alert('Error', `Failed to create incident: ${errorMsg}`);
+        CustomAlert.alert('Error', `Failed to create incident: ${errorMsg}`);
       }
     } catch (error) {
       console.error('Unexpected error during incident creation:', error);
@@ -1248,7 +1250,7 @@ const AddIncidentScreen = () => {
       }).catch(err => console.error('Failed to log error:', err));
 
       setSubmitting(false);
-      Alert.alert(
+      CustomAlert.alert(
         'Error',
         `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
       );
@@ -1432,7 +1434,7 @@ const AddIncidentScreen = () => {
                   {t('incidents.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addIncident.descriptionPlaceholder')}
                   multiline
                   value={description}
@@ -1454,7 +1456,7 @@ const AddIncidentScreen = () => {
                   {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError]}
+                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
@@ -1476,7 +1478,7 @@ const AddIncidentScreen = () => {
                   {t('addIncident.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addIncident.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
@@ -1496,7 +1498,7 @@ const AddIncidentScreen = () => {
                   {t('addIncident.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addIncident.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {

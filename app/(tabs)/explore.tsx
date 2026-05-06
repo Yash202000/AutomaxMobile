@@ -287,7 +287,7 @@ const DashboardScreen = () => {
                 {t("dashboard.assignedToMe")}
               </Text>
               <Ionicons
-                name="chevron-forward"
+                name={t('common.icons.chevronForward') as any}
                 size={18}
                 color={COLORS.text.muted}
               />
@@ -321,7 +321,7 @@ const DashboardScreen = () => {
                 {t("dashboard.createdByMe")}
               </Text>
               <Ionicons
-                name="chevron-forward"
+                name={t('common.icons.chevronForward') as any}
                 size={18}
                 color={COLORS.text.muted}
               />
@@ -391,7 +391,7 @@ const DashboardScreen = () => {
                 <Text style={styles.statusCount}>{stateDetail.count}</Text>
               </View>
               <Ionicons
-                name="chevron-forward"
+                name={t('common.icons.chevronForward') as any}
                 size={18}
                 color={COLORS.text.muted}
               />

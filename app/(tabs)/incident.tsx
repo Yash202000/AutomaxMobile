@@ -579,7 +579,7 @@ const IncidentsScreen = () => {
               />
               <TextInput
                 ref={searchInputRef}
-                style={styles.searchInput}
+                style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                 placeholder={t("search.placeholder")}
                 placeholderTextColor="#999"
                 value={searchQuery}

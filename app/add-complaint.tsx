@@ -7,6 +7,7 @@ import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
+import i18n from '@/src/i18n';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -29,6 +30,8 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomAlert } from '@/src/components/CustomAlert';
+
 
 interface DropdownOption {
   id: string;
@@ -507,7 +510,7 @@ const AddComplaintScreen = () => {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('common.permissionRequired'), t('addComplaint.micPermissionRequired'));
+        CustomAlert.alert(t('common.permissionRequired'), t('addComplaint.micPermissionRequired'));
         return;
       }
 
@@ -532,7 +535,7 @@ const AddComplaintScreen = () => {
       (newRecording as any)._interval = interval;
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert('Error', 'Failed to start recording');
     }
   };
 
@@ -556,7 +559,7 @@ const AddComplaintScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert('Error', 'Failed to stop recording');
     }
   };
 
@@ -604,7 +607,7 @@ const AddComplaintScreen = () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
       if (firstError) {
-        Alert.alert(t('common.error'), firstError);
+        CustomAlert.alert(t('common.error'), firstError);
       }
       return;
     }
@@ -670,12 +673,12 @@ const AddComplaintScreen = () => {
       }
 
       setSubmitting(false);
-      Alert.alert(t('common.success'), t('addComplaint.created'), [
+      CustomAlert.alert(t('common.success'), t('addComplaint.created'), [
         { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      Alert.alert('Error', `Failed to create complaint: ${response.error}`);
+      CustomAlert.alert('Error', `Failed to create complaint: ${response.error}`);
     }
   };
 
@@ -721,7 +724,7 @@ const AddComplaintScreen = () => {
               {t('addComplaint.title')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
-              style={[styles.input, errors.title && styles.inputError]}
+              style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               placeholder={t('addComplaint.titlePlaceholder')}
               value={title}
               onChangeText={(text) => {
@@ -945,7 +948,7 @@ const AddComplaintScreen = () => {
                       <View style={styles.searchInputContainer}>
                         <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
                         <TextInput
-                          style={styles.searchInput}
+                          style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                           placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
                           value={incidentSearch}
                           onChangeText={setIncidentSearch}
@@ -1005,7 +1008,7 @@ const AddComplaintScreen = () => {
                   Description <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError]}
+                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addComplaint.descriptionPlaceholder')}
                   multiline
                   value={description}
@@ -1027,7 +1030,7 @@ const AddComplaintScreen = () => {
                   Comment <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError]}
+                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
                   multiline
                   value={comment}
@@ -1048,7 +1051,7 @@ const AddComplaintScreen = () => {
                   Reporter Name <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError]}
+                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addComplaint.reporterNamePlaceholder')}
                   value={reporterName}
                   onChangeText={(text) => {
@@ -1067,7 +1070,7 @@ const AddComplaintScreen = () => {
                   Reporter Email <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError]}
+                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={t('addComplaint.reporterEmailPlaceholder')}
                   value={reporterEmail}
                   onChangeText={(text) => {
