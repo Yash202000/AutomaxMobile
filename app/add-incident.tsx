@@ -5,6 +5,7 @@ import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { DynamicLookupField } from '@/src/components/DynamicLookupField';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
@@ -26,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -37,11 +37,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface DropdownOption {
@@ -1528,12 +1527,12 @@ const AddIncidentScreen = () => {
                 {/* Show address loading status */}
                 {locationData?.latitude && !locationData?.address && !locationData?.city && (
                   <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    ⏳ Getting address details...
+                    ⏳ {t('common.gettingAddress')}
                   </Text>
                 )}
                 {(locationData?.address || locationData?.city) && (
                   <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    ✓ Location: {locationData.city || locationData.address}
+                    ✓ {t('incidents.location')}: {locationData.city || locationData.address}
                   </Text>
                 )}
               </>

@@ -5,6 +5,7 @@
       "chevronBack": "chevron-back",
       "chevronForward": "chevron-forward"
     },
+    "gettingAddress": "Getting address details...",
     "chooseTransition": "Choose the action you want to perform",
     "isRequired": "is required",
     "allSources": "All Sources",
