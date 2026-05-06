@@ -3,6 +3,7 @@ import {
   getMyReportedIncidents,
 } from "@/src/api/incidents";
 import { getProfile } from "@/src/api/user";
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { RelativePathString, useLocalSearchParams, useRouter } from "expo-router";
@@ -10,16 +11,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   ImageBackground,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 const priorityMap: Record<number, { key: string; color: string }> = {
@@ -445,7 +444,7 @@ const MyIncidentsScreen = () => {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="white" />
+          <Ionicons name={t('common.icons.arrowBack') as any} size={24} color="white" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t("myIncidents.title")}</Text>

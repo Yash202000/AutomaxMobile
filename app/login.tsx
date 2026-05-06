@@ -316,8 +316,8 @@ const LoginScreen = () => {
 
             {/* Welcome Text */}
             <View style={styles.welcomeContainer}>
-              <Text style={styles.welcomeText}>{t('auth.welcomeBack')}</Text>
-              <Text style={styles.subtitleText}>{t('auth.loginSubtitle')}</Text>
+              <Text style={[styles.welcomeText, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.welcomeBack')}</Text>
+              <Text style={[styles.subtitleText, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.loginSubtitle')}</Text>
             </View>
 
             {/* Login Type Tabs */}
@@ -387,7 +387,7 @@ const LoginScreen = () => {
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>{t('auth.email')}</Text>
+                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.email')}</Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -420,7 +420,7 @@ const LoginScreen = () => {
 
                   {/* Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>{t('auth.password')}</Text>
+                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.password')}</Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -465,7 +465,7 @@ const LoginScreen = () => {
                 /* Phone Number Input */
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>{t('auth.phone')}</Text>
+                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.phone')}</Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -496,7 +496,7 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>{t('auth.otpChannel')}</Text>
+                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.otpChannel')}</Text>
                     <View style={styles.channelContainer}>
                       <TouchableOpacity
                         style={[
@@ -549,7 +549,7 @@ const LoginScreen = () => {
               {(loginMethod === 'email') && (
                 <TouchableOpacity
                   onPress={() => router.push('/forgot-password')}
-                  style={styles.forgotPasswordContainer}
+                  style={[styles.forgotPasswordContainer, { alignSelf: currentLang === 'ar' ? 'flex-start' : 'flex-end' }]}
                 >
                   <Text style={styles.forgotPasswordText}>
                     {t('auth.forgotPassword')}
@@ -642,7 +642,7 @@ const LoginScreen = () => {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.versionText}>V.{version}</Text>
+          <Text style={styles.versionText}>{t('auth.version', { version })}</Text>
         </View>
       </LinearGradient>
     </KeyboardAvoidingView>

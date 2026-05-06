@@ -1,6 +1,7 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -9,9 +10,8 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 const COLORS = {
@@ -431,7 +431,7 @@ const RequestDetailsScreen = () => {
                       <View style={styles.fromBadge}>
                         <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
                       </View>
-                      <Ionicons name="arrow-forward" size={14} color={COLORS.text.muted} />
+                      <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={[styles.toBadge, { backgroundColor: COLORS.accentLight }]}>
                         <Text style={[styles.toBadgeText, { color: COLORS.accent }]}>{item.to_state.name}</Text>
                       </View>

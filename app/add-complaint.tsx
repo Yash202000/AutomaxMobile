@@ -5,6 +5,7 @@ import { getLocations } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
@@ -17,7 +18,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -30,7 +30,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface DropdownOption {
@@ -535,7 +534,7 @@ const AddComplaintScreen = () => {
       (newRecording as any)._interval = interval;
     } catch (error) {
       console.error('Failed to start recording:', error);
-      CustomAlert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert(t('common.error'), t('common.recordingStartError'));
     }
   };
 
@@ -559,7 +558,7 @@ const AddComplaintScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      CustomAlert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert(t('common.error'), t('common.failedToStopRecording'));
     }
   };
 
@@ -678,7 +677,7 @@ const AddComplaintScreen = () => {
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create complaint: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -1005,7 +1004,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('description') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Description <Text style={styles.required}>*</Text>
+                  {t('addComplaint.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1027,7 +1026,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('comment') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Comment <Text style={styles.required}>*</Text>
+                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1048,7 +1047,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('reporter_name') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Name <Text style={styles.required}>*</Text>
+                  {t('addComplaint.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1067,7 +1066,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('reporter_email') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Email <Text style={styles.required}>*</Text>
+                  {t('addComplaint.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
