@@ -3,15 +3,15 @@ import { getDepartments } from '@/src/api/departments';
 import { getRequestStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface FilterState {

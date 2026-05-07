@@ -1,4 +1,6 @@
 import { getComplaints, getComplaintStats, getIncidents, getIncidentStats, getQueries, getQueryStats, getRequests, getRequestStats } from "@/src/api/incidents";
+import { useAuth } from "@/src/context/AuthContext";
+import usePermissions from "@/src/hooks/usePermissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -175,6 +177,8 @@ const MapViewScreen = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const { canViewAllIncidents } = usePermissions();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchIncidentsWithLocation();
@@ -219,8 +223,12 @@ const MapViewScreen = () => {
       if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
         const statsResponse = await statsFunction();
         if (statsResponse.success) {
-          filterParams.current_state_id = statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
+          filterParams.current_state_id = recordType === 'incident' ? statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || [] : statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
         }
+      }
+
+      if (!canViewAllIncidents()) {
+        filterParams.assignee_id = user?.id;
       }
 
       // First fetch to get total count
