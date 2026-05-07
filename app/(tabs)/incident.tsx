@@ -1,4 +1,5 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
@@ -217,7 +218,8 @@ const IncidentCard = ({ incident }: { incident: Incident }) => {
 const IncidentsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { canCreateIncidents } = usePermissions();
+  const { canCreateIncidents, canViewAllIncidents } = usePermissions();
+  const { user } = useAuth();
   let {
     state_id,
     state_name,
@@ -308,11 +310,14 @@ const IncidentsScreen = () => {
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
         const statsResponse = await getIncidentStats();
         if (statsResponse.success) {
-          params.current_state_id = statsResponse.data.by_state_details.map(
+          params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map(
             (s: any) => s.id,
           );
           state_id = params.current_state_id.join(",");
         }
+      }
+      if (!canViewAllIncidents()) {
+        params.assignee_id = user?.id;
       }
       const response = await getIncidents(params);
       if (response.success) {

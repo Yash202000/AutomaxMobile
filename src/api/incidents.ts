@@ -147,7 +147,7 @@ export const addComment = async (incidentId: string, content: string, isInternal
 
 export const getIncidentStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'incident' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'incident' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }

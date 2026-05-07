@@ -95,15 +95,20 @@ const DashboardScreen = () => {
       setError(null);
 
       try {
+        const params: Record<string, any> = {};
+        if (!canViewAllIncidents()) {
+          params.assignee_id = [user?.id];
+        }
         const [incidentRes, requestRes, complaintRes, queryRes] =
           await Promise.all([
-            getIncidentStats(),
+            getIncidentStats(params),
             getRequestStats(),
             getComplaintStats(),
             getQueryStats(),
           ]);
-
-        if (incidentRes.success) setIncidentStats(incidentRes.data);
+        if (incidentRes.success) {
+          setIncidentStats(incidentRes.data.workflow_stats?.[0] || null)
+        };
         if (requestRes.success) setRequestStats(requestRes.data);
         if (complaintRes.success) setComplaintStats(complaintRes.data);
         if (queryRes.success) setQueryStats(queryRes.data);
