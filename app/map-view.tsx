@@ -307,7 +307,7 @@ const MapViewScreen = () => {
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          <Ionicons name={t('common.icons.arrowBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {recordType === "request"

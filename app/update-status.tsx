@@ -2,6 +2,7 @@ import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
@@ -17,8 +18,7 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { CustomAlert } from '@/src/components/CustomAlert';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
 const UpdateStatusModal = () => {
@@ -854,7 +854,7 @@ const UpdateStatusModal = () => {
                   {selectedTransition.transition.from_state?.name || t('incidents.currentStateFallback', 'Current')}
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={14} color="#888" style={{ marginHorizontal: 6 }} />
+              <Ionicons name={t('common.icons.arrowForward') as any} size={14} color="#888" style={{ marginHorizontal: 6 }} />
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.to_state?.color || '#2EC4B6') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.to_state?.color || '#2EC4B6' }]}>
                   {selectedTransition.transition.to_state?.name || t('incidents.nextStateFallback', 'Next')}
@@ -1192,9 +1192,9 @@ const UpdateStatusModal = () => {
 
         {/* Wizard Navigation Footer */}
         {selectedTransition ? (
-          <View style={styles.wizardFooter}>
+          <View style={[styles.wizardFooter]}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={18} color="#666" />
+              <Ionicons name={t('common.icons.arrowBack') as any} size={18} color="#666" />
               <Text style={styles.backButtonText}>{transitionStep === 0 ? t('common.change', 'Change') : t('common.back', 'Back')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1210,7 +1210,7 @@ const UpdateStatusModal = () => {
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>{isLastStep ? t('common.execute', 'Execute') : t('common.next', 'Next')}</Text>
-                  <Ionicons name={isLastStep ? 'checkmark' : 'arrow-forward'} size={18} color="#fff" />
+                  <Ionicons name={isLastStep ? 'checkmark' : (t('common.icons.arrowForward') as any)} size={18} color="#fff" />
                 </>
               )}
             </TouchableOpacity>

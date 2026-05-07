@@ -680,7 +680,7 @@ const AddRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      CustomAlert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
     }
   };
 
@@ -782,15 +782,15 @@ const AddRequestScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      CustomAlert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
     }
   };
 
@@ -832,15 +832,15 @@ const AddRequestScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      CustomAlert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
     }
   };
 
@@ -943,12 +943,12 @@ const AddRequestScreen = () => {
       }
 
       setSubmitting(false);
-      CustomAlert.alert('Success', 'Request created successfully.', [
-        { text: 'OK', onPress: () => router.back() },
+      CustomAlert.alert(t('common.success'), t('addRequest.createdSuccess', 'Request created successfully.'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create request: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -1293,12 +1293,12 @@ const AddRequestScreen = () => {
                 {/* Show address loading status */}
                 {locationData?.latitude && !locationData?.address && !locationData?.city && (
                   <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    ⏳ Getting address details...
+                    {t('common.gettingAddress')}
                   </Text>
                 )}
                 {(locationData?.address || locationData?.city) && (
                   <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    ✓ Location: {locationData.city || locationData.address}
+                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
                   </Text>
                 )}
               </>

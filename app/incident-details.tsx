@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
 import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { crashLogger } from '@/src/utils/crashLogger';
@@ -13,10 +14,9 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 const COLORS = {
@@ -826,7 +826,7 @@ const IncidentDetailsScreen = () => {
                       <View style={styles.fromBadge}>
                         <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
                       </View>
-                      <Ionicons name="arrow-forward" size={14} color={COLORS.text.muted} />
+                      <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
                         <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
                       </View>

@@ -670,7 +670,7 @@ const AddQueryScreen = () => {
       CustomAlert.alert(t('addComplaint.voiceRecording'), t('addComplaint.recordAudio'));
     } catch (error) {
       console.error('Failed to start recording:', error);
-      CustomAlert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert(t('common.error'), t('common.recordingStartError'));
     }
   };
 
@@ -706,7 +706,7 @@ const AddQueryScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      CustomAlert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert(t('common.error'), t('common.failedToStopRecording'));
     }
   };
 
@@ -874,7 +874,7 @@ const AddQueryScreen = () => {
       }
     } catch (error) {
       console.error('❌ [Camera] Error taking photo:', error);
-      CustomAlert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
     }
   };
 
@@ -1005,15 +1005,15 @@ const AddQueryScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      CustomAlert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
     }
   };
 
@@ -1055,15 +1055,15 @@ const AddQueryScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      CustomAlert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
     }
   };
 
@@ -1148,12 +1148,12 @@ const AddQueryScreen = () => {
       }
 
       setSubmitting(false);
-      CustomAlert.alert('Success', 'Query created successfully.', [
-        { text: 'OK', onPress: () => router.back() },
+      CustomAlert.alert(t('common.success'), t('addQuery.createdSuccess', 'Query created successfully.'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create query: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -1537,12 +1537,12 @@ const AddQueryScreen = () => {
                 {/* Show address loading status */}
                 {locationData?.latitude && !locationData?.address && !locationData?.city && (
                   <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    ⏳ Getting address details...
+                    {t('common.gettingAddress')}
                   </Text>
                 )}
                 {(locationData?.address || locationData?.city) && (
                   <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    ✓ Location: {locationData.city || locationData.address}
+                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
                   </Text>
                 )}
               </>

@@ -328,7 +328,7 @@ const QueryFilterScreen = () => {
           <Text style={styles.filterLabel}>{label}</Text>
         </View>
         <View style={styles.filterHeaderRight}>
-          <Text style={[styles.filterValue, value !== 'All' && styles.filterValueActive]}>{value}</Text>
+          <Text style={[styles.filterValue, value !== t('filter.allLabel') && styles.filterValueActive]}>{value}</Text>
           <Ionicons name={expandedSection === key ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
         </View>
       </TouchableOpacity>
@@ -469,7 +469,7 @@ const QueryFilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
-                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+                {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
               </Text>
               <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
             </View>

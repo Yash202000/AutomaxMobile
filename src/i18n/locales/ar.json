@@ -1,10 +1,18 @@
 {
   "common": {
     "validationError": "خطأ في التحقق",
+    "recordingStartError": "فشل بدء التسجيل",
+    "seconds": "ثانية قبل المحاولة مرة أخرى",
     "icons": {
       "chevronForward": "chevron-back",
-      "chevronBack": "chevron-forward"
+      "chevronBack": "chevron-forward",
+      "arrowForward": "arrow-back",
+      "arrowBack": "arrow-forward"
     },
+    "gettingAddress": "جارى الحصول على تفاصيل العنوان...",
+    "locationLabel": "الموقع: {{address}}",
+    "automax": "أوتوماكس",
+    "ims": "نظام إدارة الحوادث",
     "chooseTransition": "اختر الإجراء الذي تريد تنفيذه",
     "isRequired": "مطلوب",
     "allSources": "جميع المصادر",
@@ -87,7 +95,29 @@
     "workflow": "سير العمل",
     "pinchToZoom": "قرّب بإصبعين للتكبير",
     "aiAssistant": "المساعد الذكي",
-    "addComment": "أضف تعليقاً..."
+    "addComment": "أضف تعليقاً...",
+    "title": "العنوان",
+    "locationPermissionNeeded": "إذن الموقع مطلوب للحصول على موقعك الحالي.",
+    "failedToGetLocation": "فشل في الحصول على الموقع الحالي. يرجى التأكد من تمكين GPS.",
+    "enterLocationToSearch": "يرجى إدخال موقع للبحث",
+    "noResults": "لا توجد نتائج",
+    "noLocationFound": "لم يتم العثور على موقع لاستعلام البحث الخاص بك. جرب كلمات رئيسية مختلفة.",
+    "searchFailed": "فشل البحث",
+    "failedToStopRecording": "فشل في إيقاف التسجيل",
+    "workflowMatchedError": "لا يوجد سير عمل مطابق. يرجى اختيار التصنيف أو الموقع أو المصدر.",
+    "invalidPrioritySeverity": "تم اختيار أولوية أو خطورة غير صالحة.",
+    "workflowLoadWarning": "فشل في تحميل سير العمل. قد لا تتمكن من إنشاء حوادث حتى تتوفر سير العمل.",
+    "dataLoadError": "فشل في تحميل البيانات المطلوبة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+    "locationAddressUnavailableDesc": "لدينا إحداثيات GPS الخاصة بك ولكن لم نتمكن من الحصول على عنوان الشارع. هل تريد الاستمرار بالإحداثيات فقط؟",
+    "locationAddressUnavailableTitle": "عنوان الموقع غير متوفر",
+    "filesTooLargeTitle": "الملفات كبيرة جداً",
+    "filesTooLargeDesc": "الملفات التالية تتجاوز الحد الأقصى {{size}} ميجابايت وتم تخطيها:\n\n{{files}}",
+    "unexpectedError": "حدث خطأ غير متوقع: {{error}}. يرجى المحاولة مرة أخرى.",
+    "downloading": "جاري التحميل...",
+    "authRequired": "المصادقة مطلوبة",
+    "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز",
+    "downloadError": "خطأ في التحميل",
+    "failedToDownload": "فشل في تحميل المرفق"
   },
   "map": {
     "incidents": "خريطة الحوادث",
@@ -106,6 +136,7 @@
   },
   "auth": {
     "login": "تسجيل الدخول",
+    "version": "الإصدار {{version}}",
     "sendOTP": "إرسال رمز التحقق",
     "verifyOTP": "التحقق من رمز التحقق",
     "logout": "تسجيل الخروج",
@@ -740,6 +771,7 @@
     "city": "المدينة:",
     "state": "المنطقة:",
     "country": "الدولة:",
-    "postalCode": "الرمز البريدي:"
+    "postalCode": "الرمز البريدي:",
+    "noResults": "لم يتم العثور على نتائج"
   }
 }

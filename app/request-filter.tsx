@@ -334,7 +334,7 @@ const RequestFilterScreen = () => {
           <Text style={styles.filterLabel}>{label}</Text>
         </View>
         <View style={styles.filterHeaderRight}>
-          <Text style={[styles.filterValue, value !== 'All' && styles.filterValueActive]}>{value}</Text>
+          <Text style={[styles.filterValue, value !== t('filter.allLabel') && styles.filterValueActive]}>{value}</Text>
           <Ionicons name={expandedSection === key ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
         </View>
       </TouchableOpacity>

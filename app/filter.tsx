@@ -683,7 +683,7 @@ const FilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
-                {filters.sources.length === 0 ? t('filter.all', 'All') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : `${filters.sources.length} ${t('filter.selected')}`)}
+                {filters.sources.length === 0 ? t('filter.allLabel') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : t('filter.nSelected', { count: filters.sources.length }))}
               </Text>
               <Ionicons
                 name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
@@ -728,7 +728,7 @@ const FilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
-                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+                {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
               </Text>
               <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
             </View>

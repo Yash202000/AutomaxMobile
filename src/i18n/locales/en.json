@@ -1,10 +1,18 @@
 {
   "common": {
     "validationError": "Validation Error",
+    "recordingStartError": "Failed to start recording",
+    "seconds": "second(s) before trying again..",
     "icons": {
       "chevronBack": "chevron-back",
-      "chevronForward": "chevron-forward"
+      "chevronForward": "chevron-forward",
+      "arrowForward": "arrow-forward",
+      "arrowBack": "arrow-back"
     },
+    "gettingAddress": "Getting address details...",
+    "locationLabel": "Location: {{address}}",
+    "automax": "Automax",
+    "ims": "Incident Management System",
     "chooseTransition": "Choose the action you want to perform",
     "isRequired": "is required",
     "allSources": "All Sources",
@@ -92,7 +100,28 @@
     "pinchToZoom": "Pinch to zoom",
     "aiAssistant": "AI Assistant",
     "addComment": "Add a comment...",
-    "title": "Title"
+    "title": "Title",
+    "locationPermissionNeeded": "Location permission is required to get your current location.",
+    "failedToGetLocation": "Failed to get current location. Please check your GPS is enabled.",
+    "enterLocationToSearch": "Please enter a location to search",
+    "noResults": "No Results",
+    "noLocationFound": "No location found for your search query. Try different keywords.",
+    "searchFailed": "Search Failed",
+    "failedToStopRecording": "Failed to stop recording",
+    "workflowMatchedError": "No workflow matched. Please select classification, location, or source.",
+    "invalidPrioritySeverity": "Invalid priority or severity selected.",
+    "workflowLoadWarning": "Failed to load workflows. You may not be able to create incidents until workflows are available.",
+    "dataLoadError": "Failed to load required data. Please check your connection and try again.",
+    "locationAddressUnavailableDesc": "We have your GPS coordinates but couldn't get the street address. Continue with coordinates only?",
+    "locationAddressUnavailableTitle": "Location Address Unavailable",
+    "filesTooLargeTitle": "Files Too Large",
+    "filesTooLargeDesc": "The following files exceed {{size}}MB limit and were skipped:\n\n{{files}}",
+    "unexpectedError": "An unexpected error occurred: {{error}}. Please try again.",
+    "downloading": "Downloading...",
+    "authRequired": "Authentication required",
+    "sharingNotAvailable": "Sharing is not available on this device",
+    "downloadError": "Download Error",
+    "failedToDownload": "Failed to download attachment"
   },
   "map": {
     "incidents": "Incidents Map",
@@ -111,6 +140,7 @@
   },
   "auth": {
     "login": "Login",
+    "version": "Version {{version}}",
     "sendOTP": "Send OTP",
     "verifyOTP": "Verify OTP",
     "logout": "Logout",
@@ -740,6 +770,7 @@
     "city": "City:",
     "state": "State:",
     "country": "Country:",
-    "postalCode": "Postal Code:"
+    "postalCode": "Postal Code:",
+    "noResults": "No results found"
   }
 }

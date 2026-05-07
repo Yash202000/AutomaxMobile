@@ -214,7 +214,7 @@ const NotificationsScreen = () => {
                 style={styles.header}
             >
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color="white" />
+                    <Ionicons name={t('common.icons.arrowBack') as any} size={24} color="white" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t("notifications.title")}</Text>
                 <View style={{ width: 24 }} />

@@ -34,7 +34,7 @@ export const CustomAlertComponent = () => {
 
   if (!alertState.visible) return null;
 
-  const defaultButtons: AlertButton[] = [{ text: 'OK', onPress: () => { } }];
+  const defaultButtons: AlertButton[] = [{ text: t('common.ok'), onPress: () => { } }];
   const buttonsToRender = alertState.buttons && alertState.buttons.length > 0 ? alertState.buttons : defaultButtons;
   return (
     <Modal transparent animationType="fade" visible={alertState.visible} onRequestClose={() => { }}>
@@ -58,7 +58,7 @@ export const CustomAlertComponent = () => {
                   }}
                 >
                   <Text style={[styles.buttonText, isCancel && styles.cancelButtonText, isDestructive && styles.destructiveButtonText]}>
-                    {btn.text || 'OK'}
+                    {btn.text || t('common.ok')}
                   </Text>
                 </TouchableOpacity>
               );
