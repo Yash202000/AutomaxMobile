@@ -15,8 +15,8 @@
         "APP_VERSION": "1.0.0",
         "APP_VERSION_CODE": "1",
         "APP_ICON_BG_COLOR": "#ffffff",
-        "ANDROID_PACKAGE": "com.automax.mobile",
-        "IOS_BUNDLE_ID": "com.automax.mobile"
+        "ANDROID_PACKAGE": "com.automax.epm940",
+        "IOS_BUNDLE_ID": "com.automax.epm940"
       }
     },
     "preview": {
@@ -30,8 +30,8 @@
         "APP_VERSION": "1.0.0",
         "APP_VERSION_CODE": "1",
         "APP_ICON_BG_COLOR": "#ffffff",
-        "ANDROID_PACKAGE": "com.automax.mobile",
-        "IOS_BUNDLE_ID": "com.automax.mobile"
+        "ANDROID_PACKAGE": "com.automax.epm940",
+        "IOS_BUNDLE_ID": "com.automax.epm940"
       }
     },
     "production": {
@@ -44,8 +44,8 @@
         "APP_VERSION": "1.0.0",
         "APP_VERSION_CODE": "1",
         "APP_ICON_BG_COLOR": "#ffffff",
-        "ANDROID_PACKAGE": "com.automax.mobile",
-        "IOS_BUNDLE_ID": "com.automax.mobile"
+        "ANDROID_PACKAGE": "com.automax.epm940",
+        "IOS_BUNDLE_ID": "com.automax.epm940"
       }
     },
     "local-development": {

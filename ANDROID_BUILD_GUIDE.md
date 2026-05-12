@@ -313,7 +313,7 @@ adb devices
 
 ### **Uninstall App:**
 ```bash
-adb uninstall com.automax.mobile
+adb uninstall com.automax.epm940
 ```
 
 ---
@@ -390,7 +390,7 @@ adb logcat | grep "AutomaxMobile"
 
 ### **Clear App Data:**
 ```bash
-adb shell pm clear com.automax.mobile
+adb shell pm clear com.automax.epm940
 ```
 
 ### **Take Screenshot:**
