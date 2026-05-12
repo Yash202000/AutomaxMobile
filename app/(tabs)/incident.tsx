@@ -553,7 +553,7 @@ const IncidentsScreen = () => {
           )}
           keyExtractor={(item) => item.key}
         />
-        <TouchableOpacity onPress={clearFilter} style={styles.clearAllButton}>
+        <TouchableOpacity onPress={clearFilter} style={[styles.clearAllButton, { flexDirection: i18n.language === "en" ? "row" : "row-reverse" }]}>
           <Ionicons
             name="close-circle"
             size={18}
@@ -821,7 +821,6 @@ const styles = StyleSheet.create({
   },
   filterBadgeValue: { fontSize: 12, fontWeight: "bold", color: COLORS.primary },
   clearAllButton: {
-    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
