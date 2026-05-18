@@ -1,5 +1,6 @@
 {
   "common": {
+    "share": "مشاركة",
     "validationError": "خطأ في التحقق",
     "recordingStartError": "فشل بدء التسجيل",
     "seconds": "ثانية قبل المحاولة مرة أخرى",
@@ -612,6 +613,7 @@
     "requiredFields": "الحقول المطلوبة",
     "optional": "اختياري",
     "reporterName": "اسم المُبلغ",
+    "reporterPhone": "رقم هاتف المبلغ",
     "reporterNamePlaceholder": "اسم المُبلغ",
     "reporterEmail": "البريد الإلكتروني للمُبلغ",
     "reporterEmailPlaceholder": "البريد الإلكتروني للمُبلغ",
