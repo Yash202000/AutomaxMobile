@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { useHierarchy } from '@/src/hooks/useHierarchy';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -68,6 +69,7 @@ const ComplaintDetailsScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { classTree, deptTree, locTree, getPath } = useHierarchy();
   const [complaint, setComplaint] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -254,8 +256,8 @@ const ComplaintDetailsScreen = () => {
             {complaint.channel && (
               <InfoRow icon="megaphone-outline" label={t('details.channel')} value={complaint.channel} iconColor="#F59E0B" />
             )}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={complaint.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={complaint.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, complaint.classification?.id) || complaint.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
               value={complaint.assignees?.length
                 ? complaint.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
@@ -266,7 +268,7 @@ const ComplaintDetailsScreen = () => {
               iconColor="#EC4899"
             />
             {complaint.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={complaint.location.name} iconColor={COLORS.error} />
+              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, complaint.location.id) || complaint.location.name} iconColor={COLORS.error} />
             )}
             {complaint.source_incident && (
               <InfoRow
@@ -399,7 +401,7 @@ const ComplaintDetailsScreen = () => {
             <View style={styles.locationInfo}>
               <Ionicons name="location" size={20} color={COLORS.error} />
               <View style={styles.locationText}>
-                <Text style={styles.locationName}>{complaint.location.name}</Text>
+                <Text style={styles.locationName}>{getPath(locTree, complaint.location.id) || complaint.location.name}</Text>
                 {complaint.location.address && <Text style={styles.locationAddress}>{complaint.location.address}</Text>}
               </View>
             </View>

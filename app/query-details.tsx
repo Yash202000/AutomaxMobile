@@ -2,9 +2,11 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { useHierarchy } from '@/src/hooks/useHierarchy';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, AudioSource, useAudioPlayer } from 'expo-audio';
+import { AudioSource, useAudioPlayer } from 'expo-audio';
+import { Audio } from 'expo-av';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -128,6 +130,7 @@ const QueryDetailsScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { classTree, deptTree, locTree, getPath } = useHierarchy();
   const [query, setQuery] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -347,8 +350,8 @@ const QueryDetailsScreen = () => {
             {query.channel && (
               <InfoRow icon="megaphone-outline" label={t('details.channel')} value={query.channel} iconColor="#F59E0B" />
             )}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={query.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={query.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, query.classification?.id) || query.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, query.department?.id) || query.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
               value={query.assignees?.length
                 ? query.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
@@ -359,7 +362,7 @@ const QueryDetailsScreen = () => {
               iconColor="#EC4899"
             />
             {query.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={query.location.name} iconColor={COLORS.error} />
+              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, query.location.id) || query.location.name} iconColor={COLORS.error} />
             )}
             {query.source_incident && (
               <InfoRow
@@ -588,7 +591,7 @@ const QueryDetailsScreen = () => {
             <View style={styles.locationInfo}>
               <Ionicons name="location" size={20} color={COLORS.error} />
               <View style={styles.locationText}>
-                <Text style={styles.locationName}>{query.location.name}</Text>
+                <Text style={styles.locationName}>{getPath(locTree, query.location.id) || query.location.name}</Text>
                 {query.location.address && <Text style={styles.locationAddress}>{query.location.address}</Text>}
               </View>
             </View>
