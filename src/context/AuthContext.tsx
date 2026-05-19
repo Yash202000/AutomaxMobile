@@ -55,6 +55,8 @@ interface AuthContextType {
   hasAllPermissions: (permissions: string[]) => boolean;
   hasRole: (roleCode: string) => boolean;
   isLoggingOut: boolean;
+  requiresBiometric: boolean;
+  setRequiresBiometric: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,8 +69,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [requiresBiometric, setRequiresBiometric] = useState(false);
 
-  const loadUser = useCallback(async () => {
+  const loadUser = useCallback(async (isAutoLogin = false) => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) {
@@ -80,6 +83,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await getProfile();
       if (response.success && response.data) {
         setUser(response.data);
+        if (isAutoLogin) {
+          setRequiresBiometric(true);
+        }
       } else {
         // Token might be invalid, clear it
         await SecureStore.deleteItemAsync('authToken');
@@ -95,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    loadUser();
+    loadUser(true);
   }, [loadUser]);
 
   const login = useCallback(async (token: string, refreshToken?: string) => {
@@ -103,7 +109,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (refreshToken) {
       await SecureStore.setItemAsync('refreshToken', refreshToken);
     }
-    await loadUser();
+    setRequiresBiometric(false);
+    await loadUser(false);
   }, [loadUser]);
 
   const logout = useCallback(async () => {
@@ -129,6 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Now set user to null
       setUser(null);
+      setRequiresBiometric(false);
 
       // Reset flag after navigation completes
       setTimeout(() => {
@@ -187,6 +195,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasAllPermissions,
     hasRole,
     isLoggingOut,
+    requiresBiometric,
+    setRequiresBiometric,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
