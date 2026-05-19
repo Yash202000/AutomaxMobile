@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { useHierarchy } from '@/src/hooks/useHierarchy';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -79,6 +80,7 @@ const RequestDetailsScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { classTree, deptTree, locTree, getPath } = useHierarchy();
   const [request, setRequest] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -212,20 +214,20 @@ const RequestDetailsScreen = () => {
           <SectionHeader title={t('requests.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
             {/* Basic Info */}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={request.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={request.department?.name || ''} iconColor="#8B5CF6" />
-            <InfoRow icon="person-outline" label={t('details.assignees')}
-              value={request.assignees?.length
-                ? request.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
-                : request.assignee
-                  ? `${request.assignee.first_name || ''} ${request.assignee.last_name || ''}`.trim()
-                  : ''
-              }
-              iconColor="#EC4899"
-            />
-            {request.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={request.location.name} iconColor={COLORS.error} />
-            )}
+             <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, request.classification?.id) || request.classification?.name || ''} iconColor={COLORS.accent} />
+             <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, request.department?.id) || request.department?.name || ''} iconColor="#8B5CF6" />
+             <InfoRow icon="person-outline" label={t('details.assignees')}
+               value={request.assignees?.length
+                 ? request.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+                 : request.assignee
+                   ? `${request.assignee.first_name || ''} ${request.assignee.last_name || ''}`.trim()
+                   : ''
+               }
+               iconColor="#EC4899"
+             />
+             {request.location && (
+               <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, request.location.id) || request.location.name} iconColor={COLORS.error} />
+             )}
 
             {/* Lookup Values as InfoRows */}
             {request.lookup_values && request.lookup_values.length > 0 && (() => {
@@ -408,7 +410,7 @@ const RequestDetailsScreen = () => {
             <View style={styles.locationInfo}>
               <Ionicons name="location" size={20} color={COLORS.error} />
               <View style={styles.locationText}>
-                <Text style={styles.locationName}>{request.location.name}</Text>
+                <Text style={styles.locationName}>{getPath(locTree, request.location.id) || request.location.name}</Text>
                 {request.location.address && <Text style={styles.locationAddress}>{request.location.address}</Text>}
               </View>
             </View>

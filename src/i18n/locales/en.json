@@ -1,5 +1,6 @@
 {
   "common": {
+    "share": "Share",
     "validationError": "Validation Error",
     "recordingStartError": "Failed to start recording",
     "seconds": "second(s) before trying again..",
@@ -612,6 +613,7 @@
     "requiredFields": "Required Fields",
     "optional": "Optional",
     "reporterName": "Reporter Name",
+    "reporterPhone": "Reporter Phone",
     "reporterNamePlaceholder": "Reporter's name",
     "reporterEmail": "Reporter Email",
     "reporterEmailPlaceholder": "Reporter's email",
@@ -742,7 +744,8 @@
     "stackTrace": "Stack Trace:",
     "componentStack": "Component Stack:",
     "reloadApp": "Reload App",
-    "audioPlayFailed": "Failed to play audio"
+    "audioPlayFailed": "Failed to play audio",
+    "minCharacters": "{{field}} must be at least {{min}} characters"
   },
   "notifications": {
     "title": "Notifications",
