@@ -744,7 +744,8 @@
     "stackTrace": "Stack Trace:",
     "componentStack": "Component Stack:",
     "reloadApp": "Reload App",
-    "audioPlayFailed": "Failed to play audio"
+    "audioPlayFailed": "Failed to play audio",
+    "minCharacters": "{{field}} must be at least {{min}} characters"
   },
   "notifications": {
     "title": "Notifications",

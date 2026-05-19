@@ -481,7 +481,7 @@ export const createQuery = async (queryData: any) => {
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.details
+      details: errorData?.errors
     };
   }
 };
