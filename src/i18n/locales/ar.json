@@ -745,7 +745,8 @@
     "stackTrace": "تتبع المكدس:",
     "componentStack": "مكدس المكونات:",
     "reloadApp": "إعادة تحميل التطبيق",
-    "audioPlayFailed": "فشل تشغيل الصوت"
+    "audioPlayFailed": "فشل تشغيل الصوت",
+    "minCharacters": "{{field}} يجب أن يكون 5 أحرف على الأقل"
   },
   "notifications": {
     "title": "الإشعارات",

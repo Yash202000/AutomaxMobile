@@ -6,7 +6,7 @@ import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
@@ -22,11 +22,11 @@ import { useRouter } from 'expo-router';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -37,10 +37,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface DropdownOption {
@@ -294,10 +293,8 @@ const AddQueryScreen = () => {
     setLoadingData(true);
     try {
       // Fetch classifications with 'query', 'both', and 'all' types
-      const [queryClassRes, bothClassRes, allClassRes] = await Promise.all([
-        getClassificationsTree('query'),
-        getClassificationsTree('both'),
-        getClassificationsTree('all'),
+      const [queryClassRes] = await Promise.all([
+        getClassificationsTree('query')
       ]);
 
       // Fetch workflows with 'query', 'both', and 'all' types
@@ -316,12 +313,11 @@ const AddQueryScreen = () => {
       ]);
 
       // Combine and deduplicate classifications
+      if (queryClassRes.success && queryClassRes.data && queryClassRes.data.length > 0) {
+        setSelectedClassification(queryClassRes.data[0])
+      }
       const allClassifications = [
-        ...(queryClassRes.success && queryClassRes.data ? queryClassRes.data : []),
-        ...(bothClassRes.success && bothClassRes.data ? bothClassRes.data : []),
-        ...(allClassRes.success && allClassRes.data ? allClassRes.data : []),
-      ];
-
+        ...(queryClassRes.success && queryClassRes.data ? queryClassRes.data : [])];
       // Deduplicate by ID
       const uniqueClassifications = allClassifications.filter((item, index, self) =>
         index === self.findIndex(t => t.id === item.id)
@@ -489,6 +485,8 @@ const AddQueryScreen = () => {
 
     if (!title.trim()) {
       newErrors.title = t('addQuery.titlePlaceholder');
+    } else if (title.trim().length < 5) {
+      newErrors.title = t('errors.minCharacters', { field: 'Title', min: 5 });
     }
 
     if (!selectedClassification) {
@@ -1098,7 +1096,7 @@ const AddQueryScreen = () => {
     if (selectedClassification) queryData.classification_id = selectedClassification.id;
     if (selectedLocation) queryData.location_id = selectedLocation.id;
     if (selectedSource) queryData.source = selectedSource.id;
-    if (selectedChannel) queryData.channel = selectedChannel.id;
+    // if (selectedChannel) queryData.channel = selectedChannel.id;
     if (selectedAssignee) queryData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) queryData.department_id = selectedDepartment.id;
     if (selectedSourceIncident) queryData.source_incident_id = selectedSourceIncident.id;
@@ -1210,7 +1208,7 @@ const AddQueryScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            <Text style={styles.sectionTitle}>
+            {/* <Text style={styles.sectionTitle}>
               {t('addQuery.channel')} {isFieldRequired('channel') && <Text style={styles.required}>*</Text>}
             </Text>
             <Dropdown
@@ -1220,7 +1218,7 @@ const AddQueryScreen = () => {
               onSelect={setSelectedChannel}
               required={isFieldRequired('channel')}
               error={errors.channel}
-            />
+            /> */}
 
             {/* Source Incident - only show if required */}
             {isFieldRequired('source_incident_id') && (
@@ -1291,7 +1289,7 @@ const AddQueryScreen = () => {
               </>
             )}
 
-            <Text style={styles.sectionTitle}>
+            {/* <Text style={styles.sectionTitle}>
               {t('incidents.classification')} <Text style={styles.required}>*</Text>
             </Text>
             <TreeSelect
@@ -1304,7 +1302,7 @@ const AddQueryScreen = () => {
               leafOnly={true}
               placeholder={t('addQuery.selectClassification')}
               iconType="classification"
-            />
+            /> */}
 
             {/* Location - only show if required */}
             {isFieldRequired('location_id') && (
