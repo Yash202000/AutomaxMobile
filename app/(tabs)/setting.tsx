@@ -142,29 +142,33 @@ const SettingsScreen = () => {
       await setLanguage(langCode);
       setCurrentLang(langCode);
 
-      // Always prompt for restart when changing language (RTL changes require restart)
-      CustomAlert.alert(
+      // Use native Alert (not CustomAlert/Modal) — on iOS, calling reloadAsync()
+      // while a React Native Modal is still animating silently aborts the reload,
+      // so RTL never gets applied. Native Alert has no such conflict.
+      Alert.alert(
         t('settings.langChangeTitle'),
         t('settings.langChangeMessage'),
         [
           {
             text: t('common.ok'),
-            onPress: async () => {
-              try {
-                await Updates.reloadAsync();
-              } catch {
-                // If Updates.reloadAsync fails, just notify user to restart manually
-                CustomAlert.alert(
-                  t('settings.restartRequired'),
-                  t('settings.restartMessage')
-                );
-              }
+            onPress: () => {
+              // On iOS, wait for the native alert to fully dismiss before reloading.
+              setTimeout(async () => {
+                try {
+                  await Updates.reloadAsync();
+                } catch {
+                  Alert.alert(
+                    t('settings.restartRequired'),
+                    t('settings.restartMessage')
+                  );
+                }
+              }, Platform.OS === 'ios' ? 500 : 0);
             }
           }
         ]
       );
     } catch (error) {
-      CustomAlert.alert(t('common.error'), t('errors.unknownError'));
+      Alert.alert(t('common.error'), t('errors.unknownError'));
     }
   };
 

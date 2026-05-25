@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, Modal, Alert as NativeAlert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, InteractionManager, Modal, Alert as NativeAlert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
 export interface AlertButton {
@@ -54,7 +54,13 @@ export const CustomAlertComponent = () => {
                   style={[styles.button, isCancel && styles.cancelButton, isDestructive && styles.destructiveButton]}
                   onPress={() => {
                     setAlertState(prev => ({ ...prev, visible: false }));
-                    if (btn.onPress) btn.onPress();
+                    if (btn.onPress) {
+                      // Defer the callback until after the Modal dismiss animation
+                      // fully completes on iOS — prevents UI freeze / deadlock.
+                      InteractionManager.runAfterInteractions(() => {
+                        btn.onPress!();
+                      });
+                    }
                   }}
                 >
                   <Text style={[styles.buttonText, isCancel && styles.cancelButtonText, isDestructive && styles.destructiveButtonText]}>

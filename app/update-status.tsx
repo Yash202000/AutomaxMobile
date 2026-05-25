@@ -17,7 +17,7 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, InteractionManager, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CustomAlert } from '@/src/components/CustomAlert';
 
 
@@ -731,25 +731,13 @@ const UpdateStatusModal = () => {
     setUploadProgress('');
 
     if (response.success) {
-      // Get appropriate success message based on ticket type
-      let successMessage = t('common.statusUpdated');
-      if (ticketType === 'incident') {
-        successMessage = t('common.incidentStatusUpdated');
-      } else if (ticketType === 'request') {
-        successMessage = t('common.requestStatusUpdated');
-      } else if (ticketType === 'complaint') {
-        successMessage = t('common.complaintStatusUpdated');
-      } else if (ticketType === 'query') {
-        successMessage = t('common.queryStatusUpdated');
-      }
-
-      CustomAlert.alert(t('common.success'), successMessage, [
-        {
-          text: t('common.ok'), onPress: () => {
-            router.back();
-          }
-        },
-      ]);
+      // Dismiss keyboard first, then navigate back after interactions settle.
+      // On iOS, navigating while keyboard is open or while a Modal animation is
+      // running causes the underlying screen to freeze (transparentModal bug).
+      Keyboard.dismiss();
+      InteractionManager.runAfterInteractions(() => {
+        router.back();
+      });
     } else {
       // Check for version conflict
       const errorMessage = response.error || '';
@@ -760,7 +748,10 @@ const UpdateStatusModal = () => {
           [
             {
               text: t('common.refresh') || 'Refresh',
-              onPress: () => router.back(),
+              onPress: () => {
+                Keyboard.dismiss();
+                InteractionManager.runAfterInteractions(() => router.back());
+              },
             },
           ]
         );
@@ -840,8 +831,15 @@ const UpdateStatusModal = () => {
               </Text>
             )}
           </View>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="close-circle" size={28} color="#E74C3C" />
+          <TouchableOpacity
+            disabled={loading}
+            onPress={() => {
+              if (loading) return;
+              Keyboard.dismiss();
+              InteractionManager.runAfterInteractions(() => router.back());
+            }}
+          >
+            <Ionicons name="close-circle" size={28} color={loading ? '#CCC' : '#E74C3C'} />
           </TouchableOpacity>
         </View>
 
@@ -1174,8 +1172,11 @@ const UpdateStatusModal = () => {
                   placeholderTextColor="#999"
                   multiline
                   autoFocus
+                  blurOnSubmit={true}
+                  returnKeyType="done"
                   value={comment}
                   onChangeText={setComment}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               )}
             </View>
@@ -1293,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '90%',
-    maxHeight: '80%',
+    maxHeight: '85%',
     backgroundColor: 'white',
     borderRadius: 15,
     padding: 20,
@@ -1318,7 +1319,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   formContainer: {
-    maxHeight: 400,
+    maxHeight: 420,
   },
   label: {
     fontSize: 14,
