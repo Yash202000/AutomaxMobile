@@ -111,7 +111,9 @@ const DashboardScreen = () => {
         };
         if (requestRes.success) setRequestStats(requestRes.data);
         if (complaintRes.success) setComplaintStats(complaintRes.data);
-        if (queryRes.success) setQueryStats(queryRes.data);
+        if (queryRes.success) {
+          setQueryStats(queryRes.data.workflow_stats?.[0] || null)
+        };
 
         if (
           !incidentRes.success &&
