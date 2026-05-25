@@ -358,14 +358,15 @@ const IncidentsScreen = () => {
       }
 
       shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
-      shareText += `   • *${t("incidents.classification")}*: ${inc.classification.name || t("common.na")}\n`;
-      shareText += `   • *${t("incidents.location")}*: ${inc.location?.name || t("common.na")}\n`;
-      shareText += `   • *${t("incidents.description")}*: ${inc.description || t("common.na")}\n`;
-      shareText += `   • *${t("incidents.status")}*: ${inc.current_state?.name || t("common.na")}\n`;
-      shareText += `   • *${t("filter.priority")}*: ${priorityVal}\n`;
-      shareText += `   • *${t("incidents.reporter")}*: ${inc.reporter_name || t("common.na")}\n`;
-      shareText += `   • *${t("addIncident.reporterPhone")}*: ${inc.reporter_phone || t("common.na")}\n`;
-      shareText += `   • *${t("incidents.createdAt")}*: ${new Date(inc.created_at).toLocaleString()}\n\n`;
+      shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
+      shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
+      shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
+      shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+      shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
+      shareText += `   ${t("incidents.reporter")} : ${inc.reporter_name || t("common.na")}\n`;
+      shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter_phone || t("common.na")}\n`;
+      shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
+      shareText += "------------------------------------------\n\n";
     });
 
     try {
@@ -897,7 +898,7 @@ const IncidentsScreen = () => {
                 selectedIds.size === 0 && styles.actionBarButtonDisabled,
               ]}
             >
-              <Ionicons name="share" size={20} color="white" style={{ marginRight: 6 }} />
+              <Ionicons name="share-social-outline" size={20} color="white" style={{ marginRight: 6 }} />
               <Text style={styles.actionBarButtonText}>{t("common.share", "Share")}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={exitSelectionMode} style={[styles.actionBarButton, styles.cancelActionButton]}>
