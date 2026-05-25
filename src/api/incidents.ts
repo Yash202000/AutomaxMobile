@@ -459,7 +459,7 @@ export const getQueries = async (params: Record<string, any> = {}): Promise<Inci
 
 export const getQueryStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'query' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'query' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }

@@ -1,7 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createQuery, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
@@ -298,15 +298,13 @@ const AddQueryScreen = () => {
       ]);
 
       // Fetch workflows with 'query', 'both', and 'all' types
-      const [queryWorkflowRes, bothWorkflowRes, allWorkflowRes] = await Promise.all([
-        getWorkflows(true, 'query'),
-        getWorkflows(true, 'both'),
-        getWorkflows(true, 'all'),
+      const [queryWorkflowRes] = await Promise.all([
+        getWorkflows(true, 'query')
       ]);
 
       // Fetch other data
       const [locRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getLocations(),
+        getLocationsTree(),
         getUsers(),
         getDepartments(),
         getLookupCategories().catch(err => ({ success: false, error: err.message })),
@@ -380,9 +378,7 @@ const AddQueryScreen = () => {
 
       // Combine and deduplicate workflows
       const allWorkflowsData = [
-        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : []),
-        ...(bothWorkflowRes.success && bothWorkflowRes.data ? bothWorkflowRes.data : []),
-        ...(allWorkflowRes.success && allWorkflowRes.data ? allWorkflowRes.data : []),
+        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : [])
       ];
 
       // Deduplicate by ID
@@ -396,7 +392,6 @@ const AddQueryScreen = () => {
 
       if (locRes.success && locRes.data) {
         let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
-
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
           const userLocationIds = new Set(user.locations.map(l => l.id));
