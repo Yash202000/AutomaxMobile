@@ -295,7 +295,7 @@ export const getRequests = async (params: Record<string, any> = {}): Promise<Inc
 
 export const getRequestStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'request' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'request' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -354,7 +354,7 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
 
 export const getComplaintStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'complaint' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'complaint' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
