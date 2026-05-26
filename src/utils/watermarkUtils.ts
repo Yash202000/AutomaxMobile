@@ -11,6 +11,72 @@ export interface WatermarkInfo {
   appName?: string;
 }
 
+export interface WatermarkData {
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  userName?: string;
+  timestamp?: Date;
+  appName?: string;
+  street?: string;
+  district?: string;
+  subregion?: string;
+  street_number?: string;
+}
+
+/**
+ * Generate precise 5-line watermark details
+ */
+export function generateWatermarkLines(data: WatermarkData): string[] {
+  const lines: string[] = [];
+
+  // 1. Municipality
+  const municipality = data.subregion || data.city || 'N/A';
+  lines.push(`Municipality: ${municipality}`);
+
+  // 2. Street Name
+  const streetName = data.street || 'N/A';
+  lines.push(`Street Name: ${streetName}`);
+
+  // 3. Neighborhood
+  const neighborhood = data.district || 'N/A';
+  lines.push(`Neighborhood: ${neighborhood}`);
+
+  // 4. Street Name Latitude/Longitude
+  if (data.latitude !== undefined && data.longitude !== undefined) {
+    lines.push(`${streetName}: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
+  } else {
+    lines.push(`${streetName}: N/A`);
+  }
+
+  // 5. Full Date
+  const timestamp = data.timestamp || new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayName = days[timestamp.getDay()];
+  const monthName = months[timestamp.getMonth()];
+  const dateNum = timestamp.getDate();
+  const year = timestamp.getFullYear();
+
+  const hours = timestamp.getHours();
+  const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+  const seconds = String(timestamp.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = String(hours % 12 || 12).padStart(2, '0');
+
+  const fullDate = `${dayName}, ${monthName} ${dateNum}, ${year} ${displayHours}:${minutes}:${seconds} ${ampm}`;
+  lines.push(`Date: ${fullDate}`);
+
+  return lines;
+}
+
 /**
  * Generate a watermarked filename with metadata
  */
