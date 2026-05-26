@@ -223,9 +223,10 @@ const MapViewScreen = () => {
       if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
         const statsResponse = await statsFunction();
         if (statsResponse.success) {
-          filterParams.current_state_id = recordType === 'incident' ? statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || [] : statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
+          filterParams.current_state_id = statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || []
         }
       }
+      console.log(filterParams)
 
       if (!canViewAllIncidents()) {
         filterParams.assignee_id = user?.id;
