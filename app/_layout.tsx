@@ -1,13 +1,13 @@
 import '@/src/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as LocalAuthentication from 'expo-local-authentication';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFCM } from '@/hooks/use-FCM';
@@ -67,9 +67,7 @@ function BiometricLockScreen({
         onSuccess();
       } else {
         setAuthError(
-          i18n.language === 'ar'
-            ? 'فشلت عملية التحقق. يرجى المحاولة مرة أخرى.'
-            : 'Authentication failed. Please try again.'
+          result.warning || (i18n.language === 'ar' ? 'فشلت عملية التحقق. يرجى المحاولة مرة أخرى.' : 'Authentication failed. Please try again.')
         );
       }
     } catch (err) {

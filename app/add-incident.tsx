@@ -10,12 +10,12 @@ import { DynamicLookupField } from '@/src/components/DynamicLookupField';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
+import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { compressImage } from '@/src/utils/imageCompression';
-import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { generateWatermarkedFilename, WatermarkData } from '@/src/utils/watermarkUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -796,6 +796,10 @@ const AddIncidentScreen = () => {
           city: gpsLocation?.city,
           state: gpsLocation?.state,
           country: gpsLocation?.country,
+          street: gpsLocation?.street,
+          district: gpsLocation?.district,
+          subregion: gpsLocation?.subregion,
+          street_number: gpsLocation?.street_number,
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           timestamp: new Date(),
           appName: 'Automax',
@@ -1666,6 +1670,28 @@ const AddIncidentScreen = () => {
             imageIndex={imageViewerIndex}
             visible={imageViewerVisible}
             onRequestClose={() => setImageViewerVisible(false)}
+            HeaderComponent={() => (
+              <View style={{
+                paddingTop: Platform.OS === 'ios' ? 50 : 30,
+                paddingHorizontal: 20,
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+              }}>
+                <TouchableOpacity
+                  onPress={() => setImageViewerVisible(false)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons name="close" size={24} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            )}
           />
         </>
       )}

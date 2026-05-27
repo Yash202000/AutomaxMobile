@@ -1,16 +1,16 @@
-import apiClient from '@/src/api/client';
-import { useAuth } from '@/src/context/AuthContext';
-import { getCurrentLanguage, setLanguage } from '@/src/i18n';
-import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import * as Updates from 'expo-updates';
-import { default as React, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import apiClient from "@/src/api/client";
+import { CustomAlert } from "@/src/components/CustomAlert";
+import { useAuth } from "@/src/context/AuthContext";
+import { getCurrentLanguage, setLanguage } from "@/src/i18n";
+import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import * as Updates from "expo-updates";
+import { default as React, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   Image,
@@ -23,30 +23,37 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get("window");
 const isSmallScreen = screenHeight < 700;
+const MOBILE_PHONE_MIN_DIGITS = 8;
+const INTERNATIONAL_PHONE_MAX_DIGITS = 15;
+const MOBILE_PHONE_REGEX = /^\+?\d{8,15}$/;
 
 const LoginScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [loginType, setLoginType] = useState<'employee' | 'citizen'>('employee');
-  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [citizenName, setCitizenName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [loginType, setLoginType] = useState<"employee" | "citizen">("citizen");
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    phone?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
-  const [otpChannel, setOtpChannel] = useState<'sms' | 'whatsapp'>('sms');
-  const version = Constants.expoConfig?.version
+  const [otpChannel, setOtpChannel] = useState<"sms" | "whatsapp">("sms");
+  const version = Constants.expoConfig?.version;
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -54,8 +61,29 @@ const LoginScreen = () => {
   const emailFocusAnim = useRef(new Animated.Value(0)).current;
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
   const phoneFocusAnim = useRef(new Animated.Value(0)).current;
+  const nameFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
+
+  const trimmedCitizenName = citizenName.trim();
+  const citizenPhoneDigits = phoneNumber.replace(/\D/g, "");
+  const hasCitizenPhoneMinDigits =
+    citizenPhoneDigits.length >= MOBILE_PHONE_MIN_DIGITS;
+  const hasCitizenRequiredFields =
+    Boolean(trimmedCitizenName) && hasCitizenPhoneMinDigits;
+  const isCitizenPhoneValid = MOBILE_PHONE_REGEX.test(phoneNumber);
+  const isLoginDisabled =
+    loading ||
+    (loginType === "citizen" && !hasCitizenRequiredFields) ||
+    (loginType === "employee" &&
+      (loginMethod === "email" ? !email || !password : !phoneNumber));
+  const isButtonDimmed =
+    loading ||
+    (loginType === "citizen"
+      ? !hasCitizenRequiredFields
+      : loginMethod === "email"
+        ? !email || !password
+        : !phoneNumber);
 
   useEffect(() => {
     // Entrance animations
@@ -78,6 +106,20 @@ const LoginScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setIsKeyboardActive(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setIsKeyboardActive(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
   }, []);
 
   const handleLanguageChange = async (langCode: string) => {
@@ -88,69 +130,134 @@ const LoginScreen = () => {
       setCurrentLang(langCode);
 
       CustomAlert.alert(
-        langCode === 'ar' ? 'نجاح' : 'Success',
-        langCode === 'ar'
-          ? 'تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات.'
-          : 'Language changed. The app will restart to apply changes.',
+        langCode === "ar" ? "نجاح" : "Success",
+        langCode === "ar"
+          ? "تم تغيير اللغة. سيتم إعادة تشغيل التطبيق لتطبيق التغييرات."
+          : "Language changed. The app will restart to apply changes.",
         [
           {
-            text: langCode === 'ar' ? 'موافق' : 'OK',
+            text: langCode === "ar" ? "موافق" : "OK",
             onPress: async () => {
               try {
                 await Updates.reloadAsync();
               } catch {
                 CustomAlert.alert(
-                  langCode === 'ar' ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
-                  langCode === 'ar'
-                    ? 'يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة.'
-                    : 'Please close and reopen the app to apply language changes.'
+                  langCode === "ar"
+                    ? "إعادة التشغيل مطلوبة"
+                    : "Restart Required",
+                  langCode === "ar"
+                    ? "يرجى إغلاق التطبيق وإعادة فتحه لتطبيق تغييرات اللغة."
+                    : "Please close and reopen the app to apply language changes.",
                 );
               }
             },
           },
-        ]
+        ],
       );
     } catch (error) {
-      CustomAlert.alert(t('common.error'), t('errors.unknownError'));
+      CustomAlert.alert(t("common.error"), t("errors.unknownError"));
     }
   };
 
   const handleLogin = async () => {
     Keyboard.dismiss();
-    setError('');
+    setError("");
+    setFieldErrors({});
 
-    const isEmail = loginMethod === 'email';
+    if (loginType === "citizen") {
+      const nextFieldErrors: { name?: string; phone?: string } = {};
+
+      if (!trimmedCitizenName) {
+        nextFieldErrors.name = t("auth.nameRequired", "Please enter your name");
+      }
+
+      if (!phoneNumber) {
+        nextFieldErrors.phone = t(
+          "auth.mobileRequired",
+          "Please enter your mobile number",
+        );
+      } else if (!isCitizenPhoneValid) {
+        nextFieldErrors.phone = t(
+          "auth.invalidMobileNumber",
+          "Please enter a valid mobile number",
+        );
+      }
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors(nextFieldErrors);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await apiClient.post("/otp/send", {
+          phone: phoneNumber,
+          channel: otpChannel,
+          name: trimmedCitizenName,
+        });
+
+        if (response.data && response.data.session_id) {
+          router.push({
+            pathname: "/otp",
+            params: {
+              phoneNumber,
+              sessionId: response.data.session_id,
+              channel: otpChannel,
+            },
+          });
+        } else {
+          setError(t("auth.otpSentFailed", "Failed to send OTP"));
+        }
+      } catch (err: any) {
+        setError(
+          err.response?.data?.error ||
+          t("auth.otpSentFailed", "Failed to send OTP"),
+        );
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    const isEmail = loginMethod === "email";
     if (isEmail) {
       // Email Login Logic
       const trimmedEmail = email.trim();
       if (!trimmedEmail || !password) {
-        setError(t('errors.validationError'));
+        setError(t("errors.validationError"));
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(trimmedEmail)) {
-        setError(t('auth.invalidCredentials'));
+        setError(t("auth.invalidCredentials"));
         return;
       }
 
       setLoading(true);
 
       try {
-        const response = await apiClient.post('/auth/login', { email: trimmedEmail, password });
+        const response = await apiClient.post("/auth/login", {
+          email: trimmedEmail,
+          password,
+        });
 
         if (response.data && response.data.success) {
           const { token, refresh_token } = response.data.data;
           await login(token, refresh_token);
-          router.replace('/(tabs)/explore');
+          router.replace("/(tabs)/explore");
         } else {
-          setError(t('auth.loginError'));
+          setError(t("auth.loginError"));
         }
       } catch (err: any) {
-        let errorMessage = t('auth.loginError');
+        let errorMessage = t("auth.loginError");
         if (err.response?.data) {
-          const remoteError = err.response.data.error || err.response.data.message;
+          const remoteError =
+            err.response.data.error || err.response.data.message;
           if (remoteError) {
-            errorMessage = typeof remoteError === 'string' ? remoteError : JSON.stringify(remoteError);
+            errorMessage =
+              typeof remoteError === "string"
+                ? remoteError
+                : JSON.stringify(remoteError);
           }
         }
         setError(errorMessage);
@@ -160,37 +267,91 @@ const LoginScreen = () => {
     } else {
       // Phone OTP Login Logic
       if (!phoneNumber) {
-        setError(t('errors.validationError'));
+        setError(t("errors.validationError"));
         return;
       }
 
       setLoading(true);
       try {
-        const authResponse = await apiClient.post('/auth/login', { phone: phoneNumber });
+        const authResponse = await apiClient.post("/auth/login", {
+          phone: phoneNumber,
+        });
         if (!authResponse.data || !authResponse.data.success) {
-          setError(authResponse.data?.message || t('auth.loginError'));
+          setError(authResponse.data?.message || t("auth.loginError"));
           return;
         }
         // Updated OTP send endpoint and payload based on user curl
-        const response = await apiClient.post('/otp/send', {
+        const response = await apiClient.post("/otp/send", {
           phone: phoneNumber,
-          channel: otpChannel
+          channel: otpChannel,
         });
 
         if (response.data && response.data.session_id) {
           router.push({
-            pathname: '/otp',
-            params: { phoneNumber, sessionId: response.data.session_id, channel: otpChannel }
+            pathname: "/otp",
+            params: {
+              phoneNumber,
+              sessionId: response.data.session_id,
+              channel: otpChannel,
+            },
           });
         } else {
-          setError(t('auth.otpSentFailed', 'Failed to send OTP'));
+          setError(t("auth.otpSentFailed", "Failed to send OTP"));
         }
       } catch (err: any) {
-        setError(err.response?.data?.error || t('auth.otpSentFailed', 'Failed to send OTP'));
+        setError(
+          err.response?.data?.error ||
+          t("auth.otpSentFailed", "Failed to send OTP"),
+        );
       } finally {
         setLoading(false);
       }
     }
+  };
+
+  const handleCitizenNameChange = (value: string) => {
+    setCitizenName(value);
+    if (fieldErrors.name) {
+      setFieldErrors((prev) => ({ ...prev, name: undefined }));
+    }
+  };
+
+  const resetLoginFields = () => {
+    setEmail("");
+    setPassword("");
+    setCitizenName("");
+    setPhoneNumber("");
+    setShowPassword(false);
+    setError("");
+    setFieldErrors({});
+  };
+
+  const handlePhoneNumberChange = (value: string) => {
+    const trimmedValue = value.trim();
+    const digits = trimmedValue
+      .replace(/\D/g, "")
+      .slice(0, INTERNATIONAL_PHONE_MAX_DIGITS);
+    const normalizedValue = trimmedValue.startsWith("+")
+      ? `+${digits}`
+      : digits;
+    setPhoneNumber(normalizedValue);
+    if (fieldErrors.phone) {
+      setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+    }
+  };
+
+  const handleNameFocus = () => {
+    Animated.spring(nameFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleNameBlur = () => {
+    Animated.spring(nameFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handlePhoneFocus = () => {
@@ -252,27 +413,32 @@ const LoginScreen = () => {
 
   const emailBorderColor = emailFocusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#E5E5E5', '#2EC4B6'],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
   const passwordBorderColor = passwordFocusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#E5E5E5', '#2EC4B6'],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
   const phoneBorderColor = phoneFocusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#E5E5E5', '#2EC4B6'],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const nameBorderColor = nameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.keyboardView}
-      keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <LinearGradient
-        colors={['#F8FFFE', '#FFFFFF']}
+        colors={["#F8FFFE", "#FFFFFF"]}
         style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -308,86 +474,282 @@ const LoginScreen = () => {
             >
               <View style={styles.logoShadow}>
                 <Image
-                  source={require('@/assets/images/start-logo.png')}
+                  source={require("@/assets/images/start-logo.png")}
                   style={styles.headerLogo}
                 />
               </View>
             </Animated.View>
 
             {/* Welcome Text */}
-            <View style={styles.welcomeContainer}>
-              <Text style={[styles.welcomeText, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.welcomeBack')}</Text>
-              <Text style={[styles.subtitleText, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.loginSubtitle')}</Text>
-            </View>
+            {
+              !isKeyboardActive &&
+              <View style={styles.welcomeContainer}>
+                <Text
+                  style={[
+                    styles.welcomeText,
+                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                  ]}
+                >
+                  {t("auth.welcomeBack")}
+                </Text>
+                <Text
+                  style={[
+                    styles.subtitleText,
+                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                  ]}
+                >
+                  {t("auth.loginSubtitle")}
+                </Text>
+              </View>
+            }
 
             {/* Login Type Tabs */}
             <View style={styles.tabContainer}>
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  loginType === 'employee' && styles.activeTab,
+                  loginType === "citizen" && styles.activeTab,
                 ]}
-                onPress={() => { setLoginType('employee'); setError('') }}
+                onPress={() => {
+                  setLoginType("citizen");
+                  setLoginMethod("phone");
+                  resetLoginFields();
+                }}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    loginType === 'employee' && styles.activeTabText,
+                    loginType === "citizen" && styles.activeTabText,
                   ]}
                 >
-                  {t('auth.employeeLogin')}
+                  {t("auth.citizenLogin")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.tabButton,
-                  loginType === 'citizen' && styles.activeTab,
+                  loginType === "employee" && styles.activeTab,
                 ]}
-                onPress={() => { setLoginType('citizen'); setError('') }}
+                onPress={() => {
+                  setLoginType("employee");
+                  setLoginMethod("email");
+                  resetLoginFields();
+                }}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    loginType === 'citizen' && styles.activeTabText,
+                    loginType === "employee" && styles.activeTabText,
                   ]}
                 >
-                  {t('auth.citizenLogin')}
+                  {t("auth.employeeLogin")}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.methodToggleContainer}>
-              <TouchableOpacity
-                onPress={() => {
-                  setLoginMethod(loginMethod === 'email' ? 'phone' : 'email');
-                  setError('')
-                }}
-                style={styles.methodToggleButton}
-              >
-                <Ionicons
-                  name={
-                    loginMethod === 'email'
-                      ? 'call-outline'
-                      : 'mail-outline'
-                  }
-                  size={18}
-                  color="#2EC4B6"
-                />
-                <Text style={styles.methodToggleText}>
-                  {loginMethod === 'email'
-                    ? t('auth.loginMobile')
-                    : t('auth.loginEmail')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {loginType === "employee" && (
+              <View style={styles.methodToggleContainer}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setLoginMethod(loginMethod === "email" ? "phone" : "email");
+                    resetLoginFields();
+                  }}
+                  style={styles.methodToggleButton}
+                >
+                  <Ionicons
+                    name={
+                      loginMethod === "email" ? "call-outline" : "mail-outline"
+                    }
+                    size={18}
+                    color="#2EC4B6"
+                  />
+                  <Text style={styles.methodToggleText}>
+                    {loginMethod === "email"
+                      ? t("auth.loginMobile")
+                      : t("auth.loginEmail")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Input Fields Container */}
             <View style={styles.inputsContainer}>
-              {loginMethod === 'email' ? (
+              {loginType === "citizen" ? (
+                <>
+                  <View style={styles.inputWrapper}>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.name", "Name")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.name
+                            ? "#E74C3C"
+                            : nameBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.namePlaceholder",
+                          "Enter your name",
+                        )}
+                        placeholderTextColor="#999"
+                        value={citizenName}
+                        onChangeText={handleCitizenNameChange}
+                        onFocus={handleNameFocus}
+                        onBlur={handleNameBlur}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                    {fieldErrors.name ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.name}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.mobileNumber", "Mobile Number")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.phone
+                            ? "#E74C3C"
+                            : phoneBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="call-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t("auth.mobilePlaceholder", {
+                          defaultValue: "12345678",
+                        })}
+                        placeholderTextColor="#999"
+                        value={phoneNumber}
+                        onChangeText={handlePhoneNumberChange}
+                        onFocus={handlePhoneFocus}
+                        onBlur={handlePhoneBlur}
+                        keyboardType="phone-pad"
+                        maxLength={INTERNATIONAL_PHONE_MAX_DIGITS + 1}
+                      />
+                    </Animated.View>
+                    {fieldErrors.phone ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.phone}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {/* OTP Channel Selection */}
+                  <View style={styles.inputWrapper}>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.otpChannel")}
+                    </Text>
+                    <View style={styles.channelContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.channelButton,
+                          otpChannel === "sms" && styles.activeChannel,
+                        ]}
+                        onPress={() => setOtpChannel("sms")}
+                      >
+                        <Ionicons
+                          name="chatbubble-ellipses-outline"
+                          size={20}
+                          color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
+                        />
+                        <Text
+                          style={[
+                            styles.channelText,
+                            otpChannel === "sms" && styles.activeChannelText,
+                          ]}
+                        >
+                          {t("auth.sms")}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.channelButton,
+                          otpChannel === "whatsapp" && styles.activeChannel,
+                        ]}
+                        onPress={() => setOtpChannel("whatsapp")}
+                      >
+                        <Ionicons
+                          name="logo-whatsapp"
+                          size={20}
+                          color={otpChannel === "whatsapp" ? "#2EC4B6" : "#666"}
+                        />
+                        <Text
+                          style={[
+                            styles.channelText,
+                            otpChannel === "whatsapp" &&
+                            styles.activeChannelText,
+                          ]}
+                        >
+                          {t("auth.whatsapp")}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </>
+              ) : loginMethod === "email" ? (
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.email')}</Text>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.email")}
+                    </Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -404,8 +766,16 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
-                        placeholder={t('auth.emailPlaceholder', 'user@example.com')}
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.emailPlaceholder",
+                          "user@example.com",
+                        )}
                         placeholderTextColor="#999"
                         value={email}
                         onChangeText={setEmail}
@@ -420,7 +790,14 @@ const LoginScreen = () => {
 
                   {/* Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.password')}</Text>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.password")}
+                    </Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -437,8 +814,13 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
-                        placeholder={t('auth.passwordPlaceholder', '••••••••')}
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t("auth.passwordPlaceholder", "••••••••")}
                         placeholderTextColor="#999"
                         secureTextEntry={!showPassword}
                         value={password}
@@ -453,7 +835,9 @@ const LoginScreen = () => {
                         activeOpacity={0.7}
                       >
                         <Ionicons
-                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                          name={
+                            showPassword ? "eye-off-outline" : "eye-outline"
+                          }
                           size={20}
                           color="#666"
                         />
@@ -465,7 +849,14 @@ const LoginScreen = () => {
                 /* Phone Number Input */
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.phone')}</Text>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.phone")}
+                    </Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
@@ -482,8 +873,13 @@ const LoginScreen = () => {
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={[styles.textInput, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}
-                        placeholder={t('auth.phonePlaceholder', '+1234567890')}
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t("auth.phonePlaceholder", "+1234567890")}
                         placeholderTextColor="#999"
                         value={phoneNumber}
                         onChangeText={setPhoneNumber}
@@ -496,48 +892,56 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: currentLang === 'ar' ? 'right' : 'left' }]}>{t('auth.otpChannel')}</Text>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.otpChannel")}
+                    </Text>
                     <View style={styles.channelContainer}>
                       <TouchableOpacity
                         style={[
                           styles.channelButton,
-                          otpChannel === 'sms' && styles.activeChannel,
+                          otpChannel === "sms" && styles.activeChannel,
                         ]}
-                        onPress={() => setOtpChannel('sms')}
+                        onPress={() => setOtpChannel("sms")}
                       >
                         <Ionicons
                           name="chatbubble-ellipses-outline"
                           size={20}
-                          color={otpChannel === 'sms' ? '#2EC4B6' : '#666'}
+                          color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
                         />
                         <Text
                           style={[
                             styles.channelText,
-                            otpChannel === 'sms' && styles.activeChannelText,
+                            otpChannel === "sms" && styles.activeChannelText,
                           ]}
                         >
-                          {t('auth.sms')}
+                          {t("auth.sms")}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
                           styles.channelButton,
-                          otpChannel === 'whatsapp' && styles.activeChannel,
+                          otpChannel === "whatsapp" && styles.activeChannel,
                         ]}
-                        onPress={() => setOtpChannel('whatsapp')}
+                        onPress={() => setOtpChannel("whatsapp")}
                       >
                         <Ionicons
                           name="logo-whatsapp"
                           size={20}
-                          color={otpChannel === 'whatsapp' ? '#2EC4B6' : '#666'}
+                          color={otpChannel === "whatsapp" ? "#2EC4B6" : "#666"}
                         />
                         <Text
                           style={[
                             styles.channelText,
-                            otpChannel === 'whatsapp' && styles.activeChannelText,
+                            otpChannel === "whatsapp" &&
+                            styles.activeChannelText,
                           ]}
                         >
-                          {t('auth.whatsapp')}
+                          {t("auth.whatsapp")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -546,13 +950,19 @@ const LoginScreen = () => {
               )}
 
               {/* Forgot Password - Only for email login */}
-              {(loginMethod === 'email') && (
+              {loginType === "employee" && loginMethod === "email" && (
                 <TouchableOpacity
-                  onPress={() => router.push('/forgot-password')}
-                  style={[styles.forgotPasswordContainer, { alignSelf: currentLang === 'ar' ? 'flex-start' : 'flex-end' }]}
+                  onPress={() => router.push("/forgot-password")}
+                  style={[
+                    styles.forgotPasswordContainer,
+                    {
+                      alignSelf:
+                        currentLang === "ar" ? "flex-start" : "flex-end",
+                    },
+                  ]}
                 >
                   <Text style={styles.forgotPasswordText}>
-                    {t('auth.forgotPassword')}
+                    {t("auth.forgotPassword")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -562,7 +972,9 @@ const LoginScreen = () => {
             {error ? (
               <Animated.View style={styles.errorContainer}>
                 <Ionicons name="alert-circle" size={18} color="#E74C3C" />
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorText}>
+                  {error.charAt(0).toUpperCase() + error.slice(1)}
+                </Text>
               </Animated.View>
             ) : null}
 
@@ -573,14 +985,14 @@ const LoginScreen = () => {
                 onPressIn={handleButtonPressIn}
                 onPressOut={handleButtonPressOut}
                 onPress={handleLogin}
-                disabled={loading || (loginMethod === 'email' ? (!email || !password) : !phoneNumber)}
+                disabled={isLoginDisabled}
                 style={styles.loginButton}
               >
                 <LinearGradient
                   colors={
-                    loading || (loginMethod === 'email' ? (!email || !password) : !phoneNumber)
-                      ? ['#CCCCCC', '#AAAAAA']
-                      : ['#2EC4B6', '#20B2A3']
+                    isButtonDimmed
+                      ? ["#CCCCCC", "#AAAAAA"]
+                      : ["#2EC4B6", "#20B2A3"]
                   }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -590,60 +1002,71 @@ const LoginScreen = () => {
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={styles.loginButtonText}>
-                      {
-                        loginMethod === 'phone' ? t('auth.sendOTP') : t('auth.login')
-                      }
+                      {loginType === "citizen" || loginMethod === "phone"
+                        ? t("auth.sendOTP")
+                        : t("auth.login")}
                     </Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+            {/* Keyboard Spacer */}
+            {isKeyboardActive && <View style={{ height: 100 }} />}
           </Animated.View>
         </ScrollView>
 
         {/* Footer — outside ScrollView so it's always visible */}
-        <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom + 10) }]}>
-          <View style={styles.languageContainer}>
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                currentLang === 'en' && styles.activeLanguage,
-              ]}
-              onPress={() => handleLanguageChange('en')}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={
-                  currentLang === 'en'
-                    ? styles.activeLanguageText
-                    : styles.languageText
-                }
+        {!isKeyboardActive && (
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(20, insets.bottom + 10) },
+            ]}
+          >
+            <View style={styles.languageContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.languageButton,
+                  currentLang === "en" && styles.activeLanguage,
+                ]}
+                onPress={() => handleLanguageChange("en")}
+                activeOpacity={0.7}
               >
-                EN
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.languageDivider} />
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                currentLang === 'ar' && styles.activeLanguage,
-              ]}
-              onPress={() => handleLanguageChange('ar')}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={
-                  currentLang === 'ar'
-                    ? styles.activeLanguageText
-                    : styles.languageText
-                }
+                <Text
+                  style={
+                    currentLang === "en"
+                      ? styles.activeLanguageText
+                      : styles.languageText
+                  }
+                >
+                  EN
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.languageDivider} />
+              <TouchableOpacity
+                style={[
+                  styles.languageButton,
+                  currentLang === "ar" && styles.activeLanguage,
+                ]}
+                onPress={() => handleLanguageChange("ar")}
+                activeOpacity={0.7}
               >
-                AR
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={
+                    currentLang === "ar"
+                      ? styles.activeLanguageText
+                      : styles.languageText
+                  }
+                >
+                  AR
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.versionText}>
+              {t("auth.version", { version })}
+            </Text>
           </View>
-          <Text style={styles.versionText}>{t('auth.version', { version })}</Text>
-        </View>
+        )}
       </LinearGradient>
     </KeyboardAvoidingView>
   );
@@ -665,33 +1088,33 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   decorativeCircle1: {
-    position: 'absolute',
+    position: "absolute",
     top: -80,
     right: -80,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(46, 196, 182, 0.06)',
+    backgroundColor: "rgba(46, 196, 182, 0.06)",
   },
   decorativeCircle2: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -100,
     left: -100,
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(46, 196, 182, 0.04)',
+    backgroundColor: "rgba(46, 196, 182, 0.04)",
   },
   content: {
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
   logoContainer: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: isSmallScreen ? 16 : 32,
   },
   logoShadow: {
-    shadowColor: '#2EC4B6',
+    shadowColor: "#2EC4B6",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -703,35 +1126,35 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 64,
     height: 64,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   welcomeContainer: {
     marginBottom: isSmallScreen ? 20 : 40,
   },
   welcomeText: {
     fontSize: isSmallScreen ? 26 : 32,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 6,
-    color: '#1A1A1A',
+    color: "#1A1A1A",
     letterSpacing: -0.5,
   },
   subtitleText: {
     fontSize: isSmallScreen ? 14 : 16,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   inputsContainer: {
-    marginBottom: isSmallScreen ? 12 : 24,
+    marginBottom: isSmallScreen ? 12 : 16,
   },
   tabButton: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -739,26 +1162,26 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
   },
   activeTabText: {
-    color: '#2EC4B6',
+    color: "#2EC4B6",
   },
   methodToggleContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   methodToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   methodToggleText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#2EC4B6',
+    fontWeight: "600",
+    color: "#2EC4B6",
     marginLeft: 8,
   },
   inputWrapper: {
@@ -766,17 +1189,17 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     marginBottom: 8,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingHorizontal: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -792,67 +1215,73 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   eyeButton: {
     padding: 8,
   },
   forgotPasswordContainer: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginTop: 4,
   },
   forgotPasswordText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   channelContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   channelButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingVertical: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
     gap: 8,
   },
   activeChannel: {
-    borderColor: '#2EC4B6',
-    backgroundColor: '#F0FFFE',
+    borderColor: "#2EC4B6",
+    backgroundColor: "#F0FFFE",
   },
   channelText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
   },
   activeChannelText: {
-    color: '#2EC4B6',
+    color: "#2EC4B6",
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF5F5",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#E74C3C',
+    borderLeftColor: "#E74C3C",
   },
   errorText: {
-    color: '#E74C3C',
+    color: "#E74C3C",
     marginLeft: 8,
     fontSize: 14,
     flex: 1,
   },
+  fieldErrorText: {
+    color: "#E74C3C",
+    fontSize: 13,
+    marginTop: 6,
+    fontWeight: "500",
+  },
   loginButton: {
     borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#2EC4B6',
+    overflow: "hidden",
+    shadowColor: "#2EC4B6",
     shadowOffset: {
       width: 0,
       height: 6,
@@ -863,30 +1292,30 @@ const styles = StyleSheet.create({
   },
   loginButtonGradient: {
     paddingVertical: isSmallScreen ? 14 : 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loginButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 10,
   },
   languageContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1.5,
-    borderColor: '#E5E5E5',
-    shadowColor: '#000',
+    borderColor: "#E5E5E5",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -900,36 +1329,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   activeLanguage: {
-    backgroundColor: '#2EC4B6',
+    backgroundColor: "#2EC4B6",
   },
   languageDivider: {
     width: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: "#E5E5E5",
   },
   activeLanguageText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: "#FFFFFF",
+    fontWeight: "700",
     fontSize: 14,
   },
   languageText: {
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
     fontSize: 14,
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
+    color: "#999",
+    fontWeight: "500",
   },
   tabContainer: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 10,
     marginBottom: 20,
-  }
+  },
 });
 
 export default LoginScreen;

@@ -23,6 +23,10 @@ export interface LocationData {
   state?: string;
   country?: string;
   postal_code?: string;
+  street?: string;
+  district?: string;
+  subregion?: string;
+  street_number?: string;
 }
 
 interface LocationPickerProps {
@@ -119,6 +123,10 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           state: result.region || undefined,
           country: result.country || undefined,
           postal_code: result.postalCode || undefined,
+          street: result.street || undefined,
+          district: result.district || undefined,
+          subregion: result.subregion || undefined,
+          street_number: result.streetNumber || undefined,
         };
       }
       return {};

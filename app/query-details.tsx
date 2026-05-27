@@ -1,8 +1,10 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
+import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
+import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
 import { AudioSource, useAudioPlayer } from 'expo-audio';
@@ -145,6 +147,7 @@ const QueryDetailsScreen = () => {
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
   const mapRef = useRef<WebView>(null);
   const [zoom, setZoom] = useState(15);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
@@ -189,6 +192,14 @@ const QueryDetailsScreen = () => {
     };
     fetchToken();
   }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const cat = await getLookupCategories();
+      setCategories(cat.data);
+    };
+    fetchCategories();
+  }, [])
 
   const fetchDetails = useCallback(async () => {
     const queryId = Array.isArray(id) ? id[0] : id;
@@ -328,9 +339,9 @@ const QueryDetailsScreen = () => {
                 <Ionicons name="help-circle" size={12} color={COLORS.accent} />
                 <Text style={styles.typeBadgeText}>{t('details.query')}</Text>
               </View>
-              <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+              {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
-              </View>
+              </View> */}
             </View>
             <Text style={styles.queryTitle}>{query.title}</Text>
             <Text style={styles.dateText}>{new Date(query.created_at).toLocaleString()}</Text>
@@ -372,6 +383,92 @@ const QueryDetailsScreen = () => {
                 iconColor="#06B6D4"
               />
             )}
+            {/* Lookup Values as InfoRows */}
+            {query.lookup_values && query.lookup_values.length > 0 && (() => {
+              const grouped: Record<string, LookupValue[]> = {};
+              query.lookup_values.forEach(value => {
+                const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
+                if (!grouped[categoryName]) {
+                  grouped[categoryName] = [];
+                }
+                grouped[categoryName].push(value);
+              });
+
+              return Object.entries(grouped).map(([category, values]) => (
+                <View key={category} style={styles.infoRow}>
+                  <View style={styles.infoRowLeft}>
+                    <Ionicons name="pricetag" size={18} color="#10B981" />
+                    <Text style={styles.infoLabel}>{category}</Text>
+                  </View>
+                  <View style={styles.lookupValuesList}>
+                    {values.map(value => (
+                      <View
+                        key={value.id}
+                        style={[
+                          styles.lookupValueTag,
+                          {
+                            backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
+                            borderColor: value.color || '#CBD5E1',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.lookupValueTagText,
+                            { color: value.color || COLORS.text.primary },
+                          ]}
+                        >
+                          {i18n.language === 'en' ? value.name : value.name_ar}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ));
+            })()}
+
+            {/* Custom Fields as InfoRows */}
+            {query.custom_fields && (() => {
+              try {
+                const customFields = JSON.parse(query.custom_fields);
+                const allFields: any[] = [];
+
+                // Extract all custom fields
+                Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                  const ld = categories.find((c: any) => c.id === fieldData.category_id);
+                  if (key.startsWith('lookup:')) {
+                    allFields.push({
+                      key,
+                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      value: fieldData.value,
+                      field_type: fieldData.field_type || 'text',
+                    });
+                  }
+                });
+
+                return allFields.map((field) => {
+                  let displayValue = field.value || 'N/A';
+                  if (field.field_type === 'checkbox') {
+                    displayValue = field.value ? t('common.yes') : t('common.no');
+                  } else if (field.field_type === 'date' && field.value) {
+                    displayValue = new Date(field.value).toLocaleDateString();
+                  }
+
+                  return (
+                    <InfoRow
+                      key={field.key}
+                      icon="list-outline"
+                      label={field.label}
+                      value={String(displayValue)}
+                      iconColor="#F59E0B"
+                    />
+                  );
+                });
+              } catch (error) {
+                console.error('Error parsing custom_fields:', error);
+                return null;
+              }
+            })()}
           </View>
         </View>
 
@@ -865,6 +962,23 @@ const styles = StyleSheet.create({
   },
   mapFooter: {
     gap: 10,
+  },
+  lookupValuesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    maxWidth: '50%',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  lookupValueTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  lookupValueTagText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   addressContainer: {
     flexDirection: 'row',

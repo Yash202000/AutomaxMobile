@@ -1,7 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createQuery, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
@@ -222,8 +222,9 @@ const AddQueryScreen = () => {
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
   const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
   const [selectedSourceIncident, setSelectedSourceIncident] = useState<DropdownOption | null>(null);
+  const [userIncidents, setUserIncidents] = useState<DropdownOption[]>([]);
   const [incidentSearch, setIncidentSearch] = useState('');
-  const [searchedIncidents, setSearchedIncidents] = useState<DropdownOption[]>([]);
+  const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
 
   // Voice recording state
@@ -298,18 +299,17 @@ const AddQueryScreen = () => {
       ]);
 
       // Fetch workflows with 'query', 'both', and 'all' types
-      const [queryWorkflowRes, bothWorkflowRes, allWorkflowRes] = await Promise.all([
-        getWorkflows(true, 'query'),
-        getWorkflows(true, 'both'),
-        getWorkflows(true, 'all'),
+      const [queryWorkflowRes] = await Promise.all([
+        getWorkflows(true, 'query')
       ]);
 
       // Fetch other data
-      const [locRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getLocations(),
+      const [locRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
+        getLocationsTree(),
         getUsers(),
         getDepartments(),
         getLookupCategories().catch(err => ({ success: false, error: err.message })),
+        getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({ success: false, data: [] })),
       ]);
 
       // Combine and deduplicate classifications
@@ -380,9 +380,7 @@ const AddQueryScreen = () => {
 
       // Combine and deduplicate workflows
       const allWorkflowsData = [
-        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : []),
-        ...(bothWorkflowRes.success && bothWorkflowRes.data ? bothWorkflowRes.data : []),
-        ...(allWorkflowRes.success && allWorkflowRes.data ? allWorkflowRes.data : []),
+        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : [])
       ];
 
       // Deduplicate by ID
@@ -396,7 +394,6 @@ const AddQueryScreen = () => {
 
       if (locRes.success && locRes.data) {
         let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
-
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
           const userLocationIds = new Set(user.locations.map(l => l.id));
@@ -418,6 +415,12 @@ const AddQueryScreen = () => {
         // Filter to only show categories that should be added to query form
         const queryCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
         setLookupCategories(queryCategories);
+      }
+      if (incidentRes && incidentRes.success && incidentRes.data) {
+        setUserIncidents(incidentRes.data.map((i: any) => ({
+          id: i.id,
+          name: `${i.incident_number} - ${i.title}`,
+        })));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -597,43 +600,12 @@ const AddQueryScreen = () => {
     }
   };
 
-  // Search incidents with debouncing
-  const searchIncidents = useCallback(async (searchText: string) => {
-    if (searchText.length < 2) {
-      setSearchedIncidents([]);
-      return;
-    }
-
-    setLoadingIncidents(true);
-    try {
-      const response = await getIncidents({
-        search: searchText,
-        created_by_me: true, // Only show incidents created by current user
-        limit: 20,
-      });
-
-      if (response.success && response.data) {
-        setSearchedIncidents(response.data.map((i: any) => ({
-          id: i.id,
-          name: `${i.incident_number} - ${i.title}`
-        })));
-      }
-    } catch (error) {
-      console.error('Error searching incidents:', error);
-    }
-    setLoadingIncidents(false);
-  }, []);
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (incidentSearch) {
-        searchIncidents(incidentSearch);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [incidentSearch, searchIncidents]);
+  // Filter user's pre-loaded incidents by search query (client-side, instant)
+  const filteredIncidents = incidentSearch.trim().length === 0
+    ? userIncidents
+    : userIncidents.filter(i =>
+      i.name.toLowerCase().includes(incidentSearch.toLowerCase())
+    );
 
   // Voice recording functions
   const startRecording = async () => {
@@ -1220,72 +1192,127 @@ const AddQueryScreen = () => {
               error={errors.channel}
             /> */}
 
-            {/* Source Incident - only show if required */}
             {isFieldRequired('source_incident_id') && (
               <>
                 <Text style={styles.sectionTitle}>
                   {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
                 </Text>
 
-                {selectedSourceIncident ? (
-                  <View style={styles.selectedIncidentCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.selectedIncidentText}>{selectedSourceIncident.name}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => setSelectedSourceIncident(null)}>
-                      <Ionicons name="close-circle" size={24} color="#666" />
-                    </TouchableOpacity>
+                {/* Dropdown trigger */}
+                <TouchableOpacity
+                  style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
+                  onPress={() => {
+                    setIncidentSearch('');
+                    setIncidentDropdownOpen(true);
+                  }}
+                >
+                  <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText]}>
+                    {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {selectedSourceIncident && (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setSelectedSourceIncident(null);
+                          if (errors.source_incident_id) {
+                            setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                          }
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close-circle" size={18} color="#999" />
+                      </TouchableOpacity>
+                    )}
+                    {loadingData ? (
+                      <ActivityIndicator size="small" color="#666" />
+                    ) : (
+                      <FontAwesome name="chevron-down" size={16} color="#666" />
+                    )}
                   </View>
-                ) : (
-                  <>
-                    <View style={styles.searchInputContainer}>
-                      <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
-                      <TextInput
-                        style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                        placeholder={t('common.searchByIncidentNumOrTitle')}
-                        value={incidentSearch}
-                        onChangeText={setIncidentSearch}
-                        placeholderTextColor="#999"
-                      />
-                      {loadingIncidents && <ActivityIndicator size="small" color="#666" />}
-                    </View>
+                </TouchableOpacity>
 
-                    {searchedIncidents.length > 0 && (
-                      <View style={styles.searchResults}>
-                        <ScrollView
-                          style={styles.searchResultsScroll}
-                          nestedScrollEnabled={true}
-                          showsVerticalScrollIndicator={true}
-                        >
-                          {searchedIncidents.map((incident) => (
+                {errors.source_incident_id && (
+                  <Text style={styles.errorText}>{errors.source_incident_id}</Text>
+                )}
+
+                {/* Incident picker modal */}
+                <Modal
+                  visible={incidentDropdownOpen}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => setIncidentDropdownOpen(false)}
+                >
+                  <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIncidentDropdownOpen(false)}
+                  >
+                    <View style={styles.modalContent}>
+                      <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>
+                          {t('addComplaint.selectSourceIncident')}
+                        </Text>
+                        <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
+                          <Ionicons name="close" size={24} color="#333" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Search inside the modal */}
+                      <View style={styles.searchInputContainer}>
+                        <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                          placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
+                          value={incidentSearch}
+                          onChangeText={setIncidentSearch}
+                          placeholderTextColor="#999"
+                          autoFocus
+                        />
+                        {incidentSearch.length > 0 && (
+                          <TouchableOpacity onPress={() => setIncidentSearch('')}>
+                            <Ionicons name="close-circle" size={18} color="#999" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* Results list */}
+                      {filteredIncidents.length === 0 ? (
+                        <View style={styles.emptyList}>
+                          <Text style={styles.emptyText}>
+                            {userIncidents.length === 0
+                              ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
+                              : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
+                          </Text>
+                        </View>
+                      ) : (
+                        <FlatList
+                          data={filteredIncidents}
+                          keyExtractor={(item) => item.id}
+                          keyboardShouldPersistTaps="handled"
+                          renderItem={({ item }) => (
                             <TouchableOpacity
-                              key={incident.id}
-                              style={styles.searchResultItem}
+                              style={styles.optionItem}
                               onPress={() => {
-                                setSelectedSourceIncident(incident);
+                                setSelectedSourceIncident(item);
+                                setIncidentDropdownOpen(false);
                                 setIncidentSearch('');
-                                setSearchedIncidents([]);
                                 if (errors.source_incident_id) {
                                   setErrors(prev => ({ ...prev, source_incident_id: '' }));
                                 }
                               }}
                             >
-                              <Text style={styles.searchResultText}>{incident.name}</Text>
+                              <Text style={styles.optionText}>{item.name}</Text>
+                              {selectedSourceIncident?.id === item.id && (
+                                <Ionicons name="checkmark" size={20} color="#E74C3C" />
+                              )}
                             </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-
-                    {incidentSearch.length >= 2 && !loadingIncidents && searchedIncidents.length === 0 && (
-                      <Text style={styles.noResultsText}>
-                        {t('addQuery.noIncidentsFound')}
-                      </Text>
-                    )}
-                  </>
-                )}
-
-                {errors.source_incident_id && <Text style={styles.errorText}>{errors.source_incident_id}</Text>}
+                          )}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
               </>
             )}
 

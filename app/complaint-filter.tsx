@@ -126,7 +126,9 @@ const ComplaintFilterScreen = () => {
   const fetchStates = async () => {
     setLoadingStates(true);
     const response = await getComplaintStats();
-    if (response.success) setStates(response.data.by_state_details || []);
+    if (response.success) {
+      setStates(response.data.workflow_stats[0].by_state_details || [])
+    };
     setLoadingStates(false);
   };
 
