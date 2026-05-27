@@ -36,6 +36,7 @@ const ResetPasswordScreen = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -58,6 +59,20 @@ const ResetPasswordScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardActive(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardActive(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
   }, []);
 
   const handleResetPassword = async () => {
@@ -141,9 +156,9 @@ const ResetPasswordScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.keyboardView}
-      keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <LinearGradient
         colors={['#F8FFFE', '#FFFFFF']}
@@ -297,6 +312,8 @@ const ResetPasswordScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+            {/* Keyboard Spacer */}
+            {isKeyboardActive && <View style={{ height: 100 }} />}
           </Animated.View>
         </ScrollView>
       </LinearGradient>
