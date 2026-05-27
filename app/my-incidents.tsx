@@ -1,4 +1,5 @@
 import {
+  getIncidents,
   getMyAssignedIncidents,
   getMyReportedIncidents,
 } from "@/src/api/incidents";
@@ -283,38 +284,40 @@ const MyIncidentsScreen = () => {
       setError("");
     }
 
-    const fetchFn =
-      activeTab === "assigned"
-        ? getMyAssignedIncidents
-        : getMyReportedIncidents;
-    const response = await fetchFn(page, 20);
+    if (!currentUser?.id) {
+      setError(t("myIncidents.fetchFailed"));
+      setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
+      isLoadingMore.current = false;
+      return;
+    }
+
+    let response;
+    if (activeTab === "assigned") {
+      response = await getIncidents({
+        page,
+        limit: 20,
+        record_type: ticketType,
+        assignee_id: currentUser.id,
+      });
+    } else {
+      response = await getIncidents({
+        page,
+        limit: 20,
+        record_type: ticketType,
+        reporter_id: currentUser.id,
+      });
+    }
 
     if (response.success) {
-      // Filter by selected ticket type
-      const prefixMap = {
-        incident: "INC",
-        request: "REQ",
-        complaint: "COMP",
-        query: "QUERY",
-      };
-      const prefix = prefixMap[ticketType];
-      const filteredData = (response.data || []).filter((item: any) => {
-        const itemNumber = item.incident_number || item.number || "";
-        return (
-          itemNumber.startsWith(prefix) || itemNumber.startsWith(`${prefix}-`)
-        );
-      });
-
+      const data = response.data || [];
       if (append) {
-        setIncidents((prev) => [...prev, ...filteredData]);
+        setIncidents((prev) => [...prev, ...data]);
       } else {
-        setIncidents(filteredData);
+        setIncidents(data);
       }
-      setPagination({
-        ...response.pagination,
-        total_items: filteredData.length,
-        total_pages: Math.ceil(filteredData.length / 20),
-      });
+      setPagination(response.pagination);
     } else {
       setError(response.error || t("myIncidents.fetchFailed"));
       if (!append) {
@@ -346,8 +349,11 @@ const MyIncidentsScreen = () => {
   };
 
   useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
     fetchIncidents(1, false);
-  }, [activeTab, ticketType]);
+  }, [activeTab, ticketType, currentUser]);
 
   const renderFooter = () => {
     if (!loadingMore) return null;
