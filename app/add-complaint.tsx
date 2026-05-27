@@ -1,12 +1,12 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createComplaint, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocations, getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { CustomAlert } from '@/src/components/CustomAlert';
-import { TreeNode } from '@/src/components/TreeSelect';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -265,7 +265,7 @@ const AddComplaintScreen = () => {
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
         getClassificationsTree('complaint'),
-        getLocations(),
+        getLocationsTree(),
         getWorkflows(true, 'complaint'),
         getUsers(),
         getDepartments(),
@@ -330,17 +330,65 @@ const AddComplaintScreen = () => {
       } else {
         setClassifications([]);
       }
-      if (locRes.success && locRes.data) {
-        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+      //location
+      if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
+        // Normalize classification tree data
+        const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeLocations(node.children) : undefined,
+          }));
+        };
+        let normalizedLocations = normalizeLocations(locRes.data);
 
-        // Filter by user's assigned locations (unless super admin)
+        // Filter by user's assigned classifications (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
-          const userLocationIds = new Set(user.locations.map(l => l.id));
-          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
+          const userLocationIds = new Set(user.locations.map(c => c.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
+        }
+        if (normalizedLocations.length) {
+          setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
         }
 
-        setLocations(locationsList);
+        setLocations(normalizedLocations);
+      } else {
+        setLocations([]);
       }
+      //
       if (workflowRes.success && workflowRes.data) {
         setAllWorkflows(workflowRes.data);
       }
@@ -409,6 +457,7 @@ const AddComplaintScreen = () => {
   const requiredFields = matchedWorkflow?.required_fields || [];
 
   const isFieldRequired = (fieldName: string): boolean => {
+    console.log(matchedWorkflow?.name)
     return requiredFields.includes(fieldName);
   };
 
@@ -645,7 +694,7 @@ const AddComplaintScreen = () => {
     }
 
     const response = await createComplaint(complaintData);
-    console.log('Complaint created:', classifications);
+    console.log('Complaint created:', response.error);
     if (response.success) {
       // Upload audio files if any
       if (audioFiles.length > 0) {
@@ -753,18 +802,40 @@ const AddComplaintScreen = () => {
             {isFieldRequired('location_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  {t('addComplaint.location')} <Text style={styles.required}>*</Text>
+                  {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
-                  label={t('addComplaint.selectLocation')}
+                <TreeSelect
+                  label={t('addIncident.selectLocation')}
                   value={selectedLocation?.name || ''}
-                  options={locations}
-                  onSelect={setSelectedLocation}
+                  data={locations}
+                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectLocation')}
+                  iconType="location"
                 />
               </>
             )}
+            {
+              isFieldRequired('classification_id') &&
+              (<>
+                <Text style={styles.sectionTitle}>
+                  {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                </Text>
+                <TreeSelect
+                  label={t('addIncident.selectClassification')}
+                  value={selectedClassification?.name || ''}
+                  data={classifications}
+                  onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                  required={true}
+                  error={errors.classification_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectClassification')}
+                  iconType="classification"
+                />
+              </>)
+            }
 
             {/* Source field - always mobile for mobile app, non-editable */}
             <Text style={styles.sectionTitle}>

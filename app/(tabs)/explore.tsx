@@ -79,6 +79,10 @@ const DashboardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [incidentTotal, setIncidentTotal] = useState(0);
+  const [requestTotal, setTotalRequest] = useState(0);
+  const [complaintTotal, setTotalComplaint] = useState(0);
+  const [queryTotal, setTotalQuery] = useState(0);
 
   // Animation values
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -107,15 +111,19 @@ const DashboardScreen = () => {
             getQueryStats(),
           ]);
         if (incidentRes.success) {
+          setIncidentTotal(incidentRes.data.total)
           setIncidentStats(incidentRes.data.workflow_stats?.[0] || null)
         };
         if (requestRes.success) {
+          setTotalRequest(requestRes.data.total)
           setRequestStats(requestRes.data.workflow_stats?.[0] || null)
         };
         if (complaintRes.success) {
+          setTotalComplaint(complaintRes.data.total)
           setComplaintStats(complaintRes.data.workflow_stats?.[0] || null)
         };
         if (queryRes.success) {
+          setTotalQuery(queryRes.data.total)
           setQueryStats(queryRes.data.workflow_stats?.[0] || null)
         };
 
@@ -246,7 +254,6 @@ const DashboardScreen = () => {
     };
 
     const { icon, label, colors } = config[type];
-
     return (
       <TouchableOpacity
         style={[styles.summaryCard, { backgroundColor: colors.bg }]}
@@ -492,15 +499,15 @@ const DashboardScreen = () => {
               },
             ]}
           >
-            {renderSummaryCard("incident", incidentStats, canViewAllIncidents(), "/(tabs)/incident")}
-            {renderSummaryCard("request", requestStats, canViewAllRequests(), "/(tabs)/request")}
+            {renderSummaryCard("incident", { total: incidentTotal }, canViewAllIncidents(), "/(tabs)/incident")}
+            {renderSummaryCard("request", { total: requestTotal }, canViewAllRequests(), "/(tabs)/request")}
             {renderSummaryCard(
               "complaint",
-              complaintStats,
+              { total: complaintTotal },
               canViewAllComplaints(),
               "/(tabs)/complaint",
             )}
-            {renderSummaryCard("query", queryStats, canViewAllQueries(), "/(tabs)/query")}
+            {renderSummaryCard("query", { total: queryTotal }, canViewAllQueries(), "/(tabs)/query")}
           </Animated.View>
 
           {/* My Tickets and Status Sections */}
