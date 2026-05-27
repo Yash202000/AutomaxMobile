@@ -53,6 +53,7 @@ const LoginScreen = () => {
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [otpChannel, setOtpChannel] = useState<"sms" | "whatsapp">("sms");
   const version = Constants.expoConfig?.version;
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -105,6 +106,20 @@ const LoginScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setIsKeyboardActive(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setIsKeyboardActive(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
   }, []);
 
   const handleLanguageChange = async (langCode: string) => {
@@ -196,7 +211,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -286,7 +301,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -418,9 +433,9 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.keyboardView}
-      keyboardVerticalOffset={Platform.OS === "android" ? -500 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <LinearGradient
         colors={["#F8FFFE", "#FFFFFF"]}
@@ -466,24 +481,27 @@ const LoginScreen = () => {
             </Animated.View>
 
             {/* Welcome Text */}
-            <View style={styles.welcomeContainer}>
-              <Text
-                style={[
-                  styles.welcomeText,
-                  { textAlign: currentLang === "ar" ? "right" : "left" },
-                ]}
-              >
-                {t("auth.welcomeBack")}
-              </Text>
-              <Text
-                style={[
-                  styles.subtitleText,
-                  { textAlign: currentLang === "ar" ? "right" : "left" },
-                ]}
-              >
-                {t("auth.loginSubtitle")}
-              </Text>
-            </View>
+            {
+              !isKeyboardActive &&
+              <View style={styles.welcomeContainer}>
+                <Text
+                  style={[
+                    styles.welcomeText,
+                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                  ]}
+                >
+                  {t("auth.welcomeBack")}
+                </Text>
+                <Text
+                  style={[
+                    styles.subtitleText,
+                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                  ]}
+                >
+                  {t("auth.loginSubtitle")}
+                </Text>
+              </View>
+            }
 
             {/* Login Type Tabs */}
             <View style={styles.tabContainer}>
@@ -711,7 +729,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -920,7 +938,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -992,59 +1010,63 @@ const LoginScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+            {/* Keyboard Spacer */}
+            {isKeyboardActive && <View style={{ height: 100 }} />}
           </Animated.View>
         </ScrollView>
 
         {/* Footer — outside ScrollView so it's always visible */}
-        <View
-          style={[
-            styles.footer,
-            { paddingBottom: Math.max(20, insets.bottom + 10) },
-          ]}
-        >
-          <View style={styles.languageContainer}>
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                currentLang === "en" && styles.activeLanguage,
-              ]}
-              onPress={() => handleLanguageChange("en")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={
-                  currentLang === "en"
-                    ? styles.activeLanguageText
-                    : styles.languageText
-                }
+        {!isKeyboardActive && (
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(20, insets.bottom + 10) },
+            ]}
+          >
+            <View style={styles.languageContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.languageButton,
+                  currentLang === "en" && styles.activeLanguage,
+                ]}
+                onPress={() => handleLanguageChange("en")}
+                activeOpacity={0.7}
               >
-                EN
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.languageDivider} />
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                currentLang === "ar" && styles.activeLanguage,
-              ]}
-              onPress={() => handleLanguageChange("ar")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={
-                  currentLang === "ar"
-                    ? styles.activeLanguageText
-                    : styles.languageText
-                }
+                <Text
+                  style={
+                    currentLang === "en"
+                      ? styles.activeLanguageText
+                      : styles.languageText
+                  }
+                >
+                  EN
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.languageDivider} />
+              <TouchableOpacity
+                style={[
+                  styles.languageButton,
+                  currentLang === "ar" && styles.activeLanguage,
+                ]}
+                onPress={() => handleLanguageChange("ar")}
+                activeOpacity={0.7}
               >
-                AR
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={
+                    currentLang === "ar"
+                      ? styles.activeLanguageText
+                      : styles.languageText
+                  }
+                >
+                  AR
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.versionText}>
+              {t("auth.version", { version })}
+            </Text>
           </View>
-          <Text style={styles.versionText}>
-            {t("auth.version", { version })}
-          </Text>
-        </View>
+        )}
       </LinearGradient>
     </KeyboardAvoidingView>
   );
