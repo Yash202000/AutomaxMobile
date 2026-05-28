@@ -623,7 +623,7 @@ const AddComplaintScreen = () => {
     if (selectedClassification) complaintData.classification_id = selectedClassification.id;
     if (selectedLocation) complaintData.location_id = selectedLocation.id;
     if (selectedSource) complaintData.source = selectedSource.id;
-    if (selectedChannel) complaintData.channel = selectedChannel.id;
+    complaintData.channel = selectedChannel ? selectedChannel.id : "mobile";
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
     if (selectedSourceIncident) complaintData.source_incident_id = selectedSourceIncident.id;
