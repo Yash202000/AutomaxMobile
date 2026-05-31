@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COLORS = {
   primary: "#1A237E",
@@ -308,6 +308,7 @@ const IncidentsScreen = () => {
   // Multi-selection states & operations
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const insets = useSafeAreaInsets();
 
   const toggleSelectIncident = (id: string) => {
     setSelectedIds((prev) => {
@@ -345,7 +346,6 @@ const IncidentsScreen = () => {
     if (selectedIds.size === 0) return;
 
     const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
-
     let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
     selectedIncidents.forEach((inc, index) => {
       const priorityLookup = inc.lookup_values?.find(
@@ -363,8 +363,8 @@ const IncidentsScreen = () => {
       shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
       shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
       shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
-      shareText += `   ${t("incidents.reporter")} : ${inc.reporter_name || t("common.na")}\n`;
-      shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter_phone || t("common.na")}\n`;
+      shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
+      shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
       shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
       shareText += "------------------------------------------\n\n";
     });
@@ -882,7 +882,7 @@ const IncidentsScreen = () => {
       )}
 
       {selectionMode && (
-        <View style={styles.floatingActionBar}>
+        <View style={[styles.floatingActionBar, { bottom: insets.bottom + 70 }]}>
           <View style={styles.actionBarLeft}>
             <Text style={styles.actionBarCountText}>
               {selectedIds.size} {t("filter.selected")}
@@ -1151,7 +1151,6 @@ const styles = StyleSheet.create({
   },
   floatingActionBar: {
     position: "absolute",
-    bottom: 100,
     left: 16,
     right: 16,
     backgroundColor: "rgba(26, 35, 126, 0.95)",
