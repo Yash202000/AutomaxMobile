@@ -41,7 +41,7 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [citizenName, setCitizenName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [loginType, setLoginType] = useState<"employee" | "citizen">("citizen");
+  const [loginType, setLoginType] = useState<"employee" | "citizen">("employee");
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
