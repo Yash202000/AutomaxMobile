@@ -386,7 +386,7 @@ const RequestFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
+        {/* {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
           filters.severities.length === 0 ? t('filter.allLabel', 'All') : (filters.severities.length === 1 ? t(`severities.${severities.find(s => s.value === filters.severities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.severities.length })),
           false,
           [{ value: null, label: t('filter.allSeverities', 'All Severities') }, ...severities],
@@ -400,7 +400,7 @@ const RequestFilterScreen = () => {
               {(s.value ? filters.severities.includes(s.value) : filters.severities.length === 0) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
             </TouchableOpacity>
           )
-        )}
+        )} */}
 
         <View style={styles.filterSection}>
           <View style={styles.filterHeader}>

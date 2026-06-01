@@ -388,6 +388,7 @@
       "field": "Field",
       "manual": "Manual Entry",
       "viusional": "Viusional",
+      "chatbot": "Chat bot",
       "other": "Other"
     },
     "channels": {
@@ -401,6 +402,7 @@
       "inPerson": "In Person",
       "viusional": "Viusional",
       "visual": "Viusional",
+      "chatbot": "Chat bot",
       "other": "Other"
     }
   },
@@ -541,10 +543,16 @@
     "securityTitle": "Password security",
     "minLength": "Password minimum length",
     "requirements": "Password must contains",
-    "digitLowerSymbol": "Digit, Lowercase, Symbol",
+    "digitLowerSymbol": "Lowercase, Uppercase, and either a Number or Special Character",
     "updateButton": "UPDATE PASSWORD",
     "fillAllFields": "Please fill out all fields.",
-    "minLengthError": "New password must be at least 8 characters."
+    "minLengthError": "New password must be at least 8 characters.",
+    "reqLowercase": "At least one lowercase letter",
+    "reqUppercase": "At least one uppercase letter",
+    "reqNumber": "At least one number",
+    "reqSymbol": "At least one special character",
+    "reqNumberOrSymbol": "At least one number or special character",
+    "requirementsError": "Password does not meet the security requirements."
   },
   "filter": {
     "title": "Filter Incidents",

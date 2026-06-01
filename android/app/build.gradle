@@ -92,7 +92,7 @@ android {
             reset()
             enable = (findProperty('android.enableSeparateBuildPerCPUArchitecture') ?: 'false').toBoolean()
             universalApk = false  // Only build split APKs, no fat universal APK
-            include "armeabi-v7a", "arm64-v8a"
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
     }
 

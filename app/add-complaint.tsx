@@ -76,6 +76,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -102,7 +103,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { paddingBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -380,9 +381,9 @@ const AddComplaintScreen = () => {
 
           normalizedLocations = filterByUserAccess(normalizedLocations);
         }
-        if (normalizedLocations.length) {
-          setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
-        }
+        // if (normalizedLocations.length) {
+        //   setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
+        // }
 
         setLocations(normalizedLocations);
       } else {
