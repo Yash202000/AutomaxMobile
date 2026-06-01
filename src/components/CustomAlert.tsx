@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, Modal, Alert as NativeAlert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, Alert as NativeAlert, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 
 
 export interface AlertButton {
@@ -72,6 +72,11 @@ export const CustomAlertComponent = () => {
 
 export const CustomAlert = {
   alert: (title: string, message?: string, buttons?: AlertButton[]) => {
+    if (Platform.OS === 'ios') {
+      // Always use Native Alert on iOS to avoid React Native nested Modal freezing/hanging bugs
+      NativeAlert.alert(title, message, buttons as any);
+      return;
+    }
     if (setAlertStateGlobal) {
       setAlertStateGlobal({
         visible: true,
