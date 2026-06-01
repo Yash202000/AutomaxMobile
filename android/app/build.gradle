@@ -89,19 +89,19 @@ android {
     splits {
         abi {
             reset()
-            enable = (findProperty('android.enableSeparateBuildPerCPUArchitecture') ?: 'false').toBoolean()
+            enable = (findProperty('android.enableSeparateBuildPerCPUArchitecture') ?: 'true').toBoolean()
             universalApk = false  // Only build split APKs, no fat universal APK
             include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
     }
 
-    namespace 'com.automax.mobile'
+    namespace 'com.automax.vdcop'
     defaultConfig {
-        applicationId 'com.automax.mobile'
+        applicationId 'com.automax.vdcop'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0.0"
+        versionName "1.2.6"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

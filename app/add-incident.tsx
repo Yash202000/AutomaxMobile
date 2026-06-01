@@ -6,7 +6,6 @@ import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { CustomAlert } from '@/src/components/CustomAlert';
-import { CustomAlert } from '@/src/components/CustomAlert';
 import { DynamicLookupField } from '@/src/components/DynamicLookupField';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
@@ -38,7 +37,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
   View
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
@@ -1856,9 +1854,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     flex: 1,
-  },
-  placeholderText: {
-    color: '#999',
   },
   row: {
     flexDirection: 'row',
