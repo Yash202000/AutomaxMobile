@@ -84,7 +84,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         setUser(response.data);
         if (isAutoLogin) {
-          setRequiresBiometric(true);
+          const disableBiometrics =
+            process.env.EXPO_PUBLIC_DISABLE_BIOMETRICS === 'true' ||
+            process.env.EXPO_PUBLIC_DISABLE_BIOMETRIC_AUTH === 'true' ||
+            process.env.EXPO_PUBLIC_ENABLE_BIOMETRICS === 'false';
+          if (!disableBiometrics) {
+            setRequiresBiometric(true);
+          }
         }
       } else {
         // Token might be invalid, clear it
