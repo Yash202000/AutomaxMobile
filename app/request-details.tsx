@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
@@ -321,7 +322,7 @@ const RequestDetailsScreen = () => {
         {request.description && (
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
-            <Text style={styles.descriptionText}>{request.description}</Text>
+            <RenderWithIncidentMentions text={request.description} style={styles.descriptionText} />
           </View>
         )}
 
@@ -340,7 +341,7 @@ const RequestDetailsScreen = () => {
                     <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
                   </View>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
+                <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
               </View>
             ))
           ) : (
@@ -444,7 +445,7 @@ const RequestDetailsScreen = () => {
                     {item.comment && (
                       <View style={styles.transitionComment}>
                         <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                        <Text style={styles.transitionCommentText}>"{item.comment}"</Text>
+                        <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
                   </View>

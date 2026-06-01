@@ -2,7 +2,10 @@ import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
 import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
+import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { DynamicLookupField } from '@/src/components/DynamicLookupField';
+import { IncidentMentionTextarea } from '@/src/components/IncidentMentionTextarea';
 import { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
@@ -85,6 +88,7 @@ const UpdateStatusModal = () => {
   const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
 
   // Recursively filter department tree by type ('internal' | 'external')
   const filterDeptTree = (nodes: TreeNode[], type: string): TreeNode[] =>
@@ -115,6 +119,17 @@ const UpdateStatusModal = () => {
   useEffect(() => {
     locationDataRef.current = locationData; // Keep ref updated
   }, [locationData]);
+
+  // Fetch lookup categories on mount for field changes
+  useEffect(() => {
+    getLookupCategories()
+      .then((r) => {
+        if (r.success && Array.isArray(r.data)) {
+          setLookupCategories(r.data);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch lookup categories:', err));
+  }, []);
 
   // Helper function to check if a string is a Plus Code
   const isPlusCode = (str: string | null | undefined): boolean => {
@@ -1084,6 +1099,29 @@ const UpdateStatusModal = () => {
                             placeholderTextColor="#999" multiline value={fieldChangeValues['description'] || ''}
                             onChangeText={(t) => setFieldChangeValues(p => ({ ...p, description: t }))} />
                         )}
+                        {fc.field_name.startsWith('lookup:') && (() => {
+                          const code = fc.field_name.replace('lookup:', '');
+                          const category = lookupCategories.find(c => c.code === code);
+                          if (!category) return null;
+                          return (
+                            <DynamicLookupField
+                              category={category}
+                              value={fieldChangeValues[fc.field_name] || null}
+                              onChange={(catId, val) => {
+                                setFieldChangeValues(prev => ({
+                                  ...prev,
+                                  [fc.field_name]: val,
+                                }));
+                              }}
+                              required={fc.is_required}
+                              mentionFilters={{
+                                classification_ids: incident?.classification_id ? [incident.classification_id] : [],
+                                location_ids: incident?.location_id ? [incident.location_id] : [],
+                                currentIncident_ids: incidentId ? [incidentId] : [],
+                              }}
+                            />
+                          );
+                        })()}
                       </View>
                     ))}
                 </>
@@ -1155,27 +1193,33 @@ const UpdateStatusModal = () => {
                       {feedbackRating === 5 && t('incidents.ratingExcellent')}
                     </Text>
                   )}
-                  <TextInput
+                  <IncidentMentionTextarea
                     style={[styles.commentInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                     placeholder={t('incidents.feedbackCommentPlaceholder', 'Add feedback comment (optional)...')}
-                    placeholderTextColor="#999"
-                    multiline
                     value={feedbackComment}
                     onChangeText={setFeedbackComment}
+                    filters={{
+                      classification_ids: incident?.classification_id ? [incident.classification_id] : [],
+                      location_ids: incident?.location_id ? [incident.location_id] : [],
+                      currentIncident_ids: incidentId ? [incidentId] : [],
+                    }}
                   />
                 </>
               )}
 
               {/* ── COMMENT STEP ── */}
               {currentStepKey === 'comment' && (
-                <TextInput
+                <IncidentMentionTextarea
                   style={[styles.commentInput, { minHeight: 120, textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
                   placeholder={transitionRequiresComment ? t('incidents.addCommentPlaceholder') + ' *' : t('incidents.addCommentPlaceholder')}
-                  placeholderTextColor="#999"
-                  multiline
-                  autoFocus
                   value={comment}
                   onChangeText={setComment}
+                  filters={{
+                    classification_ids: incident?.classification_id ? [incident.classification_id] : [],
+                    location_ids: incident?.location_id ? [incident.location_id] : [],
+                    currentIncident_ids: incidentId ? [incidentId] : [],
+                  }}
+                  autoFocus
                 />
               )}
             </View>
