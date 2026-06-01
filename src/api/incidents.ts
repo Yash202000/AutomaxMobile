@@ -147,7 +147,7 @@ export const addComment = async (incidentId: string, content: string, isInternal
 
 export const getIncidentStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'incident' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'incident' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -295,7 +295,7 @@ export const getRequests = async (params: Record<string, any> = {}): Promise<Inc
 
 export const getRequestStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'request' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'request' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -332,7 +332,7 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
       record_type: 'complaint',
       ...params,
     };
-
+    console.log(queryParams);
     const response = await apiClient.get('/incidents', { params: queryParams });
     if (response.data && response.data.success) {
       return {
@@ -354,7 +354,7 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
 
 export const getComplaintStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'complaint' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'complaint' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -459,7 +459,7 @@ export const getQueries = async (params: Record<string, any> = {}): Promise<Inci
 
 export const getQueryStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats', { params: { ...params, record_type: 'query' } });
+    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'query' } });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
@@ -481,7 +481,7 @@ export const createQuery = async (queryData: any) => {
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.details
+      details: errorData?.errors
     };
   }
 };

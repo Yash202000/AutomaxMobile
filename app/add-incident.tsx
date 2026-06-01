@@ -6,16 +6,17 @@ import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { DynamicLookupField } from '@/src/components/DynamicLookupField';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
+import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { compressImage } from '@/src/utils/imageCompression';
-import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { generateWatermarkedFilename, WatermarkData } from '@/src/utils/watermarkUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -37,6 +38,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View
   View
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
@@ -443,8 +445,8 @@ const AddIncidentScreen = () => {
       // Check if critical workflow data failed to load
       if (!workflowRes.success || !workflowRes.data || workflowRes.data.length === 0) {
         CustomAlert.alert(
-          'Warning',
-          'Failed to load workflows. You may not be able to create incidents until workflows are available.',
+          t('common.required'),
+          t('common.workflowLoadWarning'),
           [
             { text: t('common.retry'), onPress: () => fetchAllData() },
             { text: t('common.back'), onPress: () => router.back() }
@@ -462,8 +464,8 @@ const AddIncidentScreen = () => {
       }).catch(err => console.error('Failed to log error:', err));
 
       CustomAlert.alert(
-        'Error',
-        'Failed to load required data. Please check your connection and try again.',
+        t('common.error'),
+        t('common.dataLoadError'),
         [
           { text: 'Retry', onPress: () => fetchAllData() },
           { text: 'Go Back', onPress: () => router.back() }
@@ -622,7 +624,7 @@ const AddIncidentScreen = () => {
       if (field === 'geolocation') {
         // Check geolocation - locationData must be set
         if (!locationData) {
-          newErrors.geolocation = `Geolocation ${t('common.isRequired')}`;
+          newErrors.geolocation = `${fieldLabels.geolocation} ${t('common.isRequired')}`;
         }
         continue;
       }
@@ -729,8 +731,8 @@ const AddIncidentScreen = () => {
         const finalLocation = locationDataRef.current;
         if (finalLocation?.latitude && !finalLocation?.address && !finalLocation?.city) {
           CustomAlert.alert(
-            'Location Address Unavailable',
-            'We have your GPS coordinates but couldn\'t get the street address. Continue with coordinates only?',
+            t('common.locationAddressUnavailableTitle'),
+            t('common.locationAddressUnavailableDesc'),
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Continue', onPress: () => proceedWithCamera() }
@@ -796,6 +798,10 @@ const AddIncidentScreen = () => {
           city: gpsLocation?.city,
           state: gpsLocation?.state,
           country: gpsLocation?.country,
+          street: gpsLocation?.street,
+          district: gpsLocation?.district,
+          subregion: gpsLocation?.subregion,
+          street_number: gpsLocation?.street_number,
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           timestamp: new Date(),
           appName: 'Automax',
@@ -833,7 +839,7 @@ const AddIncidentScreen = () => {
         action: 'takePhoto',
         context: 'Failed to take photo with camera',
       }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
     }
   };
 
@@ -964,9 +970,9 @@ const AddIncidentScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
@@ -977,7 +983,7 @@ const AddIncidentScreen = () => {
         action: 'pickFromGallery',
         context: 'Failed to pick image from gallery',
       }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
     }
   };
 
@@ -1019,9 +1025,9 @@ const AddIncidentScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
@@ -1032,7 +1038,7 @@ const AddIncidentScreen = () => {
         action: 'pickDocument',
         context: 'Failed to pick document',
       }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
     }
   };
 
@@ -1101,7 +1107,7 @@ const AddIncidentScreen = () => {
       // Double-check matchedWorkflow exists with valid id
       if (!matchedWorkflow || !matchedWorkflow.id) {
         setSubmitting(false);
-        CustomAlert.alert('Error', 'No workflow matched. Please select classification, location, or source.');
+        CustomAlert.alert(t('common.error'), t('common.workflowMatchedError'));
         return;
       }
 
@@ -1110,7 +1116,7 @@ const AddIncidentScreen = () => {
       const severityNum = parseInt(selectedSeverity.id);
       if (isNaN(priorityNum) || isNaN(severityNum)) {
         setSubmitting(false);
-        CustomAlert.alert('Error', 'Invalid priority or severity selected.');
+        CustomAlert.alert(t('common.error'), t('common.invalidPrioritySeverity'));
         return;
       }
 
@@ -1228,7 +1234,7 @@ const AddIncidentScreen = () => {
       } else {
         setSubmitting(false);
         const errorMsg = response.error || 'Unknown error occurred';
-        CustomAlert.alert('Error', `Failed to create incident: ${errorMsg}`);
+        CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${errorMsg}`);
       }
     } catch (error) {
       console.error('Unexpected error during incident creation:', error);
@@ -1250,8 +1256,8 @@ const AddIncidentScreen = () => {
 
       setSubmitting(false);
       CustomAlert.alert(
-        'Error',
-        `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+        t('common.error'),
+        t('common.unexpectedError', { error: error instanceof Error ? error.message : 'Unknown error' })
       );
     }
   };
@@ -1666,6 +1672,28 @@ const AddIncidentScreen = () => {
             imageIndex={imageViewerIndex}
             visible={imageViewerVisible}
             onRequestClose={() => setImageViewerVisible(false)}
+            HeaderComponent={() => (
+              <View style={{
+                paddingTop: Platform.OS === 'ios' ? 50 : 30,
+                paddingHorizontal: 20,
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+              }}>
+                <TouchableOpacity
+                  onPress={() => setImageViewerVisible(false)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons name="close" size={24} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            )}
           />
         </>
       )}

@@ -1,11 +1,19 @@
 {
   "common": {
+    "share": "Share",
     "validationError": "Validation Error",
+    "recordingStartError": "Failed to start recording",
+    "seconds": "second(s) before trying again..",
     "icons": {
       "chevronBack": "chevron-back",
-      "chevronForward": "chevron-forward"
+      "chevronForward": "chevron-forward",
+      "arrowForward": "arrow-forward",
+      "arrowBack": "arrow-back"
     },
     "gettingAddress": "Getting address details...",
+    "locationLabel": "Location: {{address}}",
+    "automax": "Automax",
+    "ims": "Incident Management System",
     "chooseTransition": "Choose the action you want to perform",
     "isRequired": "is required",
     "allSources": "All Sources",
@@ -93,7 +101,28 @@
     "pinchToZoom": "Pinch to zoom",
     "aiAssistant": "AI Assistant",
     "addComment": "Add a comment...",
-    "title": "Title"
+    "title": "Title",
+    "locationPermissionNeeded": "Location permission is required to get your current location.",
+    "failedToGetLocation": "Failed to get current location. Please check your GPS is enabled.",
+    "enterLocationToSearch": "Please enter a location to search",
+    "noResults": "No Results",
+    "noLocationFound": "No location found for your search query. Try different keywords.",
+    "searchFailed": "Search Failed",
+    "failedToStopRecording": "Failed to stop recording",
+    "workflowMatchedError": "No workflow matched. Please select classification, location, or source.",
+    "invalidPrioritySeverity": "Invalid priority or severity selected.",
+    "workflowLoadWarning": "Failed to load workflows. You may not be able to create incidents until workflows are available.",
+    "dataLoadError": "Failed to load required data. Please check your connection and try again.",
+    "locationAddressUnavailableDesc": "We have your GPS coordinates but couldn't get the street address. Continue with coordinates only?",
+    "locationAddressUnavailableTitle": "Location Address Unavailable",
+    "filesTooLargeTitle": "Files Too Large",
+    "filesTooLargeDesc": "The following files exceed {{size}}MB limit and were skipped:\n\n{{files}}",
+    "unexpectedError": "An unexpected error occurred: {{error}}. Please try again.",
+    "downloading": "Downloading...",
+    "authRequired": "Authentication required",
+    "sharingNotAvailable": "Sharing is not available on this device",
+    "downloadError": "Download Error",
+    "failedToDownload": "Failed to download attachment"
   },
   "map": {
     "incidents": "Incidents Map",
@@ -112,6 +141,7 @@
   },
   "auth": {
     "login": "Login",
+    "version": "Version {{version}}",
     "sendOTP": "Send OTP",
     "verifyOTP": "Verify OTP",
     "logout": "Logout",
@@ -123,7 +153,14 @@
     "loginEmail": "Login using Username/Email",
     "email": "Email Address",
     "password": "Password",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "nameRequired": "Please enter your name",
     "phone": "Phone Number",
+    "mobileNumber": "Mobile Number",
+    "mobilePlaceholder": "+1234567890",
+    "mobileRequired": "Please enter your mobile number",
+    "invalidMobileNumber": "Please enter a valid mobile number",
     "forgotPassword": "Forgot Password?",
     "otpInstructions": "Please enter the OTP which was sent to your registered phone or email",
     "otpChannel": "Select OTP Channel",
@@ -351,6 +388,7 @@
       "field": "Field",
       "manual": "Manual Entry",
       "viusional": "Viusional",
+      "chatbot": "Chat bot",
       "other": "Other"
     },
     "channels": {
@@ -364,6 +402,7 @@
       "inPerson": "In Person",
       "viusional": "Viusional",
       "visual": "Viusional",
+      "chatbot": "Chat bot",
       "other": "Other"
     }
   },
@@ -504,10 +543,16 @@
     "securityTitle": "Password security",
     "minLength": "Password minimum length",
     "requirements": "Password must contains",
-    "digitLowerSymbol": "Digit, Lowercase, Symbol",
+    "digitLowerSymbol": "Lowercase, Uppercase, and either a Number or Special Character",
     "updateButton": "UPDATE PASSWORD",
     "fillAllFields": "Please fill out all fields.",
-    "minLengthError": "New password must be at least 8 characters."
+    "minLengthError": "New password must be at least 8 characters.",
+    "reqLowercase": "At least one lowercase letter",
+    "reqUppercase": "At least one uppercase letter",
+    "reqNumber": "At least one number",
+    "reqSymbol": "At least one special character",
+    "reqNumberOrSymbol": "At least one number or special character",
+    "requirementsError": "Password does not meet the security requirements."
   },
   "filter": {
     "title": "Filter Incidents",
@@ -553,8 +598,6 @@
     "source": "Source",
     "allSources": "All Sources",
     "allChannels": "All Channels",
-    "allPriorities": "All Priorities",
-    "allSeverities": "All Severities",
     "selectDate": "Select Date",
     "allLabel": "All",
     "selectedLabel": "Selected",
@@ -583,6 +626,7 @@
     "requiredFields": "Required Fields",
     "optional": "Optional",
     "reporterName": "Reporter Name",
+    "reporterPhone": "Reporter Phone",
     "reporterNamePlaceholder": "Reporter's name",
     "reporterEmail": "Reporter Email",
     "reporterEmailPlaceholder": "Reporter's email",
@@ -713,7 +757,8 @@
     "stackTrace": "Stack Trace:",
     "componentStack": "Component Stack:",
     "reloadApp": "Reload App",
-    "audioPlayFailed": "Failed to play audio"
+    "audioPlayFailed": "Failed to play audio",
+    "minCharacters": "{{field}} must be at least {{min}} characters"
   },
   "notifications": {
     "title": "Notifications",
@@ -741,6 +786,7 @@
     "city": "City:",
     "state": "State:",
     "country": "Country:",
-    "postalCode": "Postal Code:"
+    "postalCode": "Postal Code:",
+    "noResults": "No results found"
   }
 }

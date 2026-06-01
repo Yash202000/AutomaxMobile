@@ -2,6 +2,8 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
 import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { CustomAlert } from '@/src/components/CustomAlert';
+import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { crashLogger } from '@/src/utils/crashLogger';
@@ -13,10 +15,9 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 const COLORS = {
@@ -189,6 +190,7 @@ const IncidentDetailsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { classTree, deptTree, locTree, getPath } = useHierarchy();
   const [incident, setIncident] = useState<IncidentData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
@@ -423,8 +425,8 @@ const IncidentDetailsScreen = () => {
 
           <View style={styles.infoContainer}>
             {/* Basic Info */}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={incident.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={incident.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, incident.classification?.id) || incident.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, incident.department?.id) || incident.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
               value={incident.assignees?.length
                 ? incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
@@ -435,7 +437,7 @@ const IncidentDetailsScreen = () => {
               iconColor="#EC4899"
             />
             {incident.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={incident.location.name} iconColor={COLORS.error} />
+              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, incident.location.id) || incident.location.name} iconColor={COLORS.error} />
             )}
             {incident.source && (
               <InfoRow
@@ -826,7 +828,7 @@ const IncidentDetailsScreen = () => {
                       <View style={styles.fromBadge}>
                         <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
                       </View>
-                      <Ionicons name="arrow-forward" size={14} color={COLORS.text.muted} />
+                      <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
                         <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
                       </View>

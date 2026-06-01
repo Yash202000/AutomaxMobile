@@ -3,15 +3,15 @@ import { getDepartments } from '@/src/api/departments';
 import { getRequestStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface FilterState {
@@ -134,7 +134,7 @@ const RequestFilterScreen = () => {
     setLoadingStates(true);
     const response = await getRequestStats();
     if (response.success) {
-      setStates(response.data.by_state_details || []);
+      setStates(response.data.workflow_stats[0].by_state_details || []);
     }
     setLoadingStates(false);
   };
@@ -334,7 +334,7 @@ const RequestFilterScreen = () => {
           <Text style={styles.filterLabel}>{label}</Text>
         </View>
         <View style={styles.filterHeaderRight}>
-          <Text style={[styles.filterValue, value !== 'All' && styles.filterValueActive]}>{value}</Text>
+          <Text style={[styles.filterValue, value !== t('filter.allLabel') && styles.filterValueActive]}>{value}</Text>
           <Ionicons name={expandedSection === key ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
         </View>
       </TouchableOpacity>
@@ -386,7 +386,7 @@ const RequestFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
+        {/* {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
           filters.severities.length === 0 ? t('filter.allLabel', 'All') : (filters.severities.length === 1 ? t(`severities.${severities.find(s => s.value === filters.severities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.severities.length })),
           false,
           [{ value: null, label: t('filter.allSeverities', 'All Severities') }, ...severities],
@@ -400,7 +400,7 @@ const RequestFilterScreen = () => {
               {(s.value ? filters.severities.includes(s.value) : filters.severities.length === 0) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
             </TouchableOpacity>
           )
-        )}
+        )} */}
 
         <View style={styles.filterSection}>
           <View style={styles.filterHeader}>

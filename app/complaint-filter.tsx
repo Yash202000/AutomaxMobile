@@ -1,16 +1,17 @@
-import { getClassifications } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
+import { getClassificationsTree } from '@/src/api/classifications';
+import { getDepartmentsTree } from '@/src/api/departments';
 import { getComplaintStats } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
+import { CustomAlert } from '@/src/components/CustomAlert';
+import TreeSelect from '@/src/components/TreeSelect';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface FilterState {
@@ -56,6 +57,7 @@ const channels = [
   { value: 'social_media' },
   { value: 'in_person' },
   { value: 'viusional' },
+  { value: 'chatbot' },
   { value: 'other' },
 ];
 
@@ -75,10 +77,10 @@ const ComplaintFilterScreen = () => {
     assignee_name?: string;
     department_id?: string;
     department_name?: string;
-    classification_id?: string;
-    classification_name?: string;
-    location_id?: string;
-    location_name?: string;
+    classification_ids?: string;
+    classification_names?: string;
+    location_ids?: string;
+    location_names?: string;
     channel?: string;
     start_date?: string;
     end_date?: string;
@@ -103,10 +105,10 @@ const ComplaintFilterScreen = () => {
     assignee_names: params.assignee_name ? params.assignee_name.split(',') : [],
     department_ids: params.department_id ? params.department_id.split(',') : [],
     department_names: params.department_name ? params.department_name.split(',') : [],
-    classification_ids: params.classification_id ? params.classification_id.split(',') : [],
-    classification_names: params.classification_name ? params.classification_name.split(',') : [],
-    location_ids: params.location_id ? params.location_id.split(',') : [],
-    location_names: params.location_name ? params.location_name.split(',') : [],
+    classification_ids: params.classification_ids ? params.classification_ids.split(',') : [],
+    classification_names: params.classification_names ? params.classification_names.split(',') : [],
+    location_ids: params.location_ids ? params.location_ids.split(',') : [],
+    location_names: params.location_names ? params.location_names.split(',') : [],
     channels: params.channel ? params.channel.split(',') : [],
     start_date: params.start_date || null,
     end_date: params.end_date || null,
@@ -126,13 +128,15 @@ const ComplaintFilterScreen = () => {
   const fetchStates = async () => {
     setLoadingStates(true);
     const response = await getComplaintStats();
-    if (response.success) setStates(response.data.by_state_details || []);
+    if (response.success) {
+      setStates(response.data.workflow_stats[0].by_state_details || [])
+    };
     setLoadingStates(false);
   };
 
   const fetchDepartments = async () => {
     setLoadingDepartments(true);
-    const response = await getDepartments();
+    const response = await getDepartmentsTree();
     if (response.success) setDepartments(response.data || []);
     setLoadingDepartments(false);
   };
@@ -146,14 +150,14 @@ const ComplaintFilterScreen = () => {
 
   const fetchClassifications = async () => {
     setLoadingClassifications(true);
-    const response = await getClassifications();
+    const response = await getClassificationsTree();
     if (response.success) setClassifications(response.data || []);
     setLoadingClassifications(false);
   };
 
   const fetchLocations = async () => {
     setLoadingLocations(true);
-    const response = await getLocations();
+    const response = await getLocationsTree();
     if (response.success) setLocations(response.data || []);
     setLoadingLocations(false);
   };
@@ -234,38 +238,28 @@ const ComplaintFilterScreen = () => {
     }
   };
 
-  const selectClassification = (item: any) => {
-    const isSelected = filters.classification_ids.includes(item.id);
-    if (isSelected) {
-      setFilters({
-        ...filters,
-        classification_ids: filters.classification_ids.filter(id => id !== item.id),
-        classification_names: filters.classification_names.filter(name => name !== item.name),
-      });
-    } else {
-      setFilters({
-        ...filters,
-        classification_ids: [...filters.classification_ids, item.id],
-        classification_names: [...filters.classification_names, item.name],
-      });
-    }
+  const handleClassificationMultiSelect = (nodes: any[]) => {
+    setFilters({
+      ...filters,
+      classification_ids: nodes.map(n => n.id),
+      classification_names: nodes.map(n => n.name),
+    });
   };
 
-  const selectLocation = (item: any) => {
-    const isSelected = filters.location_ids.includes(item.id);
-    if (isSelected) {
-      setFilters({
-        ...filters,
-        location_ids: filters.location_ids.filter(id => id !== item.id),
-        location_names: filters.location_names.filter(name => name !== item.name),
-      });
-    } else {
-      setFilters({
-        ...filters,
-        location_ids: [...filters.location_ids, item.id],
-        location_names: [...filters.location_names, item.name],
-      });
-    }
+  const handleLocationMultiSelect = (nodes: any[]) => {
+    setFilters({
+      ...filters,
+      location_ids: nodes.map(n => n.id),
+      location_names: nodes.map(n => n.name),
+    });
+  };
+
+  const handleDepartmentMultiSelect = (nodes: any[]) => {
+    setFilters({
+      ...filters,
+      department_ids: nodes.map(n => n.id),
+      department_names: nodes.map(n => n.name),
+    });
   };
 
   const selectChannel = (channel: string) => {
@@ -294,9 +288,18 @@ const ComplaintFilterScreen = () => {
     if (filters.priorities.length > 0) queryParams.priority = filters.priorities.join(',');
     if (filters.severities.length > 0) queryParams.severity = filters.severities.join(',');
     if (filters.assignee_ids.length > 0) { queryParams.assignee_id = filters.assignee_ids.join(','); queryParams.assignee_name = filters.assignee_names.join(','); }
-    if (filters.department_ids.length > 0) { queryParams.department_id = filters.department_ids.join(','); queryParams.department_name = filters.department_names.join(','); }
-    if (filters.classification_ids.length > 0) { queryParams.classification_id = filters.classification_ids.join(','); queryParams.classification_name = filters.classification_names.join(','); }
-    if (filters.location_ids.length > 0) { queryParams.location_id = filters.location_ids.join(','); queryParams.location_name = filters.location_names.join(','); }
+    if (filters.department_ids.length > 0) {
+      queryParams.department_id = filters.department_ids.join(',');
+      queryParams.department_name = filters.department_names.join(',');
+    }
+    if (filters.classification_ids.length > 0) {
+      queryParams.classification_ids = filters.classification_ids.join(',');
+      queryParams.classification_names = filters.classification_names.join(',');
+    }
+    if (filters.location_ids.length > 0) {
+      queryParams.location_ids = filters.location_ids.join(',');
+      queryParams.location_names = filters.location_names.join(',');
+    }
     if (filters.channels.length > 0) queryParams.channel = filters.channels.join(',');
     if (filters.start_date) queryParams.start_date = filters.start_date;
     if (filters.end_date) queryParams.end_date = filters.end_date;
@@ -328,7 +331,7 @@ const ComplaintFilterScreen = () => {
           <Text style={styles.filterLabel}>{label}</Text>
         </View>
         <View style={styles.filterHeaderRight}>
-          <Text style={[styles.filterValue, value !== 'All' && styles.filterValueActive]}>{value}</Text>
+          <Text style={[styles.filterValue, value !== t('filter.allLabel') && styles.filterValueActive]}>{value}</Text>
           <Ionicons name={expandedSection === key ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
         </View>
       </TouchableOpacity>
@@ -392,7 +395,7 @@ const ComplaintFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
+        {/* {renderFilterSection('severity', t('filter.severity', 'Severity'), 'warning-outline',
           filters.severities.length === 0 ? t('filter.allLabel', 'All') : (filters.severities.length === 1 ? t(`severities.${severities.find(s => s.value === filters.severities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.severities.length })),
           false,
           [{ value: null, label: t('filter.allSeverities', 'All Severities') }, ...severities],
@@ -406,7 +409,7 @@ const ComplaintFilterScreen = () => {
               {(s.value ? filters.severities.includes(s.value) : filters.severities.length === 0) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
             </TouchableOpacity>
           )
-        )}
+        )} */}
 
         {renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
           filters.assignee_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.assignee_ids.length })),
@@ -421,44 +424,77 @@ const ComplaintFilterScreen = () => {
           )
         )}
 
-        {renderFilterSection('department', t('filter.department', 'Department'), 'business-outline',
-          filters.department_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.department_ids.length === 1 ? filters.department_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.department_ids.length })),
-          loadingDepartments,
-          [{ id: null, name: t('filter.allDepartments', 'All Departments') }, ...departments],
-          (dept) => (
-            <TouchableOpacity key={dept.id || 'all'} style={[styles.filterOption, (dept.id ? filters.department_ids.includes(dept.id) : filters.department_ids.length === 0) && styles.filterOptionSelected]}
-              onPress={() => dept.id ? selectDepartment(dept) : setFilters({ ...filters, department_ids: [], department_names: [] })}>
-              <Text style={styles.filterOptionText}>{dept.name}</Text>
-              {(dept.id ? filters.department_ids.includes(dept.id) : filters.department_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
-            </TouchableOpacity>
-          )
-        )}
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="layers-outline" size={20} color="#1A237E" />
+              <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+            </View>
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label={t('filter.department')}
+              value=""
+              data={departments}
+              loading={loadingDepartments}
+              onSelect={() => { }}
+              leafOnly={true}
+              placeholder={filters.department_ids.length > 0 ? `${filters.department_ids.length} selected` : t('filter.allDepartments')}
+              iconType="default"
+              multiSelect={true}
+              selectedIds={filters.department_ids}
+              onMultiSelect={handleDepartmentMultiSelect}
+            />
+          </View>
+        </View>
 
-        {renderFilterSection('classification', t('filter.classification', 'Classification'), 'layers-outline',
-          filters.classification_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.classification_ids.length === 1 ? filters.classification_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.classification_ids.length })),
-          loadingClassifications,
-          [{ id: null, name: t('filter.allClassifications', 'All Classifications') }, ...classifications],
-          (item) => (
-            <TouchableOpacity key={item.id || 'all'} style={[styles.filterOption, (item.id ? filters.classification_ids.includes(item.id) : filters.classification_ids.length === 0) && styles.filterOptionSelected]}
-              onPress={() => item.id ? selectClassification(item) : setFilters({ ...filters, classification_ids: [], classification_names: [] })}>
-              <Text style={styles.filterOptionText}>{item.name}</Text>
-              {(item.id ? filters.classification_ids.includes(item.id) : filters.classification_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
-            </TouchableOpacity>
-          )
-        )}
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="layers-outline" size={20} color="#1A237E" />
+              <Text style={styles.filterLabel}>{t('filter.classification')}</Text>
+            </View>
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label={t('filter.classification')}
+              value=""
+              data={classifications}
+              loading={loadingClassifications}
+              onSelect={() => { }}
+              leafOnly={true}
+              placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : t('filter.allClassifications')}
+              iconType="classification"
+              multiSelect={true}
+              selectedIds={filters.classification_ids}
+              onMultiSelect={handleClassificationMultiSelect}
+            />
+          </View>
+        </View>
 
-        {renderFilterSection('location', t('filter.location', 'Location'), 'location-outline',
-          filters.location_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.location_ids.length === 1 ? filters.location_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.location_ids.length })),
-          loadingLocations,
-          [{ id: null, name: t('filter.allLocations', 'All Locations') }, ...locations],
-          (item) => (
-            <TouchableOpacity key={item.id || 'all'} style={[styles.filterOption, (item.id ? filters.location_ids.includes(item.id) : filters.location_ids.length === 0) && styles.filterOptionSelected]}
-              onPress={() => item.id ? selectLocation(item) : setFilters({ ...filters, location_ids: [], location_names: [] })}>
-              <Text style={styles.filterOptionText}>{item.name}</Text>
-              {(item.id ? filters.location_ids.includes(item.id) : filters.location_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
-            </TouchableOpacity>
-          )
-        )}
+        <View style={styles.filterSection}>
+          <View style={styles.filterHeader}>
+            <View style={styles.filterHeaderLeft}>
+              <Ionicons name="location-outline" size={20} color="#1A237E" />
+              <Text style={styles.filterLabel}>{t('filter.location')}</Text>
+            </View>
+          </View>
+          <View style={styles.treeSelectWrapper}>
+            <TreeSelect
+              label={t('filter.location')}
+              value=""
+              data={locations}
+              loading={loadingLocations}
+              onSelect={() => { }}
+              leafOnly={true}
+              placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : t('filter.allLocations')}
+              iconType="location"
+              multiSelect={true}
+              selectedIds={filters.location_ids}
+              onMultiSelect={handleLocationMultiSelect}
+            />
+          </View>
+        </View>
 
         {/* Date Range Filter */}
         <View style={styles.filterSection}>
@@ -469,7 +505,7 @@ const ComplaintFilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
-                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+                {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
               </Text>
               <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
             </View>
@@ -616,6 +652,10 @@ const styles = StyleSheet.create({
   dateModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEE' },
   dateModalTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
   dateModalDone: { fontSize: 16, fontWeight: '600', color: '#2EC4B6' },
+  treeSelectWrapper: {
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+  },
 });
 
 export default ComplaintFilterScreen;

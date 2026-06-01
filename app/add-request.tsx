@@ -1,7 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
@@ -83,7 +83,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
-
+  const insets = useSafeAreaInsets();
   return (
     <>
       <TouchableOpacity
@@ -108,11 +108,11 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { marginBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -237,7 +237,7 @@ const AddRequestScreen = () => {
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
 
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
-  const [locations, setLocations] = useState<DropdownOption[]>([]);
+  const [locations, setLocations] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
   const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
@@ -263,7 +263,7 @@ const AddRequestScreen = () => {
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
         getClassificationsTree('request'),
-        getLocations(),
+        getLocationsTree(),
         getWorkflows(true, 'request'),
         getUsers(),
         getDepartments(),
@@ -324,16 +324,59 @@ const AddRequestScreen = () => {
       } else {
         setClassifications([]);
       }
-      if (locRes.success && locRes.data) {
-        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+      if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
+        // Ensure all IDs are strings
+        const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeLocations(node.children) : undefined,
+          }));
+        };
+        let normalizedLocations = normalizeLocations(locRes.data);
 
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
           const userLocationIds = new Set(user.locations.map(l => l.id));
-          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
         }
 
-        setLocations(locationsList);
+        setLocations(normalizedLocations);
+      } else {
+        setLocations([]);
       }
       if (workflowRes.success && workflowRes.data) {
         setAllWorkflows(workflowRes.data);
@@ -680,7 +723,7 @@ const AddRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      CustomAlert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
     }
   };
 
@@ -782,15 +825,15 @@ const AddRequestScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      CustomAlert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
     }
   };
 
@@ -832,15 +875,15 @@ const AddRequestScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      CustomAlert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
     }
   };
 
@@ -943,12 +986,12 @@ const AddRequestScreen = () => {
       }
 
       setSubmitting(false);
-      CustomAlert.alert('Success', 'Request created successfully.', [
-        { text: 'OK', onPress: () => router.back() },
+      CustomAlert.alert(t('common.success'), t('addRequest.createdSuccess', 'Request created successfully.'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create request: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -1030,13 +1073,16 @@ const AddRequestScreen = () => {
                 <Text style={styles.sectionTitle}>
                   {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
+                <TreeSelect
                   label={t('addRequest.selectLocation')}
                   value={selectedLocation?.name || ''}
-                  options={locations}
-                  onSelect={setSelectedLocation}
+                  data={locations}
+                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
+                  leafOnly={true}
+                  placeholder={t('addRequest.selectLocation')}
+                  iconType="location"
                 />
               </>
             )}
@@ -1293,12 +1339,12 @@ const AddRequestScreen = () => {
                 {/* Show address loading status */}
                 {locationData?.latitude && !locationData?.address && !locationData?.city && (
                   <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    ⏳ Getting address details...
+                    {t('common.gettingAddress')}
                   </Text>
                 )}
                 {(locationData?.address || locationData?.city) && (
                   <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    ✓ Location: {locationData.city || locationData.address}
+                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
                   </Text>
                 )}
               </>
@@ -1429,6 +1475,7 @@ const styles = StyleSheet.create({
   formContainer: {
     flex: 1,
     padding: 20,
+    marginBottom: 45
   },
   workflowCard: {
     backgroundColor: '#F3E8FF',

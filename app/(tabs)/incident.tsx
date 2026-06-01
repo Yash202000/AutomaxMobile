@@ -1,4 +1,5 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,13 +11,14 @@ import {
   FlatList,
   ImageBackground,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COLORS = {
   primary: "#1A237E",
@@ -101,7 +103,19 @@ interface PaginationInfo {
   total_pages: number;
 }
 
-const IncidentCard = ({ incident }: { incident: Incident }) => {
+const IncidentCard = ({
+  incident,
+  isSelected,
+  selectionMode,
+  onSelect,
+  onLongPress,
+}: {
+  incident: Incident;
+  isSelected?: boolean;
+  selectionMode?: boolean;
+  onSelect?: () => void;
+  onLongPress?: () => void;
+}) => {
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -146,11 +160,33 @@ const IncidentCard = ({ incident }: { incident: Incident }) => {
 
   return (
     <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push(`/incident-details?id=${incident.id}`)}
+      style={[styles.card, isSelected && styles.cardSelected]}
+      onPress={() => {
+        if (selectionMode && onSelect) {
+          onSelect();
+        } else {
+          router.push(`/incident-details?id=${incident.id}`);
+        }
+      }}
+      onLongPress={() => {
+        if (onLongPress) {
+          onLongPress();
+        }
+      }}
       activeOpacity={0.7}
     >
-      <View style={[styles.cardBar, { backgroundColor: config.color }]} />
+      {selectionMode && (
+        <View style={styles.checkboxContainer}>
+          <Ionicons
+            name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+            size={24}
+            color={isSelected ? COLORS.accent : COLORS.text.muted}
+          />
+        </View>
+      )}
+      {
+        selectionMode ? <></> : <View style={[styles.cardBar, { backgroundColor: config.color }]} />
+      }
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <View style={styles.idContainer}>
@@ -217,7 +253,8 @@ const IncidentCard = ({ incident }: { incident: Incident }) => {
 const IncidentsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { canCreateIncidents } = usePermissions();
+  const { canCreateIncidents, canViewAllIncidents } = usePermissions();
+  const { user } = useAuth();
   let {
     state_id,
     state_name,
@@ -268,6 +305,79 @@ const IncidentsScreen = () => {
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
 
+  // Multi-selection states & operations
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const insets = useSafeAreaInsets();
+
+  const toggleSelectIncident = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleLongPressIncident = (id: string) => {
+    if (!selectionMode) {
+      setSelectionMode(true);
+      setSelectedIds(new Set([id]));
+    }
+  };
+
+  const handleSelectAllToggle = () => {
+    if (selectedIds.size === incidents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(incidents.map((inc) => inc.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleShareSelected = async () => {
+    if (selectedIds.size === 0) return;
+
+    const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
+    let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
+    selectedIncidents.forEach((inc, index) => {
+      const priorityLookup = inc.lookup_values?.find(
+        (lv) => lv.category.code === "PRIORITY",
+      );
+      let priorityVal = t(`priorities.${priorityConfig[inc.priority]?.key || "unknown"}`);
+      if (priorityLookup) {
+        priorityVal =
+          i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+      }
+
+      shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
+      shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
+      shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
+      shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
+      shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+      shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
+      shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
+      shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
+      shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
+      shareText += "------------------------------------------\n\n";
+    });
+
+    try {
+      await Share.share({
+        message: shareText,
+      });
+    } catch (err) {
+      console.error("Error sharing incidents:", err);
+    }
+  };
+
   // Don't apply default status filter - show ALL incidents unless explicitly filtered
   const activeStateId = state_id;
   const activeStateName = state_name;
@@ -308,11 +418,14 @@ const IncidentsScreen = () => {
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
         const statsResponse = await getIncidentStats();
         if (statsResponse.success) {
-          params.current_state_id = statsResponse.data.by_state_details.map(
+          params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map(
             (s: any) => s.id,
           );
           state_id = params.current_state_id.join(",");
         }
+      }
+      if (!canViewAllIncidents()) {
+        params.assignee_id = user?.id;
       }
       const response = await getIncidents(params);
       if (response.success) {
@@ -350,6 +463,7 @@ const IncidentsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      exitSelectionMode();
       fetchIncidents(1, false);
     }, [
       activeStateId,
@@ -548,7 +662,7 @@ const IncidentsScreen = () => {
           )}
           keyExtractor={(item) => item.key}
         />
-        <TouchableOpacity onPress={clearFilter} style={styles.clearAllButton}>
+        <TouchableOpacity onPress={clearFilter} style={[styles.clearAllButton, { flexDirection: i18n.language === "en" ? "row" : "row-reverse" }]}>
           <Ionicons
             name="close-circle"
             size={18}
@@ -568,7 +682,25 @@ const IncidentsScreen = () => {
         source={require("@/assets/images/background.png")}
         style={styles.header}
       >
-        {showSearch ? (
+        {selectionMode ? (
+          <View style={styles.selectionHeaderContainer}>
+            <View style={styles.selectionHeaderLeft}>
+              <TouchableOpacity onPress={exitSelectionMode} style={styles.selectionHeaderClose}>
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.selectionHeaderTitle}>
+                {selectedIds.size} {t("filter.selected")}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={handleSelectAllToggle} style={styles.selectAllHeaderButton}>
+              <Text style={styles.selectAllHeaderText}>
+                {selectedIds.size === incidents.length
+                  ? t("common.deselectAll", "Deselect All")
+                  : t("common.selectAll", "Select All")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : showSearch ? (
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
               <Ionicons
@@ -613,6 +745,15 @@ const IncidentsScreen = () => {
               </Text>
             </View>
             <View style={styles.headerIcons}>
+              <TouchableOpacity
+                style={styles.headerIcon}
+                onPress={() => {
+                  setSelectionMode(true);
+                  setSelectedIds(new Set());
+                }}
+              >
+                <Ionicons name="share-social-outline" size={22} color="white" />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerIcon}
                 onPress={() =>
@@ -708,7 +849,15 @@ const IncidentsScreen = () => {
       ) : (
         <FlatList
           data={incidents}
-          renderItem={({ item }) => <IncidentCard incident={item} />}
+          renderItem={({ item }) => (
+            <IncidentCard
+              incident={item}
+              isSelected={selectedIds.has(item.id)}
+              selectionMode={selectionMode}
+              onSelect={() => toggleSelectIncident(item.id)}
+              onLongPress={() => handleLongPressIncident(item.id)}
+            />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={renderHeader}
@@ -722,7 +871,7 @@ const IncidentsScreen = () => {
         />
       )}
 
-      {canCreateIncidents() && (
+      {canCreateIncidents() && !selectionMode && (
         <TouchableOpacity
           style={styles.fab}
           onPress={() => router.push("/add-incident")}
@@ -730,6 +879,33 @@ const IncidentsScreen = () => {
         >
           <Ionicons name="add" size={28} color="white" />
         </TouchableOpacity>
+      )}
+
+      {selectionMode && (
+        <View style={[styles.floatingActionBar, { bottom: insets.bottom + 70 }]}>
+          <View style={styles.actionBarLeft}>
+            <Text style={styles.actionBarCountText}>
+              {selectedIds.size} {t("filter.selected")}
+            </Text>
+          </View>
+          <View style={styles.actionBarRight}>
+            <TouchableOpacity
+              onPress={handleShareSelected}
+              disabled={selectedIds.size === 0}
+              style={[
+                styles.actionBarButton,
+                styles.shareActionButton,
+                selectedIds.size === 0 && styles.actionBarButtonDisabled,
+              ]}
+            >
+              <Ionicons name="share-social-outline" size={20} color="white" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBarButtonText}>{t("common.share", "Share")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={exitSelectionMode} style={[styles.actionBarButton, styles.cancelActionButton]}>
+              <Text style={styles.actionBarButtonTextCancel}>{t("common.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -816,7 +992,6 @@ const styles = StyleSheet.create({
   },
   filterBadgeValue: { fontSize: 12, fontWeight: "bold", color: COLORS.primary },
   clearAllButton: {
-    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -973,6 +1148,110 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 6,
+  },
+  floatingActionBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(26, 35, 126, 0.95)",
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  actionBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  actionBarCountText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+  actionBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionBarButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  shareActionButton: {
+    backgroundColor: COLORS.accent,
+  },
+  actionBarButtonDisabled: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    opacity: 0.5,
+  },
+  cancelActionButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  },
+  actionBarButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  actionBarButtonTextCancel: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  checkboxContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingLeft: 16,
+  },
+  cardSelected: {
+    backgroundColor: "#F0FDFA",
+    borderColor: COLORS.accent,
+    borderWidth: 1,
+  },
+  selectionHeaderContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  selectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  selectionHeaderClose: {
+    padding: 4,
+  },
+  selectionHeaderTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  selectAllHeaderButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 8,
+  },
+  selectAllHeaderText: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
 

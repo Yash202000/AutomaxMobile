@@ -1,7 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createQuery, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
@@ -22,11 +22,11 @@ import { useRouter } from 'expo-router';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -37,10 +37,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface DropdownOption {
@@ -84,6 +83,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -109,7 +109,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { marginBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -223,8 +223,9 @@ const AddQueryScreen = () => {
   const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
   const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
   const [selectedSourceIncident, setSelectedSourceIncident] = useState<DropdownOption | null>(null);
+  const [userIncidents, setUserIncidents] = useState<DropdownOption[]>([]);
   const [incidentSearch, setIncidentSearch] = useState('');
-  const [searchedIncidents, setSearchedIncidents] = useState<DropdownOption[]>([]);
+  const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
 
   // Voice recording state
@@ -294,34 +295,30 @@ const AddQueryScreen = () => {
     setLoadingData(true);
     try {
       // Fetch classifications with 'query', 'both', and 'all' types
-      const [queryClassRes, bothClassRes, allClassRes] = await Promise.all([
-        getClassificationsTree('query'),
-        getClassificationsTree('both'),
-        getClassificationsTree('all'),
+      const [queryClassRes] = await Promise.all([
+        getClassificationsTree('query')
       ]);
 
       // Fetch workflows with 'query', 'both', and 'all' types
-      const [queryWorkflowRes, bothWorkflowRes, allWorkflowRes] = await Promise.all([
-        getWorkflows(true, 'query'),
-        getWorkflows(true, 'both'),
-        getWorkflows(true, 'all'),
+      const [queryWorkflowRes] = await Promise.all([
+        getWorkflows(true, 'query')
       ]);
 
       // Fetch other data
-      const [locRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getLocations(),
+      const [locRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
+        getLocationsTree(),
         getUsers(),
         getDepartments(),
         getLookupCategories().catch(err => ({ success: false, error: err.message })),
+        getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({ success: false, data: [] })),
       ]);
 
       // Combine and deduplicate classifications
+      if (queryClassRes.success && queryClassRes.data && queryClassRes.data.length > 0) {
+        setSelectedClassification(queryClassRes.data[0])
+      }
       const allClassifications = [
-        ...(queryClassRes.success && queryClassRes.data ? queryClassRes.data : []),
-        ...(bothClassRes.success && bothClassRes.data ? bothClassRes.data : []),
-        ...(allClassRes.success && allClassRes.data ? allClassRes.data : []),
-      ];
-
+        ...(queryClassRes.success && queryClassRes.data ? queryClassRes.data : [])];
       // Deduplicate by ID
       const uniqueClassifications = allClassifications.filter((item, index, self) =>
         index === self.findIndex(t => t.id === item.id)
@@ -384,9 +381,7 @@ const AddQueryScreen = () => {
 
       // Combine and deduplicate workflows
       const allWorkflowsData = [
-        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : []),
-        ...(bothWorkflowRes.success && bothWorkflowRes.data ? bothWorkflowRes.data : []),
-        ...(allWorkflowRes.success && allWorkflowRes.data ? allWorkflowRes.data : []),
+        ...(queryWorkflowRes.success && queryWorkflowRes.data ? queryWorkflowRes.data : [])
       ];
 
       // Deduplicate by ID
@@ -398,16 +393,59 @@ const AddQueryScreen = () => {
         setAllWorkflows(uniqueWorkflows);
       }
 
-      if (locRes.success && locRes.data) {
-        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+      if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
+        // Ensure all IDs are strings
+        const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeLocations(node.children) : undefined,
+          }));
+        };
+        let normalizedLocations = normalizeLocations(locRes.data);
 
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
           const userLocationIds = new Set(user.locations.map(l => l.id));
-          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
         }
 
-        setLocations(locationsList);
+        setLocations(normalizedLocations);
+      } else {
+        setLocations([]);
       }
       if (userRes.success && userRes.data) {
         setUsers(userRes.data.map((u: any) => ({
@@ -422,6 +460,12 @@ const AddQueryScreen = () => {
         // Filter to only show categories that should be added to query form
         const queryCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
         setLookupCategories(queryCategories);
+      }
+      if (incidentRes && incidentRes.success && incidentRes.data) {
+        setUserIncidents(incidentRes.data.map((i: any) => ({
+          id: i.id,
+          name: `${i.incident_number} - ${i.title}`,
+        })));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -489,6 +533,8 @@ const AddQueryScreen = () => {
 
     if (!title.trim()) {
       newErrors.title = t('addQuery.titlePlaceholder');
+    } else if (title.trim().length < 5) {
+      newErrors.title = t('errors.minCharacters', { field: 'Title', min: 5 });
     }
 
     if (!selectedClassification) {
@@ -599,43 +645,12 @@ const AddQueryScreen = () => {
     }
   };
 
-  // Search incidents with debouncing
-  const searchIncidents = useCallback(async (searchText: string) => {
-    if (searchText.length < 2) {
-      setSearchedIncidents([]);
-      return;
-    }
-
-    setLoadingIncidents(true);
-    try {
-      const response = await getIncidents({
-        search: searchText,
-        created_by_me: true, // Only show incidents created by current user
-        limit: 20,
-      });
-
-      if (response.success && response.data) {
-        setSearchedIncidents(response.data.map((i: any) => ({
-          id: i.id,
-          name: `${i.incident_number} - ${i.title}`
-        })));
-      }
-    } catch (error) {
-      console.error('Error searching incidents:', error);
-    }
-    setLoadingIncidents(false);
-  }, []);
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (incidentSearch) {
-        searchIncidents(incidentSearch);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [incidentSearch, searchIncidents]);
+  // Filter user's pre-loaded incidents by search query (client-side, instant)
+  const filteredIncidents = incidentSearch.trim().length === 0
+    ? userIncidents
+    : userIncidents.filter(i =>
+      i.name.toLowerCase().includes(incidentSearch.toLowerCase())
+    );
 
   // Voice recording functions
   const startRecording = async () => {
@@ -670,7 +685,7 @@ const AddQueryScreen = () => {
       CustomAlert.alert(t('addComplaint.voiceRecording'), t('addComplaint.recordAudio'));
     } catch (error) {
       console.error('Failed to start recording:', error);
-      CustomAlert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert(t('common.error'), t('common.recordingStartError'));
     }
   };
 
@@ -706,7 +721,7 @@ const AddQueryScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      CustomAlert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert(t('common.error'), t('common.failedToStopRecording'));
     }
   };
 
@@ -874,7 +889,7 @@ const AddQueryScreen = () => {
       }
     } catch (error) {
       console.error('❌ [Camera] Error taking photo:', error);
-      CustomAlert.alert('Error', 'Failed to take photo');
+      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
     }
   };
 
@@ -1005,15 +1020,15 @@ const AddQueryScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking from gallery:', error);
-      CustomAlert.alert('Error', 'Failed to pick from gallery');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
     }
   };
 
@@ -1055,15 +1070,15 @@ const AddQueryScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            'Files Too Large',
-            `The following files exceed ${MAX_FILE_SIZE_MB}MB limit and were skipped:\n\n${oversizedFiles.join('\n')}`,
-            [{ text: 'OK' }]
+            t('common.filesTooLargeTitle'),
+            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
+            [{ text: t('common.ok') }]
           );
         }
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      CustomAlert.alert('Error', 'Failed to pick document');
+      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
     }
   };
 
@@ -1098,7 +1113,7 @@ const AddQueryScreen = () => {
     if (selectedClassification) queryData.classification_id = selectedClassification.id;
     if (selectedLocation) queryData.location_id = selectedLocation.id;
     if (selectedSource) queryData.source = selectedSource.id;
-    if (selectedChannel) queryData.channel = selectedChannel.id;
+    // if (selectedChannel) queryData.channel = selectedChannel.id;
     if (selectedAssignee) queryData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) queryData.department_id = selectedDepartment.id;
     if (selectedSourceIncident) queryData.source_incident_id = selectedSourceIncident.id;
@@ -1148,12 +1163,12 @@ const AddQueryScreen = () => {
       }
 
       setSubmitting(false);
-      CustomAlert.alert('Success', 'Query created successfully.', [
-        { text: 'OK', onPress: () => router.back() },
+      CustomAlert.alert(t('common.success'), t('addQuery.createdSuccess', 'Query created successfully.'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create query: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -1210,7 +1225,7 @@ const AddQueryScreen = () => {
             />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            <Text style={styles.sectionTitle}>
+            {/* <Text style={styles.sectionTitle}>
               {t('addQuery.channel')} {isFieldRequired('channel') && <Text style={styles.required}>*</Text>}
             </Text>
             <Dropdown
@@ -1220,78 +1235,133 @@ const AddQueryScreen = () => {
               onSelect={setSelectedChannel}
               required={isFieldRequired('channel')}
               error={errors.channel}
-            />
+            /> */}
 
-            {/* Source Incident - only show if required */}
             {isFieldRequired('source_incident_id') && (
               <>
                 <Text style={styles.sectionTitle}>
                   {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
                 </Text>
 
-                {selectedSourceIncident ? (
-                  <View style={styles.selectedIncidentCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.selectedIncidentText}>{selectedSourceIncident.name}</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => setSelectedSourceIncident(null)}>
-                      <Ionicons name="close-circle" size={24} color="#666" />
-                    </TouchableOpacity>
+                {/* Dropdown trigger */}
+                <TouchableOpacity
+                  style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
+                  onPress={() => {
+                    setIncidentSearch('');
+                    setIncidentDropdownOpen(true);
+                  }}
+                >
+                  <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText]}>
+                    {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {selectedSourceIncident && (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setSelectedSourceIncident(null);
+                          if (errors.source_incident_id) {
+                            setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                          }
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close-circle" size={18} color="#999" />
+                      </TouchableOpacity>
+                    )}
+                    {loadingData ? (
+                      <ActivityIndicator size="small" color="#666" />
+                    ) : (
+                      <FontAwesome name="chevron-down" size={16} color="#666" />
+                    )}
                   </View>
-                ) : (
-                  <>
-                    <View style={styles.searchInputContainer}>
-                      <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
-                      <TextInput
-                        style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                        placeholder={t('common.searchByIncidentNumOrTitle')}
-                        value={incidentSearch}
-                        onChangeText={setIncidentSearch}
-                        placeholderTextColor="#999"
-                      />
-                      {loadingIncidents && <ActivityIndicator size="small" color="#666" />}
-                    </View>
+                </TouchableOpacity>
 
-                    {searchedIncidents.length > 0 && (
-                      <View style={styles.searchResults}>
-                        <ScrollView
-                          style={styles.searchResultsScroll}
-                          nestedScrollEnabled={true}
-                          showsVerticalScrollIndicator={true}
-                        >
-                          {searchedIncidents.map((incident) => (
+                {errors.source_incident_id && (
+                  <Text style={styles.errorText}>{errors.source_incident_id}</Text>
+                )}
+
+                {/* Incident picker modal */}
+                <Modal
+                  visible={incidentDropdownOpen}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => setIncidentDropdownOpen(false)}
+                >
+                  <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIncidentDropdownOpen(false)}
+                  >
+                    <View style={styles.modalContent}>
+                      <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>
+                          {t('addComplaint.selectSourceIncident')}
+                        </Text>
+                        <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
+                          <Ionicons name="close" size={24} color="#333" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Search inside the modal */}
+                      <View style={styles.searchInputContainer}>
+                        <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                          placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
+                          value={incidentSearch}
+                          onChangeText={setIncidentSearch}
+                          placeholderTextColor="#999"
+                          autoFocus
+                        />
+                        {incidentSearch.length > 0 && (
+                          <TouchableOpacity onPress={() => setIncidentSearch('')}>
+                            <Ionicons name="close-circle" size={18} color="#999" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* Results list */}
+                      {filteredIncidents.length === 0 ? (
+                        <View style={styles.emptyList}>
+                          <Text style={styles.emptyText}>
+                            {userIncidents.length === 0
+                              ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
+                              : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
+                          </Text>
+                        </View>
+                      ) : (
+                        <FlatList
+                          data={filteredIncidents}
+                          keyExtractor={(item) => item.id}
+                          keyboardShouldPersistTaps="handled"
+                          renderItem={({ item }) => (
                             <TouchableOpacity
-                              key={incident.id}
-                              style={styles.searchResultItem}
+                              style={styles.optionItem}
                               onPress={() => {
-                                setSelectedSourceIncident(incident);
+                                setSelectedSourceIncident(item);
+                                setIncidentDropdownOpen(false);
                                 setIncidentSearch('');
-                                setSearchedIncidents([]);
                                 if (errors.source_incident_id) {
                                   setErrors(prev => ({ ...prev, source_incident_id: '' }));
                                 }
                               }}
                             >
-                              <Text style={styles.searchResultText}>{incident.name}</Text>
+                              <Text style={styles.optionText}>{item.name}</Text>
+                              {selectedSourceIncident?.id === item.id && (
+                                <Ionicons name="checkmark" size={20} color="#E74C3C" />
+                              )}
                             </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-
-                    {incidentSearch.length >= 2 && !loadingIncidents && searchedIncidents.length === 0 && (
-                      <Text style={styles.noResultsText}>
-                        {t('addQuery.noIncidentsFound')}
-                      </Text>
-                    )}
-                  </>
-                )}
-
-                {errors.source_incident_id && <Text style={styles.errorText}>{errors.source_incident_id}</Text>}
+                          )}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
               </>
             )}
 
-            <Text style={styles.sectionTitle}>
+            {/* <Text style={styles.sectionTitle}>
               {t('incidents.classification')} <Text style={styles.required}>*</Text>
             </Text>
             <TreeSelect
@@ -1304,7 +1374,7 @@ const AddQueryScreen = () => {
               leafOnly={true}
               placeholder={t('addQuery.selectClassification')}
               iconType="classification"
-            />
+            /> */}
 
             {/* Location - only show if required */}
             {isFieldRequired('location_id') && (
@@ -1312,13 +1382,16 @@ const AddQueryScreen = () => {
                 <Text style={styles.sectionTitle}>
                   {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
-                  label={t('addQuery.selectLocation')}
+                <TreeSelect
+                  label={t('addIncident.selectLocation')}
                   value={selectedLocation?.name || ''}
-                  options={locations}
-                  onSelect={setSelectedLocation}
+                  data={locations}
+                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectLocation')}
+                  iconType="location"
                 />
               </>
             )}
@@ -1537,12 +1610,12 @@ const AddQueryScreen = () => {
                 {/* Show address loading status */}
                 {locationData?.latitude && !locationData?.address && !locationData?.city && (
                   <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    ⏳ Getting address details...
+                    {t('common.gettingAddress')}
                   </Text>
                 )}
                 {(locationData?.address || locationData?.city) && (
                   <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    ✓ Location: {locationData.city || locationData.address}
+                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
                   </Text>
                 )}
               </>

@@ -111,9 +111,9 @@ const ForgotPasswordScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.keyboardView}
-      keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <LinearGradient
         colors={['#F8FFFE', '#FFFFFF']}

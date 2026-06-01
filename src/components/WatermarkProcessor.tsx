@@ -1,18 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-
-export interface WatermarkData {
-  latitude?: number;
-  longitude?: number;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  userName?: string;
-  timestamp?: Date;
-  appName?: string;
-}
+import { WatermarkData, generateWatermarkLines } from '@/src/utils/watermarkUtils';
 
 interface WatermarkProcessorProps {
   imageUri: string;
@@ -127,63 +116,8 @@ export const WatermarkProcessor: React.FC<WatermarkProcessorProps> = ({
     return null;
   }
 
-  // Helper function to check if a string is a Plus Code
-  const isPlusCode = (str: string | null | undefined): boolean => {
-    if (!str) return false;
-    // Plus Codes format: XXXX+XX or longer variations
-    const plusCodeRegex = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}$/i;
-    return plusCodeRegex.test(str.replace(/\s/g, ''));
-  };
-
-  // Create watermark text lines (compact version)
-  const watermarkLines: string[] = [];
-
-  // Line 1: Coordinates + Location in one line
-  let line1 = '';
-  if (data.latitude !== undefined && data.longitude !== undefined) {
-    line1 = `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`;
-  }
-
-  // Add city or address to same line if available (filter out Plus Codes)
-  if (data.city && !isPlusCode(data.city)) {
-    line1 += line1 ? ` • ${data.city}` : data.city;
-  } else if (data.address && !isPlusCode(data.address)) {
-    const shortAddress = data.address.length > 20 ? data.address.substring(0, 20) + '...' : data.address;
-    line1 += line1 ? ` • ${shortAddress}` : shortAddress;
-  } else {
-  }
-
-  if (line1) {
-    watermarkLines.push(line1);
-  }
-
-  // Line 2: Date, Time, User in one line
-  const timestamp = data.timestamp || new Date();
-  const dateStr = timestamp.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit', // Shortened year
-  });
-  const timeStr = timestamp.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  let line2 = `${dateStr} ${timeStr}`;
-  if (data.userName) {
-    const shortName = data.userName.length > 15 ? data.userName.substring(0, 15) + '...' : data.userName;
-    line2 += ` • ${shortName}`;
-  }
-  watermarkLines.push(line2);
-
-  // Line 3: Full address (street/area) if available (filter out Plus Codes)
-  if (data.address && !isPlusCode(data.address)) {
-    const fullAddress = data.address.length > 40 ? data.address.substring(0, 40) + '...' : data.address;
-    watermarkLines.push(fullAddress);
-  } else if (data.state && !data.city && !isPlusCode(data.state)) {
-    // If we have state but not city, show state on separate line
-    watermarkLines.push(data.state);
-  }
+  // Create watermark text lines
+  const watermarkLines = generateWatermarkLines(data);
 
   // Calculate dimensions - use reasonable size for capture
   // Reduce max size to avoid memory issues

@@ -1,6 +1,10 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
+import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { CustomAlert } from '@/src/components/CustomAlert';
+import { useHierarchy } from '@/src/hooks/useHierarchy';
+import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -10,9 +14,8 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 const COLORS = {
@@ -68,6 +71,7 @@ const ComplaintDetailsScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { classTree, deptTree, locTree, getPath } = useHierarchy();
   const [complaint, setComplaint] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -80,6 +84,7 @@ const ComplaintDetailsScreen = () => {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
+  const [categories, setCategories] = useState<any[]>([]);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
@@ -92,6 +97,14 @@ const ComplaintDetailsScreen = () => {
     };
     fetchToken();
   }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const cat = await getLookupCategories();
+      setCategories(cat.data);
+    };
+    fetchCategories();
+  }, [])
 
   const fetchDetails = useCallback(async () => {
     const complaintId = Array.isArray(id) ? id[0] : id;
@@ -232,9 +245,9 @@ const ComplaintDetailsScreen = () => {
                 <Ionicons name="chatbubble-ellipses" size={12} color={COLORS.accent} />
                 <Text style={styles.typeBadgeText}>{t('details.complaint')}</Text>
               </View>
-              <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+              {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
-              </View>
+              </View> */}
             </View>
             <Text style={styles.complaintTitle}>{complaint.title}</Text>
             <Text style={styles.dateText}>{new Date(complaint.created_at).toLocaleString()}</Text>
@@ -254,8 +267,8 @@ const ComplaintDetailsScreen = () => {
             {complaint.channel && (
               <InfoRow icon="megaphone-outline" label={t('details.channel')} value={complaint.channel} iconColor="#F59E0B" />
             )}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={complaint.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={complaint.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, complaint.classification?.id) || complaint.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />
             <InfoRow icon="person-outline" label={t('details.assignees')}
               value={complaint.assignees?.length
                 ? complaint.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
@@ -266,7 +279,7 @@ const ComplaintDetailsScreen = () => {
               iconColor="#EC4899"
             />
             {complaint.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={complaint.location.name} iconColor={COLORS.error} />
+              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, complaint.location.id) || complaint.location.name} iconColor={COLORS.error} />
             )}
             {complaint.source_incident && (
               <InfoRow
@@ -276,6 +289,92 @@ const ComplaintDetailsScreen = () => {
                 iconColor="#06B6D4"
               />
             )}
+            {/* Lookup Values as InfoRows */}
+            {complaint.lookup_values && complaint.lookup_values.length > 0 && (() => {
+              const grouped: Record<string, LookupValue[]> = {};
+              complaint.lookup_values.forEach(value => {
+                const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
+                if (!grouped[categoryName]) {
+                  grouped[categoryName] = [];
+                }
+                grouped[categoryName].push(value);
+              });
+
+              return Object.entries(grouped).map(([category, values]) => (
+                <View key={category} style={styles.infoRow}>
+                  <View style={styles.infoRowLeft}>
+                    <Ionicons name="pricetag" size={18} color="#10B981" />
+                    <Text style={styles.infoLabel}>{category}</Text>
+                  </View>
+                  <View style={styles.lookupValuesList}>
+                    {values.map(value => (
+                      <View
+                        key={value.id}
+                        style={[
+                          styles.lookupValueTag,
+                          {
+                            backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
+                            borderColor: value.color || '#CBD5E1',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.lookupValueTagText,
+                            { color: value.color || COLORS.text.primary },
+                          ]}
+                        >
+                          {i18n.language === 'en' ? value.name : value.name_ar}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ));
+            })()}
+
+            {/* Custom Fields as InfoRows */}
+            {complaint.custom_fields && (() => {
+              try {
+                const customFields = JSON.parse(complaint.custom_fields);
+                const allFields: any[] = [];
+
+                // Extract all custom fields
+                Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                  const ld = categories.find((c: any) => c.id === fieldData.category_id);
+                  if (key.startsWith('lookup:')) {
+                    allFields.push({
+                      key,
+                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      value: fieldData.value,
+                      field_type: fieldData.field_type || 'text',
+                    });
+                  }
+                });
+
+                return allFields.map((field) => {
+                  let displayValue = field.value || 'N/A';
+                  if (field.field_type === 'checkbox') {
+                    displayValue = field.value ? t('common.yes') : t('common.no');
+                  } else if (field.field_type === 'date' && field.value) {
+                    displayValue = new Date(field.value).toLocaleDateString();
+                  }
+
+                  return (
+                    <InfoRow
+                      key={field.key}
+                      icon="list-outline"
+                      label={field.label}
+                      value={String(displayValue)}
+                      iconColor="#F59E0B"
+                    />
+                  );
+                });
+              } catch (error) {
+                console.error('Error parsing custom_fields:', error);
+                return null;
+              }
+            })()}
           </View>
         </View>
 
@@ -399,7 +498,7 @@ const ComplaintDetailsScreen = () => {
             <View style={styles.locationInfo}>
               <Ionicons name="location" size={20} color={COLORS.error} />
               <View style={styles.locationText}>
-                <Text style={styles.locationName}>{complaint.location.name}</Text>
+                <Text style={styles.locationName}>{getPath(locTree, complaint.location.id) || complaint.location.name}</Text>
                 {complaint.location.address && <Text style={styles.locationAddress}>{complaint.location.address}</Text>}
               </View>
             </View>
@@ -422,7 +521,7 @@ const ComplaintDetailsScreen = () => {
                       <View style={styles.fromBadge}>
                         <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
                       </View>
-                      <Ionicons name="arrow-forward" size={14} color={COLORS.text.muted} />
+                      <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={[styles.toBadge, { backgroundColor: COLORS.accentLight }]}>
                         <Text style={[styles.toBadgeText, { color: COLORS.accent }]}>{item.to_state.name}</Text>
                       </View>
@@ -517,6 +616,23 @@ const styles = StyleSheet.create({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
       android: { elevation: 4 },
     }),
+  },
+  lookupValuesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    maxWidth: '50%',
+    gap: 4,
+    justifyContent: 'flex-end',
+  },
+  lookupValueTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  lookupValueTagText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   priorityBar: { width: 5 },
   titleCardContent: { flex: 1, padding: 16 },

@@ -3,15 +3,16 @@ import { getDepartments } from '@/src/api/departments';
 import { getIncidentStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
+import { CustomAlert } from '@/src/components/CustomAlert';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
+import usePermissions from '@/src/hooks/usePermissions';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface FilterState {
@@ -92,6 +93,7 @@ const FilterScreen = () => {
   }>();
 
   const [states, setStates] = useState<any[]>([]);
+  const { canViewAllIncidents } = usePermissions()
   const [departments, setDepartments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
@@ -134,7 +136,7 @@ const FilterScreen = () => {
     setLoadingStates(true);
     const response = await getIncidentStats();
     if (response.success) {
-      setStates(response.data.by_state_details || []);
+      setStates(response.data.workflow_stats[0].by_state_details || []);
     }
     setLoadingStates(false);
   };
@@ -555,7 +557,7 @@ const FilterScreen = () => {
         </View>
 
         {/* Assignee Filter */}
-        <View style={styles.filterSection}>
+        {canViewAllIncidents() && <View style={styles.filterSection}>
           <TouchableOpacity
             style={styles.filterHeader}
             onPress={() => toggleSection('assignee')}
@@ -614,7 +616,7 @@ const FilterScreen = () => {
               )}
             </View>
           )}
-        </View>
+        </View>}
 
         {/* Department Filter */}
         <View style={styles.filterSection}>
@@ -683,7 +685,7 @@ const FilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
-                {filters.sources.length === 0 ? t('filter.all', 'All') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : `${filters.sources.length} ${t('filter.selected')}`)}
+                {filters.sources.length === 0 ? t('filter.allLabel') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : t('filter.nSelected', { count: filters.sources.length }))}
               </Text>
               <Ionicons
                 name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
@@ -728,7 +730,7 @@ const FilterScreen = () => {
             </View>
             <View style={styles.filterHeaderRight}>
               <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
-                {filters.start_date || filters.end_date ? 'Set' : 'All'}
+                {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
               </Text>
               <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
             </View>

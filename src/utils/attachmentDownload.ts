@@ -4,6 +4,7 @@ import { Alert, Platform } from 'react-native';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import i18n from '@/src/i18n';
 
 
 /**
@@ -21,12 +22,12 @@ export const downloadAndOpenAttachment = async (
     const token = await SecureStore.getItemAsync('authToken');
 
     if (!token) {
-      CustomAlert.alert('Error', 'Authentication required');
+      CustomAlert.alert(i18n.t('common.error'), i18n.t('common.authRequired'));
       return;
     }
 
     // Show loading alert
-    CustomAlert.alert('Downloading', 'Please wait...');
+    CustomAlert.alert(i18n.t('common.downloading'), i18n.t('common.pleaseWait'));
 
     // Download the file with authentication
     const downloadUrl = `${baseURL}/attachments/${attachmentId}`;
@@ -46,7 +47,7 @@ export const downloadAndOpenAttachment = async (
     const isAvailable = await Sharing.isAvailableAsync();
 
     if (!isAvailable) {
-      CustomAlert.alert('Error', 'Sharing is not available on this device');
+      CustomAlert.alert(i18n.t('common.error'), i18n.t('common.sharingNotAvailable'));
       return;
     }
 
@@ -60,8 +61,8 @@ export const downloadAndOpenAttachment = async (
   } catch (error: any) {
     console.error('Error downloading attachment:', error);
     CustomAlert.alert(
-      'Download Error',
-      error.message || 'Failed to download attachment'
+      i18n.t('common.downloadError'),
+      error.message || i18n.t('common.failedToDownload')
     );
   }
 };

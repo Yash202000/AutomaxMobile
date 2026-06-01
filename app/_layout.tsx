@@ -1,10 +1,12 @@
 import '@/src/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -23,9 +25,129 @@ import { t } from 'i18next';
 
 
 
+function BiometricLockScreen({
+  onSuccess,
+  onLogout,
+}: {
+  onSuccess: () => void;
+  onLogout: () => void;
+}) {
+  const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const triggerAuth = async () => {
+    if (isAuthenticating) return;
+    setIsAuthenticating(true);
+    setAuthError('');
+
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const enrolledLevel = await LocalAuthentication.getEnrolledLevelAsync();
+
+      // EnrolledLevel.NONE === 0. This means no biometric and no passcode/PIN is set.
+      if (enrolledLevel === LocalAuthentication.SecurityLevel.NONE) {
+        console.log('No authentication method is configured on this device. Bypassing lock.');
+        onSuccess();
+        return;
+      }
+
+      if (!hasHardware || !isEnrolled) {
+        console.log('Biometrics not fully supported or enrolled, falling back to passcode');
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: i18n.language === 'ar' ? 'قم بتأكيد هويتك للمتابعة' : 'Confirm your identity to continue',
+        fallbackLabel: i18n.language === 'ar' ? 'استخدام رمز المرور' : 'Use Passcode',
+        cancelLabel: i18n.language === 'ar' ? 'إلغاء' : 'Cancel',
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        onSuccess();
+      } else {
+        setAuthError(
+          result.warning || (i18n.language === 'ar' ? 'فشلت عملية التحقق. يرجى المحاولة مرة أخرى.' : 'Authentication failed. Please try again.')
+        );
+      }
+    } catch (err) {
+      console.error('Biometric authentication error:', err);
+      setAuthError(
+        i18n.language === 'ar' ? 'حدث خطأ أثناء التحقق.' : 'An error occurred during authentication.'
+      );
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  useEffect(() => {
+    triggerAuth();
+  }, []);
+
+  const isAr = i18n.language === 'ar';
+
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.lockContainer]}>
+      <LinearGradient
+        colors={['#1A237E', '#0D1B2A']}
+        style={styles.lockGradient}
+      >
+        <View style={styles.lockCircle1} />
+        <View style={styles.lockCircle2} />
+
+        <View style={styles.lockContent}>
+          <View style={styles.lockIconContainer}>
+            <Ionicons name="lock-closed" size={48} color="#2EC4B6" />
+          </View>
+
+          <Text style={styles.lockTitle}>
+            {isAr ? 'التطبيق مقفل' : 'App Locked'}
+          </Text>
+
+          <Text style={styles.lockSubtitle}>
+            {isAr
+              ? 'يرجى تأكيد الهوية باستخدام البصمة أو رمز مرور الهاتف للمتابعة'
+              : 'Please confirm your identity using biometrics or your phone passcode to continue'}
+          </Text>
+
+          {authError ? (
+            <View style={styles.lockErrorContainer}>
+              <Ionicons name="alert-circle" size={18} color="#E74C3C" />
+              <Text style={styles.lockErrorText}>{authError}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.unlockButton}
+            onPress={triggerAuth}
+            disabled={isAuthenticating}
+          >
+            <Ionicons name="finger-print" size={24} color="white" style={{ marginRight: isAr ? 0 : 8, marginLeft: isAr ? 8 : 0 }} />
+            <Text style={styles.unlockButtonText}>
+              {isAuthenticating
+                ? (isAr ? 'جاري التحقق...' : 'Verifying...')
+                : (isAr ? 'إلغاء القفل' : 'Unlock App')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.lockLogoutButton}
+            onPress={onLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#94A3B8" style={{ marginRight: isAr ? 0 : 8, marginLeft: isAr ? 8 : 0 }} />
+            <Text style={styles.lockLogoutText}>
+              {isAr ? 'تسجيل الخروج' : 'Sign Out'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading, user, isLoggingOut } = useAuth();
+  const { isAuthenticated, isLoading, user, isLoggingOut, requiresBiometric, setRequiresBiometric, logout } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   useFCM(router);
@@ -138,6 +260,12 @@ function RootLayoutNav() {
           <ActivityIndicator size="large" color="#2EC4B6" />
         </View>
       )}
+      {isAuthenticated && requiresBiometric && (
+        <BiometricLockScreen
+          onSuccess={() => setRequiresBiometric(false)}
+          onLogout={() => logout()}
+        />
+      )}
       <StatusBar style="auto" />
     </ThemeProvider>
   );
@@ -167,3 +295,118 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  lockContainer: {
+    zIndex: 2000,
+    backgroundColor: '#0D1B2A',
+  },
+  lockGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  lockCircle1: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(46, 196, 182, 0.08)',
+  },
+  lockCircle2: {
+    position: 'absolute',
+    bottom: -150,
+    left: -150,
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: 'rgba(46, 196, 182, 0.04)',
+  },
+  lockContent: {
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  lockIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(46, 196, 182, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(46, 196, 182, 0.2)',
+  },
+  lockTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: 'white',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  lockSubtitle: {
+    fontSize: 15,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+    fontWeight: '500',
+  },
+  lockErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(231, 76, 60, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    width: '100%',
+  },
+  lockErrorText: {
+    color: '#E74C3C',
+    fontSize: 14,
+    marginLeft: 8,
+    fontWeight: '600',
+    flex: 1,
+  },
+  unlockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2EC4B6',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: '100%',
+    marginBottom: 20,
+    shadowColor: '#2EC4B6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  unlockButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  lockLogoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  lockLogoutText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

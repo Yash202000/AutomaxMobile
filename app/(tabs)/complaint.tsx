@@ -118,13 +118,13 @@ const ComplaintsScreen = () => {
     const { canCreateComplaints } = usePermissions();
     const {
         state_id, state_name, priority, severity, assignee_id, assignee_name,
-        department_id, department_name, classification_id, classification_name,
-        location_id, location_name, channel, start_date, end_date
+        department_id, department_name, classification_ids, classification_names,
+        location_ids, location_names, channel, start_date, end_date
     } = useLocalSearchParams<{
         state_id?: string; state_name?: string; priority?: string; severity?: string;
         assignee_id?: string; assignee_name?: string; department_id?: string;
-        department_name?: string; classification_id?: string; classification_name?: string;
-        location_id?: string; location_name?: string; channel?: string;
+        department_name?: string; classification_ids?: string; classification_names?: string;
+        location_ids?: string; location_names?: string; channel?: string;
         start_date?: string; end_date?: string;
     }>();
 
@@ -149,9 +149,9 @@ const ComplaintsScreen = () => {
         if (priority) params.priority = parseInt(priority);
         if (severity) params.severity = parseInt(severity);
         if (assignee_id) params.assignee_id = assignee_id;
-        if (department_id) params.department_id = department_id;
-        if (classification_id) params.classification_id = classification_id;
-        if (location_id) params.location_id = location_id;
+        if (department_id) params.department_id = department_id.split(",");
+        if (classification_ids) params.classification_id = classification_ids.split(",");
+        if (location_ids) params.location_id = location_ids.split(",");
         if (channel) params.channel = channel;
         if (start_date) params.start_date = start_date;
         if (end_date) params.end_date = end_date;
@@ -177,7 +177,7 @@ const ComplaintsScreen = () => {
         if (!params?.current_state_id || params?.current_state_id.length === 0) {
             const statsResponse = await getComplaintStats();
             if (statsResponse.success) {
-                params.current_state_id = statsResponse.data.by_state_details?.map((s: any) => s.id) || [];
+                params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
             }
         }
         const response = await getComplaints(params);
@@ -211,7 +211,7 @@ const ComplaintsScreen = () => {
     useFocusEffect(
         useCallback(() => {
             fetchComplaints(1, false);
-        }, [activeStateId, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date, searchQuery])
+        }, [activeStateId, priority, severity, assignee_id, department_id, classification_ids, location_ids, channel, start_date, end_date, searchQuery])
     );
 
     const handleSearchToggle = () => {
@@ -229,9 +229,9 @@ const ComplaintsScreen = () => {
 
     const clearFilter = () => router.replace('/(tabs)/complaint');
 
-    const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_id || location_id || channel || start_date || end_date;
+    const hasManualFilters = state_id || priority || severity || assignee_id || department_id || classification_ids || location_ids || channel || start_date || end_date;
     const headerTitle = activeStateName || t('complaints.title');
-    const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date].filter(Boolean).length;
+    const activeFilterCount = [state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, channel, start_date, end_date].filter(Boolean).length;
 
     const renderFooter = () => {
         if (!loadingMore) return null;
@@ -281,8 +281,8 @@ const ComplaintsScreen = () => {
             priority && { key: 'priority', label: t('filter.priority'), value: t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
             assignee_id && assignee_name && { key: 'assignee', label: t('filter.assignee'), value: assignee_name },
             department_id && department_name && { key: 'dept', label: t('filter.department'), value: department_name },
-            classification_id && classification_name && { key: 'class', label: t('filter.classification'), value: classification_name },
-            location_id && location_name && { key: 'loc', label: t('filter.location'), value: location_name },
+            classification_ids && classification_names && { key: 'class', label: t('filter.classification'), value: classification_names },
+            location_ids && location_names && { key: 'loc', label: t('filter.location'), value: location_names },
             channel && { key: 'channel', label: t('complaints.channel'), value: channel },
         ].filter(Boolean) as { key: string; label: string; value: string }[];
 
@@ -343,7 +343,7 @@ const ComplaintsScreen = () => {
                         <View style={styles.headerIcons}>
                             <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({
                                 pathname: '/map-view',
-                                params: { type: 'complaint', state_id, priority, severity, assignee_id, department_id, classification_id, location_id, channel, start_date, end_date, search: searchQuery }
+                                params: { type: 'complaint', state_id, priority, severity, assignee_id, department_id, classification_ids, location_ids, channel, start_date, end_date, search: searchQuery }
                             })}>
                                 <Ionicons name="map-outline" size={22} color="white" />
                             </TouchableOpacity>
@@ -354,7 +354,7 @@ const ComplaintsScreen = () => {
                                 style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
                                 onPress={() => router.push({
                                     pathname: '/complaint-filter',
-                                    params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, channel, start_date, end_date }
+                                    params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_ids, classification_names, location_ids, location_names, channel, start_date, end_date }
                                 })}
                             >
                                 <Ionicons name="filter" size={22} color="white" />

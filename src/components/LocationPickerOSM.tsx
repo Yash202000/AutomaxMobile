@@ -1,19 +1,18 @@
+import { CustomAlert } from '@/src/components/CustomAlert';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import i18n from '../i18n';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 export interface LocationData {
@@ -24,6 +23,10 @@ export interface LocationData {
   state?: string;
   country?: string;
   postal_code?: string;
+  street?: string;
+  district?: string;
+  subregion?: string;
+  street_number?: string;
 }
 
 interface LocationPickerProps {
@@ -120,6 +123,10 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           state: result.region || undefined,
           country: result.country || undefined,
           postal_code: result.postalCode || undefined,
+          street: result.street || undefined,
+          district: result.district || undefined,
+          subregion: result.subregion || undefined,
+          street_number: result.streetNumber || undefined,
         };
       }
       return {};
@@ -135,7 +142,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        CustomAlert.alert('Permission Required', 'Location permission is required to get your current location.');
+        CustomAlert.alert(t('common.permissionRequired'), t('common.locationPermissionNeeded'));
         setIsLoading(false);
         return;
       }
@@ -171,7 +178,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Error getting location:', error);
-      CustomAlert.alert('Error', 'Failed to get current location. Please check your GPS is enabled.');
+      CustomAlert.alert(t('common.error'), t('common.failedToGetLocation'));
       setIsLoading(false);
     }
   }, [onChange, onGpsLocation]);
@@ -294,7 +301,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
-      CustomAlert.alert('Error', 'Please enter a location to search');
+      CustomAlert.alert(t('common.error'), t('common.enterLocationToSearch'));
       return;
     }
 
@@ -302,7 +309,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     const timeSinceLastSearch = now - lastSearchTime;
     if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
       const waitTime = MIN_SEARCH_INTERVAL - timeSinceLastSearch;
-      CustomAlert.alert('Please Wait', `Please wait ${Math.ceil(waitTime / 1000)} second(s) before searching again.`);
+      CustomAlert.alert(t('common.pleaseWait'), `${t('common.pleaseWait')} ${Math.ceil(waitTime / 1000)} ${t('common.seconds')}`);
       return;
     }
 
@@ -332,8 +339,8 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       const results = await response.json();
 
       if (results.length === 0) {
-        setSearchError('No results found');
-        CustomAlert.alert('No Results', 'No location found for your search query. Try different keywords.');
+        setSearchError(t('locationPicker.noResults'));
+        CustomAlert.alert(t('common.noResults'), t('common.noLocationFound'));
         setIsSearching(false);
         return;
       }
@@ -357,7 +364,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setSearchError(errorMessage);
-      CustomAlert.alert('Search Failed', errorMessage);
+      CustomAlert.alert(t('common.searchFailed'), errorMessage);
       setIsSearching(false);
     }
   }, [searchQuery, onChange]);

@@ -342,8 +342,8 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     ? selectedIdsProp.length === 0
       ? placeholder || label
       : selectedIdsProp.length === 1
-        ? (findNodeById(data, selectedIdsProp[0])?.name || `1 selected`)
-        : `${selectedIdsProp.length} selected`
+      ? (findNodeById(data, selectedIdsProp[0])?.name || t('filter.nSelected', { count: 1 }))
+      : t('filter.nSelected', { count: selectedIdsProp.length })
     : value || placeholder || label;
 
   const hasValue = multiSelect ? selectedIdsProp.length > 0 : !!value;

@@ -2,18 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { t } from 'i18next';
 import React from 'react';
 import { Dimensions, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-interface WatermarkData {
-  latitude?: number;
-  longitude?: number;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  userName?: string;
-  timestamp?: Date;
-  appName?: string;
-}
+import { WatermarkData, generateWatermarkLines } from '@/src/utils/watermarkUtils';
 
 interface WatermarkPreviewProps {
   visible: boolean;
@@ -30,55 +19,8 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
   onAccept,
   onRetry,
 }) => {
-  // Create watermark text lines (compact version)
-  const watermarkLines: string[] = [];
-
-  // Line 1: Coordinates + Location in one line
-  let line1 = '';
-  if (watermarkData.latitude !== undefined && watermarkData.longitude !== undefined) {
-    line1 = `${watermarkData.latitude.toFixed(5)}, ${watermarkData.longitude.toFixed(5)}`;
-  }
-
-  // Add city or address to same line if available
-  if (watermarkData.city) {
-    line1 += line1 ? ` • ${watermarkData.city}` : watermarkData.city;
-  } else if (watermarkData.address) {
-    const shortAddress = watermarkData.address.length > 20 ? watermarkData.address.substring(0, 20) + '...' : watermarkData.address;
-    line1 += line1 ? ` • ${shortAddress}` : shortAddress;
-  } else {
-  }
-
-  if (line1) {
-    watermarkLines.push(line1);
-  }
-
-  // Line 2: Date, Time, User in one line
-  const timestamp = watermarkData.timestamp || new Date();
-  const dateStr = timestamp.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit', // Shortened year
-  });
-  const timeStr = timestamp.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  let line2 = `${dateStr} ${timeStr}`;
-  if (watermarkData.userName) {
-    const shortName = watermarkData.userName.length > 15 ? watermarkData.userName.substring(0, 15) + '...' : watermarkData.userName;
-    line2 += ` • ${shortName}`;
-  }
-  watermarkLines.push(line2);
-
-  // Line 3: Full address (street/area) if available
-  if (watermarkData.address) {
-    const fullAddress = watermarkData.address.length > 40 ? watermarkData.address.substring(0, 40) + '...' : watermarkData.address;
-    watermarkLines.push(fullAddress);
-  } else if (watermarkData.state && !watermarkData.city) {
-    // If we have state but not city, show state on separate line
-    watermarkLines.push(watermarkData.state);
-  }
+  // Create watermark text lines
+  const watermarkLines = generateWatermarkLines(watermarkData);
 
   return (
     <Modal

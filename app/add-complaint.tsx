@@ -1,11 +1,12 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createComplaint, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations } from '@/src/api/locations';
+import { getLocations, getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { TreeNode } from '@/src/components/TreeSelect';
+import { CustomAlert } from '@/src/components/CustomAlert';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -30,7 +30,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
 
 
 interface DropdownOption {
@@ -77,6 +76,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -103,7 +103,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { paddingBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -266,7 +266,7 @@ const AddComplaintScreen = () => {
     try {
       const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
         getClassificationsTree('complaint'),
-        getLocations(),
+        getLocationsTree(),
         getWorkflows(true, 'complaint'),
         getUsers(),
         getDepartments(),
@@ -331,17 +331,65 @@ const AddComplaintScreen = () => {
       } else {
         setClassifications([]);
       }
-      if (locRes.success && locRes.data) {
-        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+      //location
+      if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
+        // Normalize classification tree data
+        const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeLocations(node.children) : undefined,
+          }));
+        };
+        let normalizedLocations = normalizeLocations(locRes.data);
 
-        // Filter by user's assigned locations (unless super admin)
+        // Filter by user's assigned classifications (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
-          const userLocationIds = new Set(user.locations.map(l => l.id));
-          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
-        }
+          const userLocationIds = new Set(user.locations.map(c => c.id));
 
-        setLocations(locationsList);
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
+        }
+        // if (normalizedLocations.length) {
+        //   setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
+        // }
+
+        setLocations(normalizedLocations);
+      } else {
+        setLocations([]);
       }
+      //
       if (workflowRes.success && workflowRes.data) {
         setAllWorkflows(workflowRes.data);
       }
@@ -410,6 +458,7 @@ const AddComplaintScreen = () => {
   const requiredFields = matchedWorkflow?.required_fields || [];
 
   const isFieldRequired = (fieldName: string): boolean => {
+    console.log(matchedWorkflow?.name)
     return requiredFields.includes(fieldName);
   };
 
@@ -535,7 +584,7 @@ const AddComplaintScreen = () => {
       (newRecording as any)._interval = interval;
     } catch (error) {
       console.error('Failed to start recording:', error);
-      CustomAlert.alert('Error', 'Failed to start recording');
+      CustomAlert.alert(t('common.error'), t('common.recordingStartError'));
     }
   };
 
@@ -559,7 +608,7 @@ const AddComplaintScreen = () => {
       setRecordingDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      CustomAlert.alert('Error', 'Failed to stop recording');
+      CustomAlert.alert(t('common.error'), t('common.failedToStopRecording'));
     }
   };
 
@@ -631,7 +680,7 @@ const AddComplaintScreen = () => {
     if (comment.trim()) complaintData.comment = comment.trim();
     if (selectedLocation) complaintData.location_id = selectedLocation.id;
     if (selectedSource) complaintData.source = selectedSource.id;
-    if (selectedChannel) complaintData.channel = selectedChannel.id;
+    complaintData.channel = selectedChannel ? selectedChannel.id : "mobile";
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
     if (selectedClassification) complaintData.classification_id = selectedClassification.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
@@ -646,7 +695,7 @@ const AddComplaintScreen = () => {
     }
 
     const response = await createComplaint(complaintData);
-    console.log('Complaint created:', classifications);
+    console.log('Complaint created:', response.error);
     if (response.success) {
       // Upload audio files if any
       if (audioFiles.length > 0) {
@@ -678,7 +727,7 @@ const AddComplaintScreen = () => {
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert('Error', `Failed to create complaint: ${response.error}`);
+      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
     }
   };
 
@@ -754,18 +803,40 @@ const AddComplaintScreen = () => {
             {isFieldRequired('location_id') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  {t('addComplaint.location')} <Text style={styles.required}>*</Text>
+                  {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
-                  label={t('addComplaint.selectLocation')}
+                <TreeSelect
+                  label={t('addIncident.selectLocation')}
                   value={selectedLocation?.name || ''}
-                  options={locations}
-                  onSelect={setSelectedLocation}
+                  data={locations}
+                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectLocation')}
+                  iconType="location"
                 />
               </>
             )}
+            {
+              isFieldRequired('classification_id') &&
+              (<>
+                <Text style={styles.sectionTitle}>
+                  {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                </Text>
+                <TreeSelect
+                  label={t('addIncident.selectClassification')}
+                  value={selectedClassification?.name || ''}
+                  data={classifications}
+                  onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                  required={true}
+                  error={errors.classification_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectClassification')}
+                  iconType="classification"
+                />
+              </>)
+            }
 
             {/* Source field - always mobile for mobile app, non-editable */}
             <Text style={styles.sectionTitle}>
@@ -1005,7 +1076,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('description') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Description <Text style={styles.required}>*</Text>
+                  {t('addComplaint.description')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1027,7 +1098,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('comment') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Comment <Text style={styles.required}>*</Text>
+                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1048,7 +1119,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('reporter_name') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Name <Text style={styles.required}>*</Text>
+                  {t('addComplaint.reporterName')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -1067,7 +1138,7 @@ const AddComplaintScreen = () => {
             {isFieldRequired('reporter_email') && (
               <>
                 <Text style={styles.sectionTitle}>
-                  Reporter Email <Text style={styles.required}>*</Text>
+                  {t('addComplaint.reporterEmail')} <Text style={styles.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
