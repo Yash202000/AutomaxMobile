@@ -396,7 +396,8 @@
       "inPerson": "حضورياً",
       "viusional": "فيوجنال",
       "visual": "فيوجنال",
-      "other": "آخر"
+      "other": "آخر",
+      "chatbot": "محادثة ذكية"
     }
   },
   "requests": {
@@ -541,10 +542,16 @@
     "securityTitle": "أمان كلمة المرور",
     "minLength": "الحد الأدنى لطول كلمة المرور",
     "requirements": "يجب أن تحتوي كلمة المرور على",
-    "digitLowerSymbol": "رقم، حرف صغير، رمز",
+    "digitLowerSymbol": "حرف صغير، حرف كبير، ورقم أو رمز خاص",
     "updateButton": "تحديث كلمة المرور",
     "fillAllFields": "يرجى ملء جميع الحقول.",
-    "minLengthError": "يجب أن تكون كلمة المرور الجديدة 8 أحرف على الأقل."
+    "minLengthError": "يجب أن تكون كلمة المرور الجديدة 8 أحرف على الأقل.",
+    "reqLowercase": "حرف صغير واحد على الأقل",
+    "reqUppercase": "حرف كبير واحد على الأقل",
+    "reqNumber": "رقم واحد على الأقل",
+    "reqSymbol": "رمز خاص واحد على الأقل",
+    "reqNumberOrSymbol": "رقم واحد أو رمز خاص على الأقل",
+    "requirementsError": "كلمة المرور لا تفي بمتطلبات الأمان."
   },
   "filter": {
     "title": "تصفية الحوادث",

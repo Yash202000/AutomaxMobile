@@ -76,6 +76,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -102,7 +103,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { paddingBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -380,9 +381,9 @@ const AddComplaintScreen = () => {
 
           normalizedLocations = filterByUserAccess(normalizedLocations);
         }
-        if (normalizedLocations.length) {
-          setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
-        }
+        // if (normalizedLocations.length) {
+        //   setSelectedLocation({ id: normalizedLocations?.[0]?.children?.[0]?.id || '', name: normalizedLocations?.[0]?.children?.[0]?.name || '' })
+        // }
 
         setLocations(normalizedLocations);
       } else {
@@ -679,7 +680,7 @@ const AddComplaintScreen = () => {
     if (comment.trim()) complaintData.comment = comment.trim();
     if (selectedLocation) complaintData.location_id = selectedLocation.id;
     if (selectedSource) complaintData.source = selectedSource.id;
-    if (selectedChannel) complaintData.channel = selectedChannel.id;
+    complaintData.channel = selectedChannel ? selectedChannel.id : "mobile";
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
     if (selectedClassification) complaintData.classification_id = selectedClassification.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;

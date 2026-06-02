@@ -149,9 +149,9 @@ const QueriesScreen = () => {
         if (priority) params.priority = parseInt(priority);
         if (severity) params.severity = parseInt(severity);
         if (assignee_id) params.assignee_id = assignee_id;
-        if (department_id) params.department_id = department_id;
-        if (classification_id) params.classification_id = classification_id;
-        if (location_id) params.location_id = location_id;
+        if (department_id) params.department_id = department_id.split(",");
+        if (classification_id) params.classification_id = classification_id.split(",");
+        if (location_id) params.location_id = location_id.split(",");
         if (channel) params.channel = channel;
         if (start_date) params.start_date = start_date;
         if (end_date) params.end_date = end_date;

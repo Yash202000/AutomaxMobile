@@ -6,7 +6,7 @@ import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import { TreeNode } from '@/src/components/TreeSelect';
+import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
@@ -83,6 +83,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   allowClear = true
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -108,7 +109,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { marginBottom: insets.bottom }]}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
@@ -392,15 +393,59 @@ const AddQueryScreen = () => {
         setAllWorkflows(uniqueWorkflows);
       }
 
-      if (locRes.success && locRes.data) {
-        let locationsList = locRes.data.map((l: any) => ({ id: l.id, name: l.name }));
+      if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
+        // Ensure all IDs are strings
+        const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map(node => ({
+            id: String(node.id),
+            name: node.name,
+            parent_id: node.parent_id ? String(node.parent_id) : null,
+            children: node.children ? normalizeLocations(node.children) : undefined,
+          }));
+        };
+        let normalizedLocations = normalizeLocations(locRes.data);
+
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
           const userLocationIds = new Set(user.locations.map(l => l.id));
-          locationsList = locationsList.filter((loc: DropdownOption) => userLocationIds.has(loc.id));
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userLocationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some(child => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes.map(node => {
+              if (!hasUserAccess(node)) return null;
+
+              const filteredNode: TreeNode = {
+                id: node.id,
+                name: node.name,
+                parent_id: node.parent_id,
+              };
+
+              if (node.children && node.children.length > 0) {
+                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                if (filteredChildren.length > 0) {
+                  filteredNode.children = filteredChildren;
+                }
+              }
+
+              return filteredNode;
+            }).filter(Boolean) as TreeNode[];
+          };
+
+          normalizedLocations = filterByUserAccess(normalizedLocations);
         }
 
-        setLocations(locationsList);
+        setLocations(normalizedLocations);
+      } else {
+        setLocations([]);
       }
       if (userRes.success && userRes.data) {
         setUsers(userRes.data.map((u: any) => ({
@@ -1337,13 +1382,16 @@ const AddQueryScreen = () => {
                 <Text style={styles.sectionTitle}>
                   {t('incidents.location')} <Text style={styles.required}>*</Text>
                 </Text>
-                <Dropdown
-                  label={t('addQuery.selectLocation')}
+                <TreeSelect
+                  label={t('addIncident.selectLocation')}
                   value={selectedLocation?.name || ''}
-                  options={locations}
-                  onSelect={setSelectedLocation}
+                  data={locations}
+                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
                   required={true}
                   error={errors.location_id}
+                  leafOnly={true}
+                  placeholder={t('addIncident.selectLocation')}
+                  iconType="location"
                 />
               </>
             )}

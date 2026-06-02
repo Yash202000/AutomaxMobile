@@ -449,7 +449,10 @@ const LoginScreen = () => {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isKeyboardActive && { paddingBottom: 300 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -1010,8 +1013,6 @@ const LoginScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
-            {/* Keyboard Spacer */}
-            {isKeyboardActive && <View style={{ height: 100 }} />}
           </Animated.View>
         </ScrollView>
 
