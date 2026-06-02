@@ -1113,7 +1113,7 @@ const AddQueryScreen = () => {
     if (selectedClassification) queryData.classification_id = selectedClassification.id;
     if (selectedLocation) queryData.location_id = selectedLocation.id;
     if (selectedSource) queryData.source = selectedSource.id;
-    // if (selectedChannel) queryData.channel = selectedChannel.id;
+    queryData.channel = "mobile";
     if (selectedAssignee) queryData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) queryData.department_id = selectedDepartment.id;
     if (selectedSourceIncident) queryData.source_incident_id = selectedSourceIncident.id;

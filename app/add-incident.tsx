@@ -1130,6 +1130,7 @@ const AddIncidentScreen = () => {
       if (selectedClassification) incidentData.classification_id = selectedClassification.id;
       if (selectedLocation) incidentData.location_id = selectedLocation.id;
       if (selectedSource) incidentData.source = selectedSource.id;
+      incidentData.channel = "mobile";
       if (selectedAssignee) incidentData.assignee_id = selectedAssignee.id;
       if (selectedDepartment) incidentData.department_id = selectedDepartment.id;
       if (locationData) {

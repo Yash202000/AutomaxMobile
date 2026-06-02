@@ -951,6 +951,7 @@ const AddRequestScreen = () => {
     if (selectedClassification) requestData.classification_id = selectedClassification.id;
     if (selectedLocation) requestData.location_id = selectedLocation.id;
     if (selectedSource) requestData.source = selectedSource.id;
+    requestData.channel = "mobile";
     if (selectedAssignee) requestData.assignee_id = selectedAssignee.id;
     if (selectedDepartment) requestData.department_id = selectedDepartment.id;
     if (locationData) {
