@@ -59,7 +59,7 @@ const UpdateStatusModal = () => {
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
-  const [autoSelectUser, setAutoSelectUser] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Department selection state (auto_detect_department)
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
@@ -247,17 +247,18 @@ const UpdateStatusModal = () => {
   const showCommentField = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment');
   const showFeedbackField = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback');
 
-  // Check if user selection is needed (manual_select_user or auto_match_user with roles)
+  // Check if user selection is needed (manual_select_user OR auto_match_user with roles — matches web)
   const needsUserSelection =
-    (selectedTransition?.transition?.manual_select_user) &&
-    selectedTransition?.transition?.assignment_roles?.length > 0;
+    (selectedTransition?.transition?.manual_select_user || selectedTransition?.transition?.auto_match_user) &&
+    selectedTransition?.transition?.assignment_roles?.length > 0 &&
+    !selectedTransition?.transition?.assign_user_id;
 
   // Check if department selection is needed
   const needsDeptSelection =
     selectedTransition?.transition?.auto_detect_department && !selectedTransition?.transition?.assign_department_id;
 
-  // is_ready_to_close duration needed
-  const isReadyToClose = selectedTransition?.transition?.to_state?.is_ready_to_close === true;
+  // Duration step: triggered by is_partial_close (matches web IncidentDetailPage)
+  const isPartialClose = selectedTransition?.transition?.to_state?.is_partial_close === true;
 
   const readyToCloseDurationOptions = [
     { label: t('incidents.duration_1h', '1 hour'), value: '1h' },
@@ -280,7 +281,7 @@ const UpdateStatusModal = () => {
     if (trans.assign_department_id || trans.auto_detect_department) steps.push('department');
     if (trans.assign_user_id || ((trans.auto_match_user || trans.manual_select_user) && trans.assignment_roles?.length > 0)) steps.push('user');
     if (trans.field_changes?.length > 0) steps.push('field_changes');
-    if (trans.to_state?.is_ready_to_close) steps.push('duration');
+    if (trans.to_state?.is_partial_close) steps.push('duration');
     if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'attachment' && r.is_mandatory)) steps.push('attachment');
     if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'feedback')) steps.push('feedback');
     steps.push('comment');
@@ -323,8 +324,13 @@ const UpdateStatusModal = () => {
         CustomAlert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingMatchingUsers', 'Loading matching users...'));
         return false;
       }
-      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUsers automatically)
-      if (needsUserSelection && selectedUsers.length === 0 && !trans.assign_user_id) {
+      // Block if manual selection is needed and nothing selected
+      if (
+        trans.manual_select_user &&
+        trans.assignment_roles?.length > 0 &&
+        !trans.assign_user_id &&
+        selectedUsers.length === 0
+      ) {
         CustomAlert.alert(t('common.required', 'Required'), t('incidents.selectUserRequired', 'Please select a user to continue.'));
         return false;
       }
@@ -381,7 +387,7 @@ const UpdateStatusModal = () => {
     if (!currentStepKey || !selectedTransition) return false;
     const trans = selectedTransition.transition;
     if (currentStepKey === 'department') return needsDeptSelection;
-    if (currentStepKey === 'user') return trans.manual_select_user && !trans.assign_user_id;
+    if (currentStepKey === 'user') return (trans.manual_select_user || trans.auto_match_user) && !trans.assign_user_id;
     if (currentStepKey === 'attachment') return transitionRequiresAttachment;
     if (currentStepKey === 'feedback') return transitionRequiresFeedback;
     if (currentStepKey === 'comment') return transitionRequiresComment;
@@ -400,10 +406,9 @@ const UpdateStatusModal = () => {
         role_ids: roleIds,
         classification_id: incident.classification_id || incident.classification?.id || null,
         location_id: incident.location_id || incident.location?.id || null,
-        department_id: incident.department_id || incident.department?.id || null,
-        exclude_user_id: incident.assignee_id || incident.assignee?.id || null,
+        department_id: incident.department_id || incident.department?.id || null
       };
-
+      console.log(matchCriteria)
       const response = await getMatchingUsers(matchCriteria);
       setLoadingUsers(false);
 
@@ -785,7 +790,7 @@ const UpdateStatusModal = () => {
     setReadyToCloseDuration('');
     setTransitionStep(0);
     setShowPicker(false);
-    setAutoSelectUser(trans.auto_match_user)
+    setUserSearchQuery('');
 
     // Pre-fetch tree data for field changes that need hierarchical pickers
     const fcs = trans.transition?.field_changes || [];
@@ -981,53 +986,192 @@ const UpdateStatusModal = () => {
               {/* ── USER STEP ── */}
               {currentStepKey === 'user' && (
                 <>
-                  {loadingUsers ? (
+                  {/* Static pre-configured user (assign_user_id) */}
+                  {selectedTransition.transition.assign_user_id ? (
+                    <View style={styles.autoAssignedCard}>
+                      <Ionicons name="person-circle-outline" size={20} color="#2EC4B6" />
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.autoAssignedName}>
+                          {selectedTransition.transition.assign_user?.first_name ||
+                            selectedTransition.transition.assign_user?.username ||
+                            t('incidents.assignee', 'Assignee')}
+                        </Text>
+                        {selectedTransition.transition.assign_user?.email ? (
+                          <Text style={styles.autoAssignedSub}>{selectedTransition.transition.assign_user.email}</Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.autoAssignedBadge}>{t('incidents.preConfigured', 'Pre-configured')}</Text>
+                    </View>
+                  ) : loadingUsers ? (
                     <View style={styles.loadingContainer}>
                       <ActivityIndicator size="small" color="#2EC4B6" />
                       <Text style={styles.loadingText}>{t('incidents.findingMatchingUsers', 'Finding matching users...')}</Text>
                     </View>
                   ) : singleUserMatch && matchingUsers.length === 1 ? (
+                    // Single auto-matched user
                     <View style={styles.autoAssignedCard}>
                       <Ionicons name="person-circle-outline" size={20} color="#2EC4B6" />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={styles.autoAssignedName}>
-                          {matchingUsers[0].first_name} {matchingUsers[0].last_name}
+                          {matchingUsers[0].first_name
+                            ? `${matchingUsers[0].first_name} ${matchingUsers[0].last_name || ''}`.trim()
+                            : matchingUsers[0].username}
                         </Text>
                         <Text style={styles.autoAssignedSub}>{matchingUsers[0].email}</Text>
                       </View>
                       <Text style={styles.autoAssignedBadge}>{t('incidents.autoSelected', 'Auto-selected')}</Text>
                     </View>
                   ) : matchingUsers.length > 0 ? (
-                    matchingUsers.map((u: any) => {
-                      const isSelected = selectedUsers.some((selected: any) => selected.id === u.id);
-                      return (
-                        <TouchableOpacity
-                          key={u.id}
-                          style={[styles.selectionRow, isSelected && styles.selectionRowSelected]}
-                          onPress={() => {
-                            setSelectedUsers(prev => {
-                              const exists = prev.some((selected: any) => selected.id === u.id);
-                              if (exists) {
-                                return prev.filter((selected: any) => selected.id !== u.id);
-                              } else {
-                                return [...prev, u];
-                              }
-                            });
-                          }}
-                          disabled={selectedTransition.transition.auto_match_user}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.selectionRowTitle, isSelected && styles.selectionRowTitleSelected]}>
-                              {u.first_name} {u.last_name}
-                            </Text>
-                            <Text style={styles.selectionRowSub}>{u.email}</Text>
-                          </View>
-                          {isSelected && (
-                            <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })
+                    // Multiple users — search + select list
+                    <>
+                      {/* Selected user chips */}
+                      {selectedUsers.length > 0 && (
+                        <View style={styles.selectedChipsRow}>
+                          {selectedUsers.map((u: any) => (
+                            <View key={u.id} style={styles.selectedChip}>
+                              <Text style={styles.selectedChipText} numberOfLines={1}>
+                                {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : u.username}
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => setSelectedUsers(prev => prev.filter((x: any) => x.id !== u.id))}
+                              >
+                                <Ionicons name="close-circle" size={16} color="#2EC4B6" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Search input */}
+                      <View style={styles.searchContainer}>
+                        <Ionicons name="search-outline" size={16} color="#999" style={styles.searchIcon} />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder={t('incidents.searchUsers', 'Search users...')}
+                          placeholderTextColor="#999"
+                          value={userSearchQuery}
+                          onChangeText={setUserSearchQuery}
+                        />
+                        {userSearchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setUserSearchQuery('')}>
+                            <Ionicons name="close-circle" size={16} color="#CCC" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* Select all / deselect all row (only for manual_select_user) */}
+                      {selectedTransition.transition.manual_select_user && (
+                        (() => {
+                          const filteredBySearch = userSearchQuery.trim()
+                            ? matchingUsers.filter((u: any) =>
+                              `${u.first_name || ''} ${u.last_name || ''} ${u.username} ${u.email}`
+                                .toLowerCase()
+                                .includes(userSearchQuery.toLowerCase())
+                            )
+                            : matchingUsers;
+                          const allSelected =
+                            filteredBySearch.length > 0 &&
+                            filteredBySearch.every((u: any) => selectedUsers.some((s: any) => s.id === u.id));
+                          const someSelected = filteredBySearch.some((u: any) =>
+                            selectedUsers.some((s: any) => s.id === u.id)
+                          );
+                          return (
+                            <TouchableOpacity
+                              style={[styles.selectionRow, styles.selectAllRow]}
+                              onPress={() => {
+                                if (allSelected) {
+                                  // Deselect filtered
+                                  const filteredIds = new Set(filteredBySearch.map((u: any) => u.id));
+                                  setSelectedUsers(prev => prev.filter((u: any) => !filteredIds.has(u.id)));
+                                } else {
+                                  // Select all filtered not already selected
+                                  const newUsers = filteredBySearch.filter(
+                                    (u: any) => !selectedUsers.some((s: any) => s.id === u.id)
+                                  );
+                                  setSelectedUsers(prev => [...prev, ...newUsers]);
+                                }
+                              }}
+                            >
+                              <Ionicons
+                                name={
+                                  allSelected
+                                    ? 'checkbox'
+                                    : someSelected
+                                      ? 'checkbox-outline'
+                                      : 'square-outline'
+                                }
+                                size={20}
+                                color={allSelected || someSelected ? '#2EC4B6' : '#CCC'}
+                              />
+                              <Text style={[styles.selectionRowTitle, { marginLeft: 10 }]}>
+                                {allSelected
+                                  ? t('common.deselectAll', 'Deselect All')
+                                  : t('common.selectAll', 'Select All')}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })()
+                      )}
+
+                      {/* User list */}
+                      {(() => {
+                        const filteredBySearch = userSearchQuery.trim()
+                          ? matchingUsers.filter((u: any) =>
+                            `${u.first_name || ''} ${u.last_name || ''} ${u.username} ${u.email}`
+                              .toLowerCase()
+                              .includes(userSearchQuery.toLowerCase())
+                          )
+                          : matchingUsers;
+
+                        if (filteredBySearch.length === 0) {
+                          return (
+                            <View style={styles.noUsersContainer}>
+                              <Ionicons name="search-outline" size={24} color="#CCC" />
+                              <Text style={styles.noUsersText}>{t('common.noResults', 'No results found')}</Text>
+                            </View>
+                          );
+                        }
+
+                        return filteredBySearch.map((u: any) => {
+                          const isSelected = selectedUsers.some((s: any) => s.id === u.id);
+                          const isAutoMatch = selectedTransition.transition.auto_match_user;
+                          return (
+                            <TouchableOpacity
+                              key={u.id}
+                              style={[styles.selectionRow, isSelected && styles.selectionRowSelected]}
+                              onPress={() => {
+                                if (isAutoMatch) return; // auto_match: read-only
+                                setSelectedUsers(prev => {
+                                  const exists = prev.some((s: any) => s.id === u.id);
+                                  return exists
+                                    ? prev.filter((s: any) => s.id !== u.id)
+                                    : [...prev, u];
+                                });
+                              }}
+                              disabled={isAutoMatch}
+                            >
+                              <Ionicons
+                                name={isSelected ? 'checkbox' : 'square-outline'}
+                                size={20}
+                                color={isSelected ? '#2EC4B6' : '#CCC'}
+                                style={{ marginRight: 10 }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.selectionRowTitle, isSelected && styles.selectionRowTitleSelected]}>
+                                  {u.first_name
+                                    ? `${u.first_name} ${u.last_name || ''}`.trim()
+                                    : u.username}
+                                </Text>
+                                <Text style={styles.selectionRowSub}>{u.email}</Text>
+                              </View>
+                              {isAutoMatch && isSelected && (
+                                <Text style={styles.autoAssignedBadge}>{t('incidents.autoSelected', 'Auto')}</Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        });
+                      })()}
+                    </>
                   ) : (
                     <View style={styles.noUsersContainer}>
                       <Ionicons name="person-outline" size={32} color="#CCC" />
@@ -1556,6 +1700,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Search styles
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+    gap: 6,
+  },
+  searchIcon: {
+    marginRight: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  selectedChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  selectedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F8F7',
+    borderColor: '#2EC4B640',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+    maxWidth: 160,
+  },
+  selectedChipText: {
+    fontSize: 12,
+    color: '#2EC4B6',
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  selectAllRow: {
+    backgroundColor: '#FAFAFA',
+    borderStyle: 'dashed',
   },
   // Field Change Styles
   priorityRow: {
