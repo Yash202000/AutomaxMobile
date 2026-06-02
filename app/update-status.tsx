@@ -55,7 +55,7 @@ const UpdateStatusModal = () => {
 
   // User selection state
   const [matchingUsers, setMatchingUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
@@ -323,8 +323,8 @@ const UpdateStatusModal = () => {
         CustomAlert.alert(t('common.pleaseWait', 'Please Wait'), t('incidents.loadingMatchingUsers', 'Loading matching users...'));
         return false;
       }
-      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUser automatically)
-      if (needsUserSelection && !selectedUser && !trans.assign_user_id) {
+      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUsers automatically)
+      if (needsUserSelection && selectedUsers.length === 0 && !trans.assign_user_id) {
         CustomAlert.alert(t('common.required', 'Required'), t('incidents.selectUserRequired', 'Please select a user to continue.'));
         return false;
       }
@@ -413,9 +413,9 @@ const UpdateStatusModal = () => {
         const isSingle = response.data.single_match === true;
         setSingleUserMatch(isSingle);
         if (isSingle && users.length === 1) {
-          setSelectedUser(users[0]);
+          setSelectedUsers([users[0]]);
         } else {
-          setSelectedUser(null)
+          setSelectedUsers([]);
         }
       } else {
         setMatchingUsers([]);
@@ -644,7 +644,7 @@ const UpdateStatusModal = () => {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
-    if (needsUserSelection && !selectedUser) {
+    if (needsUserSelection && selectedUsers.length === 0) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
       return;
     }
@@ -716,7 +716,7 @@ const UpdateStatusModal = () => {
     const transitionData: any = {
       transition_id: selectedTransition.transition.id,
       comment: comment.trim() || undefined,
-      user_ids: selectedUser ? [selectedUser.id] : undefined,
+      user_ids: selectedUsers.length > 0 ? selectedUsers.map(u => u.id) : undefined,
       department_id: departmentId,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
       feedback: feedbackRating > 0 ? { rating: feedbackRating, comment: feedbackComment.trim() || undefined } : undefined,
@@ -772,7 +772,7 @@ const UpdateStatusModal = () => {
 
   const handleTransitionSelect = (trans) => {
     setSelectedTransition(trans);
-    setSelectedUser(null);
+    setSelectedUsers([]);
     setMatchingUsers([]);
     setSingleUserMatch(false);
     setFeedbackRating(0);
@@ -998,24 +998,36 @@ const UpdateStatusModal = () => {
                       <Text style={styles.autoAssignedBadge}>{t('incidents.autoSelected', 'Auto-selected')}</Text>
                     </View>
                   ) : matchingUsers.length > 0 ? (
-                    matchingUsers.map((u: any) => (
-                      <TouchableOpacity
-                        key={u.id}
-                        style={[styles.selectionRow, selectedUser?.id === u.id && styles.selectionRowSelected]}
-                        onPress={() => setSelectedUser(u)}
-                        disabled={selectedTransition.transition.auto_match_user}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.selectionRowTitle, selectedUser?.id === u.id && styles.selectionRowTitleSelected]}>
-                            {u.first_name} {u.last_name}
-                          </Text>
-                          <Text style={styles.selectionRowSub}>{u.email}</Text>
-                        </View>
-                        {selectedUser?.id === u.id && (
-                          <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
-                        )}
-                      </TouchableOpacity>
-                    ))
+                    matchingUsers.map((u: any) => {
+                      const isSelected = selectedUsers.some((selected: any) => selected.id === u.id);
+                      return (
+                        <TouchableOpacity
+                          key={u.id}
+                          style={[styles.selectionRow, isSelected && styles.selectionRowSelected]}
+                          onPress={() => {
+                            setSelectedUsers(prev => {
+                              const exists = prev.some((selected: any) => selected.id === u.id);
+                              if (exists) {
+                                return prev.filter((selected: any) => selected.id !== u.id);
+                              } else {
+                                return [...prev, u];
+                              }
+                            });
+                          }}
+                          disabled={selectedTransition.transition.auto_match_user}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.selectionRowTitle, isSelected && styles.selectionRowTitleSelected]}>
+                              {u.first_name} {u.last_name}
+                            </Text>
+                            <Text style={styles.selectionRowSub}>{u.email}</Text>
+                          </View>
+                          {isSelected && (
+                            <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })
                   ) : (
                     <View style={styles.noUsersContainer}>
                       <Ionicons name="person-outline" size={32} color="#CCC" />
