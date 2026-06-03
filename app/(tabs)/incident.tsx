@@ -1,4 +1,5 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
@@ -19,6 +20,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+
+const SHARE_LIMIT = 12;
 
 const COLORS = {
   primary: "#1A237E",
@@ -253,7 +256,7 @@ const IncidentCard = ({
 const IncidentsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { canCreateIncidents, canViewAllIncidents } = usePermissions();
+  const { canCreateIncidents, canViewAllIncidents, canShareIncidents } = usePermissions();
   const { user } = useAuth();
   let {
     state_id,
@@ -346,35 +349,59 @@ const IncidentsScreen = () => {
     if (selectedIds.size === 0) return;
 
     const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
-    let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
-    selectedIncidents.forEach((inc, index) => {
-      const priorityLookup = inc.lookup_values?.find(
-        (lv) => lv.category.code === "PRIORITY",
-      );
-      let priorityVal = t(`priorities.${priorityConfig[inc.priority]?.key || "unknown"}`);
-      if (priorityLookup) {
-        priorityVal =
-          i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
-      }
 
-      shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
-      shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
-      shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
-      shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
-      shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
-      shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
-      shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
-      shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
-      shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
-      shareText += "------------------------------------------\n\n";
-    });
+    const doShare = async (incidentsToShare: typeof selectedIncidents) => {
+      let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
+      incidentsToShare.forEach((inc, index) => {
+        const priorityLookup = inc.lookup_values?.find(
+          (lv) => lv.category.code === "PRIORITY",
+        );
+        let priorityVal = t(`priorities.${priorityConfig[inc.priority]?.key || "unknown"}`);
+        if (priorityLookup) {
+          priorityVal =
+            i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+        }
 
-    try {
-      await Share.share({
-        message: shareText,
+        shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
+        shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
+        shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+        shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
+        shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
+        shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
+        shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
+        shareText += "------------------------------------------\n\n";
       });
-    } catch (err) {
-      console.error("Error sharing incidents:", err);
+
+      try {
+        await Share.share({ message: shareText });
+      } catch (err) {
+        console.error("Error sharing incidents:", err);
+      }
+    };
+
+    if (selectedIncidents.length > SHARE_LIMIT) {
+      CustomAlert.alert(
+        t("incidents.shareLimitTitle", "Share Limit Reached"),
+        t(
+          "incidents.shareLimitMessage",
+          `You can share up to ${SHARE_LIMIT} incidents at a time. Only the first ${SHARE_LIMIT} will be shared.`,
+          { limit: SHARE_LIMIT },
+        ),
+        [
+          {
+            text: t("common.cancel"),
+            style: "cancel",
+          },
+          {
+            text: t("common.share", "Share"),
+            onPress: () => doShare(selectedIncidents.slice(0, SHARE_LIMIT)),
+          },
+        ],
+      );
+    } else {
+      await doShare(selectedIncidents);
     }
   };
 
@@ -745,15 +772,17 @@ const IncidentsScreen = () => {
               </Text>
             </View>
             <View style={styles.headerIcons}>
-              <TouchableOpacity
-                style={styles.headerIcon}
-                onPress={() => {
-                  setSelectionMode(true);
-                  setSelectedIds(new Set());
-                }}
-              >
-                <Ionicons name="share-social-outline" size={22} color="white" />
-              </TouchableOpacity>
+              {canShareIncidents() && (
+                <TouchableOpacity
+                  style={styles.headerIcon}
+                  onPress={() => {
+                    setSelectionMode(true);
+                    setSelectedIds(new Set());
+                  }}
+                >
+                  <Ionicons name="share-social-outline" size={22} color="white" />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.headerIcon}
                 onPress={() =>
@@ -889,18 +918,20 @@ const IncidentsScreen = () => {
             </Text>
           </View>
           <View style={styles.actionBarRight}>
-            <TouchableOpacity
-              onPress={handleShareSelected}
-              disabled={selectedIds.size === 0}
-              style={[
-                styles.actionBarButton,
-                styles.shareActionButton,
-                selectedIds.size === 0 && styles.actionBarButtonDisabled,
-              ]}
-            >
-              <Ionicons name="share-social-outline" size={20} color="white" style={{ marginRight: 6 }} />
-              <Text style={styles.actionBarButtonText}>{t("common.share", "Share")}</Text>
-            </TouchableOpacity>
+            {canShareIncidents() && (
+              <TouchableOpacity
+                onPress={handleShareSelected}
+                disabled={selectedIds.size === 0}
+                style={[
+                  styles.actionBarButton,
+                  styles.shareActionButton,
+                  selectedIds.size === 0 && styles.actionBarButtonDisabled,
+                ]}
+              >
+                <Ionicons name="share-social-outline" size={20} color="white" style={{ marginRight: 6 }} />
+                <Text style={styles.actionBarButtonText}>{t("common.share", "Share")}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={exitSelectionMode} style={[styles.actionBarButton, styles.cancelActionButton]}>
               <Text style={styles.actionBarButtonTextCancel}>{t("common.cancel")}</Text>
             </TouchableOpacity>

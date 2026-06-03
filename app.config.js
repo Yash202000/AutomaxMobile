@@ -36,6 +36,8 @@ module.exports = {
         'RECORD_AUDIO',
         'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',
+        'android.permission.USE_BIOMETRIC',
+        'android.permission.USE_FINGERPRINT',
       ],
     },
     web: {

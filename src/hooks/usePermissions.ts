@@ -25,6 +25,7 @@ export const usePermissions = () => {
     canAssignIncidents: () => hasPermission(PERMISSIONS.INCIDENTS_ASSIGN),
     canCommentIncidents: () => hasPermission(PERMISSIONS.INCIDENTS_COMMENT),
     canManageSLA: () => hasPermission(PERMISSIONS.INCIDENTS_MANAGE_SLA),
+    canShareIncidents: () => hasPermission(PERMISSIONS.INCIDENTS_SHARE),
 
     // Request permissions
     canViewRequests: () => hasPermission(PERMISSIONS.REQUESTS_VIEW),
