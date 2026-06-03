@@ -22,6 +22,29 @@ export const login = async (email: string, password: string) => {
   }
 };
 
+export const ldapLogin = async (username: string, password: string) => {
+  try {
+    const response = await apiClient.post('/ldap/login', {
+      username,
+      password,
+    });
+    console.log(response)
+    if (response.data && response.data.success) {
+      const { token, refresh_token } = response.data.data;
+      return { success: true, token, refresh_token };
+    }
+    return { success: false, error: response.data?.message || 'Invalid response from server' };
+  } catch (error: any) {
+    return {
+      success: false,
+      error:
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message,
+    };
+  }
+};
+
 export const logout = async () => {
   // Set flag to prevent 401 interceptor from running during logout
   setLoggingOut(true);
