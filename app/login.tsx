@@ -1,4 +1,5 @@
 import apiClient from "@/src/api/client";
+import { ldapLogin } from "@/src/api/auth";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
@@ -48,8 +49,11 @@ const LoginScreen = () => {
   const [loginType, setLoginType] = useState<"employee" | "citizen">(
     enableCitizenLogin ? "citizen" : "employee"
   );
-  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
+  const [loginMethod, setLoginMethod] = useState<"email" | "ad" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
+  const [adUsername, setAdUsername] = useState("");
+  const [adPassword, setAdPassword] = useState("");
+  const [showAdPassword, setShowAdPassword] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
@@ -66,6 +70,8 @@ const LoginScreen = () => {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const emailFocusAnim = useRef(new Animated.Value(0)).current;
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
+  const adUsernameFocusAnim = useRef(new Animated.Value(0)).current;
+  const adPasswordFocusAnim = useRef(new Animated.Value(0)).current;
   const phoneFocusAnim = useRef(new Animated.Value(0)).current;
   const nameFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -82,14 +88,20 @@ const LoginScreen = () => {
     loading ||
     (loginType === "citizen" && !hasCitizenRequiredFields) ||
     (loginType === "employee" &&
-      (loginMethod === "email" ? !email || !password : !phoneNumber));
+      (loginMethod === "email"
+        ? !email || !password
+        : loginMethod === "ad"
+          ? !adUsername || !adPassword
+          : !phoneNumber));
   const isButtonDimmed =
     loading ||
     (loginType === "citizen"
       ? !hasCitizenRequiredFields
       : loginMethod === "email"
         ? !email || !password
-        : !phoneNumber);
+        : loginMethod === "ad"
+          ? !adUsername || !adPassword
+          : !phoneNumber);
 
   useEffect(() => {
     // Entrance animations
@@ -226,6 +238,31 @@ const LoginScreen = () => {
     }
 
     const isEmail = loginMethod === "email";
+    const isAd = loginMethod === "ad";
+
+    if (isAd) {
+      // AD (LDAP) Login Logic
+      if (!adUsername.trim() || !adPassword) {
+        setError(t("errors.validationError"));
+        return;
+      }
+      setLoading(true);
+      try {
+        const result = await ldapLogin(adUsername.trim(), adPassword);
+        if (result.success && result.token) {
+          await login(result.token, result.refresh_token);
+          router.replace("/(tabs)/explore");
+        } else {
+          setError(result.error || t("auth.loginError"));
+        }
+      } catch (err: any) {
+        setError(err.message || t("auth.loginError"));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (isEmail) {
       // Email Login Logic
       const trimmedEmail = email.trim();
@@ -325,9 +362,12 @@ const LoginScreen = () => {
   const resetLoginFields = () => {
     setEmail("");
     setPassword("");
+    setAdUsername("");
+    setAdPassword("");
     setCitizenName("");
     setPhoneNumber("");
     setShowPassword(false);
+    setShowAdPassword(false);
     setError("");
     setFieldErrors({});
   };
@@ -433,6 +473,16 @@ const LoginScreen = () => {
   });
 
   const nameBorderColor = nameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const adUsernameBorderColor = adUsernameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const adPasswordBorderColor = adPasswordFocusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
@@ -558,30 +608,38 @@ const LoginScreen = () => {
               </View>
             )}
 
+            {/* Employee method pill — Email / AD / Phone, only when citizen login is also enabled */}
             {loginType === "employee" && enableCitizenLogin && (
-              <View style={styles.methodToggleContainer}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setLoginMethod(loginMethod === "email" ? "phone" : "email");
-                    resetLoginFields();
-                  }}
-                  style={styles.methodToggleButton}
-                >
-                  <Ionicons
-                    name={
-                      loginMethod === "email" ? "call-outline" : "mail-outline"
-                    }
-                    size={18}
-                    color="#2EC4B6"
-                  />
-                  <Text style={styles.methodToggleText}>
-                    {loginMethod === "email"
-                      ? t("auth.loginMobile")
-                      : t("auth.loginEmail")}
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.methodPillContainer}>
+                {(["email", "ad", "phone"] as const).map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    style={[
+                      styles.methodPillButton,
+                      loginMethod === method && styles.methodPillActive,
+                    ]}
+                    onPress={() => {
+                      setLoginMethod(method);
+                      resetLoginFields();
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.methodPillText,
+                        loginMethod === method && styles.methodPillTextActive,
+                      ]}
+                    >
+                      {method === "email"
+                        ? t("auth.loginEmail", "Email")
+                        : method === "ad"
+                          ? t("auth.adLogin", "AD Login")
+                          : t("auth.loginMobile", "Phone")}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
+
 
             {/* Input Fields Container */}
             <View style={styles.inputsContainer}>
@@ -747,6 +805,114 @@ const LoginScreen = () => {
                         </Text>
                       </TouchableOpacity>
                     </View>
+                  </View>
+                </>
+              ) : loginMethod === "ad" ? (
+                /* AD (LDAP) Login */
+                <>
+                  {/* Username Input */}
+                  <View style={styles.inputWrapper}>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.adUsername", "Username")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        { borderColor: adUsernameBorderColor, borderWidth: 2 },
+                      ]}
+                    >
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          { textAlign: currentLang === "ar" ? "right" : "left" },
+                        ]}
+                        placeholder={t("auth.adUsernamePlaceholder", "domain\\username or username")}
+                        placeholderTextColor="#999"
+                        value={adUsername}
+                        onChangeText={setAdUsername}
+                        onFocus={() =>
+                          Animated.spring(adUsernameFocusAnim, { toValue: 1, useNativeDriver: false }).start()
+                        }
+                        onBlur={() =>
+                          Animated.spring(adUsernameFocusAnim, { toValue: 0, useNativeDriver: false }).start()
+                        }
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                  </View>
+
+                  {/* AD Password Input */}
+                  <View style={styles.inputWrapper}>
+                    <Text
+                      style={[
+                        styles.inputLabel,
+                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                      ]}
+                    >
+                      {t("auth.password")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        { borderColor: adPasswordBorderColor, borderWidth: 2 },
+                      ]}
+                    >
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          { textAlign: currentLang === "ar" ? "right" : "left" },
+                        ]}
+                        placeholder={t("auth.passwordPlaceholder", "••••••••")}
+                        placeholderTextColor="#999"
+                        secureTextEntry={!showAdPassword}
+                        value={adPassword}
+                        onChangeText={setAdPassword}
+                        onFocus={() =>
+                          Animated.spring(adPasswordFocusAnim, { toValue: 1, useNativeDriver: false }).start()
+                        }
+                        onBlur={() =>
+                          Animated.spring(adPasswordFocusAnim, { toValue: 0, useNativeDriver: false }).start()
+                        }
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeButton}
+                        onPress={() => setShowAdPassword(!showAdPassword)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={showAdPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color="#666"
+                        />
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </View>
+
+                  {/* AD badge */}
+                  <View style={styles.adBadgeRow}>
+                    <Ionicons name="shield-checkmark-outline" size={14} color="#6366F1" />
+                    <Text style={styles.adBadgeText}>
+                      {t("auth.adDescription", "Sign in with your Active Directory credentials")}
+                    </Text>
                   </View>
                 </>
               ) : loginMethod === "email" ? (
@@ -1015,7 +1181,9 @@ const LoginScreen = () => {
                     <Text style={styles.loginButtonText}>
                       {loginType === "citizen" || loginMethod === "phone"
                         ? t("auth.sendOTP")
-                        : t("auth.login")}
+                        : loginMethod === "ad"
+                          ? t("auth.adLoginButton", "Sign In with AD")
+                          : t("auth.login")}
                     </Text>
                   )}
                 </LinearGradient>
@@ -1357,6 +1525,48 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     color: "#999",
+    fontWeight: "500",
+  },
+  methodPillContainer: {
+    flexDirection: "row",
+    backgroundColor: "#F0F0F0",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  methodPillButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 9,
+  },
+  methodPillActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  methodPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#888",
+  },
+  methodPillTextActive: {
+    color: "#2EC4B6",
+  },
+  adBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: -8,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  adBadgeText: {
+    fontSize: 12,
+    color: "#6366F1",
     fontWeight: "500",
   },
   tabContainer: {

@@ -133,7 +133,11 @@ const DashboardScreen = () => {
           !complaintRes.success &&
           !queryRes.success
         ) {
-          setError(t("errors.fetchStatsFailed"));
+          if ([incidentRes, requestRes, complaintRes, queryRes].every(res => res.status === 403)) {
+            setError(t("errors.noPermission"));
+          } else {
+            setError(t("errors.fetchStatsFailed"));
+          }
         }
       } catch (err: any) {
         if (!err?.isLogoutCancel) {
