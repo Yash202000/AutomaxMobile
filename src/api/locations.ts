@@ -28,6 +28,7 @@ export const createLocation = async (payload: {
   name: string;
   type: string;
   parent_id?: string;
+  link_default_department?: boolean;
 }) => {
   try {
     const response = await apiClient.post('/admin/locations', payload);

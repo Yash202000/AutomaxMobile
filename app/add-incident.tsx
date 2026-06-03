@@ -1360,7 +1360,7 @@ const AddIncidentScreen = () => {
             );
             if (existing) return existing.id;
 
-            const res = await createLocation({ name, type, parent_id: parentId });
+            const res = await createLocation({ name, type, parent_id: parentId, link_default_department: true });
             if (!res.success || !res.data) throw new Error(`Failed to create ${type} location`);
             // Push into local list so sibling lookups within this call work
             allLocations.push({ id: res.data.id, name, parent_id: parentId ?? null });
