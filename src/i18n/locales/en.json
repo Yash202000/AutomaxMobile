@@ -301,7 +301,7 @@
     "noMatchingDepartments": "No matching departments found",
     "findingMatchingUsers": "Finding matching users...",
     "noMatchingUsers": "No matching users found",
-    "usersAssignedToAll": "User will be assigned to all users",
+    "usersAssignedToAll": "All user will be assigned to the incident",
     "autoRevertHint": "If not closed within this duration, the incident will automatically revert.",
     "attachFiles": "Attach files",
     "addMoreFiles": "Add more files",

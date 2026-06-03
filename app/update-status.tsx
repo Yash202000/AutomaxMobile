@@ -408,20 +408,23 @@ const UpdateStatusModal = () => {
         location_id: incident.location_id || incident.location?.id || null,
         department_id: incident.department_id || incident.department?.id || null
       };
-      console.log(matchCriteria)
       const response = await getMatchingUsers(matchCriteria);
       setLoadingUsers(false);
-
       if (response.success) {
         const users = response.data.users || [];
         setMatchingUsers(users);
         const isSingle = response.data.single_match === true;
         setSingleUserMatch(isSingle);
-        if (isSingle && users.length === 1) {
+        const isAutoMatch = selectedTransition.transition.auto_match_user === true;
+        if (isAutoMatch) {
+          // Auto-select ALL returned users — list is read-only
+          setSelectedUsers(users);
+        } else if (isSingle && users.length === 1) {
           setSelectedUsers([users[0]]);
         } else {
           setSelectedUsers([]);
         }
+
       } else {
         setMatchingUsers([]);
         setSingleUserMatch(false);
@@ -650,7 +653,7 @@ const UpdateStatusModal = () => {
       return;
     }
     if (needsUserSelection && selectedUsers.length === 0) {
-      CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.userSelectionRequired', 'Please select a user to assign this incident to.'));
       return;
     }
     if (needsDeptSelection && !selectedDepartmentId) {

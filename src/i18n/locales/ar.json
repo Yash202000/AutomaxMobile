@@ -297,7 +297,7 @@
     "noMatchingDepartments": "لا توجد أقسام مطابقة",
     "findingMatchingUsers": "جاري البحث عن المستخدمين المطابقين...",
     "noMatchingUsers": "لا يوجد مستخدمون مطابقون",
-    "usersAssignedToAll": "سيتم تعيين المستخدم لجميع المستخدمين",
+    "usersAssignedToAll": "سيتم تكليف جميع المستخدمين بالحادث",
     "autoRevertHint": "إذا لم يُغلق خلال هذه المدة، سيعود الحادث تلقائياً للحالة السابقة.",
     "attachFiles": "إرفاق ملفات",
     "addMoreFiles": "إضافة المزيد من الملفات",
