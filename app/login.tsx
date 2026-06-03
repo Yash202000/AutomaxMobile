@@ -32,6 +32,10 @@ const MOBILE_PHONE_MIN_DIGITS = 8;
 const INTERNATIONAL_PHONE_MAX_DIGITS = 15;
 const MOBILE_PHONE_REGEX = /^\+?\d{8,15}$/;
 
+// Feature flag: show citizen login tab only when EXPO_PUBLIC_ENABLE_CITIZEN_LOGIN=true
+const enableCitizenLogin =
+  process.env.EXPO_PUBLIC_ENABLE_CITIZEN_LOGIN === "true";
+
 const LoginScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -41,7 +45,9 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [citizenName, setCitizenName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [loginType, setLoginType] = useState<"employee" | "citizen">("citizen");
+  const [loginType, setLoginType] = useState<"employee" | "citizen">(
+    enableCitizenLogin ? "citizen" : "employee"
+  );
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -506,51 +512,53 @@ const LoginScreen = () => {
               </View>
             }
 
-            {/* Login Type Tabs */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  loginType === "citizen" && styles.activeTab,
-                ]}
-                onPress={() => {
-                  setLoginType("citizen");
-                  setLoginMethod("phone");
-                  resetLoginFields();
-                }}
-              >
-                <Text
+            {/* Login Type Tabs — visible only when citizen login is enabled */}
+            {enableCitizenLogin && (
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
                   style={[
-                    styles.tabText,
-                    loginType === "citizen" && styles.activeTabText,
+                    styles.tabButton,
+                    loginType === "citizen" && styles.activeTab,
                   ]}
+                  onPress={() => {
+                    setLoginType("citizen");
+                    setLoginMethod("phone");
+                    resetLoginFields();
+                  }}
                 >
-                  {t("auth.citizenLogin")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  loginType === "employee" && styles.activeTab,
-                ]}
-                onPress={() => {
-                  setLoginType("employee");
-                  setLoginMethod("email");
-                  resetLoginFields();
-                }}
-              >
-                <Text
+                  <Text
+                    style={[
+                      styles.tabText,
+                      loginType === "citizen" && styles.activeTabText,
+                    ]}
+                  >
+                    {t("auth.citizenLogin")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[
-                    styles.tabText,
-                    loginType === "employee" && styles.activeTabText,
+                    styles.tabButton,
+                    loginType === "employee" && styles.activeTab,
                   ]}
+                  onPress={() => {
+                    setLoginType("employee");
+                    setLoginMethod("email");
+                    resetLoginFields();
+                  }}
                 >
-                  {t("auth.employeeLogin")}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <Text
+                    style={[
+                      styles.tabText,
+                      loginType === "employee" && styles.activeTabText,
+                    ]}
+                  >
+                    {t("auth.employeeLogin")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            {loginType === "employee" && (
+            {loginType === "employee" && enableCitizenLogin && (
               <View style={styles.methodToggleContainer}>
                 <TouchableOpacity
                   onPress={() => {
