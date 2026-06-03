@@ -16,12 +16,19 @@ import {
 } from 'react-native';
 import i18n from '../i18n';
 
+import { IncidentMentionTextarea } from './IncidentMentionTextarea';
+
 interface DynamicLookupFieldProps {
   category: LookupCategory;
   value: any;
   onChange: (categoryId: string, value: any) => void;
   required?: boolean;
   error?: string;
+  mentionFilters?: {
+    classification_ids?: string[];
+    location_ids?: string[];
+    currentIncident_ids?: string[];
+  };
 }
 
 export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
@@ -30,6 +37,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
   onChange,
   required = false,
   error,
+  mentionFilters,
 }) => {
   const fieldType = category.field_type || 'select';
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -78,16 +86,27 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
       return (
         <View style={styles.container}>
           {renderLabel()}
-          <TextInput
-            style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-            value={value || ''}
-            onChangeText={handleChange}
-            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={4}
-            maxLength={validationRules.maxLength}
-          />
+          {mentionFilters ? (
+            <IncidentMentionTextarea
+              style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+              value={value || ''}
+              onChangeText={handleChange}
+              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              filters={mentionFilters}
+              maxLength={validationRules.maxLength}
+            />
+          ) : (
+            <TextInput
+              style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+              value={value || ''}
+              onChangeText={handleChange}
+              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={4}
+              maxLength={validationRules.maxLength}
+            />
+          )}
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
       );
