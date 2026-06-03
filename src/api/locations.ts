@@ -23,3 +23,19 @@ export const getLocationsTree = async () => {
     return { success: false, error: error.response?.data?.message || error.message };
   }
 };
+
+export const createLocation = async (payload: {
+  name: string;
+  type: string;
+  parent_id?: string;
+}) => {
+  try {
+    const response = await apiClient.post('/admin/locations', payload);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: response.data?.message || 'Failed to create location' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};

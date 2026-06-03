@@ -3,6 +3,7 @@ import { t } from 'i18next';
 import React from 'react';
 import { Dimensions, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WatermarkData, generateWatermarkLines } from '@/src/utils/watermarkUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface WatermarkPreviewProps {
   visible: boolean;
@@ -21,7 +22,7 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
 }) => {
   // Create watermark text lines
   const watermarkLines = generateWatermarkLines(watermarkData);
-
+  const insets = useSafeAreaInsets()
   return (
     <Modal
       visible={visible}
@@ -29,7 +30,7 @@ export const WatermarkPreview: React.FC<WatermarkPreviewProps> = ({
       animationType="slide"
       onRequestClose={onRetry}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { marginBottom: insets.bottom }]}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('common.photoPreview')}</Text>

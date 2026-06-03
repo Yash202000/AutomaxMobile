@@ -1,7 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createIncident, uploadMultipleAttachments } from '@/src/api/incidents';
-import { getLocationsTree } from '@/src/api/locations';
+import { getLocationsTree, createLocation } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
   ActivityIndicator,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -42,6 +43,18 @@ import {
 import ImageViewing from 'react-native-image-viewing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// When true, skip reverse geocoding + location-dropdown auto-matching after map taps/GPS.
+// Mirrors VITE_DISABLE_AUTO_LOCATION_RETRIEVAL from the web client.
+const DISABLE_AUTO_LOCATION_RETRIEVAL =
+  process.env.EXPO_PUBLIC_DISABLE_AUTO_LOCATION_RETRIEVAL === 'true';
+
+// Shape for a pending (not-yet-persisted) location created from a map selection
+interface PendingNewLocation {
+  levels: { name: string; type: string }[];
+  virtualId: string;
+  name: string;
+  parent_id?: string;
+}
 
 interface DropdownOption {
   id: string;
@@ -243,6 +256,31 @@ const AddIncidentScreen = () => {
   const locationDataRef = useRef<LocationData | undefined>(undefined);
   // GPS-only location ref — updated solely from real device GPS, never from map taps or search
   const gpsLocationRef = useRef<LocationData | undefined>(undefined);
+  // Tracks the last geo coord pair we processed to avoid duplicate matching calls
+  const lastProcessedGeoRef = useRef<string | null>(null);
+  // Pending location to create on submit when no match found in master tree
+  const [pendingNewLocation, setPendingNewLocation] = useState<PendingNewLocation | null>(null);
+  // True while we are resolving a geo-coord against the location master
+  const [isMatchingLocation, setIsMatchingLocation] = useState(false);
+
+  // ── Inline toast ─────────────────────────────────────────────────────────────
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'info' | 'error'>('info');
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string, type: 'info' | 'error' = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(message);
+    setToastType(type);
+    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true }).start();
+    toastTimerRef.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() =>
+        setToastMessage(null)
+      );
+    }, 4000);
+  }, [toastAnim]);
+  // ─────────────────────────────────────────────────────────────────────────────
   const hasFetchedDataRef = useRef(false);
 
   // Monitor locationData changes and keep ref in sync
@@ -472,6 +510,47 @@ const AddIncidentScreen = () => {
     }
     setLoadingData(false);
   };
+
+  // Helper: flatten a location tree into a flat array of all nodes
+  const flattenLocations = useCallback((nodes: TreeNode[]): TreeNode[] => {
+    const result: TreeNode[] = [];
+    const traverse = (list: TreeNode[]) => {
+      for (const node of list) {
+        result.push(node);
+        if (node.children && node.children.length > 0) {
+          traverse(node.children);
+        }
+      }
+    };
+    traverse(nodes);
+    return result;
+  }, []);
+
+  // Inject the pending virtual location node into the locations tree so TreeSelect can display it
+  const locationsWithVirtual = React.useMemo<TreeNode[]>(() => {
+    if (!pendingNewLocation) return locations;
+
+    const insertVirtualNode = (nodes: TreeNode[], parentId: string | undefined, virtualNode: TreeNode): TreeNode[] => {
+      if (!parentId) return [...nodes, virtualNode];
+      return nodes.map((node) => {
+        if (node.id === parentId) {
+          return { ...node, children: [...(node.children || []), virtualNode] };
+        }
+        if (node.children && node.children.length > 0) {
+          return { ...node, children: insertVirtualNode(node.children, parentId, virtualNode) };
+        }
+        return node;
+      });
+    };
+
+    const virtualNode: TreeNode = {
+      id: pendingNewLocation.virtualId,
+      name: pendingNewLocation.name,
+      type: 'city',
+    };
+
+    return insertVirtualNode(locations, pendingNewLocation.parent_id, virtualNode);
+  }, [locations, pendingNewLocation]);
 
   // Auto-match workflow via backend API when criteria change
   const matchWorkflow = useCallback(async () => {
@@ -1060,12 +1139,137 @@ const AddIncidentScreen = () => {
     }
   };
 
-  const handleLocationChange = (location: LocationData | undefined) => {
+  const handleLocationChange = useCallback(async (location: LocationData | undefined) => {
+    if (!location) {
+      setLocationData(undefined);
+      lastProcessedGeoRef.current = null;
+      setPendingNewLocation(null);
+      return;
+    }
+
     setLocationData(location);
-    if (location && errors.geolocation) {
+    if (errors.geolocation) {
       setErrors(prev => ({ ...prev, geolocation: '' }));
     }
-  };
+
+    // When auto location retrieval is disabled, stop here — do not attempt to
+    // match or create anything in the location dropdown.
+    if (DISABLE_AUTO_LOCATION_RETRIEVAL) {
+      return;
+    }
+
+    // LocationPickerOSM fires onChange TWICE for the same coordinate pair:
+    //   1st call: raw coords only  ({latitude, longitude})
+    //   2nd call: enriched with address ({latitude, longitude, city, state, ...})
+    // We must wait for the enriched call before running the matching logic,
+    // otherwise everything falls back to "Other".
+    const hasAddressData = !!(location.city || location.address || location.country);
+    if (!hasAddressData) {
+      // Raw coords only — skip matching, the enriched call will follow shortly
+      return;
+    }
+
+    // Deduplicate: only process each coordinate pair once (after address is resolved)
+    const geoKey = `${location.latitude},${location.longitude}`;
+    if (lastProcessedGeoRef.current === geoKey) {
+      return;
+    }
+    lastProcessedGeoRef.current = geoKey;
+
+    // Try to match the geo-location against the Location master tree
+    setIsMatchingLocation(true);
+    try {
+      const allLocations = flattenLocations(locations);
+      const searchName = (location.city || location.address || '')
+        .toLowerCase()
+        .trim();
+
+      const matched = searchName
+        ? allLocations.find(
+            (loc) =>
+              (!loc.children || loc.children.length === 0) &&
+              (loc.name.toLowerCase().trim() === searchName ||
+                (location.city &&
+                  loc.name.toLowerCase().trim() ===
+                    location.city.toLowerCase().trim())),
+          )
+        : undefined;
+
+      if (matched) {
+        // Auto-select the matched location in the dropdown
+        setSelectedLocation({ id: matched.id, name: matched.name });
+        if (errors.location_id) {
+          setErrors(prev => ({ ...prev, location_id: '' }));
+        }
+        setPendingNewLocation(null);
+        showToast(
+          t('incidents.locationAutoMatched', {
+            name: matched.name,
+            defaultValue: `Location "${matched.name}" auto-selected from master`,
+          }),
+          'info'
+        );
+      } else {
+        // Build hierarchy: Country → State → District → City
+        const levels: { name: string; type: string }[] = [];
+        levels.push({ name: location.country || 'Other', type: 'country' });
+        levels.push({ name: location.state || 'Other', type: 'state' });
+        levels.push({ name: location.district || 'Other', type: 'district' });
+        levels.push({
+          name:
+            location.city ||
+            location.address?.split(',')[0].trim() ||
+            'Other',
+          type: 'city',
+        });
+
+        const leafName = levels[levels.length - 1].name;
+        const virtualId = 'virtual_new_location';
+
+        // Find the deepest existing parent in the location tree
+        let deepestParentId: string | undefined = undefined;
+        for (let i = 0; i < levels.length - 1; i++) {
+          const level = levels[i];
+          const nameLower = level.name.toLowerCase().trim();
+          const parentIdToCheck = deepestParentId;
+          const match = allLocations.find(
+            (loc) =>
+              loc.name.toLowerCase().trim() === nameLower &&
+              (parentIdToCheck
+                ? (loc as any).parent_id === parentIdToCheck
+                : !(loc as any).parent_id),
+          );
+          if (match) {
+            deepestParentId = match.id;
+          } else {
+            break;
+          }
+        }
+
+        setPendingNewLocation({ levels, virtualId, name: leafName, parent_id: deepestParentId });
+        // Set a virtual id so the location field is considered "filled"
+        setSelectedLocation({ id: virtualId, name: leafName });
+        if (errors.location_id) {
+          setErrors(prev => ({ ...prev, location_id: '' }));
+        }
+        showToast(
+          t('incidents.locationSelectedOnMap', {
+            name: leafName,
+            defaultValue: `Selected location "${leafName}" from map. It will be added to the master list when the incident is created.`,
+          }),
+          'info'
+        );
+      }
+    } catch (err) {
+      console.error('[handleLocationChange] Location match error:', err);
+      showToast(
+        t('incidents.locationMatchError', 'Failed to match location. Please select manually.'),
+        'error'
+      );
+    } finally {
+      setIsMatchingLocation(false);
+    }
+  }, [locations, flattenLocations, errors]);
 
   const handleLookupChange = (categoryId: string, value: any) => {
     setLookupValues(prev => {
@@ -1128,11 +1332,75 @@ const AddIncidentScreen = () => {
       if (description.trim()) incidentData.description = description.trim();
       if (comment.trim()) incidentData.comment = comment.trim();
       if (selectedClassification) incidentData.classification_id = selectedClassification.id;
-      if (selectedLocation) incidentData.location_id = selectedLocation.id;
+
+      // Resolve pending location: if the user selected a location from the map that
+      // didn't match any existing master entry, create the hierarchy now and use the leaf id.
+      let finalLocationId = selectedLocation?.id;
+      if (
+        pendingNewLocation &&
+        selectedLocation?.id === pendingNewLocation.virtualId
+      ) {
+        setIsMatchingLocation(true);
+        try {
+          const allLocations = flattenLocations(locations);
+
+          // Helper: find or create a location at a given level under a parent
+          const findOrCreate = async (
+            name: string,
+            type: string,
+            parentId: string | undefined,
+          ): Promise<string> => {
+            const nameLower = name.toLowerCase().trim();
+            const existing = allLocations.find(
+              (loc) =>
+                loc.name.toLowerCase().trim() === nameLower &&
+                (parentId
+                  ? (loc as any).parent_id === parentId
+                  : !(loc as any).parent_id),
+            );
+            if (existing) return existing.id;
+
+            const res = await createLocation({ name, type, parent_id: parentId });
+            if (!res.success || !res.data) throw new Error(`Failed to create ${type} location`);
+            // Push into local list so sibling lookups within this call work
+            allLocations.push({ id: res.data.id, name, parent_id: parentId ?? null });
+            return res.data.id;
+          };
+
+          // Walk down the hierarchy, finding or creating each level
+          let parentId: string | undefined = undefined;
+          let leafId = '';
+          for (const level of pendingNewLocation.levels) {
+            leafId = await findOrCreate(level.name, level.type, parentId);
+            parentId = leafId;
+          }
+
+          if (leafId) {
+            finalLocationId = leafId;
+          }
+        } catch (err) {
+          console.error('[handleSubmit] pendingNewLocation resolution error:', err);
+          setIsMatchingLocation(false);
+          setSubmitting(false);
+          CustomAlert.alert(
+            t('common.error'),
+            t('incidents.locationMatchError', 'Failed to create location. Please select manually.'),
+          );
+          return;
+        } finally {
+          setIsMatchingLocation(false);
+        }
+      }
+
+      if (finalLocationId && finalLocationId !== 'virtual_new_location') {
+        incidentData.location_id = finalLocationId;
+      }
+
       if (selectedSource) incidentData.source = selectedSource.id;
       incidentData.channel = "mobile";
       if (selectedAssignee) incidentData.assignee_id = selectedAssignee.id;
       if (selectedDepartment) incidentData.department_id = selectedDepartment.id;
+
       if (locationData) {
         incidentData.latitude = locationData.latitude;
         incidentData.longitude = locationData.longitude;
@@ -1273,6 +1541,34 @@ const AddIncidentScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Inline toast banner */}
+      {toastMessage && (
+        <Animated.View
+          style={[
+            styles.toastBanner,
+            toastType === 'error' && styles.toastBannerError,
+            {
+              opacity: toastAnim,
+              transform: [{
+                translateY: toastAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                }),
+              }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Ionicons
+            name={toastType === 'error' ? 'alert-circle' : 'information-circle'}
+            size={18}
+            color="white"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.toastText} numberOfLines={3}>{toastMessage}</Text>
+        </Animated.View>
+      )}
+
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2EC4B6" />
@@ -1322,6 +1618,7 @@ const AddIncidentScreen = () => {
             <TreeSelect
               label={t('addIncident.selectClassification')}
               value={selectedClassification?.name || ''}
+              valueId={selectedClassification?.id}
               data={classifications}
               onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
               required={true}
@@ -1338,8 +1635,14 @@ const AddIncidentScreen = () => {
             <TreeSelect
               label={t('addIncident.selectLocation')}
               value={selectedLocation?.name || ''}
-              data={locations}
-              onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
+              valueId={selectedLocation?.id !== 'virtual_new_location' ? selectedLocation?.id : undefined}
+              data={locationsWithVirtual}
+              onSelect={(node) => {
+                setSelectedLocation(node as DropdownOption | null);
+                // User manually selected from the dropdown — clear any pending auto-matched location
+                setPendingNewLocation(null);
+                lastProcessedGeoRef.current = null;
+              }}
               required={true}
               error={errors.location_id}
               leafOnly={true}
@@ -1740,6 +2043,31 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+  toastBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2EC4B6',
+    marginHorizontal: 16,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    zIndex: 100,
+  },
+  toastBannerError: {
+    backgroundColor: '#E74C3C',
+  },
+  toastText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

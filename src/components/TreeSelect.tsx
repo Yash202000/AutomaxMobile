@@ -25,6 +25,7 @@ export interface TreeNode {
 interface TreeSelectProps {
   label: string;
   value: string;
+  valueId?: string; // Pass the selected node's ID directly to avoid name-collision issues
   data: TreeNode[];
   onSelect: (node: TreeNode | null) => void;
   loading?: boolean;
@@ -165,6 +166,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
 const TreeSelect: React.FC<TreeSelectProps> = ({
   label,
   value,
+  valueId,
   data,
   onSelect,
   loading,
@@ -214,20 +216,48 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     []
   );
 
-  // Sync single-select selectedId from value
+  // Build the full hierarchy path for a node as a breadcrumb string
+  // e.g. "Country › State › City"
+  const getHierarchyPath = useCallback(
+    (nodes: TreeNode[], targetId: string, ancestors: string[] = []): string | null => {
+      for (const node of nodes) {
+        if (node.id === targetId) {
+          return [...ancestors, node.name].join(' › ');
+        }
+        if (node.children && node.children.length > 0) {
+          const result = getHierarchyPath(node.children, targetId, [...ancestors, node.name]);
+          if (result) return result;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  // Sync single-select selectedId from valueId (preferred) or by name search fallback
   React.useEffect(() => {
     if (!multiSelect) {
-      if (value && data.length > 0) {
-        const node = findNodeByName(data, value);
-        if (node) {
-          setSelectedId(node.id);
-          expandParents(node.id);
+      if (data.length > 0) {
+        if (valueId) {
+          // Use the ID directly — avoids name-collision false matches
+          setSelectedId(valueId);
+          expandParents(valueId);
+        } else if (value) {
+          const node = findNodeByName(data, value);
+          if (node) {
+            setSelectedId(node.id);
+            expandParents(node.id);
+          } else {
+            setSelectedId(undefined);
+          }
+        } else {
+          setSelectedId(undefined);
         }
       } else {
         setSelectedId(undefined);
       }
     }
-  }, [value, data, findNodeByName, multiSelect]);
+  }, [valueId, value, data, findNodeByName, multiSelect]);
 
   // Sync multi-select pending from prop when modal opens
   const handleOpen = useCallback(() => {
@@ -338,13 +368,22 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   }, []);
 
   // Display text for the trigger button
+  // Prefer valueId for hierarchy path (avoids name-collision); fall back to name search
+  const resolvedNodeId = !multiSelect
+    ? (valueId || findNodeByName(data, value)?.id)
+    : undefined;
+
+  const hierarchyPath = resolvedNodeId
+    ? getHierarchyPath(data, resolvedNodeId)
+    : null;
+
   const displayText = multiSelect
     ? selectedIdsProp.length === 0
       ? placeholder || label
       : selectedIdsProp.length === 1
-      ? (findNodeById(data, selectedIdsProp[0])?.name || t('filter.nSelected', { count: 1 }))
-      : t('filter.nSelected', { count: selectedIdsProp.length })
-    : value || placeholder || label;
+        ? (findNodeById(data, selectedIdsProp[0])?.name || t('filter.nSelected', { count: 1 }))
+        : t('filter.nSelected', { count: selectedIdsProp.length })
+    : hierarchyPath || value || placeholder || label;
 
   const hasValue = multiSelect ? selectedIdsProp.length > 0 : !!value;
 
