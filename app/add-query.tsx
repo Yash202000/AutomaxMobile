@@ -40,6 +40,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import IncidentPicker from '@/src/components/IncidentPicker';
 
 
 interface DropdownOption {
@@ -305,12 +306,11 @@ const AddQueryScreen = () => {
       ]);
 
       // Fetch other data
-      const [locRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
+      const [locRes, userRes, deptRes, lookupRes] = await Promise.all([
         getLocationsTree(),
         getUsers(),
         getDepartments(),
-        getLookupCategories().catch(err => ({ success: false, error: err.message })),
-        getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({ success: false, data: [] })),
+        getLookupCategories().catch(err => ({ success: false, error: err.message }))
       ]);
 
       // Combine and deduplicate classifications
@@ -460,12 +460,6 @@ const AddQueryScreen = () => {
         // Filter to only show categories that should be added to query form
         const queryCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
         setLookupCategories(queryCategories);
-      }
-      if (incidentRes && incidentRes.success && incidentRes.data) {
-        setUserIncidents(incidentRes.data.map((i: any) => ({
-          id: i.id,
-          name: `${i.incident_number} - ${i.title}`,
-        })));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -1128,7 +1122,6 @@ const AddQueryScreen = () => {
       if (locationData.country) queryData.country = locationData.country;
       if (locationData.postal_code) queryData.postal_code = locationData.postal_code;
     }
-
     // Add lookup values if any selected
     const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
     if (selectedLookupIds.length > 0) {
@@ -1281,83 +1274,15 @@ const AddQueryScreen = () => {
                   <Text style={styles.errorText}>{errors.source_incident_id}</Text>
                 )}
 
+                <IncidentPicker
+                  incidentDropdownOpen={incidentDropdownOpen}
+                  onClose={setIncidentDropdownOpen}
+                  selectedSourceIncident={selectedSourceIncident}
+                  onSelect={setSelectedSourceIncident}
+                />
+
                 {/* Incident picker modal */}
-                <Modal
-                  visible={incidentDropdownOpen}
-                  transparent
-                  animationType="slide"
-                  onRequestClose={() => setIncidentDropdownOpen(false)}
-                >
-                  <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setIncidentDropdownOpen(false)}
-                  >
-                    <View style={styles.modalContent}>
-                      <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>
-                          {t('addComplaint.selectSourceIncident')}
-                        </Text>
-                        <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
-                          <Ionicons name="close" size={24} color="#333" />
-                        </TouchableOpacity>
-                      </View>
 
-                      {/* Search inside the modal */}
-                      <View style={styles.searchInputContainer}>
-                        <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
-                        <TextInput
-                          style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                          placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
-                          value={incidentSearch}
-                          onChangeText={setIncidentSearch}
-                          placeholderTextColor="#999"
-                          autoFocus
-                        />
-                        {incidentSearch.length > 0 && (
-                          <TouchableOpacity onPress={() => setIncidentSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#999" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-
-                      {/* Results list */}
-                      {filteredIncidents.length === 0 ? (
-                        <View style={styles.emptyList}>
-                          <Text style={styles.emptyText}>
-                            {userIncidents.length === 0
-                              ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
-                              : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
-                          </Text>
-                        </View>
-                      ) : (
-                        <FlatList
-                          data={filteredIncidents}
-                          keyExtractor={(item) => item.id}
-                          keyboardShouldPersistTaps="handled"
-                          renderItem={({ item }) => (
-                            <TouchableOpacity
-                              style={styles.optionItem}
-                              onPress={() => {
-                                setSelectedSourceIncident(item);
-                                setIncidentDropdownOpen(false);
-                                setIncidentSearch('');
-                                if (errors.source_incident_id) {
-                                  setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                                }
-                              }}
-                            >
-                              <Text style={styles.optionText}>{item.name}</Text>
-                              {selectedSourceIncident?.id === item.id && (
-                                <Ionicons name="checkmark" size={20} color="#E74C3C" />
-                              )}
-                            </TouchableOpacity>
-                          )}
-                        />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                </Modal>
               </>
             )}
 
