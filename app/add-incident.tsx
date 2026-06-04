@@ -51,6 +51,8 @@ const DISABLE_AUTO_LOCATION_RETRIEVAL =
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
   levels: { name: string; type: string }[];
+  /** Index in levels[] where we start creating (levels before this index already exist). */
+  startLevelIndex: number;
   virtualId: string;
   name: string;
   parent_id?: string;
@@ -526,30 +528,51 @@ const AddIncidentScreen = () => {
     return result;
   }, []);
 
-  // Inject the pending virtual location node into the locations tree so TreeSelect can display it
+  // Inject pending virtual location node(s) into the tree so TreeSelect can display the full hierarchy.
+  // For GIS mode all unmatched levels (from startLevelIndex) are inserted as a chain of nested
+  // virtual nodes so getHierarchyPath returns e.g. "Municipality › District › Street".
   const locationsWithVirtual = React.useMemo<TreeNode[]>(() => {
     if (!pendingNewLocation) return locations;
 
-    const insertVirtualNode = (nodes: TreeNode[], parentId: string | undefined, virtualNode: TreeNode): TreeNode[] => {
-      if (!parentId) return [...nodes, virtualNode];
+    const insertNode = (
+      nodes: TreeNode[],
+      parentId: string | undefined,
+      nodeToInsert: TreeNode,
+    ): TreeNode[] => {
+      if (!parentId) return [...nodes, nodeToInsert];
       return nodes.map((node) => {
         if (node.id === parentId) {
-          return { ...node, children: [...(node.children || []), virtualNode] };
+          return { ...node, children: [...(node.children || []), nodeToInsert] };
         }
         if (node.children && node.children.length > 0) {
-          return { ...node, children: insertVirtualNode(node.children, parentId, virtualNode) };
+          return { ...node, children: insertNode(node.children, parentId, nodeToInsert) };
         }
         return node;
       });
     };
 
-    const virtualNode: TreeNode = {
-      id: pendingNewLocation.virtualId,
-      name: pendingNewLocation.name,
-      type: 'city',
-    };
+    const { levels, startLevelIndex, parent_id, virtualId } = pendingNewLocation;
+    const unmatchedLevels = levels.slice(startLevelIndex ?? 0);
 
-    return insertVirtualNode(locations, pendingNewLocation.parent_id, virtualNode);
+    if (unmatchedLevels.length === 0) return locations;
+
+    // Build a nested chain bottom-up: deepest level becomes leaf, shallower levels wrap it.
+    // The final leaf gets virtualId; intermediate nodes get temporary stable IDs.
+    let chain: TreeNode | undefined;
+    for (let i = unmatchedLevels.length - 1; i >= 0; i--) {
+      const level = unmatchedLevels[i];
+      const nodeId = i === unmatchedLevels.length - 1
+        ? virtualId
+        : `virtual_level_${i}_${level.name.replace(/\s+/g, '_')}`;
+      chain = {
+        id: nodeId,
+        name: level.name,
+        type: level.type,
+        children: chain ? [chain] : undefined,
+      };
+    }
+
+    return insertNode(locations, parent_id, chain!);
   }, [locations, pendingNewLocation]);
 
   // Auto-match workflow via backend API when criteria change
@@ -879,6 +902,9 @@ const AddIncidentScreen = () => {
           district: gpsLocation?.district,
           subregion: gpsLocation?.subregion,
           street_number: gpsLocation?.street_number,
+          ...(process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && gpsLocation?.gis
+            ? { gis: gpsLocation.gis }
+            : {}),
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           timestamp: new Date(),
           appName: 'Automax',
@@ -1147,6 +1173,11 @@ const AddIncidentScreen = () => {
       return;
     }
 
+    if (process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && !location.gis?.isInsideBoundary && location?.gis !== undefined) {
+      CustomAlert.alert('Error', 'You are not inside the permissible boundary');
+      return;
+    }
+
     setLocationData(location);
     if (errors.geolocation) {
       setErrors(prev => ({ ...prev, geolocation: '' }));
@@ -1160,10 +1191,12 @@ const AddIncidentScreen = () => {
 
     // LocationPickerOSM fires onChange TWICE for the same coordinate pair:
     //   1st call: raw coords only  ({latitude, longitude})
-    //   2nd call: enriched with address ({latitude, longitude, city, state, ...})
-    // We must wait for the enriched call before running the matching logic,
-    // otherwise everything falls back to "Other".
-    const hasAddressData = !!(location.city || location.address || location.country);
+    //   2nd call: enriched with address ({latitude, longitude, city/gis, state, ...})
+    // We must wait for the enriched call before running the matching logic.
+    const isGisMode = process.env.EXPO_PUBLIC_ENABLE_GIS === 'true';
+    const hasAddressData = isGisMode
+      ? !!location.gis  // GIS mode: wait for gis object
+      : !!(location.city || location.address || location.country); // OSM mode
     if (!hasAddressData) {
       // Raw coords only — skip matching, the enriched call will follow shortly
       return;
@@ -1180,85 +1213,172 @@ const AddIncidentScreen = () => {
     setIsMatchingLocation(true);
     try {
       const allLocations = flattenLocations(locations);
-      const searchName = (location.city || location.address || '')
-        .toLowerCase()
-        .trim();
 
-      const matched = searchName
-        ? allLocations.find(
+      if (isGisMode && location.gis) {
+        // ── GIS mode: match using district_name → municipality_name → street_fullname ──
+        const gis = location.gis;
+
+        // Try to find a leaf node matching district or municipality name
+        const candidates = [
+          gis.district_name,
+          gis.municipality_name,
+          gis.street_fullname,
+        ].filter(Boolean).map(s => s.toLowerCase().trim());
+
+        const matched = allLocations.find(
+          loc =>
+            (!loc.children || loc.children.length === 0) &&
+            candidates.some(name => loc.name.toLowerCase().trim() === name),
+        );
+
+        if (matched) {
+          setSelectedLocation({ id: matched.id, name: matched.name });
+          if (errors.location_id) {
+            setErrors(prev => ({ ...prev, location_id: '' }));
+          }
+          setPendingNewLocation(null);
+          showToast(
+            t('incidents.locationAutoMatched', {
+              name: matched.name,
+              defaultValue: `Location "${matched.name}" auto-selected from master`,
+            }),
+            'info'
+          );
+        } else {
+          // Build GIS hierarchy: Municipality → District → Street
+          const levels: { name: string; type: string }[] = [];
+          levels.push({ name: gis.municipality_name || 'Other', type: 'municipality' });
+          levels.push({ name: gis.district_name || 'Other', type: 'district' });
+          if (gis.street_fullname) {
+            levels.push({ name: gis.street_fullname, type: 'street' });
+          }
+
+          const leafName = levels[levels.length - 1].name;
+          const virtualId = 'virtual_new_location';
+
+          // Find the deepest existing parent in the location tree
+          let deepestParentId: string | undefined = undefined;
+          let matchedCount = 0;
+          for (let i = 0; i < levels.length - 1; i++) {
+            const level = levels[i];
+            const nameLower = level.name.toLowerCase().trim();
+            const parentIdToCheck = deepestParentId;
+            const match = allLocations.find(
+              loc =>
+                loc.name.toLowerCase().trim() === nameLower &&
+                (parentIdToCheck
+                  ? (loc as any).parent_id === parentIdToCheck
+                  : !(loc as any).parent_id),
+            );
+            if (match) {
+              deepestParentId = match.id;
+              matchedCount = i + 1;
+            } else {
+              break;
+            }
+          }
+
+          setPendingNewLocation({
+            levels,
+            startLevelIndex: matchedCount,
+            virtualId,
+            name: leafName,
+            parent_id: deepestParentId,
+          });
+          setSelectedLocation({ id: virtualId, name: leafName });
+          if (errors.location_id) {
+            setErrors(prev => ({ ...prev, location_id: '' }));
+          }
+          showToast(
+            t('incidents.locationSelectedOnMap', {
+              name: leafName,
+              defaultValue: `Selected location "${leafName}" from map. It will be added to the master list when the incident is created.`,
+            }),
+            'info'
+          );
+        }
+      } else {
+        // ── OSM mode: original logic using city / address / country ──
+        const searchName = (location.city || location.address || '')
+          .toLowerCase()
+          .trim();
+
+        const matched = searchName
+          ? allLocations.find(
             (loc) =>
               (!loc.children || loc.children.length === 0) &&
               (loc.name.toLowerCase().trim() === searchName ||
                 (location.city &&
                   loc.name.toLowerCase().trim() ===
-                    location.city.toLowerCase().trim())),
+                  location.city.toLowerCase().trim())),
           )
-        : undefined;
+          : undefined;
 
-      if (matched) {
-        // Auto-select the matched location in the dropdown
-        setSelectedLocation({ id: matched.id, name: matched.name });
-        if (errors.location_id) {
-          setErrors(prev => ({ ...prev, location_id: '' }));
-        }
-        setPendingNewLocation(null);
-        showToast(
-          t('incidents.locationAutoMatched', {
-            name: matched.name,
-            defaultValue: `Location "${matched.name}" auto-selected from master`,
-          }),
-          'info'
-        );
-      } else {
-        // Build hierarchy: Country → State → District → City
-        const levels: { name: string; type: string }[] = [];
-        levels.push({ name: location.country || 'Other', type: 'country' });
-        levels.push({ name: location.state || 'Other', type: 'state' });
-        levels.push({ name: location.district || 'Other', type: 'district' });
-        levels.push({
-          name:
-            location.city ||
-            location.address?.split(',')[0].trim() ||
-            'Other',
-          type: 'city',
-        });
-
-        const leafName = levels[levels.length - 1].name;
-        const virtualId = 'virtual_new_location';
-
-        // Find the deepest existing parent in the location tree
-        let deepestParentId: string | undefined = undefined;
-        for (let i = 0; i < levels.length - 1; i++) {
-          const level = levels[i];
-          const nameLower = level.name.toLowerCase().trim();
-          const parentIdToCheck = deepestParentId;
-          const match = allLocations.find(
-            (loc) =>
-              loc.name.toLowerCase().trim() === nameLower &&
-              (parentIdToCheck
-                ? (loc as any).parent_id === parentIdToCheck
-                : !(loc as any).parent_id),
-          );
-          if (match) {
-            deepestParentId = match.id;
-          } else {
-            break;
+        if (matched) {
+          setSelectedLocation({ id: matched.id, name: matched.name });
+          if (errors.location_id) {
+            setErrors(prev => ({ ...prev, location_id: '' }));
           }
-        }
+          setPendingNewLocation(null);
+          showToast(
+            t('incidents.locationAutoMatched', {
+              name: matched.name,
+              defaultValue: `Location "${matched.name}" auto-selected from master`,
+            }),
+            'info'
+          );
+        } else {
+          // Build hierarchy: Country → State → District → City
+          const levels: { name: string; type: string }[] = [];
+          levels.push({ name: location.country || 'Other', type: 'country' });
+          levels.push({ name: location.state || 'Other', type: 'state' });
+          levels.push({ name: location.district || 'Other', type: 'district' });
+          levels.push({
+            name:
+              location.city ||
+              location.address?.split(',')[0].trim() ||
+              'Other',
+            type: 'city',
+          });
 
-        setPendingNewLocation({ levels, virtualId, name: leafName, parent_id: deepestParentId });
-        // Set a virtual id so the location field is considered "filled"
-        setSelectedLocation({ id: virtualId, name: leafName });
-        if (errors.location_id) {
-          setErrors(prev => ({ ...prev, location_id: '' }));
+          const leafName = levels[levels.length - 1].name;
+          const virtualId = 'virtual_new_location';
+
+          // Find the deepest existing parent in the location tree
+          let deepestParentId: string | undefined = undefined;
+          let matchedCount = 0;
+          for (let i = 0; i < levels.length - 1; i++) {
+            const level = levels[i];
+            const nameLower = level.name.toLowerCase().trim();
+            const parentIdToCheck = deepestParentId;
+            const match = allLocations.find(
+              (loc) =>
+                loc.name.toLowerCase().trim() === nameLower &&
+                (parentIdToCheck
+                  ? (loc as any).parent_id === parentIdToCheck
+                  : !(loc as any).parent_id),
+            );
+            if (match) {
+              deepestParentId = match.id;
+              matchedCount = i + 1;
+            } else {
+              break;
+            }
+          }
+
+          setPendingNewLocation({ levels, startLevelIndex: matchedCount, virtualId, name: leafName, parent_id: deepestParentId });
+          setSelectedLocation({ id: virtualId, name: leafName });
+          if (errors.location_id) {
+            setErrors(prev => ({ ...prev, location_id: '' }));
+          }
+          showToast(
+            t('incidents.locationSelectedOnMap', {
+              name: leafName,
+              defaultValue: `Selected location "${leafName}" from map. It will be added to the master list when the incident is created.`,
+            }),
+            'info'
+          );
         }
-        showToast(
-          t('incidents.locationSelectedOnMap', {
-            name: leafName,
-            defaultValue: `Selected location "${leafName}" from map. It will be added to the master list when the incident is created.`,
-          }),
-          'info'
-        );
       }
     } catch (err) {
       console.error('[handleLocationChange] Location match error:', err);
@@ -1367,10 +1487,14 @@ const AddIncidentScreen = () => {
             return res.data.id;
           };
 
-          // Walk down the hierarchy, finding or creating each level
-          let parentId: string | undefined = undefined;
-          let leafId = '';
-          for (const level of pendingNewLocation.levels) {
+          // Walk down the hierarchy, finding or creating each level.
+          // Start from startLevelIndex (levels before that already exist) and
+          // initialise parentId from the deepest known ancestor.
+          let parentId: string | undefined = pendingNewLocation.parent_id;
+          let leafId = parentId ?? '';
+          const startIdx = pendingNewLocation.startLevelIndex ?? 0;
+          for (let i = startIdx; i < pendingNewLocation.levels.length; i++) {
+            const level = pendingNewLocation.levels[i];
             leafId = await findOrCreate(level.name, level.type, parentId);
             parentId = leafId;
           }

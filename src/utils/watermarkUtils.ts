@@ -25,12 +25,70 @@ export interface WatermarkData {
   district?: string;
   subregion?: string;
   street_number?: string;
+  /** GIS-specific location data. When present and EXPO_PUBLIC_ENABLE_GIS is true, this takes priority. */
+  gis?: {
+    plan_no: string;
+    street_fullname: string;
+    district_name: string;
+    municipality_name: string;
+    isInsideBoundary?: boolean;
+  };
+}
+
+/**
+ * Generate precise 5-line watermark details from GIS data.
+ * Used when EXPO_PUBLIC_ENABLE_GIS is enabled — GIS fields take priority.
+ */
+export function generateGisWatermarkLines(data: WatermarkData): string[] {
+  const gis = data.gis;
+  const lines: string[] = [];
+
+  // 1. Municipality
+  lines.push(`Municipality: ${gis?.municipality_name || 'N/A'}`);
+
+  // 2. District
+  lines.push(`District: ${gis?.district_name || 'N/A'}`);
+
+  // 3. Street
+  lines.push(`Street: ${gis?.street_fullname || 'N/A'}`);
+
+  // 4. Plan No + Coordinates
+  const planNo = gis?.plan_no || 'N/A';
+  if (data.latitude !== undefined && data.longitude !== undefined) {
+    lines.push(`Plan: ${planNo} (${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)})`);
+  } else {
+    lines.push(`Plan No: ${planNo}`);
+  }
+
+  // 5. Full Date
+  const timestamp = data.timestamp || new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const dayName = days[timestamp.getDay()];
+  const monthName = months[timestamp.getMonth()];
+  const dateNum = timestamp.getDate();
+  const year = timestamp.getFullYear();
+  const hours = timestamp.getHours();
+  const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+  const seconds = String(timestamp.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = String(hours % 12 || 12).padStart(2, '0');
+  lines.push(`Date: ${dayName}, ${monthName} ${dateNum}, ${year} ${displayHours}:${minutes}:${seconds} ${ampm}`);
+
+  return lines;
 }
 
 /**
  * Generate precise 5-line watermark details
  */
 export function generateWatermarkLines(data: WatermarkData): string[] {
+  // When GIS is enabled and GIS data is present, delegate to GIS watermark
+  if (process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && data.gis) {
+    return generateGisWatermarkLines(data);
+  }
   const lines: string[] = [];
 
   // 1. Municipality

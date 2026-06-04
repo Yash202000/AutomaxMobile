@@ -63,8 +63,6 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     </Text>
   );
 
-  useEffect(() => { console.log(category) }, [])
-
   switch (fieldType) {
     case 'text':
       return (
