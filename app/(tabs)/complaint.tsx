@@ -176,7 +176,7 @@ const ComplaintsScreen = () => {
         let params = buildParams(page);
         if (!params?.current_state_id || params?.current_state_id.length === 0) {
             const statsResponse = await getComplaintStats();
-            if (statsResponse.success) {
+            if (statsResponse.success && statsResponse.data?.workflow_stats) {
                 params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
             }
         }
