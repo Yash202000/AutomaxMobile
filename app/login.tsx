@@ -8,6 +8,7 @@ import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
+import * as SecureStore from "expo-secure-store";
 import { default as React, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -250,6 +251,7 @@ const LoginScreen = () => {
       try {
         const result = await ldapLogin(adUsername.trim(), adPassword);
         if (result.success && result.token) {
+          await SecureStore.setItemAsync('loginMethod', 'ad');
           await login(result.token, result.refresh_token);
           router.replace("/(tabs)/explore");
         } else {

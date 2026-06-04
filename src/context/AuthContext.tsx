@@ -57,6 +57,8 @@ interface AuthContextType {
   isLoggingOut: boolean;
   requiresBiometric: boolean;
   setRequiresBiometric: (val: boolean) => void;
+  /** True when the current session was started via AD/LDAP login */
+  isAdLogin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,15 +72,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [requiresBiometric, setRequiresBiometric] = useState(false);
+  const [isAdLogin, setIsAdLogin] = useState(false);
 
   const loadUser = useCallback(async (isAutoLogin = false) => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) {
         setUser(null);
+        setIsAdLogin(false);
         setIsLoading(false);
         return;
       }
+
+      // Read the login method persisted at login time
+      const storedMethod = await SecureStore.getItemAsync('loginMethod');
+      setIsAdLogin(storedMethod === 'ad');
 
       const response = await getProfile();
       if (response.success && response.data) {
@@ -133,6 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // This ensures any triggered API calls will be rejected due to no token
       await SecureStore.deleteItemAsync('authToken');
       await SecureStore.deleteItemAsync('refreshToken');
+      await SecureStore.deleteItemAsync('loginMethod');
 
       // Navigate to login BEFORE setting user to null
       // This unmounts components before they can react to user change
@@ -142,6 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Now set user to null
       setUser(null);
+      setIsAdLogin(false);
       setRequiresBiometric(false);
 
       // Reset flag after navigation completes
@@ -203,6 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoggingOut,
     requiresBiometric,
     setRequiresBiometric,
+    isAdLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

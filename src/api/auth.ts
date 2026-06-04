@@ -28,7 +28,6 @@ export const ldapLogin = async (username: string, password: string) => {
       username,
       password,
     });
-    console.log(response)
     if (response.data && response.data.success) {
       const { token, refresh_token } = response.data.data;
       return { success: true, token, refresh_token };

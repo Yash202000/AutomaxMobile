@@ -478,14 +478,14 @@ const IncidentDetailsScreen = () => {
                           },
                         ]}
                       >
-                        <Text
+                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
+                        {/* <Text
                           style={[
                             styles.lookupValueTagText,
                             { color: value.color || COLORS.text.primary },
                           ]}
                         >
-                          {i18n.language === 'en' ? value.name : value.name_ar}
-                        </Text>
+                        </Text> */}
                       </View>
                     ))}
                   </View>

@@ -401,7 +401,7 @@ const UpdateStatusModal = () => {
     if (currentStepKey === 'feedback') return transitionRequiresFeedback;
     if (currentStepKey === 'comment') return transitionRequiresComment;
     if (currentStepKey === 'duration') return true;
-    return false;
+    return false
   };
 
   // Fetch matching users when a transition with user selection is needed
@@ -934,9 +934,14 @@ const UpdateStatusModal = () => {
                     <Text>{t('incidents.usersAssignedToAll', 'User will be assigned to all users')}</Text>
                   }
                 </View>
-                {isStepMandatory()
-                  ? <Text style={styles.stepRequired}>{t('incidents.stepRequired', 'Required')}</Text>
-                  : <Text style={styles.stepOptional}>{t('incidents.stepOptional', 'Optional')}</Text>
+                {
+                  currentStepKey != 'field_changes' &&
+                  <View>
+                    {isStepMandatory()
+                      ? <Text style={styles.stepRequired}>{t('incidents.stepRequired', 'Required')}</Text>
+                      : <Text style={styles.stepOptional}>{t('incidents.stepOptional', 'Optional')}</Text>
+                    }
+                  </View>
                 }
               </View>
 
@@ -1048,7 +1053,7 @@ const UpdateStatusModal = () => {
                     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
                     .map((fc: any) => (
                       <View key={fc.field_name} style={{ marginBottom: 16 }}>
-                        <Text style={styles.label}>{fc.label || fc.field_name}{fc.is_required ? ' *' : ''}</Text>
+                        {/* <Text style={styles.label}>{fc.label || fc.field_name}{fc.is_required ? ' *' : ''}</Text> */}
                         {fc.field_name === 'priority' && (
                           <View style={styles.priorityRow}>
                             {[1, 2, 3, 4, 5].map((p) => (
