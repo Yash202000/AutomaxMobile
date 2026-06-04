@@ -160,39 +160,42 @@ const QueriesScreen = () => {
     };
 
     const fetchQueries = async (page = 1, append = false) => {
-        const trimmedSearch = searchQuery.trim();
-        if (trimmedSearch.length > 0 && trimmedSearch.length < 3) {
-            setQueries([]);
-            setPagination({ page: 1, limit: 20, total_items: 0, total_pages: 0 });
+        try {
+            const trimmedSearch = searchQuery.trim();
+            if (trimmedSearch.length > 0 && trimmedSearch.length < 3) {
+                setQueries([]);
+                setPagination({ page: 1, limit: 20, total_items: 0, total_pages: 0 });
+                setLoading(false);
+                setRefreshing(false);
+                isLoadingMore.current = false;
+                return;
+            }
+
+            if (page === 1) setLoading(true);
+            setError('');
+
+            let params = buildParams(page);
+            if (!params?.current_state_id || params?.current_state_id?.length === 0) {
+                const statsResponse = await getQueryStats();
+                if (statsResponse.success && statsResponse.data?.workflow_stats) {
+                    params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
+                }
+            }
+            const response = await getQueries(params);
+            if (response.success) {
+                setQueries(append ? prev => [...prev, ...response.data] : response.data);
+                setPagination(response.pagination);
+            } else {
+                setError(response.error || t('errors.fetchFailed'));
+            }
+        } catch (err: any) {
+            setError(err?.message || t('errors.fetchFailed'));
+        } finally {
             setLoading(false);
+            setLoadingMore(false);
             setRefreshing(false);
             isLoadingMore.current = false;
-            return;
         }
-
-        if (page === 1) setLoading(true);
-        setError('');
-
-        let params = buildParams(page);
-        if (!params?.current_state_id || params?.current_state_id.length === 0) {
-            const statsResponse = await getQueryStats();
-            if (statsResponse.success) {
-                params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
-            }
-        }
-        const response = await getQueries(params);
-
-        if (response.success) {
-            setQueries(append ? prev => [...prev, ...response.data] : response.data);
-            setPagination(response.pagination);
-        } else {
-            setError(response.error || t('errors.fetchFailed'));
-        }
-
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
-        isLoadingMore.current = false;
     };
 
     const handleLoadMore = () => {
