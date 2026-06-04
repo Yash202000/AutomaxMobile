@@ -74,7 +74,7 @@ const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
 const SettingsScreen = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isAdLogin } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -291,11 +291,13 @@ const SettingsScreen = () => {
             icon="person-outline"
             onPress={() => router.push('/edit-profile')}
           />
-          <SettingsOption
-            label={t('settings.changePassword')}
-            icon="lock-closed-outline"
-            onPress={() => router.push('/change-password')}
-          />
+          {!isAdLogin && (
+            <SettingsOption
+              label={t('settings.changePassword')}
+              icon="lock-closed-outline"
+              onPress={() => router.push('/change-password')}
+            />
+          )}
         </View>
 
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>

@@ -3,6 +3,7 @@ import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -382,7 +383,7 @@ const ComplaintDetailsScreen = () => {
         {complaint.description && (
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
-            <Text style={styles.descriptionText}>{complaint.description}</Text>
+            <RenderWithIncidentMentions text={complaint.description} style={styles.descriptionText} />
           </View>
         )}
 
@@ -401,7 +402,7 @@ const ComplaintDetailsScreen = () => {
                     <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
                   </View>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
+                <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
               </View>
             ))
           ) : (
@@ -532,7 +533,7 @@ const ComplaintDetailsScreen = () => {
                     {item.comment && (
                       <View style={styles.transitionComment}>
                         <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                        <Text style={styles.transitionCommentText}>"{item.comment}"</Text>
+                        <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
                   </View>
