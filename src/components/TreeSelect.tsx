@@ -34,6 +34,7 @@ interface TreeSelectProps {
   leafOnly?: boolean;
   placeholder?: string;
   iconType?: 'classification' | 'location' | 'default';
+  disabled?: boolean; // When true, the picker is read-only and cannot be opened
   // Multi-select props
   multiSelect?: boolean;
   selectedIds?: string[];
@@ -175,6 +176,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   leafOnly = true,
   placeholder,
   iconType = 'default',
+  disabled = false,
   multiSelect = false,
   selectedIds: selectedIdsProp = [],
   onMultiSelect,
@@ -390,14 +392,17 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   return (
     <>
       <TouchableOpacity
-        style={[styles.dropdown, error && styles.dropdownError]}
-        onPress={handleOpen}
+        style={[styles.dropdown, error && styles.dropdownError, disabled && styles.dropdownDisabled]}
+        onPress={disabled ? undefined : handleOpen}
+        activeOpacity={disabled ? 1 : 0.7}
       >
         <Text style={[styles.dropdownText, !hasValue && styles.placeholderText]}>
           {displayText}
         </Text>
         {loading ? (
           <ActivityIndicator size="small" color="#666" />
+        ) : disabled ? (
+          <Ionicons name="lock-closed" size={16} color="#BDBDBD" />
         ) : (
           <FontAwesome name="chevron-down" size={16} color="#666" />
         )}
@@ -515,6 +520,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+  },
+  dropdownDisabled: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+    opacity: 0.8,
   },
   dropdownError: {
     borderColor: '#E74C3C',

@@ -226,7 +226,6 @@ const MapViewScreen = () => {
           filterParams.current_state_id = statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || []
         }
       }
-      console.log(filterParams)
 
       if (!canViewAllIncidents()) {
         filterParams.assignee_id = user?.id;

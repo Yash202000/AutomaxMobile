@@ -332,7 +332,6 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
       record_type: 'complaint',
       ...params,
     };
-    console.log(queryParams);
     const response = await apiClient.get('/incidents', { params: queryParams });
     if (response.data && response.data.success) {
       return {

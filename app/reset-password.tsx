@@ -78,7 +78,6 @@ const ResetPasswordScreen = () => {
   const handleResetPassword = async () => {
     Keyboard.dismiss();
     setError('');
-    console.log(password, confirmPassword)
     if (!password || !confirmPassword) {
       setError(t('resetPassword.required'));
       return;

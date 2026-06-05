@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { gisLocation } from '../api/locations';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -27,6 +28,13 @@ export interface LocationData {
   district?: string;
   subregion?: string;
   street_number?: string;
+  gis?: {
+    plan_no: string;
+    street_fullname: string;
+    district_name: string;
+    municipality_name: string;
+    isInsideBoundary: boolean
+  }
 }
 
 interface LocationPickerProps {
@@ -95,13 +103,19 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       });
 
       const geocodePromise = Location.reverseGeocodeAsync({ latitude, longitude });
+      let gis = undefined;
+      if (process.env.EXPO_PUBLIC_ENABLE_GIS === 'true') {
+        const gisres = await gisLocation({ lat: latitude, lng: longitude });
+        if (gisres.success) {
+          gis = gisres.data
+        }
+      }
       const results = await Promise.race([geocodePromise, timeoutPromise]);
 
       // Check if component is still mounted
       if (!isMountedRef.current) {
         return {};
       }
-
       if (results && results.length > 0) {
         const result = results[0];
         const addressParts = [
@@ -127,6 +141,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           district: result.district || undefined,
           subregion: result.subregion || undefined,
           street_number: result.streetNumber || undefined,
+          gis: gis || undefined
         };
       }
       return {};
@@ -564,41 +579,73 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
             </Text>
           </View>
 
-          {value.address ? (
-            <Text style={styles.address}>{value.address}</Text>
-          ) : isLoading ? (
-            <Text style={styles.addressLoading}>{t('addIncident.fetchingLocation')}</Text>
-          ) : (
-            <Text style={styles.addressUnavailable}>{t('locationPicker.addressUnavailable', 'Address unavailable (coordinates saved)')}</Text>
-          )}
-
-          {(value.city || value.state || value.country) && (
+          {/* Address display: GIS data takes priority when enabled */}
+          {process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && value.gis ? (
             <View style={styles.detailsGrid}>
-              {value.city && (
+              {value.gis.street_fullname ? (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>{t('locationPicker.city', 'City:')}</Text>
-                  <Text style={styles.detailValue}>{value.city}</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.street', 'Street:')}</Text>
+                  <Text style={styles.detailValue}>{value.gis.street_fullname}</Text>
                 </View>
-              )}
-              {value.state && (
+              ) : null}
+              {value.gis.district_name ? (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>{t('locationPicker.state', 'State:')}</Text>
-                  <Text style={styles.detailValue}>{value.state}</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.district', 'District:')}</Text>
+                  <Text style={styles.detailValue}>{value.gis.district_name}</Text>
                 </View>
-              )}
-              {value.country && (
+              ) : null}
+              {value.gis.municipality_name ? (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>{t('locationPicker.country', 'Country:')}</Text>
-                  <Text style={styles.detailValue}>{value.country}</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.municipality', 'Municipality:')}</Text>
+                  <Text style={styles.detailValue}>{value.gis.municipality_name}</Text>
                 </View>
-              )}
-              {value.postal_code && (
+              ) : null}
+              {value.gis.plan_no ? (
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>{t('locationPicker.postalCode', 'Postal Code:')}</Text>
-                  <Text style={styles.detailValue}>{value.postal_code}</Text>
+                  <Text style={styles.detailLabel}>{t('locationPicker.planNo', 'Plan No:')}</Text>
+                  <Text style={styles.detailValue}>{value.gis.plan_no}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
+          ) : (
+            <>
+              {value.address ? (
+                <Text style={styles.address}>{value.address}</Text>
+              ) : isLoading ? (
+                <Text style={styles.addressLoading}>{t('addIncident.fetchingLocation')}</Text>
+              ) : (
+                <Text style={styles.addressUnavailable}>{t('locationPicker.addressUnavailable', 'Address unavailable (coordinates saved)')}</Text>
+              )}
+
+              {(value.city || value.state || value.country) && (
+                <View style={styles.detailsGrid}>
+                  {value.city && (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>{t('locationPicker.city', 'City:')}</Text>
+                      <Text style={styles.detailValue}>{value.city}</Text>
+                    </View>
+                  )}
+                  {value.state && (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>{t('locationPicker.state', 'State:')}</Text>
+                      <Text style={styles.detailValue}>{value.state}</Text>
+                    </View>
+                  )}
+                  {value.country && (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>{t('locationPicker.country', 'Country:')}</Text>
+                      <Text style={styles.detailValue}>{value.country}</Text>
+                    </View>
+                  )}
+                  {value.postal_code && (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>{t('locationPicker.postalCode', 'Postal Code:')}</Text>
+                      <Text style={styles.detailValue}>{value.postal_code}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </>
           )}
         </View>
       )}
