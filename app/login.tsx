@@ -1386,9 +1386,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    direction: "ltr",
   },
   inputIcon: {
-    marginRight: 12,
+    marginEnd: 12,
   },
   textInput: {
     flex: 1,

@@ -31,7 +31,12 @@ class FCMService {
     }
 
     onTokenRefresh(callback: (token: string) => void) {
-        return onTokenRefreshModular(getMessaging(), callback);
+        try {
+            return onTokenRefreshModular(getMessaging(), callback);
+        } catch (error) {
+            console.warn('[FCM] Failed to subscribe to token refresh:', error);
+            return () => {}; // no-op unsubscribe
+        }
     }
 }
 
