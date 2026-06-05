@@ -96,13 +96,13 @@ android {
         }
     }
 
-    namespace 'com.automax.mobile'
+    namespace 'com.automax.epm940'
     defaultConfig {
-        applicationId 'com.automax.mobile'
+        applicationId 'com.automax.epm940'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0.0"
+        versionName "1.0.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

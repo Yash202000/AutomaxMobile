@@ -1,4 +1,4 @@
-package com.automax.mobile
+package com.automax.epm940
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
