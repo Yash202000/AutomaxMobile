@@ -195,9 +195,9 @@ const RequestDetailsScreen = () => {
                 <Ionicons name="document-text" size={12} color={COLORS.accent} />
                 <Text style={styles.typeBadgeText}>{t('details.request')}</Text>
               </View>
-              <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+              {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
-              </View>
+              </View> */}
             </View>
             <Text style={styles.requestTitle}>{request.title}</Text>
             <Text style={styles.dateText}>{new Date(request.created_at).toLocaleString()}</Text>
@@ -215,20 +215,20 @@ const RequestDetailsScreen = () => {
           <SectionHeader title={t('requests.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
             {/* Basic Info */}
-             <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, request.classification?.id) || request.classification?.name || ''} iconColor={COLORS.accent} />
-             <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, request.department?.id) || request.department?.name || ''} iconColor="#8B5CF6" />
-             <InfoRow icon="person-outline" label={t('details.assignees')}
-               value={request.assignees?.length
-                 ? request.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
-                 : request.assignee
-                   ? `${request.assignee.first_name || ''} ${request.assignee.last_name || ''}`.trim()
-                   : ''
-               }
-               iconColor="#EC4899"
-             />
-             {request.location && (
-               <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, request.location.id) || request.location.name} iconColor={COLORS.error} />
-             )}
+            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, request.classification?.id) || request.classification?.name || ''} iconColor={COLORS.accent} />
+            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, request.department?.id) || request.department?.name || ''} iconColor="#8B5CF6" />
+            <InfoRow icon="person-outline" label={t('details.assignees')}
+              value={request.assignees?.length
+                ? request.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+                : request.assignee
+                  ? `${request.assignee.first_name || ''} ${request.assignee.last_name || ''}`.trim()
+                  : ''
+              }
+              iconColor="#EC4899"
+            />
+            {request.location && (
+              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, request.location.id) || request.location.name} iconColor={COLORS.error} />
+            )}
 
             {/* Lookup Values as InfoRows */}
             {request.lookup_values && request.lookup_values.length > 0 && (() => {
