@@ -55,6 +55,8 @@ const LoginScreen = () => {
   const [adUsername, setAdUsername] = useState("");
   const [adPassword, setAdPassword] = useState("");
   const [showAdPassword, setShowAdPassword] = useState(false);
+  const [isADPasswordFocused, setADPasswordFocused] = useState(false);
+  const [isEmailPasswordFocused, setIsEmailPasswordFocused] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
@@ -484,10 +486,10 @@ const LoginScreen = () => {
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
-  const adPasswordBorderColor = adPasswordFocusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#E5E5E5", "#2EC4B6"],
-  });
+  // const adPasswordBorderColor = adPasswordFocusAnim.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ["#E5E5E5", "#2EC4B6"],
+  // });
 
   return (
     <KeyboardAvoidingView
@@ -865,10 +867,10 @@ const LoginScreen = () => {
                     >
                       {t("auth.password")}
                     </Text>
-                    <Animated.View
+                    <View
                       style={[
                         styles.inputContainer,
-                        { borderColor: adPasswordBorderColor, borderWidth: 2 },
+                        { borderColor: isADPasswordFocused ? "#2EC4B6" : "#E5E5E5", borderWidth: 2 },
                       ]}
                     >
                       <Ionicons
@@ -888,10 +890,10 @@ const LoginScreen = () => {
                         value={adPassword}
                         onChangeText={setAdPassword}
                         onFocus={() =>
-                          Animated.spring(adPasswordFocusAnim, { toValue: 1, useNativeDriver: false }).start()
+                          setADPasswordFocused(true)
                         }
                         onBlur={() =>
-                          Animated.spring(adPasswordFocusAnim, { toValue: 0, useNativeDriver: false }).start()
+                          setADPasswordFocused(false)
                         }
                         autoCapitalize="none"
                       />
@@ -906,7 +908,7 @@ const LoginScreen = () => {
                           color="#666"
                         />
                       </TouchableOpacity>
-                    </Animated.View>
+                    </View>
                   </View>
 
                   {/* AD badge */}
@@ -977,11 +979,11 @@ const LoginScreen = () => {
                     >
                       {t("auth.password")}
                     </Text>
-                    <Animated.View
+                    <View
                       style={[
                         styles.inputContainer,
                         {
-                          borderColor: passwordBorderColor,
+                          borderColor: isEmailPasswordFocused ? "#2EC4B6" : "#E5E5E5",
                           borderWidth: 2,
                         },
                       ]}
@@ -1004,8 +1006,8 @@ const LoginScreen = () => {
                         secureTextEntry={!showPassword}
                         value={password}
                         onChangeText={setPassword}
-                        onFocus={handlePasswordFocus}
-                        onBlur={handlePasswordBlur}
+                        onFocus={() => setIsEmailPasswordFocused(true)}
+                        onBlur={() => setIsEmailPasswordFocused(false)}
                         autoCapitalize="none"
                       />
                       <TouchableOpacity
@@ -1021,7 +1023,7 @@ const LoginScreen = () => {
                           color="#666"
                         />
                       </TouchableOpacity>
-                    </Animated.View>
+                    </View>
                   </View>
                 </>
               ) : (
