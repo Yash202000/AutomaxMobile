@@ -141,6 +141,7 @@
   },
   "auth": {
     "login": "Login",
+    "adLoginButton": "Sign in with AD",
     "version": "Version {{version}}",
     "sendOTP": "Send OTP",
     "verifyOTP": "Verify OTP",
