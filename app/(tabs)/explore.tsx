@@ -447,7 +447,7 @@ const DashboardScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.safeArea}>
+      <View style={[styles.safeArea, { marginBottom: insets.bottom + 16 }]}>
         {renderHeader()}
         <View style={styles.errorContainer}>
           <Ionicons
@@ -470,7 +470,7 @@ const DashboardScreen = () => {
   }
 
   return (
-    <View style={[styles.safeArea]}>
+    <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
       {renderHeader()}
       <View style={styles.contentWrapper}>
         <ScrollView
