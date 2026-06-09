@@ -43,12 +43,11 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarStyle: {
           position: "absolute",
-          bottom: insets.bottom > 0 ? insets.bottom - 10 : 16,
+          bottom: 0,
           left: 16,
           right: 16,
-          height: 70,
+          height: tabBarHeight,
           backgroundColor: "#FFFFFF",
-          borderRadius: 24,
           paddingBottom: 8,
           paddingTop: 8,
           paddingHorizontal: 8,
@@ -169,8 +168,8 @@ export default function TabLayout() {
           ),
           href:
             canViewComplaints() ||
-            canViewAllComplaints() ||
-            canCreateComplaints()
+              canViewAllComplaints() ||
+              canCreateComplaints()
               ? "/(tabs)/complaint"
               : null,
         }}
