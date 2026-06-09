@@ -258,7 +258,7 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
       <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
       </ImageBackground>
