@@ -181,7 +181,12 @@
     "backToLogin": "Back to Login",
     "emailPlaceholder": "user@example.com",
     "passwordPlaceholder": "••••••••",
-    "phonePlaceholder": "+1234567890"
+    "phonePlaceholder": "+1234567890",
+    "ssoLogin": "SSO",
+    "ssoLoginButton": "Sign In with SSO",
+    "nationalId": "National ID",
+    "nationalIdPlaceholder": "Enter your national ID",
+    "nationalIdRequired": "Please enter your national ID"
   },
   "dashboard": {
     "title": "Dashboard",
