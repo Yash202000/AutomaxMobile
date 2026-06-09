@@ -329,6 +329,7 @@
     "departmentAssignment": "Department Assignment",
     "userAssignment": "User Assignment",
     "fieldChanges": "Field Changes",
+    "defaultLocationTransitionBlocked": "Transition is not allowed while the incident location is Default. Incident location should be updated first.",
     "autoRevertDuration": "Auto-Revert Duration",
     "stepRequired": "Required",
     "stepOptional": "Optional",
