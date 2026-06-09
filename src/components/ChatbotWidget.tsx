@@ -13,8 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
 const CHATBOT_URL =
-  "https://livechat.discretal.com/preview/5f7f1ab6-72a5-4d23-a95b-7a7174362b8d";
-const VOICE_AGENT_URL = "https://lechat.discretal.com:8443/widget/940-agent";
+  "https://livechat.discretal.com/preview/70975c26-55b2-41b6-9481-5f4dd2de54f5";
+const VOICE_AGENT_URL = "https://livechat.discretal.com/va/epm-940-workflow-voice-agent";
 
 const TAB_BAR_HEIGHT = 70;
 

@@ -297,6 +297,7 @@ const AddIncidentScreen = () => {
   // Data state
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [locations, setLocations] = useState<TreeNode[]>([]);
+  const [masterLocations, setMasterLocations] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
   const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
@@ -419,6 +420,7 @@ const AddIncidentScreen = () => {
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
+        setMasterLocations(normalizedLocations);
 
         // Filter by user's assigned locations (unless super admin)
         if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
@@ -460,6 +462,7 @@ const AddIncidentScreen = () => {
 
         setLocations(normalizedLocations);
       } else {
+        setMasterLocations([]);
         setLocations([]);
       }
       if (workflowRes.success && workflowRes?.data) {
@@ -1212,7 +1215,7 @@ const AddIncidentScreen = () => {
     // Try to match the geo-location against the Location master tree
     setIsMatchingLocation(true);
     try {
-      const allLocations = flattenLocations(locations);
+      const allLocations = flattenLocations(masterLocations.length > 0 ? masterLocations : locations);
 
       if (isGisMode && location.gis) {
         // ── GIS mode: match using district_name → municipality_name → street_fullname ──
@@ -1390,7 +1393,7 @@ const AddIncidentScreen = () => {
     } finally {
       setIsMatchingLocation(false);
     }
-  }, [locations, flattenLocations, errors]);
+  }, [locations, masterLocations, flattenLocations, errors]);
 
   const handleLookupChange = (categoryId: string, value: any) => {
     setLookupValues(prev => {
