@@ -17,7 +17,7 @@ import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 
@@ -206,10 +206,12 @@ const IncidentDetailsScreen = () => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const mapRef = useRef<WebView>(null);
+  const insets = useSafeAreaInsets();
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
+  const isDefaultLocation = incident?.location?.name?.trim().toLowerCase() === 'default';
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -354,20 +356,49 @@ const IncidentDetailsScreen = () => {
     }
   };
 
+  const handleUpdateStatusPress = () => {
+    if (!incident) return;
+
+    if (isDefaultLocation) {
+      CustomAlert.alert(
+        t('common.notAllowed', 'Not allowed'),
+        t('incidents.defaultLocationTransitionBlocked', 'Transition is not allowed while the incident location is Default. Incident location should be updated first.')
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/update-status',
+      params: {
+        id: incident.id,
+        type: 'incident',
+        transitions: JSON.stringify(availableTransitions),
+        incident: JSON.stringify({
+          id: incident.id,
+          classification_id: incident.classification_id || incident.classification?.id,
+          location_id: incident.location_id || incident.location?.id,
+          department_id: incident.department_id || incident.department?.id,
+          assignee_id: incident.assignee_id || incident.assignee?.id,
+          version: incident?.version,
+        }),
+      },
+    });
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.accent} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error || !incident) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea]}>
         <View style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={64} color={COLORS.text.muted} />
           <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
@@ -377,7 +408,7 @@ const IncidentDetailsScreen = () => {
             <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -385,9 +416,9 @@ const IncidentDetailsScreen = () => {
   const priorityText = t(`priorities.${config.key}`, config.key);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -873,31 +904,16 @@ const IncidentDetailsScreen = () => {
         {/* Update Status Button */}
         {availableTransitions.length > 0 && (
           <TouchableOpacity
-            style={styles.updateButton}
-            onPress={() => router.push({
-              pathname: '/update-status',
-              params: {
-                id: incident.id,
-                type: 'incident',
-                transitions: JSON.stringify(availableTransitions),
-                incident: JSON.stringify({
-                  id: incident.id,
-                  classification_id: incident.classification_id || incident.classification?.id,
-                  location_id: incident.location_id || incident.location?.id,
-                  department_id: incident.department_id || incident.department?.id,
-                  assignee_id: incident.assignee_id || incident.assignee?.id,
-                  version: incident?.version,
-                }),
-              },
-            })}
-            activeOpacity={0.8}
+            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled]}
+            onPress={handleUpdateStatusPress}
+            activeOpacity={isDefaultLocation ? 1 : 0.8}
           >
             <Ionicons name="sync" size={20} color={COLORS.white} />
             <Text style={styles.updateButtonText}>{t('details.update')}</Text>
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -1086,6 +1102,10 @@ const styles = StyleSheet.create({
       ios: { shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
       android: { elevation: 8 },
     }),
+  },
+  updateButtonDisabled: {
+    backgroundColor: COLORS.text.muted,
+    opacity: 0.75,
   },
   updateButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
 

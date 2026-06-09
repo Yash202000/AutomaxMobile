@@ -138,6 +138,7 @@
   "auth": {
     "login": "تسجيل الدخول",
     "version": "الإصدار {{version}}",
+    "adLoginButton": "تسجيل الدخول باستخدام AD",
     "sendOTP": "إرسال رمز التحقق",
     "verifyOTP": "التحقق من رمز التحقق",
     "logout": "تسجيل الخروج",
@@ -176,7 +177,12 @@
     "backToLogin": "العودة لتسجيل الدخول",
     "emailPlaceholder": "user@example.com",
     "passwordPlaceholder": "••••••••",
-    "phonePlaceholder": "+1234567890"
+    "phonePlaceholder": "+1234567890",
+    "ssoLogin": "الدخول الموحد",
+    "ssoLoginButton": "تسجيل الدخول الموحد",
+    "nationalId": "الرقم الوطني",
+    "nationalIdPlaceholder": "أدخل الرقم الوطني",
+    "nationalIdRequired": "يرجى إدخال الرقم الوطني"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -330,6 +336,7 @@
     "stepOptional": "اختياري",
     "departmentPreConfigured": "القسم مُهيأ مسبقاً",
     "auto": "تلقائي",
+    "defaultLocationTransitionBlocked": "لا يُسمح بإجراء الانتقال طالما أن موقع الحادث مضبوط على الخيار الافتراضي (Default)؛ إذ يجب تحديث موقع الحادث أولاً.",
     "autoSelected": "تم الاختيار تلقائياً",
     "findingMatchingDepartments": "جاري البحث عن الأقسام المطابقة...",
     "noMatchingDepartments": "لا توجد أقسام مطابقة",

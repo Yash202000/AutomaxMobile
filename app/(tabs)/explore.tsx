@@ -23,7 +23,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface StateDetail {
   id: string;
@@ -209,9 +209,9 @@ const DashboardScreen = () => {
   const renderHeader = () => (
     <ImageBackground
       source={require("@/assets/images/background.png")}
-      style={styles.header}
+      style={[styles.header, { paddingTop: insets.top + 16 }]}
     >
-      <View style={styles.headerContent}>
+      <View style={[styles.headerContent]}>
         <View>
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.userName}>{getUserName()}</Text>
@@ -435,19 +435,19 @@ const DashboardScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         {renderHeader()}
         <View style={styles.errorContainer}>
           <Ionicons
@@ -465,12 +465,12 @@ const DashboardScreen = () => {
             <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea]}>
       {renderHeader()}
       <View style={styles.contentWrapper}>
         <ScrollView
@@ -562,7 +562,7 @@ const DashboardScreen = () => {
 
       {/* Chatbot / Voice Agent floating button — outside contentWrapper to avoid overflow:hidden clipping */}
       <ChatbotWidget />
-    </SafeAreaView>
+    </View>
   );
 };
 

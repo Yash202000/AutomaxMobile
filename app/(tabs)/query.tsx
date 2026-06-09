@@ -6,7 +6,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COLORS = {
     primary: '#1A237E',
@@ -138,6 +138,7 @@ const QueriesScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
+    const insets = useSafeAreaInsets();
 
     // Don't apply default status filter - show ALL queries unless explicitly filtered
     const activeStateId = state_id;
@@ -311,8 +312,8 @@ const QueriesScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+        <View style={styles.safeArea}>
+            <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
                 {showSearch ? (
                     <View style={styles.searchContainer}>
                         <View style={styles.searchInputContainer}>
@@ -407,7 +408,7 @@ const QueriesScreen = () => {
                     <Ionicons name="add" size={28} color="white" />
                 </TouchableOpacity>
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

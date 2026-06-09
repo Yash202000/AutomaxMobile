@@ -704,10 +704,10 @@ const IncidentsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ImageBackground
         source={require("@/assets/images/background.png")}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         {selectionMode ? (
           <View style={styles.selectionHeaderContainer}>
@@ -938,7 +938,7 @@ const IncidentsScreen = () => {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

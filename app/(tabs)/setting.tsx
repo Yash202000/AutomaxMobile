@@ -11,7 +11,7 @@ import { t } from 'i18next';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomAlert } from '@/src/components/CustomAlert';
 
 
@@ -83,6 +83,8 @@ const SettingsScreen = () => {
   const [hasLogs, setHasLogs] = useState(false);
   const [sharingLogs, setSharingLogs] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const insets = useSafeAreaInsets();
 
   const loadLogInfo = useCallback(async () => {
     try {
@@ -256,8 +258,8 @@ const SettingsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+    <View style={styles.safeArea}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
       </ImageBackground>
       <ScrollView style={styles.container}>
@@ -428,7 +430,7 @@ const SettingsScreen = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView >
+    </View >
   );
 };
 

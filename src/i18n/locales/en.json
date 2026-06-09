@@ -141,6 +141,7 @@
   },
   "auth": {
     "login": "Login",
+    "adLoginButton": "Sign in with AD",
     "version": "Version {{version}}",
     "sendOTP": "Send OTP",
     "verifyOTP": "Verify OTP",
@@ -181,7 +182,12 @@
     "backToLogin": "Back to Login",
     "emailPlaceholder": "user@example.com",
     "passwordPlaceholder": "••••••••",
-    "phonePlaceholder": "+1234567890"
+    "phonePlaceholder": "+1234567890",
+    "ssoLogin": "SSO",
+    "ssoLoginButton": "Sign In with SSO",
+    "nationalId": "National ID",
+    "nationalIdPlaceholder": "Enter your national ID",
+    "nationalIdRequired": "Please enter your national ID"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -329,6 +335,7 @@
     "departmentAssignment": "Department Assignment",
     "userAssignment": "User Assignment",
     "fieldChanges": "Field Changes",
+    "defaultLocationTransitionBlocked": "Transition is not allowed while the incident location is Default. Incident location should be updated first.",
     "autoRevertDuration": "Auto-Revert Duration",
     "stepRequired": "Required",
     "stepOptional": "Optional",
