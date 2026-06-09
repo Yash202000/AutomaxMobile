@@ -1,5 +1,5 @@
-import apiClient from "@/src/api/client";
 import { ldapLogin } from "@/src/api/auth";
+import apiClient from "@/src/api/client";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
@@ -7,8 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import * as Updates from "expo-updates";
 import * as SecureStore from "expo-secure-store";
+import * as Updates from "expo-updates";
 import { default as React, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,6 +18,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -48,12 +49,15 @@ const LoginScreen = () => {
   const [citizenName, setCitizenName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loginType, setLoginType] = useState<"employee" | "citizen">(
-    enableCitizenLogin ? "citizen" : "employee"
+    enableCitizenLogin ? "citizen" : "employee",
   );
-  const [loginMethod, setLoginMethod] = useState<"email" | "ad" | "phone">("email");
+  const [loginMethod, setLoginMethod] = useState<
+    "email" | "ad" | "phone" | "sso"
+  >("email");
   const [showPassword, setShowPassword] = useState(false);
   const [adUsername, setAdUsername] = useState("");
   const [adPassword, setAdPassword] = useState("");
+  const [nationalId, setNationalId] = useState("");
   const [showAdPassword, setShowAdPassword] = useState(false);
   const [isADPasswordFocused, setADPasswordFocused] = useState(false);
   const [isEmailPasswordFocused, setIsEmailPasswordFocused] = useState(false);
@@ -75,12 +79,14 @@ const LoginScreen = () => {
   const passwordFocusAnim = useRef(new Animated.Value(0)).current;
   const adUsernameFocusAnim = useRef(new Animated.Value(0)).current;
   const adPasswordFocusAnim = useRef(new Animated.Value(0)).current;
+  const nationalIdFocusAnim = useRef(new Animated.Value(0)).current;
   const phoneFocusAnim = useRef(new Animated.Value(0)).current;
   const nameFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
 
   const trimmedCitizenName = citizenName.trim();
+  const trimmedNationalId = nationalId.trim();
   const citizenPhoneDigits = phoneNumber.replace(/\D/g, "");
   const hasCitizenPhoneMinDigits =
     citizenPhoneDigits.length >= MOBILE_PHONE_MIN_DIGITS;
@@ -95,7 +101,9 @@ const LoginScreen = () => {
         ? !email || !password
         : loginMethod === "ad"
           ? !adUsername || !adPassword
-          : !phoneNumber));
+          : loginMethod === "sso"
+            ? !trimmedNationalId
+            : !phoneNumber));
   const isButtonDimmed =
     loading ||
     (loginType === "citizen"
@@ -104,7 +112,9 @@ const LoginScreen = () => {
         ? !email || !password
         : loginMethod === "ad"
           ? !adUsername || !adPassword
-          : !phoneNumber);
+          : loginMethod === "sso"
+            ? !trimmedNationalId
+            : !phoneNumber);
 
   useEffect(() => {
     // Entrance animations
@@ -130,11 +140,11 @@ const LoginScreen = () => {
 
     const showSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => setIsKeyboardActive(true)
+      () => setIsKeyboardActive(true),
     );
     const hideSubscription = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => setIsKeyboardActive(false)
+      () => setIsKeyboardActive(false),
     );
 
     return () => {
@@ -232,7 +242,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -242,6 +252,7 @@ const LoginScreen = () => {
 
     const isEmail = loginMethod === "email";
     const isAd = loginMethod === "ad";
+    const isSso = loginMethod === "sso";
 
     if (isAd) {
       // AD (LDAP) Login Logic
@@ -253,7 +264,7 @@ const LoginScreen = () => {
       try {
         const result = await ldapLogin(adUsername.trim(), adPassword);
         if (result.success && result.token) {
-          await SecureStore.setItemAsync('loginMethod', 'ad');
+          await SecureStore.setItemAsync("loginMethod", "ad");
           await login(result.token, result.refresh_token);
           router.replace("/(tabs)/explore");
         } else {
@@ -261,6 +272,47 @@ const LoginScreen = () => {
         }
       } catch (err: any) {
         setError(err.message || t("auth.loginError"));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (isSso) {
+      if (!trimmedNationalId) {
+        setError(t("auth.nationalIdRequired", "Please enter your national ID"));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await apiClient.post("/auth/sso/login", {
+          national_id: trimmedNationalId,
+        });
+
+        if (response.data?.success && response.data.data?.token) {
+          const { token, refresh_token, validation_url } = response.data.data;
+          await SecureStore.setItemAsync("loginMethod", "sso");
+          await login(token, refresh_token);
+
+          if (validation_url) {
+            await Linking.openURL(validation_url);
+          } else {
+            router.replace("/(tabs)/explore");
+          }
+        } else {
+          setError(
+            response.data?.error ||
+              response.data?.message ||
+              t("auth.loginError"),
+          );
+        }
+      } catch (err: any) {
+        const remoteError =
+          err.response?.data?.error || err.response?.data?.message;
+        setError(
+          typeof remoteError === "string" ? remoteError : t("auth.loginError"),
+        );
       } finally {
         setLoading(false);
       }
@@ -348,7 +400,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -368,6 +420,7 @@ const LoginScreen = () => {
     setPassword("");
     setAdUsername("");
     setAdPassword("");
+    setNationalId("");
     setCitizenName("");
     setPhoneNumber("");
     setShowPassword(false);
@@ -486,6 +539,11 @@ const LoginScreen = () => {
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
+  const nationalIdBorderColor = nationalIdFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
   // const adPasswordBorderColor = adPasswordFocusAnim.interpolate({
   //   inputRange: [0, 1],
   //   outputRange: ["#E5E5E5", "#2EC4B6"],
@@ -544,8 +602,7 @@ const LoginScreen = () => {
             </Animated.View>
 
             {/* Welcome Text */}
-            {
-              !isKeyboardActive &&
+            {!isKeyboardActive && (
               <View style={styles.welcomeContainer}>
                 <Text
                   style={[
@@ -564,7 +621,7 @@ const LoginScreen = () => {
                   {t("auth.loginSubtitle")}
                 </Text>
               </View>
-            }
+            )}
 
             {/* Login Type Tabs — visible only when citizen login is enabled */}
             {enableCitizenLogin && (
@@ -615,7 +672,7 @@ const LoginScreen = () => {
             {/* Employee method pill — Email / AD / Phone, only when citizen login is also enabled */}
             {loginType === "employee" && enableCitizenLogin && (
               <View style={styles.methodPillContainer}>
-                {(["email", "ad", "phone"] as const).map((method) => (
+                {(["email", "ad", "phone", "sso"] as const).map((method) => (
                   <TouchableOpacity
                     key={method}
                     style={[
@@ -637,13 +694,14 @@ const LoginScreen = () => {
                         ? t("auth.loginEmail", "Email")
                         : method === "ad"
                           ? t("auth.adLogin", "AD Login")
-                          : t("auth.loginMobile", "Phone")}
+                          : method === "sso"
+                            ? t("auth.ssoLogin", "SSO")
+                            : t("auth.loginMobile", "Phone")}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
-
 
             {/* Input Fields Container */}
             <View style={styles.inputsContainer}>
@@ -802,7 +860,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -839,17 +897,28 @@ const LoginScreen = () => {
                       <TextInput
                         style={[
                           styles.textInput,
-                          { textAlign: currentLang === "ar" ? "right" : "left" },
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
                         ]}
-                        placeholder={t("auth.adUsernamePlaceholder", "domain\\username or username")}
+                        placeholder={t(
+                          "auth.adUsernamePlaceholder",
+                          "domain\\username or username",
+                        )}
                         placeholderTextColor="#999"
                         value={adUsername}
                         onChangeText={setAdUsername}
                         onFocus={() =>
-                          Animated.spring(adUsernameFocusAnim, { toValue: 1, useNativeDriver: false }).start()
+                          Animated.spring(adUsernameFocusAnim, {
+                            toValue: 1,
+                            useNativeDriver: false,
+                          }).start()
                         }
                         onBlur={() =>
-                          Animated.spring(adUsernameFocusAnim, { toValue: 0, useNativeDriver: false }).start()
+                          Animated.spring(adUsernameFocusAnim, {
+                            toValue: 0,
+                            useNativeDriver: false,
+                          }).start()
                         }
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -870,7 +939,12 @@ const LoginScreen = () => {
                     <View
                       style={[
                         styles.inputContainer,
-                        { borderColor: isADPasswordFocused ? "#2EC4B6" : "#E5E5E5", borderWidth: 2 },
+                        {
+                          borderColor: isADPasswordFocused
+                            ? "#2EC4B6"
+                            : "#E5E5E5",
+                          borderWidth: 2,
+                        },
                       ]}
                     >
                       <Ionicons
@@ -882,19 +956,17 @@ const LoginScreen = () => {
                       <TextInput
                         style={[
                           styles.textInput,
-                          { textAlign: currentLang === "ar" ? "right" : "left" },
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
                         ]}
                         placeholder={t("auth.passwordPlaceholder", "••••••••")}
                         placeholderTextColor="#999"
                         secureTextEntry={!showAdPassword}
                         value={adPassword}
                         onChangeText={setAdPassword}
-                        onFocus={() =>
-                          setADPasswordFocused(true)
-                        }
-                        onBlur={() =>
-                          setADPasswordFocused(false)
-                        }
+                        onFocus={() => setADPasswordFocused(true)}
+                        onBlur={() => setADPasswordFocused(false)}
                         autoCapitalize="none"
                       />
                       <TouchableOpacity
@@ -903,7 +975,9 @@ const LoginScreen = () => {
                         activeOpacity={0.7}
                       >
                         <Ionicons
-                          name={showAdPassword ? "eye-off-outline" : "eye-outline"}
+                          name={
+                            showAdPassword ? "eye-off-outline" : "eye-outline"
+                          }
                           size={20}
                           color="#666"
                         />
@@ -913,12 +987,77 @@ const LoginScreen = () => {
 
                   {/* AD badge */}
                   <View style={styles.adBadgeRow}>
-                    <Ionicons name="shield-checkmark-outline" size={14} color="#6366F1" />
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={14}
+                      color="#6366F1"
+                    />
                     <Text style={styles.adBadgeText}>
-                      {t("auth.adDescription", "Sign in with your Active Directory credentials")}
+                      {t(
+                        "auth.adDescription",
+                        "Sign in with your Active Directory credentials",
+                      )}
                     </Text>
                   </View>
                 </>
+              ) : loginMethod === "sso" ? (
+                <View style={styles.inputWrapper}>
+                  <Text
+                    style={[
+                      styles.inputLabel,
+                      { textAlign: currentLang === "ar" ? "right" : "left" },
+                    ]}
+                  >
+                    {t("auth.nationalId", "National ID")}
+                  </Text>
+                  <Animated.View
+                    style={[
+                      styles.inputContainer,
+                      {
+                        borderColor: nationalIdBorderColor,
+                        borderWidth: 2,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="id-card-outline"
+                      size={20}
+                      color="#666"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        {
+                          textAlign: currentLang === "ar" ? "right" : "left",
+                        },
+                      ]}
+                      placeholder={t(
+                        "auth.nationalIdPlaceholder",
+                        "Enter your national ID",
+                      )}
+                      placeholderTextColor="#999"
+                      value={nationalId}
+                      onChangeText={setNationalId}
+                      onFocus={() =>
+                        Animated.spring(nationalIdFocusAnim, {
+                          toValue: 1,
+                          useNativeDriver: false,
+                        }).start()
+                      }
+                      onBlur={() =>
+                        Animated.spring(nationalIdFocusAnim, {
+                          toValue: 0,
+                          useNativeDriver: false,
+                        }).start()
+                      }
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      onSubmitEditing={handleLogin}
+                    />
+                  </Animated.View>
+                </View>
               ) : loginMethod === "email" ? (
                 <>
                   {/* Email Input */}
@@ -983,7 +1122,9 @@ const LoginScreen = () => {
                       style={[
                         styles.inputContainer,
                         {
-                          borderColor: isEmailPasswordFocused ? "#2EC4B6" : "#E5E5E5",
+                          borderColor: isEmailPasswordFocused
+                            ? "#2EC4B6"
+                            : "#E5E5E5",
                           borderWidth: 2,
                         },
                       ]}
@@ -1119,7 +1260,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -1187,7 +1328,9 @@ const LoginScreen = () => {
                         ? t("auth.sendOTP")
                         : loginMethod === "ad"
                           ? t("auth.adLoginButton", "Sign In with AD")
-                          : t("auth.login")}
+                          : loginMethod === "sso"
+                            ? t("auth.ssoLoginButton", "Sign In with SSO")
+                            : t("auth.login")}
                     </Text>
                   )}
                 </LinearGradient>
