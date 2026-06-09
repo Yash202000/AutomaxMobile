@@ -17,7 +17,7 @@ import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 
@@ -206,6 +206,7 @@ const IncidentDetailsScreen = () => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const mapRef = useRef<WebView>(null);
+  const insets = useSafeAreaInsets();
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
@@ -386,18 +387,18 @@ const IncidentDetailsScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.accent} />
           <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error || !incident) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea]}>
         <View style={styles.centered}>
           <Ionicons name="alert-circle-outline" size={64} color={COLORS.text.muted} />
           <Text style={styles.errorTitle}>{t('errors.oops')}</Text>
@@ -407,7 +408,7 @@ const IncidentDetailsScreen = () => {
             <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -415,9 +416,9 @@ const IncidentDetailsScreen = () => {
   const priorityText = t(`priorities.${config.key}`, config.key);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -912,7 +913,7 @@ const IncidentDetailsScreen = () => {
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

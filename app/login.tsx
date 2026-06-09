@@ -21,6 +21,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -555,6 +556,10 @@ const LoginScreen = () => {
       style={styles.keyboardView}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#fff"
+      />
       <LinearGradient
         colors={["#F8FFFE", "#FFFFFF"]}
         style={styles.container}
@@ -585,21 +590,24 @@ const LoginScreen = () => {
             ]}
           >
             {/* Header Logo */}
-            <Animated.View
-              style={[
-                styles.logoContainer,
-                {
-                  transform: [{ scale: logoScale }],
-                },
-              ]}
-            >
-              <View style={styles.logoShadow}>
-                <Image
-                  source={require("@/assets/images/start-logo.png")}
-                  style={styles.headerLogo}
-                />
-              </View>
-            </Animated.View>
+            {
+              !isKeyboardActive &&
+              <Animated.View
+                style={[
+                  styles.logoContainer,
+                  {
+                    transform: [{ scale: logoScale }],
+                  },
+                ]}
+              >
+                <View style={styles.logoShadow}>
+                  <Image
+                    source={require("@/assets/images/start-logo.png")}
+                    style={styles.headerLogo}
+                  />
+                </View>
+              </Animated.View>
+            }
 
             {/* Welcome Text */}
             {!isKeyboardActive && (
