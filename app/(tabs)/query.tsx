@@ -1,4 +1,5 @@
 import { getQueries, getQueryStats } from '@/src/api/incidents';
+import { useAuth } from '@/src/context/AuthContext';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
@@ -139,6 +140,8 @@ const QueriesScreen = () => {
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
+    const { canViewAllQueries } = usePermissions()
 
     // Don't apply default status filter - show ALL queries unless explicitly filtered
     const activeStateId = state_id;
@@ -181,6 +184,9 @@ const QueriesScreen = () => {
                 if (statsResponse.success && statsResponse.data?.workflow_stats) {
                     params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
                 }
+            }
+            if (!canViewAllQueries()) {
+                params.my_record = user?.id;
             }
             const response = await getQueries(params);
             if (response.success) {

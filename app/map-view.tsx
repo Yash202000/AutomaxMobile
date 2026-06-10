@@ -177,7 +177,7 @@ const MapViewScreen = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
-  const { canViewAllIncidents } = usePermissions();
+  const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -227,8 +227,20 @@ const MapViewScreen = () => {
         }
       }
 
-      if (!canViewAllIncidents()) {
-        filterParams.assignee_id = user?.id;
+      if (!canViewAllIncidents() && recordType === 'incident') {
+        filterParams.my_record = user?.id;
+      }
+
+      if (!canViewAllRequests() && recordType === 'request') {
+        filterParams.my_record = user?.id;
+      }
+
+      if (!canViewAllComplaints() && recordType === 'complaint') {
+        filterParams.my_record = user?.id;
+      }
+
+      if (!canViewAllQueries() && recordType === 'query') {
+        filterParams.my_record = user?.id;
       }
 
       // First fetch to get total count

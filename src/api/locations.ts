@@ -46,7 +46,7 @@ export const gisLocation = async (payload: {
   lng: number;
 }) => {
   try {
-    const response = await apiClient.post('/gis/identify', { x: payload.lat, y: payload.lng });
+    const response = await apiClient.post('/gis/identify', { x: payload.lng, y: payload.lat });
     if (response.data) {
       const findAttribute = (prop: string) => {
         const mapProp: any = {

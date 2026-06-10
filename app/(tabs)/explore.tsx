@@ -99,16 +99,12 @@ const DashboardScreen = () => {
       setError(null);
 
       try {
-        const params: Record<string, any> = {};
-        if (!canViewAllIncidents()) {
-          params.assignee_id = [user?.id];
-        }
         const [incidentRes, requestRes, complaintRes, queryRes] =
           await Promise.all([
-            getIncidentStats(params),
-            getRequestStats(),
-            getComplaintStats(),
-            getQueryStats(),
+            getIncidentStats(canViewAllIncidents() ? undefined : { my_record: user?.id }),
+            getRequestStats(canViewAllRequests() ? undefined : { my_record: user?.id }),
+            getComplaintStats(canViewAllComplaints() ? undefined : { my_record: user?.id }),
+            getQueryStats(canViewAllQueries() ? undefined : { my_record: user?.id }),
           ]);
         if (incidentRes.success) {
           setIncidentTotal(incidentRes.data.total)
