@@ -2,6 +2,7 @@ import { crashLogger } from '@/src/utils/crashLogger';
 import axios from 'axios';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { notifySessionExpired } from '../utils/authEvents';
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error('EXPO_PUBLIC_API_URL is not set');
@@ -95,7 +96,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
     // Log ALL API errors (except during logout or specific cancellation scenarios)
     const shouldLogError =
       !isLoggingOut &&
@@ -235,7 +235,6 @@ apiClient.interceptors.response.use(
       const response = await axios.post(`${baseURL}/auth/refresh`, {
         refresh_token: refreshToken,
       });
-
       const { token, refresh_token } = response.data.data;
 
       await SecureStore.setItemAsync('authToken', token);
@@ -261,7 +260,8 @@ apiClient.interceptors.response.use(
       ).catch(() => { });
 
       processQueue(refreshError, null);
-      await redirectToLogin();
+      // await redirectToLogin();
+      notifySessionExpired();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

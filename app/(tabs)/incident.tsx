@@ -452,7 +452,7 @@ const IncidentsScreen = () => {
         }
       }
       if (!canViewAllIncidents()) {
-        params.assignee_id = user?.id;
+        params.my_record = user?.id;
       }
       const response = await getIncidents(params);
       if (response.success) {

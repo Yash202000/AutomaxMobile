@@ -1,4 +1,5 @@
 import { getComplaints, getComplaintStats } from '@/src/api/incidents';
+import { useAuth } from '@/src/context/AuthContext';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,7 +139,9 @@ const ComplaintsScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
-    const insets = useSafeAreaInsets()
+    const insets = useSafeAreaInsets();
+    const { user } = useAuth();
+    const { canViewAllComplaints } = usePermissions();
     // Don't apply default status filter - show ALL complaints unless explicitly filtered
     const activeStateId = state_id;
     const activeStateName = state_name;
@@ -179,6 +182,9 @@ const ComplaintsScreen = () => {
             if (statsResponse.success && statsResponse.data?.workflow_stats) {
                 params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
             }
+        }
+        if (!canViewAllComplaints()) {
+            params.my_record = user?.id;
         }
         const response = await getComplaints(params);
 

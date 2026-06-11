@@ -448,6 +448,12 @@ const RequestDetailsScreen = () => {
                         <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
+                    {item?.feedbacks?.comment && (
+                      <View style={styles.transitionComment}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                        <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
+                      </View>
+                    )}
                   </View>
                 </View>
               ))}

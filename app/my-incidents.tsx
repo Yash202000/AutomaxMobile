@@ -1,7 +1,5 @@
 import {
-  getIncidents,
-  getMyAssignedIncidents,
-  getMyReportedIncidents,
+  getIncidents
 } from "@/src/api/incidents";
 import { getProfile } from "@/src/api/user";
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -19,7 +17,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 const priorityMap: Record<number, { key: string; color: string }> = {
@@ -240,6 +238,7 @@ const MyIncidentsScreen = () => {
   const [ticketType, setTicketType] = useState<
     "incident" | "request" | "complaint" | "query"
   >(getDefaultTicketType);
+  const insets = useSafeAreaInsets();
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -441,10 +440,10 @@ const MyIncidentsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea]}>
       <ImageBackground
         source={require("@/assets/images/background.png")}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         <TouchableOpacity
           style={styles.backButton}
@@ -630,7 +629,7 @@ const MyIncidentsScreen = () => {
           />
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
