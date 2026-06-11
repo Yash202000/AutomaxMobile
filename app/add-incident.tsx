@@ -665,6 +665,9 @@ const AddIncidentScreen = () => {
 
   const validate = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
+    if (process.env.EXPO_PUBLIC_ENABLE_GIS === "true" && (!locationData?.gis || !locationData?.gis?.isInsideBoundary)) {
+      newErrors.geolocation = t("addIncident.gisError");
+    }
 
     if (!title.trim()) {
       newErrors.title = t('addIncident.titlePlaceholder');
