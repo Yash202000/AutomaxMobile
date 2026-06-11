@@ -614,6 +614,7 @@
   "addIncident": {
     "title": "إضافة حادثة",
     "incidentTitle": "العنوان",
+    "gisError": "ليس موقع",
     "createdAttErr": "فشل رفع المرفق عند إنشاء الحادث",
     "titlePlaceholder": "أدخل عنوان الحادثة",
     "description": "الوصف",
