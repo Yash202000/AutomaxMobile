@@ -13,6 +13,7 @@ import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkPro
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { compressImage } from '@/src/utils/imageCompression';
+import { getLocationDetails } from '@/src/utils/location';
 import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -253,11 +254,12 @@ const UpdateStatusModal = () => {
 
   // Feedback rating state
   const [feedbackRating, setFeedbackRating] = useState(0);
+  const [gpsLocation, setgpsLocation] = useState<LocationData | undefined>(undefined);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const transitionRequiresComment = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment' && req.is_mandatory);
   const transitionRequiresFeedback = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback' && req.is_mandatory);
   const transitionRequiresAttachment = selectedTransition?.requirements?.some(req => req.requirement_type === 'attachment' && req.is_mandatory);
-
   // Check if comment or feedback field should be shown (even if optional)
   const showCommentField = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment');
   const showFeedbackField = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback');
@@ -443,6 +445,16 @@ const UpdateStatusModal = () => {
     }
   }, [selectedTransition, needsUserSelection, incident]);
 
+  useEffect(() => {
+    setLocationLoading(true)
+    getLocationDetails().then((location) => {
+      console.log('GPS Location:', location);
+      setgpsLocation(location as LocationData);
+    }).finally(() => {
+      setLocationLoading(false)
+    });
+  }, [])
+
   // Request camera permissions
   const requestCameraPermission = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -542,20 +554,23 @@ const UpdateStatusModal = () => {
       if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
 
-        // Prepare watermark data - Use ref to get latest value that won't be lost on re-render
-        const currentLocation = locationDataRef.current;
-
         const watermarkData: WatermarkData = {
-          latitude: currentLocation?.latitude,
-          longitude: currentLocation?.longitude,
-          address: currentLocation?.address,
-          city: currentLocation?.city,
-          state: currentLocation?.state,
-          country: currentLocation?.country,
+          latitude: gpsLocation?.latitude,
+          longitude: gpsLocation?.longitude,
+          city: gpsLocation?.city,
+          state: gpsLocation?.state,
+          country: gpsLocation?.country,
+          street: gpsLocation?.street,
+          district: gpsLocation?.district,
+          street_number: gpsLocation?.street_number,
+          ...(process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && gpsLocation?.gis
+            ? { gis: gpsLocation.gis }
+            : {}),
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           timestamp: new Date(),
           appName: 'Automax',
         };
+
 
         const originalFileName = asset.fileName || `photo_${Date.now()}.jpg`;
         const watermarkedFileName = generateWatermarkedFilename(originalFileName, {
@@ -563,7 +578,7 @@ const UpdateStatusModal = () => {
           userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
           userId: user?.id,
           timestamp: new Date(),
-          location: locationData ? `${locationData.city || ''} ${locationData.state || ''}`.trim() : undefined,
+          location: gpsLocation ? `${gpsLocation.city || ''} ${gpsLocation.state || ''}`.trim() : undefined,
         });
 
         const pendingWatermark: PendingWatermark = {
@@ -1170,7 +1185,11 @@ const UpdateStatusModal = () => {
                       ))}
                     </View>
                   )}
-                  <TouchableOpacity style={styles.attachmentBox} onPress={takePhotoWithCamera}>
+                  {
+                    locationLoading &&
+                    <Text style={{ marginBottom: 5, marginTop: 2, fontSize: 12, color: 'orange', textAlign: i18n.language === 'ar' ? 'right' : 'left' }}>{t('common.fetchingLoc')}</Text>
+                  }
+                  <TouchableOpacity style={[styles.attachmentBox, { opacity: locationLoading ? 0.5 : 1 }]} onPress={takePhotoWithCamera} disabled={locationLoading}>
                     <Ionicons name="cloud-upload-outline" size={32} color="#2EC4B6" />
                     <Text style={styles.attachmentText}>{attachments.length > 0 ? t('incidents.addMoreFiles', 'Add more files') : t('incidents.attachFiles', 'Attach files')}</Text>
                     <Text style={styles.attachmentSubText}>{t('incidents.maxFileSize', 'Max file size: 5 MB')}</Text>
