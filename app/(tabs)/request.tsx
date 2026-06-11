@@ -1,4 +1,5 @@
 import { getRequests, getRequestStats } from '@/src/api/incidents';
+import { useAuth } from '@/src/context/AuthContext';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
@@ -132,6 +133,8 @@ const RequestsScreen = () => {
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
+    const { canViewAllRequests } = usePermissions()
 
     // Don't apply default status filter - show ALL requests unless explicitly filtered
     const activeStateId = state_id;
@@ -174,6 +177,10 @@ const RequestsScreen = () => {
                 params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map((s: any) => s.id) || [];
             }
         }
+        if (!canViewAllRequests()) {
+            params.my_record = user?.id;
+        }
+
         const response = await getRequests(params);
 
         if (response.success) {
