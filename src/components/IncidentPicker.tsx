@@ -53,8 +53,9 @@ const IncidentPicker = ({
         try {
             const today = new Date();
             today.setUTCHours(23, 59, 59, 999);
-            const last3Months = new Date();
-            last3Months.setMonth(today.getMonth() - 3);
+
+            const last3Months = new Date(today);
+            last3Months.setUTCDate(last3Months.getUTCDate() - 90);
             last3Months.setUTCHours(0, 0, 0, 0);
 
             const params: Record<string, any> = {
