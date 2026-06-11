@@ -1,6 +1,7 @@
 {
   "common": {
     "share": "مشاركة",
+    "fetchingLoc": "يرجى الانتظار ريثما نحدد موقعك..",
     "validationError": "خطأ في التحقق",
     "recordingStartError": "فشل بدء التسجيل",
     "seconds": "ثانية قبل المحاولة مرة أخرى",

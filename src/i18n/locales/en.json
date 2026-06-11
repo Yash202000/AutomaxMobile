@@ -1,6 +1,7 @@
 {
   "common": {
     "share": "Share",
+    "fetchingLoc": "Please wait while we fetch your location..",
     "validationError": "Validation Error",
     "recordingStartError": "Failed to start recording",
     "seconds": "second(s) before trying again..",
