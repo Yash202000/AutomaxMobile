@@ -616,6 +616,7 @@
   },
   "addIncident": {
     "title": "Add Incident",
+    "gisError": "You are not inside permissible boundary",
     "createdAttErr": "Incident created failed to upload attachment",
     "incidentTitle": "Title",
     "titlePlaceholder": "Enter incident title",
