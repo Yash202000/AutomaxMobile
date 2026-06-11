@@ -1,5 +1,5 @@
 import { baseURL } from '@/src/api/client';
-import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
+import { getAvailableTransitions, getComplaintHistory, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -86,6 +86,7 @@ const ComplaintDetailsScreen = () => {
   const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
   const [categories, setCategories] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([])
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
@@ -113,9 +114,10 @@ const ComplaintDetailsScreen = () => {
 
     setLoading(true);
     try {
-      const [detailsResponse, transitionsResponse] = await Promise.all([
+      const [detailsResponse, transitionsResponse, historyResponse] = await Promise.all([
         getIncidentById(complaintId),
         getAvailableTransitions(complaintId),
+        getComplaintHistory(complaintId)
       ]);
 
       if (detailsResponse.success) {
@@ -130,6 +132,11 @@ const ComplaintDetailsScreen = () => {
         setAvailableTransitions(transitionsResponse.data.filter((t: any) => t.can_execute));
       } else {
         setAvailableTransitions([]);
+      }
+      if (historyResponse.success) {
+        setHistory(historyResponse.data);
+      } else {
+        setHistory([]);
       }
     } catch (err: any) {
       if (err?.isLogoutCancel) return;
@@ -509,13 +516,13 @@ const ComplaintDetailsScreen = () => {
         {/* Transition History Card */}
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
-          {complaint.transition_history && complaint.transition_history.length > 0 ? (
+          {history && history.length > 0 ? (
             <View style={styles.timeline}>
-              {complaint.transition_history.map((item: any, index: number) => (
+              {history.map((item: any, index: number) => (
                 <View key={item.id} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
                     <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
-                    {index < complaint.transition_history.length - 1 && <View style={styles.timelineLine} />}
+                    {index < history.length - 1 && <View style={styles.timelineLine} />}
                   </View>
                   <View style={styles.timelineContent}>
                     <View style={styles.transitionBadges}>
@@ -534,6 +541,12 @@ const ComplaintDetailsScreen = () => {
                       <View style={styles.transitionComment}>
                         <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
                         <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
+                      </View>
+                    )}
+                    {item?.feedbacks?.comment && (
+                      <View style={styles.transitionComment}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                        <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
                   </View>
