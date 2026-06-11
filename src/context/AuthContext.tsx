@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getProfile } from '../api/user';
+import { setSessionExpiredListener } from '../utils/authEvents';
 
 export interface Role {
   id: string;
@@ -168,6 +169,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoggingOut(false);
     }
   }, []);
+
+  useEffect(() => {
+    setSessionExpiredListener(async () => {
+      await logout();
+    });
+  }, [logout]);
 
   const refreshUser = useCallback(async () => {
     await loadUser();
