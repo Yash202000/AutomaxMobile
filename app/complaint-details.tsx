@@ -258,7 +258,7 @@ const ComplaintDetailsScreen = () => {
               </View> */}
             </View>
             <Text style={styles.complaintTitle}>{complaint.title}</Text>
-            <Text style={styles.dateText}>{new Date(complaint.created_at).toLocaleString()}</Text>
+            <Text style={styles.dateText}>{new Date(complaint.created_at).toLocaleString('en-GB')}</Text>
             {complaint.current_state && (
               <View style={styles.statusContainer}>
                 <View style={[styles.statusDot, { backgroundColor: COLORS.accent }]} />
@@ -406,7 +406,7 @@ const ComplaintDetailsScreen = () => {
                   </View>
                   <View style={styles.commentMeta}>
                     <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
                   </View>
                 </View>
                 <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />

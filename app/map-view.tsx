@@ -36,6 +36,7 @@ interface IncidentMarker {
   longitude: number;
   priority?: number;
   current_state?: { name: string };
+  lookup_values?: any[];
 }
 
 const MAP_HTML = `
@@ -89,19 +90,10 @@ const MAP_HTML = `
         return;
       }
 
-      const getPriorityColor = (priority) => {
-        switch (priority) {
-          case 1: return '#DC2626';
-          case 2: return '#EA580C';
-          case 3: return '#F59E0B';
-          case 4: return '#3B82F6';
-          case 5: return '#22C55E';
-          default: return '#2EC4B6';
-        }
-      };
-
       incidentsData.forEach(incident => {
-        const color = getPriorityColor(incident.priority);
+        const priorityLookup = incident?.lookup_values?.find(x => x.category && x.category.code === 'PRIORITY');
+        const p = priorityLookup?.name || 'N/A';
+        const color = priorityLookup?.color || '#2EC4B6';
         const markerHtml = '<div class="custom-marker" style="background-color: ' + color + ';"></div>';
         const customIcon = L.divIcon({
           html: markerHtml,
@@ -118,6 +110,7 @@ const MAP_HTML = `
               <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
               <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
               <span style="font-size: 12px; color: #64748B;">Status: \${incident.state}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">Priority: \${p}</span><br/>
               <button onclick="handleMarkerClick('\${incident.id}')" style="
                 margin-top: 8px;
                 padding: 6px 12px;
@@ -290,6 +283,7 @@ const MapViewScreen = () => {
       number: inc.incident_number,
       priority: inc.priority || 0,
       state: inc.current_state?.name || "N/A",
+      lookup_values: inc.lookup_values,
     }));
 
     const markersJson = JSON.stringify(markersData);

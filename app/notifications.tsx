@@ -101,7 +101,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                         </Text>
                     </View>
                     <Text style={styles.dateText}>
-                        {new Date(notification.created_at).toLocaleString()}
+                        {new Date(notification.created_at).toLocaleString('en-GB')}
                     </Text>
                 </View>
                 <Text style={styles.title} numberOfLines={1}>{displayTitle}</Text>

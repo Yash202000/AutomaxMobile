@@ -92,7 +92,7 @@ const ComplaintCard = ({ complaint, t }: { complaint: Complaint; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(complaint.created_at).toLocaleString()}</Text>
+                <Text style={styles.dateTime}>{new Date(complaint.created_at).toLocaleString('en-GB')}</Text>
                 <Text style={styles.statusText}>{t('incidents.status')}: {complaint.current_state?.name || 'N/A'}</Text>
                 <View style={styles.detailRow}>
                     <Ionicons name="chatbubble-ellipses" size={16} color={COLORS.complaint} style={styles.detailIcon} />
