@@ -508,3 +508,39 @@ export const downloadIncidentReport = async (id: string, format: 'pdf' | 'json' 
     return { success: false, data: null, error: error.response?.data?.message || error.message };
   }
 };
+
+export const getFeedbackTemplatesByTransition = async (workflowTransitionId: string) => {
+  try {
+    const response = await apiClient.get(`/admin/feedback-templates/workflow-transition/${workflowTransitionId}`);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const getCommentTemplatesByTransition = async (workflowTransitionId: string) => {
+  try {
+    const response = await apiClient.get(`/admin/comment-templates/workflow-transition/${workflowTransitionId}`);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const getReadyToCloseDurationOptions = async () => {
+  try {
+    const response = await apiClient.get('/incidents/ready-to-close/duration-options');
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};

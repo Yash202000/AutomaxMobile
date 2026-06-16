@@ -1,4 +1,4 @@
-import { getNotifications } from "@/src/api/notifications";
+import { getNotifications, markNotificationAsRead } from "@/src/api/notifications";
 import { useAuth } from "@/src/context/AuthContext";
 import { handleNotification } from "@/src/utils/notificationRouter";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,7 +39,7 @@ interface PaginationInfo {
     total_pages: number;
 }
 
-const NotificationCard = ({ notification }: { notification: Notification }) => {
+const NotificationCard = ({ notification, onPress }: { notification: Notification; onPress: () => void }) => {
     const { t } = useTranslation();
     const router = useRouter();
 
@@ -86,7 +86,14 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         (notification.category ? t(`notifications.category.${notification.category.toLowerCase()}`, notification.category.charAt(0).toUpperCase() + notification.category.slice(1)) : t("notifications.defaultTitle"));
 
     return (
-        <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={() => { handleNotification(notification?.meta, router) }}>
+        <TouchableOpacity
+            style={[styles.card, !notification.is_read && styles.unreadCard]}
+            activeOpacity={0.8}
+            onPress={() => {
+                onPress();
+                handleNotification(notification?.meta, router);
+            }}
+        >
             <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(notification.status) }]} />
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
@@ -100,9 +107,12 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                             {t(`notifications.channel.${notification.channel.split('-')[0].toLowerCase()}`, notification.channel)}
                         </Text>
                     </View>
-                    <Text style={styles.dateText}>
-                        {new Date(notification.created_at).toLocaleString()}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        {!notification.is_read && <View style={styles.unreadDot} />}
+                        <Text style={styles.dateText}>
+                            {new Date(notification.created_at).toLocaleString()}
+                        </Text>
+                    </View>
                 </View>
                 <Text style={styles.title} numberOfLines={1}>{displayTitle}</Text>
                 <Text style={styles.body}>{notification.body}</Text>
@@ -207,6 +217,13 @@ const NotificationsScreen = () => {
         );
     };
 
+    const handleMarkAsRead = async (id: string) => {
+        setNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        );
+        await markNotificationAsRead(id);
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ImageBackground
@@ -235,7 +252,7 @@ const NotificationsScreen = () => {
                 ) : (
                     <FlatList
                         data={notifications}
-                        renderItem={({ item }) => <NotificationCard notification={item} />}
+                        renderItem={({ item }) => <NotificationCard notification={item} onPress={() => handleMarkAsRead(item.id)} />}
                         keyExtractor={(item) => item.id}
                         contentContainerStyle={styles.listContent}
                         onEndReached={handleLoadMore}
@@ -411,6 +428,15 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#999",
         textAlign: "center",
+    },
+    unreadCard: {
+        backgroundColor: "#EBF3FF",
+    },
+    unreadDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#1A237E",
     },
 });
 

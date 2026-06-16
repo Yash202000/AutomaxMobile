@@ -57,6 +57,21 @@ export const getNotifications = async (params: Record<string, any> = {}): Promis
     }
 };
 
+export const markNotificationAsRead = async (id: string, isRead: boolean = true): Promise<{ success: boolean; error?: string }> => {
+    try {
+        const response = await apiClient.patch(`/notifications/${id}/read`, { is_read: isRead });
+        if (response.data && response.data.success) {
+            return { success: true };
+        }
+        return { success: false, error: 'Invalid response from server' };
+    } catch (error: any) {
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message
+        };
+    }
+};
+
 export const registerToken = async (payload: { device_token: string, device_type: string, user_id: string }) => {
     try {
         console.log("[API] Registering token at:", baseURL + '/fcm/register');

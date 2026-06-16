@@ -89,7 +89,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               value={value || ''}
               onChangeText={handleChange}
-              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}. You can tag incident using '@'`}
               filters={mentionFilters}
               maxLength={validationRules.maxLength}
             />
