@@ -203,7 +203,7 @@ const IncidentCard = ({
           </View>
         </View>
         <Text style={styles.dateTime}>
-          {new Date(incident.created_at).toLocaleString()}
+          {new Date(incident.created_at).toLocaleString('en-GB')} //dd-mm-yyyy
         </Text>
         {latestTransition?.transition && (
           <Text
@@ -370,7 +370,7 @@ const IncidentsScreen = () => {
         shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
         shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
         shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
-        shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString()}\n\n`;
+        shareText += `   ${t("incidents.createdAt")} : ${new Date(inc.created_at).toLocaleString('en-GB')}\n\n`;
         shareText += "------------------------------------------\n\n";
       });
 

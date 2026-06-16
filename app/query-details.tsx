@@ -345,7 +345,7 @@ const QueryDetailsScreen = () => {
               </View> */}
             </View>
             <Text style={styles.queryTitle}>{query.title}</Text>
-            <Text style={styles.dateText}>{new Date(query.created_at).toLocaleString()}</Text>
+            <Text style={styles.dateText}>{new Date(query.created_at).toLocaleString('en-GB')}</Text>
             {query.current_state && (
               <View style={styles.statusContainer}>
                 <View style={[styles.statusDot, { backgroundColor: COLORS.accent }]} />
@@ -493,7 +493,7 @@ const QueryDetailsScreen = () => {
                   </View>
                   <View style={styles.commentMeta}>
                     <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
                   </View>
                 </View>
                 <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />

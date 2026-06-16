@@ -152,7 +152,7 @@ const IncidentCard = ({
           </View>
         </View>
         <Text style={styles.dateTime}>
-          {new Date(incident.created_at).toLocaleString()}
+          {new Date(incident.created_at).toLocaleString('en-GB')}
         </Text>
         {latestTransition?.transition && (
           <Text

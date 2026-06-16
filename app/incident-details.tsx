@@ -808,7 +808,7 @@ const IncidentDetailsScreen = () => {
                     </View>
                     <View style={styles.commentMeta}>
                       <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
                     </View>
                   </View>
                   <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
