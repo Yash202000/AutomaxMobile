@@ -276,7 +276,7 @@ const IncidentDetailsScreen = () => {
         context: 'Unexpected error while fetching incident details',
       }).catch(logErr => console.error('Failed to log error:', logErr));
 
-      setError('Failed to load incident details');
+      setError(t('details.fetchError'));
       CustomAlert.alert(
         t('common.error'),
         t('errors.unknownError')
