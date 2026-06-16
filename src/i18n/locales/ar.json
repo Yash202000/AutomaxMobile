@@ -55,6 +55,19 @@
     "close": "إغلاق",
     "refresh": "تحديث",
     "noData": "لا توجد بيانات",
+    "deselectAll": "إلغاء تحديد الكل",
+    "selectAll": "تحديد الكل",
+    "selectFeedback": "اختر تقييماً...",
+    "failedToPickDocument": "فشل اختيار المستند",
+    "failedToPickFromGallery": "فشل الاختيار من المعرض",
+    "modal": "نافذة",
+    "notAllowed": "غير مسموح",
+    "unknown": "غير معروف",
+    "user": "مستخدم",
+    "noMatchingIncidents": "لا توجد حوادث مطابقة",
+    "noOption": "لا توجد خيارات",
+    "tagIncident": "الإشارة إلى حادثة",
+    "tagIncidentPlaceholder": "ابحث عن حوادث للإشارة إليها...",
     "clearSelection": "مسح الاختيار",
     "noOptions": "لا توجد خيارات متاحة",
     "unknownUser": "مستخدم غير معروف",
@@ -128,6 +141,10 @@
     "incidentsOnMap": "حادثة على الخريطة",
     "requests": "خريطة الطلبات",
     "requestsOnMap": "طلب على الخريطة",
+    "complaints": "خريطة الشكاوى",
+    "complaintsOnMap": "شكوى على الخريطة",
+    "queries": "خريطة الاستفسارات",
+    "queriesOnMap": "استفسار على الخريطة",
     "tapToLoad": "انقر على العلامة للتحميل"
   },
   "tabs": {
@@ -185,7 +202,9 @@
     "ssoLoginButton": "تسجيل الدخول الموحد",
     "nationalId": "الرقم الوطني",
     "nationalIdPlaceholder": "أدخل الرقم الوطني",
-    "nationalIdRequired": "يرجى إدخال الرقم الوطني"
+    "nationalIdRequired": "يرجى إدخال الرقم الوطني",
+    "adUsername": "اسم المستخدم",
+    "otpSentFailed": "فشل إرسال رمز التحقق"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -367,6 +386,14 @@
     "duration_24h": "24 ساعة",
     "duration_48h": "48 ساعة",
     "duration_72h": "72 ساعة",
+    "duration_hours": "{{count}} ساعات",
+    "duration_days": "{{count}} أيام",
+    "durationRequired": "يرجى اختيار مدة.",
+    "shareLimitTitle": "تم الوصول لحد المشاركة",
+    "locationAutoMatched": "تم مطابقة الموقع تلقائياً",
+    "locationDefaultCreated": "تم إنشاء الموقع الافتراضي",
+    "locationDefaultMapped": "تم تعيين الموقع الافتراضي",
+    "locationMatchError": "فشل مطابقة الموقع. يرجى الاختيار يدوياً.",
     "loadingDepartments": "جاري تحميل الأقسام...",
     "loadingMatchingUsers": "جاري تحميل المستخدمين المطابقين...",
     "selectDepartmentRequired": "يرجى اختيار قسم للمتابعة.",
@@ -428,9 +455,11 @@
     "channel": "القناة"
   },
   "details": {
+    "incident": "حادثة",
     "request": "طلب",
     "complaint": "شكوى",
     "query": "استفسار",
+    "sourceIncident": "الحادثة المصدر",
     "classification": "التصنيف",
     "status": "الحالة",
     "department": "القسم",
@@ -561,7 +590,8 @@
     "reqNumber": "رقم واحد على الأقل",
     "reqSymbol": "رمز خاص واحد على الأقل",
     "reqNumberOrSymbol": "رقم واحد أو رمز خاص على الأقل",
-    "requirementsError": "كلمة المرور لا تفي بمتطلبات الأمان."
+    "requirementsError": "كلمة المرور لا تفي بمتطلبات الأمان.",
+    "updateProfileFailed": "فشل تحديث كلمة المرور."
   },
   "filter": {
     "title": "تصفية الحوادث",
@@ -679,7 +709,10 @@
     "creating": "جاري إنشاء الطلب...",
     "created": "تم إنشاء الطلب بنجاح",
     "createFailed": "فشل إنشاء الطلب",
-    "workflowHint": "سيتم مطابقة سير العمل تلقائيًا"
+    "workflowHint": "سيتم مطابقة سير العمل تلقائيًا",
+    "requiredFields": "الحقول المطلوبة",
+    "createdSuccess": "تم إنشاء الطلب بنجاح.",
+    "commentPlaceholder": "أضف تعليقاً..."
   },
   "addComplaint": {
     "title": "إضافة شكوى",
@@ -712,12 +745,20 @@
     "stopRecording": "إيقاف التسجيل",
     "micPermissionRequired": "يرجى السماح بالوصول للميكروفون لتسجيل الصوت",
     "selectSourceIncident": "اختر الحادث المصدر",
-    "workflowHint": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً"
+    "workflowHint": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً",
+    "priority": "الأولوية",
+    "severity": "الخطورة",
+    "assignee": "المُسند إليه",
+    "department": "القسم",
+    "channel": "القناة",
+    "noIncidentsCreated": "لا توجد حوادث بعد",
+    "noIncidentsFound": "لا توجد حوادث تطابق بحثك"
   },
   "addQuery": {
     "title": "إضافة استفسار",
     "channel": "القناة",
     "noIncidentsFound": "لا يوجد حوادث",
+    "createdSuccess": "تم إنشاء الاستفسار بنجاح.",
     "sourceIncident": "مرجع الحادث المصدر",
     "autoWorkflow": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً",
     "queryTitle": "العنوان",
@@ -761,6 +802,7 @@
     "unknownError": "حدث خطأ غير معروف.",
     "fetchStatsFailed": "فشل تحميل الإحصائيات",
     "fetchFailed": "فشل التحميل",
+    "mapsFailed": "فشل فتح الخرائط. يرجى التحقق من أن لديك تطبيق خرائط مثبت.",
     "oops": "عذراً!",
     "oopsTitle": "عذراً! حدث خطأ ما",
     "unexpectedError": "واجه التطبيق خطأ غير متوقع. تم تسجيل هذا ليراجعه فريقنا.",
@@ -798,6 +840,10 @@
     "state": "المنطقة:",
     "country": "الدولة:",
     "postalCode": "الرمز البريدي:",
-    "noResults": "لم يتم العثور على نتائج"
+    "noResults": "لا توجد نتائج",
+    "street": "الشارع:",
+    "district": "الحي:",
+    "municipality": "البلدية:",
+    "planNo": "رقم المخطط:"
   }
 }
