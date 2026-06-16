@@ -1,6 +1,6 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartmentsTree, matchDepartments } from '@/src/api/departments';
-import { executeTransition, getMatchingUsers, uploadMultipleAttachments } from '@/src/api/incidents';
+import { executeTransition, getMatchingUsers, uploadMultipleAttachments, getFeedbackTemplatesByTransition, getCommentTemplatesByTransition, getReadyToCloseDurationOptions } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -9,12 +9,12 @@ import { IncidentMentionTextarea } from '@/src/components/IncidentMentionTextare
 import { LocationData } from '@/src/components/LocationPickerOSM';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
+import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { compressImage } from '@/src/utils/imageCompression';
 import { getLocationDetails } from '@/src/utils/location';
-import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
+import { generateWatermarkedFilename, WatermarkData } from '@/src/utils/watermarkUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -52,14 +52,14 @@ const UpdateStatusModal = () => {
     }
   }, [incidentParam]);
 
-  const [selectedTransition, setSelectedTransition] = useState(null);
+  const [selectedTransition, setSelectedTransition] = useState<any>(null);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
   // User selection state
-  const [matchingUsers, setMatchingUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [matchingUsers, setMatchingUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
@@ -73,19 +73,46 @@ const UpdateStatusModal = () => {
   // Ready-to-close duration state
   const [readyToCloseDuration, setReadyToCloseDuration] = useState('');
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [globalDurationOptions, setGlobalDurationOptions] = useState<string[]>([]);
 
   // Feedback comment state
   const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackTemplates, setFeedbackTemplates] = useState<any[]>([]);
+  const [commentTemplates, setCommentTemplates] = useState<any[]>([]);
+  const [showFeedbackTplPicker, setShowFeedbackTplPicker] = useState(false);
 
   // Attachment state
-  const [attachments, setAttachments] = useState([]);
+  interface AttachmentItem {
+    uri: string;
+    name: string;
+    type: string;
+    size?: number;
+  }
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
+  // Validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   // Field change state
   const [fieldChangeValues, setFieldChangeValues] = useState<Record<string, string>>({});
   const [fieldChangeDisplayValues, setFieldChangeDisplayValues] = useState<Record<string, string>>({});
+
+  const handleFieldChange = (fieldName: string, value: any, displayValue?: string) => {
+    setFieldChangeValues(prev => ({ ...prev, [fieldName]: value }));
+    if (displayValue !== undefined) {
+      setFieldChangeDisplayValues(prev => ({ ...prev, [fieldName]: displayValue }));
+    }
+    if (errors[fieldName]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldName];
+        return next;
+      });
+    }
+  };
   const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>([]);
@@ -131,6 +158,36 @@ const UpdateStatusModal = () => {
       })
       .catch((err) => console.error('Failed to fetch lookup categories:', err));
   }, []);
+
+  // Fetch ready-to-close duration options on mount
+  useEffect(() => {
+    getReadyToCloseDurationOptions()
+      .then((r) => {
+        if (r.success && Array.isArray(r.data)) {
+          setGlobalDurationOptions(r.data);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch duration options:', err));
+  }, []);
+
+  const formatDurationLabel = (val: string) => {
+    if (val === '1h') return t('incidents.duration_1h', '1 hour');
+    if (val === '2h') return t('incidents.duration_2h', '2 hours');
+    if (val === '4h') return t('incidents.duration_4h', '4 hours');
+    if (val === '8h') return t('incidents.duration_8h', '8 hours');
+    if (val === '24h') return t('incidents.duration_24h', '24 hours');
+    if (val === '48h') return t('incidents.duration_48h', '48 hours');
+    if (val === '72h') return t('incidents.duration_72h', '72 hours');
+    const num = parseInt(val, 10);
+    const unit = val.replace(/[0-9]/g, '');
+    if (unit === 'h') {
+      return t('incidents.duration_hours', '{{count}} hours', { count: num });
+    }
+    if (unit === 'd') {
+      return t('incidents.duration_days', '{{count}} days', { count: num });
+    }
+    return val;
+  };
 
   // Helper function to check if a string is a Plus Code
   const isPlusCode = (str: string | null | undefined): boolean => {
@@ -257,12 +314,12 @@ const UpdateStatusModal = () => {
   const [gpsLocation, setgpsLocation] = useState<LocationData | undefined>(undefined);
   const [locationLoading, setLocationLoading] = useState(false);
 
-  const transitionRequiresComment = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment' && req.is_mandatory);
-  const transitionRequiresFeedback = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback' && req.is_mandatory);
-  const transitionRequiresAttachment = selectedTransition?.requirements?.some(req => req.requirement_type === 'attachment' && req.is_mandatory);
+  const transitionRequiresComment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment' && req.is_mandatory);
+  const transitionRequiresFeedback = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'feedback' && req.is_mandatory);
+  const transitionRequiresAttachment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'attachment' && req.is_mandatory);
   // Check if comment or feedback field should be shown (even if optional)
-  const showCommentField = selectedTransition?.requirements?.some(req => req.requirement_type === 'comment');
-  const showFeedbackField = selectedTransition?.requirements?.some(req => req.requirement_type === 'feedback');
+  const showCommentField = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment');
+  const showFeedbackField = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'feedback');
 
   // Check if user selection is needed (manual_select_user or auto_match_user with roles)
   const needsUserSelection =
@@ -273,18 +330,16 @@ const UpdateStatusModal = () => {
   const needsDeptSelection =
     selectedTransition?.transition?.auto_detect_department && !selectedTransition?.transition?.assign_department_id;
 
-  // is_ready_to_close duration needed
-  const isReadyToClose = selectedTransition?.transition?.to_state?.is_ready_to_close === true;
+  // is_partial_close duration needed
+  const isReadyToClose = selectedTransition?.transition?.to_state?.is_partial_close === true;
 
-  const readyToCloseDurationOptions = [
-    { label: t('incidents.duration_1h', '1 hour'), value: '1h' },
-    { label: t('incidents.duration_2h', '2 hours'), value: '2h' },
-    { label: t('incidents.duration_4h', '4 hours'), value: '4h' },
-    { label: t('incidents.duration_8h', '8 hours'), value: '8h' },
-    { label: t('incidents.duration_24h', '24 hours'), value: '24h' },
-    { label: t('incidents.duration_48h', '48 hours'), value: '48h' },
-    { label: t('incidents.duration_72h', '72 hours'), value: '72h' },
-  ];
+  const readyToCloseDurationOptions = useMemo<string[]>(() => {
+    if (!isReadyToClose) return [];
+    if (selectedTransition?.transition?.to_state?.duration_options?.length) {
+      return selectedTransition.transition.to_state.duration_options;
+    }
+    return globalDurationOptions;
+  }, [isReadyToClose, selectedTransition, globalDurationOptions]);
 
   // Step wizard state
   const [transitionStep, setTransitionStep] = useState(0);
@@ -297,7 +352,7 @@ const UpdateStatusModal = () => {
     if (trans.assign_department_id || trans.auto_detect_department) steps.push('department');
     if (trans.assign_user_id || ((trans.auto_match_user || trans.manual_select_user) && trans.assignment_roles?.length > 0)) steps.push('user');
     if (trans.field_changes?.length > 0) steps.push('field_changes');
-    if (trans.to_state?.is_ready_to_close) steps.push('duration');
+    if (trans.to_state?.is_partial_close) steps.push('duration');
     if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'attachment' && r.is_mandatory)) steps.push('attachment');
     if (selectedTransition.requirements?.some((r: any) => r.requirement_type === 'feedback')) steps.push('feedback');
     steps.push('comment');
@@ -307,7 +362,7 @@ const UpdateStatusModal = () => {
   const stepTitles: Record<string, string> = {
     department: t('incidents.departmentAssignment', 'Department Assignment'),
     user: t('incidents.userAssignment', 'User Assignment'),
-    field_changes: t('incidents.fieldChanges', 'Field Changes'),
+    field_changes: '',
     duration: t('incidents.autoRevertDuration', 'Auto-Revert Duration'),
     attachment: t('incidents.attachment', 'Attachment'),
     feedback: t('incidents.feedback', 'Feedback'),
@@ -347,6 +402,11 @@ const UpdateStatusModal = () => {
       }
     }
 
+    if (currentStepKey === 'duration' && isReadyToClose && !readyToCloseDuration) {
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.durationRequired', 'Please select a duration'));
+      return false;
+    }
+
     if (currentStepKey === 'attachment' && transitionRequiresAttachment && attachments.length === 0) {
       CustomAlert.alert(t('common.required', 'Required'), t('incidents.attachmentRequired', 'At least one attachment is required.'));
       return false;
@@ -364,11 +424,18 @@ const UpdateStatusModal = () => {
 
     if (currentStepKey === 'field_changes') {
       const fcs = trans.field_changes || [];
+      const newErrors: Record<string, string> = {};
+      let hasError = false;
       for (const fc of fcs) {
         if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-          CustomAlert.alert(t('common.required', 'Required'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
-          return false;
+          newErrors[fc.field_name] = `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`;
+          hasError = true;
         }
+      }
+      if (hasError) {
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        CustomAlert.alert(t('common.error', 'Error'), t('common.validationError', 'Please check your input.'));
+        return false;
       }
     }
 
@@ -448,7 +515,6 @@ const UpdateStatusModal = () => {
   useEffect(() => {
     setLocationLoading(true)
     getLocationDetails().then((location) => {
-      console.log('GPS Location:', location);
       setgpsLocation(location as LocationData);
     }).finally(() => {
       setLocationLoading(false)
@@ -600,7 +666,7 @@ const UpdateStatusModal = () => {
   };
 
   // Remove attachment
-  const removeAttachment = (index) => {
+  const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -674,6 +740,10 @@ const UpdateStatusModal = () => {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
+    if (isReadyToClose && !readyToCloseDuration) {
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.durationRequired', 'Please select a duration'));
+      return;
+    }
     if (needsUserSelection && !selectedUser) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.selectUserError', 'Please select a user to assign this incident to.'));
       return;
@@ -689,11 +759,18 @@ const UpdateStatusModal = () => {
 
     // Validate required field changes
     const fieldChanges = selectedTransition?.transition?.field_changes || [];
+    const newErrors: Record<string, string> = {};
+    let hasError = false;
     for (const fc of fieldChanges) {
       if (fc.is_required && !fieldChangeValues[fc.field_name]) {
-        CustomAlert.alert(t('common.error', 'Error'), `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`);
-        return;
+        newErrors[fc.field_name] = `${fc.label || fc.field_name} ${t('common.isRequired', 'is required')}`;
+        hasError = true;
       }
+    }
+    if (hasError) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
+      CustomAlert.alert(t('common.error', 'Error'), t('common.validationError', 'Please check your input.'));
+      return;
     }
 
     setLoading(true);
@@ -800,12 +877,12 @@ const UpdateStatusModal = () => {
     }
   };
 
-  const handleTransitionSelect = (trans) => {
+  const handleTransitionSelect = (trans: any) => {
     setSelectedTransition(trans);
     setSelectedUser(null);
     setMatchingUsers([]);
     setSingleUserMatch(false);
-    setFeedbackRating(0);
+    setFeedbackRating(5); // temproary giving as 5
     setFeedbackComment('');
     setComment('');
     setFieldChangeValues({});
@@ -817,15 +894,31 @@ const UpdateStatusModal = () => {
     setShowPicker(false);
     setAutoSelectUser(trans.auto_match_user)
 
+    getFeedbackTemplatesByTransition(trans.transition.id).then(r => {
+      if (r.success && Array.isArray(r.data)) {
+        setFeedbackTemplates(r.data);
+      } else {
+        setFeedbackTemplates([]);
+      }
+    });
+
+    getCommentTemplatesByTransition(trans.transition.id).then(r => {
+      if (r.success && Array.isArray(r.data)) {
+        setCommentTemplates(r.data);
+      } else {
+        setCommentTemplates([]);
+      }
+    });
+
     // Pre-fetch tree data for field changes that need hierarchical pickers
     const fcs = trans.transition?.field_changes || [];
-    if (fcs.some(fc => fc.field_name === 'department_id')) {
+    if (fcs.some((fc: any) => fc.field_name === 'department_id')) {
       getDepartmentsTree().then(r => { if (r.success) setDepartmentsTree(r.data); });
     }
-    if (fcs.some(fc => fc.field_name === 'location_id')) {
+    if (fcs.some((fc: any) => fc.field_name === 'location_id')) {
       getLocationsTree().then(r => { if (r.success) setLocationsTree(r.data); });
     }
-    if (fcs.some(fc => fc.field_name === 'classification_id')) {
+    if (fcs.some((fc: any) => fc.field_name === 'classification_id')) {
       getClassificationsTree().then(r => { if (r.success) setClassificationsTree(r.data); });
     }
 
@@ -912,7 +1005,7 @@ const UpdateStatusModal = () => {
             <>
               <Text style={styles.stepLabel}>{t('incidents.selectStatus')}</Text>
               <Text style={styles.stepHint}>{t('common.chooseTransition')}</Text>
-              {availableTransitions.map((trans) => (
+              {availableTransitions.map((trans: any) => (
                 <TouchableOpacity
                   key={trans.transition.id}
                   style={styles.transitionCard}
@@ -1068,18 +1161,38 @@ const UpdateStatusModal = () => {
                     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
                     .map((fc: any) => (
                       <View key={fc.field_name} style={{ marginBottom: 16 }}>
-                        {/* <Text style={styles.label}>{fc.label || fc.field_name}{fc.is_required ? ' *' : ''}</Text> */}
+                        {!fc.field_name.startsWith('lookup:') && (
+                          <Text style={styles.label}>
+                            {fc.label || fc.field_name}
+                            {fc.is_required && <Text style={{ color: '#E74C3C' }}> *</Text>}
+                          </Text>
+                        )}
                         {fc.field_name === 'priority' && (
-                          <View style={styles.priorityRow}>
-                            {[1, 2, 3, 4, 5].map((p) => (
-                              <TouchableOpacity
-                                key={p}
-                                style={[styles.priorityBtn, fieldChangeValues['priority'] === String(p) && styles.priorityBtnSelected]}
-                                onPress={() => setFieldChangeValues(prev => ({ ...prev, priority: String(p) }))}
-                              >
-                                <Text style={[styles.priorityBtnText, fieldChangeValues['priority'] === String(p) && styles.priorityBtnTextSelected]}>{p}</Text>
-                              </TouchableOpacity>
-                            ))}
+                          <View>
+                            <View style={styles.priorityRow}>
+                              {[
+                                { id: '1', name: t('priorities.critical') },
+                                { id: '2', name: t('priorities.high') },
+                                { id: '3', name: t('priorities.medium') },
+                                { id: '4', name: t('priorities.low') },
+                                { id: '5', name: t('priorities.veryLow') },
+                              ].map((opt) => (
+                                <TouchableOpacity
+                                  key={opt.id}
+                                  style={[
+                                    styles.priorityBtn,
+                                    { paddingVertical: 10, paddingHorizontal: 4 },
+                                    fieldChangeValues['priority'] === opt.id && styles.priorityBtnSelected
+                                  ]}
+                                  onPress={() => handleFieldChange('priority', opt.id)}
+                                >
+                                  <Text style={[styles.priorityBtnText, { fontSize: 11 }, fieldChangeValues['priority'] === opt.id && styles.priorityBtnTextSelected]} numberOfLines={1}>
+                                    {opt.name}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                            {errors['priority'] ? <Text style={styles.inlineErrorText}>{errors['priority']}</Text> : null}
                           </View>
                         )}
                         {fc.field_name === 'department_id' && (
@@ -1088,52 +1201,98 @@ const UpdateStatusModal = () => {
                             value={fieldChangeDisplayValues['department_id'] || ''}
                             data={fc.department_type_filter ? filterDeptTree(departmentsTree, fc.department_type_filter) : departmentsTree}
                             onSelect={(node) => {
-                              if (node) { setFieldChangeValues(p => ({ ...p, department_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, department_id: node.name })); }
-                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.department_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.department_id; return n; }); }
+                              if (node) {
+                                handleFieldChange('department_id', node.id, node.name);
+                              } else {
+                                handleFieldChange('department_id', '');
+                              }
                             }}
                             leafOnly={false}
                             placeholder={t('incidents.selectDepartmentPlaceholder', 'Select department...')}
+                            error={errors['department_id']}
                           />
                         )}
                         {fc.field_name === 'location_id' && (
-                          <TreeSelect label={fc.label || t('incidents.location', 'Location')} value={fieldChangeDisplayValues['location_id'] || ''} data={locationsTree}
+                          <TreeSelect
+                            label={fc.label || t('incidents.location', 'Location')}
+                            value={fieldChangeDisplayValues['location_id'] || ''}
+                            data={locationsTree}
                             onSelect={(node) => {
-                              if (node) { setFieldChangeValues(p => ({ ...p, location_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, location_id: node.name })); }
-                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.location_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.location_id; return n; }); }
-                            }} leafOnly={false} placeholder={t('incidents.selectLocationPlaceholder', 'Select location...')} iconType="location" />
+                              if (node) {
+                                handleFieldChange('location_id', node.id, node.name);
+                              } else {
+                                handleFieldChange('location_id', '');
+                              }
+                            }}
+                            leafOnly={false}
+                            placeholder={t('incidents.selectLocationPlaceholder', 'Select location...')}
+                            iconType="location"
+                            error={errors['location_id']}
+                          />
                         )}
                         {fc.field_name === 'classification_id' && (
-                          <TreeSelect label={fc.label || t('incidents.classification', 'Classification')} value={fieldChangeDisplayValues['classification_id'] || ''} data={classificationsTree}
+                          <TreeSelect
+                            label={fc.label || t('incidents.classification', 'Classification')}
+                            value={fieldChangeDisplayValues['classification_id'] || ''}
+                            data={classificationsTree}
                             onSelect={(node) => {
-                              if (node) { setFieldChangeValues(p => ({ ...p, classification_id: node.id })); setFieldChangeDisplayValues(p => ({ ...p, classification_id: node.name })); }
-                              else { setFieldChangeValues(p => { const n = { ...p }; delete n.classification_id; return n; }); setFieldChangeDisplayValues(p => { const n = { ...p }; delete n.classification_id; return n; }); }
-                            }} leafOnly={false} placeholder={t('incidents.selectClassificationPlaceholder', 'Select classification...')} iconType="classification" />
+                              if (node) {
+                                handleFieldChange('classification_id', node.id, node.name);
+                              } else {
+                                handleFieldChange('classification_id', '');
+                              }
+                            }}
+                            leafOnly={false}
+                            placeholder={t('incidents.selectClassificationPlaceholder', 'Select classification...')}
+                            iconType="classification"
+                            error={errors['classification_id']}
+                          />
                         )}
                         {fc.field_name === 'title' && (
-                          <TextInput style={[styles.fieldInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]} placeholder={t('incidents.enterTitlePlaceholder', 'Enter title...')} placeholderTextColor="#999"
-                            value={fieldChangeValues['title'] || ''} onChangeText={(t) => setFieldChangeValues(p => ({ ...p, title: t }))} />
+                          <View>
+                            <TextInput
+                              style={[
+                                styles.fieldInput,
+                                errors['title'] && styles.fieldInputError,
+                                { textAlign: i18n.language === 'ar' ? 'right' : 'left' }
+                              ]}
+                              placeholder={t('incidents.enterTitlePlaceholder', 'Enter title...')}
+                              placeholderTextColor="#999"
+                              value={fieldChangeValues['title'] || ''}
+                              onChangeText={(t) => handleFieldChange('title', t)}
+                            />
+                            {errors['title'] ? <Text style={styles.inlineErrorText}>{errors['title']}</Text> : null}
+                          </View>
                         )}
                         {fc.field_name === 'description' && (
-                          <TextInput style={[styles.fieldInput, styles.fieldInputMultiline, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                            placeholder={t('incidents.enterDescriptionPlaceholder', 'Enter description...')}
-                            placeholderTextColor="#999" multiline value={fieldChangeValues['description'] || ''}
-                            onChangeText={(t) => setFieldChangeValues(p => ({ ...p, description: t }))} />
+                          <View>
+                            <TextInput
+                              style={[
+                                styles.fieldInput,
+                                styles.fieldInputMultiline,
+                                errors['description'] && styles.fieldInputError,
+                                { textAlign: i18n.language === 'ar' ? 'right' : 'left' }
+                              ]}
+                              placeholder={t('incidents.enterDescriptionPlaceholder', 'Enter description...')}
+                              placeholderTextColor="#999"
+                              multiline
+                              value={fieldChangeValues['description'] || ''}
+                              onChangeText={(t) => handleFieldChange('description', t)}
+                            />
+                            {errors['description'] ? <Text style={styles.inlineErrorText}>{errors['description']}</Text> : null}
+                          </View>
                         )}
                         {fc.field_name.startsWith('lookup:') && (() => {
                           const code = fc.field_name.replace('lookup:', '');
-                          const category = lookupCategories.find(c => c.code === code);
+                          const category = lookupCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
                           if (!category) return null;
                           return (
                             <DynamicLookupField
                               category={category}
                               value={fieldChangeValues[fc.field_name] || null}
-                              onChange={(catId, val) => {
-                                setFieldChangeValues(prev => ({
-                                  ...prev,
-                                  [fc.field_name]: val,
-                                }));
-                              }}
+                              onChange={(catId, val) => handleFieldChange(fc.field_name, val)}
                               required={fc.is_required}
+                              error={errors[fc.field_name]}
                               mentionFilters={{
                                 classification_ids: incident?.classification_id ? [incident.classification_id] : [],
                                 location_ids: incident?.location_id ? [incident.location_id] : [],
@@ -1155,14 +1314,14 @@ const UpdateStatusModal = () => {
                   </Text>
                   {readyToCloseDurationOptions.map(opt => (
                     <TouchableOpacity
-                      key={opt.value}
-                      style={[styles.selectionRow, readyToCloseDuration === opt.value && styles.selectionRowSelected]}
-                      onPress={() => setReadyToCloseDuration(opt.value)}
+                      key={opt}
+                      style={[styles.selectionRow, readyToCloseDuration === opt && styles.selectionRowSelected]}
+                      onPress={() => setReadyToCloseDuration(opt)}
                     >
-                      <Text style={[styles.selectionRowTitle, readyToCloseDuration === opt.value && styles.selectionRowTitleSelected]}>
-                        {opt.label}
+                      <Text style={[styles.selectionRowTitle, readyToCloseDuration === opt && styles.selectionRowTitleSelected]}>
+                        {formatDurationLabel(opt)}
                       </Text>
-                      {readyToCloseDuration === opt.value && (
+                      {readyToCloseDuration === opt && (
                         <Ionicons name="checkmark-circle" size={22} color="#2EC4B6" />
                       )}
                     </TouchableOpacity>
@@ -1200,7 +1359,7 @@ const UpdateStatusModal = () => {
               {/* ── FEEDBACK STEP ── */}
               {currentStepKey === 'feedback' && (
                 <>
-                  <Text style={styles.stepHint}>{t('incidents.rateYourExperience', 'Rate your experience with this resolution')}</Text>
+                  {/* <Text style={styles.stepHint}>{t('incidents.rateYourExperience', 'Rate your experience with this resolution')}</Text>
                   <View style={styles.starRatingContainer}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <TouchableOpacity key={star} onPress={() => setFeedbackRating(star)} style={styles.starButton}>
@@ -1216,18 +1375,32 @@ const UpdateStatusModal = () => {
                       {feedbackRating === 4 && t('incidents.ratingVeryGood')}
                       {feedbackRating === 5 && t('incidents.ratingExcellent')}
                     </Text>
+                  )} */}
+                  {feedbackTemplates && feedbackTemplates.length > 0 ? (
+                    <View style={{ marginTop: 8 }}>
+                      <TouchableOpacity
+                        style={styles.dropdown}
+                        onPress={() => setShowFeedbackTplPicker(true)}
+                      >
+                        <Text style={feedbackComment ? styles.dropdownText : [styles.dropdownText, styles.placeholder]}>
+                          {feedbackComment || t('common.selectFeedback', 'Select Feedback...')}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color="#999" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <IncidentMentionTextarea
+                      style={[styles.commentInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                      placeholder={t('incidents.feedbackCommentPlaceholder', 'Add feedback comment (optional)...')}
+                      value={feedbackComment}
+                      onChangeText={setFeedbackComment}
+                      filters={{
+                        classification_ids: incident?.classification_id ? [incident.classification_id] : [],
+                        location_ids: incident?.location_id ? [incident.location_id] : [],
+                        currentIncident_ids: incidentId ? [incidentId] : [],
+                      }}
+                    />
                   )}
-                  <IncidentMentionTextarea
-                    style={[styles.commentInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('incidents.feedbackCommentPlaceholder', 'Add feedback comment (optional)...')}
-                    value={feedbackComment}
-                    onChangeText={setFeedbackComment}
-                    filters={{
-                      classification_ids: incident?.classification_id ? [incident.classification_id] : [],
-                      location_ids: incident?.location_id ? [incident.location_id] : [],
-                      currentIncident_ids: incidentId ? [incidentId] : [],
-                    }}
-                  />
                 </>
               )}
 
@@ -1348,6 +1521,56 @@ const UpdateStatusModal = () => {
         onAccept={handlePreviewAccept}
         onRetry={handlePreviewRetry}
       />
+
+      {/* Feedback Template Picker Modal */}
+      <Modal
+        transparent={true}
+        visible={showFeedbackTplPicker}
+        animationType="fade"
+        onRequestClose={() => setShowFeedbackTplPicker(false)}
+      >
+        <Pressable style={styles.pickerOverlay} onPress={() => setShowFeedbackTplPicker(false)}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.pickerTitle}>{t('common.selectFeedback', 'Select Feedback')}</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                style={[styles.pickerItem, !feedbackComment && styles.pickerItemSelected]}
+                onPress={() => {
+                  setFeedbackComment('');
+                  setShowFeedbackTplPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerItemText, !feedbackComment && styles.pickerItemTextSelected]}>
+                  {t('common.selectFeedback', 'Select Feedback...')}
+                </Text>
+              </TouchableOpacity>
+              {feedbackTemplates.map((tpl: any) => {
+                const isSelected = feedbackComment === tpl.feedback_text;
+                return (
+                  <TouchableOpacity
+                    key={tpl.id}
+                    style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+                    onPress={() => {
+                      setFeedbackComment(tpl.feedback_text);
+                      setShowFeedbackTplPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+                      {tpl.feedback_text}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowFeedbackTplPicker(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('common.cancel', 'Cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -1652,6 +1875,15 @@ const styles = StyleSheet.create({
   fieldInputMultiline: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  fieldInputError: {
+    borderColor: '#E74C3C',
+  },
+  inlineErrorText: {
+    color: '#E74C3C',
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 12,
   },
   // Bottom Sheet Styles
   bottomSheetOverlay: {

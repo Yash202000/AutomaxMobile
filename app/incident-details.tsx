@@ -276,7 +276,7 @@ const IncidentDetailsScreen = () => {
         context: 'Unexpected error while fetching incident details',
       }).catch(logErr => console.error('Failed to log error:', logErr));
 
-      setError('Failed to load incident details');
+      setError(t('details.fetchError'));
       CustomAlert.alert(
         t('common.error'),
         t('errors.unknownError')
@@ -510,13 +510,6 @@ const IncidentDetailsScreen = () => {
                         ]}
                       >
                         <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
-                        {/* <Text
-                          style={[
-                            styles.lookupValueTagText,
-                            { color: value.color || COLORS.text.primary },
-                          ]}
-                        >
-                        </Text> */}
                       </View>
                     ))}
                   </View>
@@ -808,7 +801,7 @@ const IncidentDetailsScreen = () => {
                     </View>
                     <View style={styles.commentMeta}>
                       <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
                     </View>
                   </View>
                   <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
@@ -851,9 +844,9 @@ const IncidentDetailsScreen = () => {
                   </View>
                   <View style={styles.timelineContent}>
                     <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition.name}</Text>
+                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
                       <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString()}
                       </Text>
                     </View>
                     <View style={styles.transitionBadges}>

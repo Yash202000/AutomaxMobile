@@ -98,6 +98,13 @@ export const usePermissions = () => {
     canCreateReports: () => hasPermission(PERMISSIONS.REPORTS_CREATE),
     canUpdateReports: () => hasPermission(PERMISSIONS.REPORTS_UPDATE),
     canDeleteReports: () => hasPermission(PERMISSIONS.REPORTS_DELETE),
+
+    // Dashboard permission
+    canViewIncidentDashboard: () => hasPermission(PERMISSIONS.DASHBOARD_INCIDENT_VIEW),
+    canViewRequestDashboard: () => hasPermission(PERMISSIONS.DASHBOARD_REQUEST_VIEW),
+    canViewComplaintDashboard: () => hasPermission(PERMISSIONS.DASHBOARD_COMPLAINT_VIEW),
+    canViewQueryDashboard: () => hasPermission(PERMISSIONS.DASHBOARD_QUERY_VIEW),
+
   };
 };
 

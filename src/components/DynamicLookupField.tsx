@@ -89,7 +89,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               value={value || ''}
               onChangeText={handleChange}
-              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}. You can tag incident using '@'`}
               filters={mentionFilters}
               maxLength={validationRules.maxLength}
             />
@@ -137,7 +137,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={value ? styles.dateText : styles.placeholderText}>
-              {value ? new Date(value).toLocaleString() : `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              {value ? new Date(value).toLocaleString('en-GB') : `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
             </Text>
             <Ionicons name="calendar-outline" size={20} color="#666" />
           </TouchableOpacity>

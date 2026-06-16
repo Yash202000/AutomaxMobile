@@ -1,6 +1,8 @@
 {
   "common": {
     "share": "Share",
+    "stateChanged": "State changed",
+    "system": "System",
     "fetchingLoc": "Please wait while we fetch your location..",
     "validationError": "Validation Error",
     "recordingStartError": "Failed to start recording",
@@ -54,6 +56,19 @@
     "showLess": "Show Less",
     "close": "Close",
     "noData": "No data available",
+    "deselectAll": "Deselect All",
+    "selectAll": "Select All",
+    "selectFeedback": "Select Feedback...",
+    "failedToPickDocument": "Failed to pick document",
+    "failedToPickFromGallery": "Failed to pick from gallery",
+    "modal": "Modal",
+    "notAllowed": "Not Allowed",
+    "unknown": "Unknown",
+    "user": "User",
+    "noMatchingIncidents": "No matching incidents",
+    "noOption": "No options",
+    "tagIncident": "Tag Incident",
+    "tagIncidentPlaceholder": "Search incidents to tag...",
     "clearSelection": "Clear selection",
     "noOptions": "No options available",
     "unknownUser": "Unknown User",
@@ -130,6 +145,10 @@
     "incidentsOnMap": "incidents on map",
     "requests": "Requests Map",
     "requestsOnMap": "requests on map",
+    "complaints": "Complaints Map",
+    "complaintsOnMap": "complaints on map",
+    "queries": "Queries Map",
+    "queriesOnMap": "queries on map",
     "tapToLoad": "Tap marker to load"
   },
   "tabs": {
@@ -188,7 +207,9 @@
     "ssoLoginButton": "Sign In with SSO",
     "nationalId": "National ID",
     "nationalIdPlaceholder": "Enter your national ID",
-    "nationalIdRequired": "Please enter your national ID"
+    "nationalIdRequired": "Please enter your national ID",
+    "adUsername": "Username",
+    "otpSentFailed": "Failed to send OTP"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -371,6 +392,14 @@
     "duration_24h": "24 hours",
     "duration_48h": "48 hours",
     "duration_72h": "72 hours",
+    "duration_hours": "{{count}} hours",
+    "duration_days": "{{count}} days",
+    "durationRequired": "Please select a duration.",
+    "shareLimitTitle": "Share Limit Reached",
+    "locationAutoMatched": "Location auto-matched",
+    "locationDefaultCreated": "Default location created",
+    "locationDefaultMapped": "Default location mapped",
+    "locationMatchError": "Failed to match location. Please select manually.",
     "loadingDepartments": "Loading departments...",
     "loadingMatchingUsers": "Loading matching users...",
     "selectDepartmentRequired": "Please select a department to continue.",
@@ -433,9 +462,11 @@
     "channel": "Channel"
   },
   "details": {
+    "incident": "Incident",
     "request": "Request",
     "complaint": "Complaint",
     "query": "Query",
+    "sourceIncident": "Source Incident",
     "classification": "Classification",
     "status": "Status",
     "department": "Department",
@@ -561,7 +592,8 @@
     "reqNumber": "At least one number",
     "reqSymbol": "At least one special character",
     "reqNumberOrSymbol": "At least one number or special character",
-    "requirementsError": "Password does not meet the security requirements."
+    "requirementsError": "Password does not meet the security requirements.",
+    "updateProfileFailed": "Failed to update password."
   },
   "filter": {
     "title": "Filter Incidents",
@@ -680,7 +712,10 @@
     "creating": "Creating request...",
     "created": "Request created successfully",
     "createFailed": "Failed to create request",
-    "workflowHint": "Workflow will be auto matched"
+    "workflowHint": "Workflow will be auto matched",
+    "requiredFields": "Required Fields",
+    "createdSuccess": "Request created successfully.",
+    "commentPlaceholder": "Add a comment..."
   },
   "addComplaint": {
     "title": "Add Complaint",
@@ -713,11 +748,19 @@
     "startRecording": "Start Recording",
     "micPermissionRequired": "Please allow microphone access to record audio",
     "selectSourceIncident": "Select Source Incident",
-    "workflowHint": "Select classification, location, or source to auto-match a workflow"
+    "workflowHint": "Select classification, location, or source to auto-match a workflow",
+    "priority": "Priority",
+    "severity": "Severity",
+    "assignee": "Assignee",
+    "department": "Department",
+    "channel": "Channel",
+    "noIncidentsCreated": "You have no incidents yet",
+    "noIncidentsFound": "No incidents match your search"
   },
   "addQuery": {
     "title": "Add Query",
     "noIncidentsFound": "No Incidents found",
+    "createdSuccess": "Query created successfully.",
     "channel": "Channel",
     "sourceIncident": "Source Incident Reference",
     "autoWorkflow": "Select classification, location, or source to auto-match a workflow",
@@ -761,6 +804,8 @@
     "validationError": "Please check your input.",
     "unknownError": "An unknown error occurred.",
     "fetchStatsFailed": "Failed to load statistics",
+    "fetchFailed": "Failed to fetch",
+    "mapsFailed": "Failed to open maps. Please check if you have a maps app installed.",
     "oops": "Oops!",
     "oopsTitle": "Oops! Something went wrong",
     "unexpectedError": "The app encountered an unexpected error. This has been logged for our team to review.",
@@ -798,6 +843,10 @@
     "state": "State:",
     "country": "Country:",
     "postalCode": "Postal Code:",
-    "noResults": "No results found"
+    "noResults": "No results found",
+    "street": "Street:",
+    "district": "District:",
+    "municipality": "Municipality:",
+    "planNo": "Plan No:"
   }
 }

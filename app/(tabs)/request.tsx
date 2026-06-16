@@ -91,7 +91,7 @@ const RequestCard = ({ request, t }: { request: Request; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(request.created_at).toLocaleString()}</Text>
+                <Text style={styles.dateTime}>{new Date(request.created_at).toLocaleString('en-GB')}</Text>
                 <Text style={styles.statusText}>{t('incidents.status')}: {request.current_state?.name || 'N/A'}</Text>
                 <View style={styles.detailRow}>
                     <Ionicons name="document-text" size={16} color={COLORS.request} style={styles.detailIcon} />

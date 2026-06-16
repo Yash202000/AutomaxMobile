@@ -92,7 +92,7 @@ const QueryCard = ({ query, t }: { query: Query; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(query.created_at).toLocaleString()}</Text>
+                <Text style={styles.dateTime}>{new Date(query.created_at).toLocaleString('en-GB')}</Text>
                 <Text style={styles.statusText}>{t('incidents.status')}: {query.current_state?.name || 'N/A'}</Text>
                 <View style={styles.detailRow}>
                     <Ionicons name="help-circle" size={16} color={COLORS.query} style={styles.detailIcon} />

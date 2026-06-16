@@ -98,6 +98,12 @@ export const PERMISSIONS = {
   LOOKUPS_CREATE: 'lookups:create',
   LOOKUPS_UPDATE: 'lookups:update',
   LOOKUPS_DELETE: 'lookups:delete',
+
+  // Dashboard Permissions
+  DASHBOARD_INCIDENT_VIEW: 'dashboard:incidents',
+  DASHBOARD_REQUEST_VIEW: 'dashboard:requests',
+  DASHBOARD_COMPLAINT_VIEW: 'dashboard:complaints',
+  DASHBOARD_QUERY_VIEW: 'dashboard:queries',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

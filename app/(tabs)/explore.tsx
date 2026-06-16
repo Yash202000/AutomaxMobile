@@ -4,6 +4,7 @@ import {
   getQueryStats,
   getRequestStats,
 } from "@/src/api/incidents";
+import { getNotifications } from "@/src/api/notifications";
 import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
@@ -70,6 +71,10 @@ const DashboardScreen = () => {
     canViewAllComplaints,
     canViewQueries,
     canViewAllQueries,
+    canViewIncidentDashboard,
+    canViewRequestDashboard,
+    canViewComplaintDashboard,
+    canViewQueryDashboard,
   } = usePermissions();
 
   const [incidentStats, setIncidentStats] = useState<Stats | null>(null);
@@ -83,6 +88,26 @@ const DashboardScreen = () => {
   const [requestTotal, setTotalRequest] = useState(0);
   const [complaintTotal, setTotalComplaint] = useState(0);
   const [queryTotal, setTotalQuery] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const response = await getNotifications({
+        page: 1,
+        limit: 100,
+        channel: "notification",
+        category: "inbox",
+        received_by: user?.id,
+      });
+      if (response.success) {
+        const count = response.data.filter((n: any) => !n.is_read).length;
+        setUnreadCount(count);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch unread notification count:", err);
+    }
+  }, [user?.id]);
 
   // Animation values
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -107,19 +132,27 @@ const DashboardScreen = () => {
             getQueryStats(canViewAllQueries() ? undefined : { my_record: user?.id }),
           ]);
         if (incidentRes.success) {
-          setIncidentTotal(incidentRes.data.total)
+          const t = incidentRes.data.workflow_stats?.[0]?.by_state_details?.reduce((acc: number, detail: any) => acc + detail.count, 0) || 0
+          // setIncidentTotal(incidentRes.data.total)
+          setIncidentTotal(t)
           setIncidentStats(incidentRes.data.workflow_stats?.[0] || null)
         };
         if (requestRes.success) {
-          setTotalRequest(requestRes.data.total)
+          const t = requestRes.data.workflow_stats?.[0]?.by_state_details?.reduce((acc: number, detail: any) => acc + detail.count, 0) || 0
+          setTotalRequest(t)
+          // setTotalRequest(requestRes.data.total)
           setRequestStats(requestRes.data.workflow_stats?.[0] || null)
         };
         if (complaintRes.success) {
-          setTotalComplaint(complaintRes.data.total)
+          const t = complaintRes.data.workflow_stats?.[0]?.by_state_details?.reduce((acc: number, detail: any) => acc + detail.count, 0) || 0
+          setTotalComplaint(t)
+          // setTotalComplaint(complaintRes.data.total)
           setComplaintStats(complaintRes.data.workflow_stats?.[0] || null)
         };
         if (queryRes.success) {
-          setTotalQuery(queryRes.data.total)
+          const t = queryRes.data.workflow_stats?.[0]?.by_state_details?.reduce((acc: number, detail: any) => acc + detail.count, 0) || 0
+          setTotalQuery(t)
+          // setTotalQuery(queryRes.data.total)
           setQueryStats(queryRes.data.workflow_stats?.[0] || null)
         };
 
@@ -150,7 +183,8 @@ const DashboardScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchStats();
-    }, [fetchStats]),
+      fetchUnreadCount();
+    }, [fetchStats, fetchUnreadCount]),
   );
 
   // Entrance animations
@@ -217,6 +251,13 @@ const DashboardScreen = () => {
           onPress={() => router.push('/notifications')}
         >
           <Ionicons name="notifications-outline" size={24} color="white" />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -499,15 +540,15 @@ const DashboardScreen = () => {
               },
             ]}
           >
-            {renderSummaryCard("incident", { total: incidentTotal }, canViewAllIncidents(), "/(tabs)/incident")}
-            {renderSummaryCard("request", { total: requestTotal }, canViewAllRequests(), "/(tabs)/request")}
+            {renderSummaryCard("incident", { total: incidentTotal }, canViewIncidentDashboard(), "/(tabs)/incident")}
+            {renderSummaryCard("request", { total: requestTotal }, canViewRequestDashboard(), "/(tabs)/request")}
             {renderSummaryCard(
               "complaint",
               { total: complaintTotal },
-              canViewAllComplaints(),
+              canViewComplaintDashboard(),
               "/(tabs)/complaint",
             )}
-            {renderSummaryCard("query", { total: queryTotal }, canViewAllQueries(), "/(tabs)/query")}
+            {renderSummaryCard("query", { total: queryTotal }, canViewQueryDashboard(), "/(tabs)/query")}
           </Animated.View>
 
           {/* My Tickets and Status Sections */}
@@ -607,6 +648,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  badge: {
+    position: "absolute",
+    right: -4,
+    top: -4,
+    backgroundColor: "#DC2626",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "bold",
   },
   contentWrapper: {
     flex: 1,
