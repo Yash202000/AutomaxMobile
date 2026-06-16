@@ -200,7 +200,7 @@ const RequestDetailsScreen = () => {
               </View> */}
             </View>
             <Text style={styles.requestTitle}>{request.title}</Text>
-            <Text style={styles.dateText}>{new Date(request.created_at).toLocaleString()}</Text>
+            <Text style={styles.dateText}>{new Date(request.created_at).toLocaleString('en-GB')}</Text>
             {request.current_state && (
               <View style={styles.statusContainer}>
                 <View style={[styles.statusDot, { backgroundColor: COLORS.accent }]} />
@@ -338,7 +338,7 @@ const RequestDetailsScreen = () => {
                   </View>
                   <View style={styles.commentMeta}>
                     <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+                    <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
                   </View>
                 </View>
                 <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
