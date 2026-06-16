@@ -1,6 +1,8 @@
 {
   "common": {
     "share": "مشاركة",
+    "stateChanged": "تم تغيير الحالة",
+    "system": "النظام",
     "fetchingLoc": "يرجى الانتظار ريثما نحدد موقعك..",
     "validationError": "خطأ في التحقق",
     "recordingStartError": "فشل بدء التسجيل",

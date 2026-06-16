@@ -510,13 +510,6 @@ const IncidentDetailsScreen = () => {
                         ]}
                       >
                         <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
-                        {/* <Text
-                          style={[
-                            styles.lookupValueTagText,
-                            { color: value.color || COLORS.text.primary },
-                          ]}
-                        >
-                        </Text> */}
                       </View>
                     ))}
                   </View>
@@ -851,9 +844,9 @@ const IncidentDetailsScreen = () => {
                   </View>
                   <View style={styles.timelineContent}>
                     <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition.name}</Text>
+                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
                       <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString()}
                       </Text>
                     </View>
                     <View style={styles.transitionBadges}>
