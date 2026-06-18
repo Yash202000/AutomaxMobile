@@ -14,8 +14,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.mobile',
-      buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
-      googleServicesFile: "./GoogleService-Info.plist"
+      buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE
     },
     android: {
       package: process.env.ANDROID_PACKAGE || 'com.automax.mobile',
@@ -46,7 +45,6 @@ module.exports = {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
-      './plugins/withAndroidGoogleServices',
       'expo-router',
       'expo-font',
       [
