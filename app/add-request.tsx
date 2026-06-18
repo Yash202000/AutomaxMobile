@@ -278,6 +278,7 @@ const AddRequestScreen = () => {
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             children: node.children ? normalizeClassifications(node.children) : undefined,
+            name_ar: node.name_ar
           }));
         };
         let normalizedClassifications = normalizeClassifications(classRes.data);
@@ -304,6 +305,7 @@ const AddRequestScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -331,6 +333,7 @@ const AddRequestScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
+            name_ar: node.name_ar,
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
@@ -358,6 +361,7 @@ const AddRequestScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -1578,9 +1582,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     flex: 1,
-  },
-  placeholderText: {
-    color: '#999',
   },
   row: {
     flexDirection: 'row',

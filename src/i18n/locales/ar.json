@@ -420,7 +420,8 @@
       "940_manual": "940 يدوي",
       "field": "ميداني",
       "manual": "إدخال يدوي",
-      "viusional": "Viusional",
+      "viusional": "مرئي",
+      "ivr": "الاستجابة الصوتية التفاعلية",
       "other": "آخر"
     },
     "channels": {

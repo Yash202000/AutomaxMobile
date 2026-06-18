@@ -428,6 +428,7 @@
       "manual": "Manual Entry",
       "viusional": "Viusional",
       "chatbot": "Chat bot",
+      "ivr": "IVR",
       "other": "Other"
     },
     "channels": {
