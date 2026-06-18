@@ -820,6 +820,32 @@ const UpdateStatusModal = () => {
       departmentId = selectedDepartmentId;
     }
 
+    // Map UUIDs of select/multiselect lookups to their codes in field_changes
+    let mappedFieldChanges: Record<string, any> | undefined;
+    if (Object.keys(fieldChangeValues).length > 0) {
+      mappedFieldChanges = {};
+      for (const [key, val] of Object.entries(fieldChangeValues)) {
+        if (key.startsWith('lookup:') && val) {
+          const code = key.replace('lookup:', '');
+          const category = lookupCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
+          if (category && (category.field_type === 'select' || category.field_type === 'multiselect' || !category.field_type)) {
+            if (Array.isArray(val)) {
+              mappedFieldChanges[key] = val
+                .map(id => category.values?.find(v => v.id === id)?.code || id)
+                .filter(Boolean);
+            } else {
+              const matchedVal = category.values?.find(v => v.id === val);
+              mappedFieldChanges[key] = matchedVal ? matchedVal.code : val;
+            }
+          } else {
+            mappedFieldChanges[key] = val;
+          }
+        } else {
+          mappedFieldChanges[key] = val;
+        }
+      }
+    }
+
     const transitionData: any = {
       transition_id: selectedTransition.transition.id,
       comment: comment.trim() || undefined,
@@ -829,7 +855,7 @@ const UpdateStatusModal = () => {
       feedback: feedbackRating > 0 ? { rating: feedbackRating, comment: feedbackComment.trim() || undefined } : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
-      field_changes: Object.keys(fieldChangeValues).length > 0 ? fieldChangeValues : undefined,
+      field_changes: mappedFieldChanges,
     };
 
     const response = await executeTransition(incidentId, transitionData);
@@ -1359,23 +1385,71 @@ const UpdateStatusModal = () => {
               {/* ── FEEDBACK STEP ── */}
               {currentStepKey === 'feedback' && (
                 <>
-                  {/* <Text style={styles.stepHint}>{t('incidents.rateYourExperience', 'Rate your experience with this resolution')}</Text>
-                  <View style={styles.starRatingContainer}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <TouchableOpacity key={star} onPress={() => setFeedbackRating(star)} style={styles.starButton}>
-                        <Ionicons name={star <= feedbackRating ? 'star' : 'star-outline'} size={40} color={star <= feedbackRating ? '#FFD700' : '#CCC'} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {feedbackRating > 0 && (
-                    <Text style={[styles.ratingText, { textAlign: 'center', marginBottom: 12 }]}>
-                      {feedbackRating === 1 && t('incidents.ratingPoor')}
-                      {feedbackRating === 2 && t('incidents.ratingFair')}
-                      {feedbackRating === 3 && t('incidents.ratingGood')}
-                      {feedbackRating === 4 && t('incidents.ratingVeryGood')}
-                      {feedbackRating === 5 && t('incidents.ratingExcellent')}
-                    </Text>
-                  )} */}
+                  {
+                    selectedTransition.requirements?.find(
+                      (x: any) => x.requirement_type === "rating",
+                    ) &&
+                    <View>
+                      <Text style={styles.stepHint}>
+                        {t('incidents.rateYourExperience', 'Rate your experience with this resolution')}
+                        {selectedTransition.requirements?.find(
+                          (x: any) => x.requirement_type === "rating",
+                        )?.is_mandatory && (
+                            <Text className="text-red-500">*</Text>
+                          )}
+                      </Text>
+                      <View style={{
+                        justifyContent: "center", alignItems: "center", backgroundColor: '#F8F9FA',
+                        borderRadius: 10,
+                        padding: 15,
+                        borderWidth: 1,
+                        borderColor: '#E0E0E0',
+                      }}>
+                        <View style={styles.starRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                              key={star}
+                              onPress={() => setFeedbackRating(star)}
+                            >
+                              <Ionicons
+
+                                fill={
+                                  star <= feedbackRating
+                                    ? "#FFD700"
+                                    : "#CCC"
+                                }
+                                name={
+                                  star <= feedbackRating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={40}
+                                color={
+                                  star <= feedbackRating
+                                    ? "#FFD700"
+                                    : "#CCC"
+                                }
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        {feedbackRating > 0 && (
+                          <Text style={[styles.ratingText, { textAlign: 'center', marginTop: 12 }]}>
+                            {feedbackRating === 1 &&
+                              t("incidents.ratingPoor")}
+                            {feedbackRating === 2 &&
+                              t("incidents.ratingFair")}
+                            {feedbackRating === 3 &&
+                              t("incidents.ratingGood")}
+                            {feedbackRating === 4 &&
+                              t("incidents.ratingVeryGood")}
+                            {feedbackRating === 5 &&
+                              t("incidents.ratingExcellent")}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  }
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -1744,11 +1818,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    width: "100%"
   },
   starButton: {
     padding: 5,

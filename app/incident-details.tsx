@@ -870,6 +870,31 @@ const IncidentDetailsScreen = () => {
                         <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
+                    {
+                      item?.feedbacks?.rating > 0 &&
+                      (
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                          {[
+                            ...Array(5).keys(),
+                          ].map((i) => (
+                            <Ionicons
+                              key={i}
+                              name={
+                                i <= item.feedbacks?.rating
+                                  ? "star"
+                                  : "star-outline"
+                              }
+                              size={40}
+                              color={
+                                i <= item.feedbacks?.rating
+                                  ? "#FFD700"
+                                  : "#CCC"
+                              }
+                            />
+                          ))}
+                        </View>
+                      )
+                    }
                   </View>
                 </View>
               ))}

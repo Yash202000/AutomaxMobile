@@ -2,7 +2,7 @@ import { LookupCategory } from '@/src/api/lookups';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -43,12 +43,15 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
+  const fieldLabel =
+    i18n.language === 'ar' ? category.name_ar || category.name : category.name;
+
   // Parse validation rules
   let validationRules: any = {};
   if (category.validation_rules) {
     try {
       validationRules = JSON.parse(category.validation_rules);
-    } catch (e) {
+    } catch {
       validationRules = {};
     }
   }
@@ -59,7 +62,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
 
   const renderLabel = () => (
     <Text style={styles.label}>
-      {(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)} {required && <Text style={styles.required}>*</Text>}
+      {fieldLabel} {required && <Text style={styles.required}>*</Text>}
     </Text>
   );
 
@@ -72,7 +75,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             style={[styles.input, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
             value={value || ''}
             onChangeText={handleChange}
-            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+            placeholder={`${t('common.enter')} ${fieldLabel}`}
             placeholderTextColor="#999"
             maxLength={validationRules.maxLength}
           />
@@ -89,7 +92,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               value={value || ''}
               onChangeText={handleChange}
-              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}. You can tag incident using '@'`}
+              placeholder={`${t('common.enter')} ${fieldLabel}. You can tag incident using '@'`}
               filters={mentionFilters}
               maxLength={validationRules.maxLength}
             />
@@ -98,7 +101,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               style={[styles.textArea, error && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
               value={value || ''}
               onChangeText={handleChange}
-              placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              placeholder={`${t('common.enter')} ${fieldLabel}`}
               placeholderTextColor="#999"
               multiline
               numberOfLines={4}
@@ -120,7 +123,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
               const num = parseFloat(text);
               handleChange(isNaN(num) ? null : num);
             }}
-            placeholder={`${t('common.enter')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+            placeholder={`${t('common.enter')} ${fieldLabel}`}
             placeholderTextColor="#999"
             keyboardType="numeric"
           />
@@ -137,7 +140,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={value ? styles.dateText : styles.placeholderText}>
-              {value ? new Date(value).toLocaleString('en-GB') : `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              {value ? new Date(value).toLocaleString('en-GB') : `${t('common.select')} ${fieldLabel}`}
             </Text>
             <Ionicons name="calendar-outline" size={20} color="#666" />
           </TouchableOpacity>
@@ -164,7 +167,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
         <View style={styles.container}>
           <View style={styles.checkboxRow}>
             <Text style={styles.label}>
-              {(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)} {required && <Text style={styles.required}>*</Text>}
+              {fieldLabel} {required && <Text style={styles.required}>*</Text>}
             </Text>
             <Switch
               value={value || false}
@@ -180,7 +183,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     case 'select':
       const selectOptions = (category.values || [])
         .filter(v => v.is_active)
-        .map(v => ({ id: v.id, name: (i18n.language === 'en' && v.name) || (i18n.language === 'ar' && v.name_ar) }));
+        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v.name_ar || v.name : v.name }));
 
       return (
         <View style={styles.container}>
@@ -190,7 +193,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             onPress={() => setModalVisible(true)}
           >
             <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
-              {selectOptions.find(opt => opt.id === value)?.name || `${t('common.select')} ${(i18n.language === 'en' && category.name) || (i18n.language === 'ar' && category.name_ar)}`}
+              {selectOptions.find(opt => opt.id === value)?.name || `${t('common.select')} ${fieldLabel}`}
             </Text>
             <FontAwesome name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>
@@ -209,7 +212,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             >
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{renderLabel()}</Text>
+                  <Text style={styles.modalTitle}>{fieldLabel}</Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
@@ -242,7 +245,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     case 'multiselect':
       const multiselectOptions = (category.values || [])
         .filter(v => v.is_active)
-        .map(v => ({ id: v.id, name: v.name }));
+        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v.name_ar || v.name : v.name }));
 
       const selectedValues = Array.isArray(value) ? value : [];
 
@@ -256,7 +259,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             <Text style={[styles.dropdownText, selectedValues.length === 0 && styles.placeholderText]}>
               {selectedValues.length > 0
                 ? `${selectedValues.length} selected`
-                : `Select ${category.name}`}
+                : `${t('common.select')} ${fieldLabel}`}
             </Text>
             <FontAwesome name="chevron-down" size={16} color="#666" />
           </TouchableOpacity>
@@ -275,7 +278,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
             >
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{category.name}</Text>
+                  <Text style={styles.modalTitle}>{fieldLabel}</Text>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
                     <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
