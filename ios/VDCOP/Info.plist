@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>automaxmobile</string>
-          <string>com.leadergroup.vdcop</string>
+          <string>com.automax.vdcop</string>
         </array>
       </dict>
       <dict>

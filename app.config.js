@@ -17,6 +17,7 @@ module.exports = {
       buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE
     },
     android: {
+      googleServicesFile: "./google-services.json",
       package: process.env.ANDROID_PACKAGE || 'com.automax.mobile',
       versionCode: parseInt(process.env.EXPO_PUBLIC_APP_VERSION_CODE || '1', 10),
       supportsRTL: true,
@@ -45,6 +46,9 @@ module.exports = {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
+      './plugins/withAndroidGoogleServices',
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       'expo-router',
       'expo-font',
       [

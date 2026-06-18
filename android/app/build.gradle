@@ -1,7 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: 'com.google.gms.google-services'
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -87,6 +86,7 @@ android {
 
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
+
     splits {
         abi {
             reset()
@@ -95,6 +95,7 @@ android {
             include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
     }
+
 
     namespace 'com.automax.vdcop'
     defaultConfig {
@@ -118,6 +119,7 @@ android {
         checkReleaseBuilds false
         abortOnError false
     }
+
 
     buildTypes {
         debug {
@@ -195,3 +197,5 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+apply plugin: 'com.google.gms.google-services'
