@@ -87,7 +87,7 @@ interface Incident {
   title: string;
   priority: number;
   created_at: string;
-  current_state?: { name: string };
+  current_state?: { name: string; name_ar: string };
   location?: { name: string };
   lookup_values?: Array<{
     category: { code: string; name: string };
@@ -203,7 +203,7 @@ const IncidentCard = ({
           </View>
         </View>
         <Text style={styles.dateTime}>
-          {new Date(incident.created_at).toLocaleString('en-GB')} //dd-mm-yyyy
+          {new Date(incident.created_at).toLocaleString('en-GB')}
         </Text>
         {latestTransition?.transition && (
           <Text
@@ -224,7 +224,7 @@ const IncidentCard = ({
         )}
         <Text style={styles.statusText}>
           {t("incidents.status")}:{" "}
-          {incident.current_state?.name || t("common.na")}
+          {(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state?.name : incident.current_state?.name_ar}
         </Text>
         <View style={styles.detailRow}>
           <Ionicons

@@ -6,6 +6,7 @@ import { getUsers } from '@/src/api/users';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import usePermissions from '@/src/hooks/usePermissions';
+import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -442,7 +443,7 @@ const FilterScreen = () => {
                       <View style={styles.stateOption}>
                         <View style={[styles.stateColor, { backgroundColor: state.color || '#6366f1' }]} />
                         <Text style={[styles.filterOptionText, filters.state_ids.includes(state.id) && styles.filterOptionTextSelected]}>
-                          {state.name}
+                          {(i18n.language === 'en' || !state.name_ar) ? state.name : state.name_ar}
                         </Text>
                       </View>
                       {filters.state_ids.includes(state.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}

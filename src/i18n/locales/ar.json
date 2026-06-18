@@ -293,6 +293,7 @@
     "status": "الحالة",
     "priority": "الأولوية",
     "severity": "الخطورة",
+    "feedbackCommentRequiredError": "يرجى تقديم تعليق ملاحظات لهذا الانتقال.",
     "description": "الوصف",
     "location": "الموقع",
     "department": "القسم",
