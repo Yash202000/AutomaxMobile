@@ -316,6 +316,7 @@ const UpdateStatusModal = () => {
 
   const transitionRequiresComment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment' && req.is_mandatory);
   const transitionRequiresFeedback = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'feedback' && req.is_mandatory);
+  const transitionRequiresRating = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'rating' && req.is_mandatory);
   const transitionRequiresAttachment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'attachment' && req.is_mandatory);
   // Check if comment or feedback field should be shown (even if optional)
   const showCommentField = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment');
@@ -412,7 +413,12 @@ const UpdateStatusModal = () => {
       return false;
     }
 
-    if (currentStepKey === 'feedback' && transitionRequiresFeedback && feedbackRating === 0) {
+    if (currentStepKey === 'feedback' && transitionRequiresFeedback && !feedbackComment.trim()) {
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.feedbackCommentRequiredError', 'Please provide a feedback comment.'));
+      return false;
+    }
+
+    if (currentStepKey === 'feedback' && transitionRequiresRating && feedbackRating === 0) {
       CustomAlert.alert(t('common.required', 'Required'), t('incidents.feedbackRatingRequired2', 'Please provide a feedback rating.'));
       return false;
     }
@@ -736,10 +742,17 @@ const UpdateStatusModal = () => {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return;
     }
-    if (transitionRequiresFeedback && feedbackRating === 0) {
+    console.log(transitionRequiresFeedback, transitionRequiresRating)
+    if (transitionRequiresFeedback && !feedbackComment.trim()) {
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackCommentRequiredError', 'Please provide a feedback comment for this transition.'));
+      return;
+    }
+
+    if (transitionRequiresFeedback && !feedbackRating) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
+
     if (isReadyToClose && !readyToCloseDuration) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.durationRequired', 'Please select a duration'));
       return;
@@ -1395,7 +1408,7 @@ const UpdateStatusModal = () => {
                         {selectedTransition.requirements?.find(
                           (x: any) => x.requirement_type === "rating",
                         )?.is_mandatory && (
-                            <Text className="text-red-500">*</Text>
+                            <Text style={{ color: "red" }}> *</Text>
                           )}
                       </Text>
                       <View style={{

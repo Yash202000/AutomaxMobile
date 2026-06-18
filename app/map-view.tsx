@@ -35,7 +35,7 @@ interface IncidentMarker {
   latitude: number;
   longitude: number;
   priority?: number;
-  current_state?: { name: string };
+  current_state?: { name: string; id: string; color?: string };
   lookup_values?: any[];
 }
 
@@ -92,9 +92,9 @@ const MAP_HTML = `
 
       incidentsData.forEach(incident => {
         const priorityLookup = incident?.lookup_values?.find(x => x.category && x.category.code === 'PRIORITY');
-        const p = priorityLookup?.name || 'N/A';
-        const color = priorityLookup?.color || '#2EC4B6';
-        const markerHtml = '<div class="custom-marker" style="background-color: ' + color + ';"></div>';
+        const markerColor = incident.markerColor || '#2EC4B6';
+        const priority = priorityLookup?.name || incident.priority || 'N/A';
+        const markerHtml = '<div class="custom-marker" style="background-color: ' + markerColor + ';"></div>';
         const customIcon = L.divIcon({
           html: markerHtml,
           className: 'custom-div-icon',
@@ -110,7 +110,7 @@ const MAP_HTML = `
               <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
               <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
               <span style="font-size: 12px; color: #64748B;">Status: \${incident.state}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">Priority: \${p}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">Priority: \${priority}</span><br/>
               <button onclick="handleMarkerClick('\${incident.id}')" style="
                 margin-top: 8px;
                 padding: 6px 12px;
@@ -283,7 +283,9 @@ const MapViewScreen = () => {
       number: inc.incident_number,
       priority: inc.priority || 0,
       state: inc.current_state?.name || "N/A",
+      markerColor: inc.current_state?.color || COLORS.accent,
       lookup_values: inc.lookup_values,
+      current_state: inc.current_state
     }));
 
     const markersJson = JSON.stringify(markersData);

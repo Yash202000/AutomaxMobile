@@ -70,7 +70,7 @@ interface IncidentData {
   description?: string;
   classification?: { id: string; name: string };
   classification_id?: string;
-  current_state?: { id: string; name: string };
+  current_state?: { id: string; name: string; name_ar: string };
   department?: { id: string; name: string };
   department_id?: string;
   location?: { id: string; name: string; address?: string };
@@ -445,7 +445,7 @@ const IncidentDetailsScreen = () => {
             {incident.current_state && (
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{incident.current_state.name}</Text>
+                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state.name_ar) ? incident.current_state.name : incident.current_state.name_ar}</Text>
               </View>
             )}
           </View>
@@ -884,7 +884,7 @@ const IncidentDetailsScreen = () => {
                                   ? "star"
                                   : "star-outline"
                               }
-                              size={40}
+                              size={20}
                               color={
                                 i <= item.feedbacks?.rating
                                   ? "#FFD700"

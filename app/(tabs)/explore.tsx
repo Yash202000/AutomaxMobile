@@ -8,6 +8,7 @@ import { getNotifications } from "@/src/api/notifications";
 import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -30,6 +31,7 @@ interface StateDetail {
   id: string;
   name: string;
   count: number;
+  name_ar?: string
 }
 
 interface Stats {
@@ -446,7 +448,7 @@ const DashboardScreen = () => {
             >
               <View style={[styles.statusBar, { backgroundColor: barColor }]} />
               <View style={styles.statusContent}>
-                <Text style={styles.statusName}>{stateDetail.name}</Text>
+                <Text style={styles.statusName}>{(i18n.language === 'en' || !stateDetail?.name_ar) ? stateDetail.name : stateDetail?.name_ar}</Text>
                 <Text style={styles.statusCount}>{stateDetail.count}</Text>
               </View>
               <Ionicons
