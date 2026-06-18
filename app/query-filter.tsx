@@ -129,7 +129,7 @@ const QueryFilterScreen = () => {
     setLoadingStates(true);
     const response = await getQueryStats();
     if (response.success) {
-      setStates(response.data.workflow_stats[0].by_state_details || []);
+      setStates(response?.data?.workflow_stats?.[0]?.by_state_details || []);
     }
     setLoadingStates(false);
   };

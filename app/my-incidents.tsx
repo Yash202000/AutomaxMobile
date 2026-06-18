@@ -516,7 +516,7 @@ const MyIncidentsScreen = () => {
 
         {/* Ticket Type Tabs */}
         <View style={styles.ticketTypeContainer}>
-          {(canCreateIncidents() || canUpdateIncidents()) && (
+          {(canCreateIncidents() || canUpdateIncidents() || canTransitionIncidents()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -534,7 +534,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateRequests() || canUpdateRequests()) && (
+          {(canCreateRequests() || canUpdateRequests() || canTransitionRequests()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -552,7 +552,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateComplaints() || canUpdateComplaints()) && (
+          {(canCreateComplaints() || canUpdateComplaints() || canTransitionComplaints()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -570,7 +570,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateQueries() || canUpdateQueries()) && (
+          {(canCreateQueries() || canUpdateQueries() || canTransitionQueries()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
