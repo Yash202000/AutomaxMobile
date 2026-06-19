@@ -5,7 +5,6 @@ import {
   getRequestStats,
 } from "@/src/api/incidents";
 import { getNotifications } from "@/src/api/notifications";
-import { ChatbotWidget } from "@/src/components/ChatbotWidget";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
@@ -606,7 +605,7 @@ const DashboardScreen = () => {
       </View>
 
       {/* Chatbot / Voice Agent floating button — outside contentWrapper to avoid overflow:hidden clipping */}
-      <ChatbotWidget />
+      {/* <ChatbotWidget /> */}
     </View>
   );
 };
