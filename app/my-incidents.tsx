@@ -153,13 +153,14 @@ const IncidentCard = ({
             <Text style={styles.incidentTagText}>{priorityText}</Text>
           </View>
         </View>
-        <Text style={styles.dateTime}>
+        <Text style={[styles.dateTime, { textAlign: "left" }]}>
           {new Date(incident.created_at).toLocaleString('en-GB')}
         </Text>
         {latestTransition?.transition && (
           <Text
             style={[
               styles.rejectText,
+              { textAlign: "left" },
               ...(latestTransition?.transition?.code !== "reject"
                 ? [
                   {
@@ -174,7 +175,7 @@ const IncidentCard = ({
           </Text>
         )}
 
-        <Text style={styles.statusText}>
+        <Text style={[styles.statusText, { textAlign: "left" }]}>
           {t('incidents.status')}: {(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state?.name : incident.current_state?.name_ar || t('common.na')}
         </Text>
         <View style={styles.detailRow}>
@@ -184,7 +185,7 @@ const IncidentCard = ({
             color="#10B981"
             style={styles.detailIcon}
           />
-          <Text style={styles.detailText} numberOfLines={1}>
+          <Text style={[styles.detailText, { textAlign: "left" }]} numberOfLines={1}>
             {incident.title}
           </Text>
         </View>
@@ -195,7 +196,7 @@ const IncidentCard = ({
             color="#3B82F6"
             style={styles.detailIcon}
           />
-          <Text style={styles.detailText}>
+          <Text style={[styles.detailText, { textAlign: "left" }]}>
             {(i18n.language === 'en' || !incident.location?.name_ar) ? incident.location?.name : incident.location?.name_ar || t("common.noData")}
           </Text>
         </View>
@@ -428,11 +429,11 @@ const MyIncidentsScreen = () => {
 
     return (
       <View style={styles.listHeader}>
-        <Text style={styles.incidentsFoundText}>
+        <Text style={[styles.incidentsFoundText, { textAlign: "left" }]}>
           {pagination.total_items} {statusLabel} {ticketTypeLabel}
         </Text>
         {pagination.total_pages > 1 && (
-          <Text style={styles.paginationText}>
+          <Text style={[styles.paginationText, { textAlign: "left" }]}>
             {t("myIncidents.page")} {pagination.page} {t("myIncidents.of")}{" "}
             {pagination.total_pages}
           </Text>
@@ -711,11 +712,13 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 20,
     fontWeight: "bold",
+    textAlign: "left"
   },
   headerSubtitle: {
     color: "rgba(255,255,255,0.8)",
     fontSize: 12,
     marginTop: 2,
+    textAlign: "left"
   },
   headerIcon: {
     padding: 8,
