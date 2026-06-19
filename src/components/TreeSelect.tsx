@@ -123,6 +123,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
           />
           <Text
             style={[
+              { textAlign: 'left' },
               styles.treeItemText,
               !canSelect && styles.treeItemTextDisabled,
               isSelected && styles.treeItemTextSelected,
@@ -398,7 +399,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
         onPress={disabled ? undefined : handleOpen}
         activeOpacity={disabled ? 1 : 0.7}
       >
-        <Text style={[styles.dropdownText, !hasValue && styles.placeholderText]}>
+        <Text style={[styles.dropdownText, !hasValue && styles.placeholderText, { textAlign: 'left' }]}>
           {displayText}
         </Text>
         {loading ? (

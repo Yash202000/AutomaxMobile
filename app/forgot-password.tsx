@@ -345,11 +345,13 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 8,
     letterSpacing: -0.5,
+    textAlign: "left"
   },
   subtitleText: {
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
+    textAlign: 'left'
   },
   inputsContainer: {
     marginBottom: 24,
@@ -362,6 +364,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     fontWeight: '600',
+    textAlign: "left"
   },
   inputContainer: {
     flexDirection: 'row',
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
   channelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#666'
   },
   activeChannelText: {
     color: '#2EC4B6',
