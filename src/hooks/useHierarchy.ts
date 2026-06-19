@@ -3,6 +3,7 @@ import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartmentsTree } from '@/src/api/departments';
 import { getLocationsTree } from '@/src/api/locations';
 import { TreeNode } from '@/src/components/TreeSelect';
+import i18n from '../i18n';
 
 export const useHierarchy = () => {
   const [classTree, setClassTree] = useState<TreeNode[]>([]);
@@ -54,14 +55,14 @@ export const useHierarchy = () => {
 
   const getPath = (tree: TreeNode[], targetId?: string): string => {
     if (!tree || tree.length === 0 || !targetId) return '';
-
+    const lang = i18n.language
     const findPath = (nodes: TreeNode[], id: string, currentPath: string[] = []): string[] | null => {
       for (const node of nodes) {
         if (node && String(node.id) === String(id)) {
-          return [...currentPath, node.name];
+          return [...currentPath, (lang === 'ar' && node.name_ar) ? node.name_ar : node.name];
         }
         if (node && node.children && node.children.length > 0) {
-          const found = findPath(node.children, id, [...currentPath, node.name]);
+          const found = findPath(node.children, id, [...currentPath, (lang === 'ar' && node.name_ar) ? node.name_ar : node.name]);
           if (found) return found;
         }
       }

@@ -88,7 +88,7 @@ interface Incident {
   priority: number;
   created_at: string;
   current_state?: { name: string; name_ar: string };
-  location?: { name: string };
+  location?: { name: string; name_ar: string };
   lookup_values?: Array<{
     category: { code: string; name: string };
     code: string;
@@ -245,7 +245,7 @@ const IncidentCard = ({
             style={styles.detailIcon}
           />
           <Text style={styles.detailText}>
-            {incident.location?.name || t("common.noData")}
+            {(i18n.language === 'en' || !incident.location?.name_ar) ? incident.location?.name : incident.location?.name_ar || t("common.noData")}
           </Text>
         </View>
       </View>

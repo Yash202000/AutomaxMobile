@@ -50,11 +50,12 @@ const DISABLE_AUTO_LOCATION_RETRIEVAL =
 
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
-  levels: { name: string; type: string }[];
+  levels: { name: string; type: string; name_ar: string }[];
   /** Index in levels[] where we start creating (levels before this index already exist). */
   startLevelIndex: number;
   virtualId: string;
   name: string;
+  name_ar: string;
   parent_id?: string;
 }
 
@@ -351,6 +352,7 @@ const AddIncidentScreen = () => {
               id: String(node.id),
               name: node.name,
               parent_id: node.parent_id ? String(node.parent_id) : null,
+              name_ar: node.name_ar
             };
 
             if (node.children && node.children.length > 0) {
@@ -388,6 +390,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -417,6 +420,7 @@ const AddIncidentScreen = () => {
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             children: node.children ? normalizeLocations(node.children) : undefined,
+            name_ar: node.name_ar,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
@@ -444,6 +448,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -570,6 +575,7 @@ const AddIncidentScreen = () => {
       chain = {
         id: nodeId,
         name: level.name,
+        name_ar: level.name_ar,
         type: level.type,
         children: chain ? [chain] : undefined,
       };

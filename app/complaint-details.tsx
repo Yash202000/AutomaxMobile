@@ -365,7 +365,7 @@ const ComplaintDetailsScreen = () => {
                   if (field.field_type === 'checkbox') {
                     displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
-                    displayValue = new Date(field.value).toLocaleDateString();
+                    displayValue = new Date(field.value).toLocaleDateString('en-GB');
                   }
 
                   return (
@@ -535,7 +535,7 @@ const ComplaintDetailsScreen = () => {
                       </View>
                     </View>
                     <Text style={styles.transitionMeta}>
-                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
                     </Text>
                     {item.comment && (
                       <View style={styles.transitionComment}>

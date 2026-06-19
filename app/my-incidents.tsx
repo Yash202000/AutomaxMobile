@@ -4,6 +4,7 @@ import {
 import { getProfile } from "@/src/api/user";
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { usePermissions } from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { RelativePathString, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -36,14 +37,15 @@ interface Incident {
   created_at: string;
   due_date?: string;
   sla_breached?: boolean;
-  current_state?: { name: string; color?: string };
-  location?: { name: string };
+  current_state?: { name: string; color?: string; name_ar?: string };
+  location?: { name: string; name_ar: string };
   assignee?: { first_name?: string; username: string };
   department?: { name: string };
   lookup_values?: Array<{
     category: { code: string };
     code: string;
     name: string;
+    name_ar?: string;
     color: string;
   }>;
   transition_history?: Array<{
@@ -87,7 +89,7 @@ const IncidentCard = ({
       key: priorityLookup.code.toLowerCase(),
       color: priorityLookup.color,
     };
-    priorityText = priorityLookup.name;
+    priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar || '';
   }
 
   // Determine the correct detail page based on ticket type
@@ -173,7 +175,7 @@ const IncidentCard = ({
         )}
 
         <Text style={styles.statusText}>
-          {t('incidents.status')}: {incident.current_state?.name || t('common.na')}
+          {t('incidents.status')}: {(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state?.name : incident.current_state?.name_ar || t('common.na')}
         </Text>
         <View style={styles.detailRow}>
           <Ionicons
@@ -194,7 +196,7 @@ const IncidentCard = ({
             style={styles.detailIcon}
           />
           <Text style={styles.detailText}>
-            {incident.location?.name || t("common.noData")}
+            {(i18n.language === 'en' || !incident.location?.name_ar) ? incident.location?.name : incident.location?.name_ar || t("common.noData")}
           </Text>
         </View>
       </View>

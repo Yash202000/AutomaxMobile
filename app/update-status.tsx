@@ -742,13 +742,12 @@ const UpdateStatusModal = () => {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return;
     }
-    console.log(transitionRequiresFeedback, transitionRequiresRating)
     if (transitionRequiresFeedback && !feedbackComment.trim()) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackCommentRequiredError', 'Please provide a feedback comment for this transition.'));
       return;
     }
 
-    if (transitionRequiresFeedback && !feedbackRating) {
+    if (transitionRequiresRating && !feedbackRating) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
@@ -875,7 +874,6 @@ const UpdateStatusModal = () => {
 
     setLoading(false);
     setUploadProgress('');
-
     if (response.success) {
       // Get appropriate success message based on ticket type
       let successMessage = t('common.statusUpdated');
@@ -921,7 +919,7 @@ const UpdateStatusModal = () => {
     setSelectedUser(null);
     setMatchingUsers([]);
     setSingleUserMatch(false);
-    setFeedbackRating(5); // temproary giving as 5
+    setFeedbackRating(0); // temproary giving as 5
     setFeedbackComment('');
     setComment('');
     setFieldChangeValues({});
@@ -1013,13 +1011,13 @@ const UpdateStatusModal = () => {
             <View style={styles.stateRow}>
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.from_state?.color || '#888') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.from_state?.color || '#888' }]}>
-                  {selectedTransition.transition.from_state?.name || t('incidents.currentStateFallback', 'Current')}
+                  {(i18n.language === 'ar' && selectedTransition.transition.from_state?.name_ar ? selectedTransition.transition.from_state?.name_ar : selectedTransition.transition.from_state?.name) || t('incidents.currentStateFallback', 'Current')}
                 </Text>
               </View>
               <Ionicons name={t('common.icons.arrowForward') as any} size={14} color="#888" style={{ marginHorizontal: 6 }} />
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.to_state?.color || '#2EC4B6') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.to_state?.color || '#2EC4B6' }]}>
-                  {selectedTransition.transition.to_state?.name || t('incidents.nextStateFallback', 'Next')}
+                  {(i18n.language === 'ar' && selectedTransition.transition.to_state?.name_ar ? selectedTransition.transition.to_state?.name_ar : selectedTransition.transition.to_state?.name) || t('incidents.nextStateFallback', 'Next')}
                 </Text>
               </View>
             </View>
@@ -1057,7 +1055,7 @@ const UpdateStatusModal = () => {
                         <Text style={styles.transitionCardStateLabel}>→ </Text>
                         <View style={[styles.stateBadge, { backgroundColor: (trans.transition.to_state.color || '#2EC4B6') + '22' }]}>
                           <Text style={[styles.stateBadgeText, { color: trans.transition.to_state.color || '#2EC4B6' }]}>
-                            {trans.transition.to_state.name}
+                            {(i18n.language === 'ar' && trans.transition.to_state.name_ar ? trans.transition.to_state.name_ar : trans.transition.to_state.name) || t('incidents.nextStateFallback', 'Next')}
                           </Text>
                         </View>
                       </View>
