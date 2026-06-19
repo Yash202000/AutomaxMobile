@@ -293,6 +293,7 @@
     "myIncidents": "My Incidents",
     "newIncident": "New Incident",
     "addIncident": "Add Incident",
+    "feedbackCommentRequiredError": "Please provide a feedback comment for this transition.",
     "incidentDetails": "Incident Details",
     "incidentNumber": "Incident Number",
     "status": "Status",
@@ -427,6 +428,7 @@
       "manual": "Manual Entry",
       "viusional": "Viusional",
       "chatbot": "Chat bot",
+      "ivr": "IVR",
       "other": "Other"
     },
     "channels": {

@@ -293,6 +293,7 @@
     "status": "الحالة",
     "priority": "الأولوية",
     "severity": "الخطورة",
+    "feedbackCommentRequiredError": "يرجى تقديم تعليق ملاحظات لهذا الانتقال.",
     "description": "الوصف",
     "location": "الموقع",
     "department": "القسم",
@@ -419,7 +420,8 @@
       "940_manual": "940 يدوي",
       "field": "ميداني",
       "manual": "إدخال يدوي",
-      "viusional": "Viusional",
+      "viusional": "مرئي",
+      "ivr": "الاستجابة الصوتية التفاعلية",
       "other": "آخر"
     },
     "channels": {

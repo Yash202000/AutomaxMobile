@@ -11,12 +11,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface TreeNode {
   id: string;
   name: string;
+  name_ar: string;
   type?: string;
   children?: TreeNode[];
   parent_id?: string | null;
@@ -127,7 +129,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
             ]}
             numberOfLines={1}
           >
-            {node.name}
+            {i18n.language === 'ar' && node.name_ar ? node.name_ar : node.name}
           </Text>
         </View>
         {multiSelect && canSelect ? (

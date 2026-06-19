@@ -316,6 +316,7 @@ const UpdateStatusModal = () => {
 
   const transitionRequiresComment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment' && req.is_mandatory);
   const transitionRequiresFeedback = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'feedback' && req.is_mandatory);
+  const transitionRequiresRating = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'rating' && req.is_mandatory);
   const transitionRequiresAttachment = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'attachment' && req.is_mandatory);
   // Check if comment or feedback field should be shown (even if optional)
   const showCommentField = selectedTransition?.requirements?.some((req: any) => req.requirement_type === 'comment');
@@ -412,7 +413,12 @@ const UpdateStatusModal = () => {
       return false;
     }
 
-    if (currentStepKey === 'feedback' && transitionRequiresFeedback && feedbackRating === 0) {
+    if (currentStepKey === 'feedback' && transitionRequiresFeedback && !feedbackComment.trim()) {
+      CustomAlert.alert(t('common.required', 'Required'), t('incidents.feedbackCommentRequiredError', 'Please provide a feedback comment.'));
+      return false;
+    }
+
+    if (currentStepKey === 'feedback' && transitionRequiresRating && feedbackRating === 0) {
       CustomAlert.alert(t('common.required', 'Required'), t('incidents.feedbackRatingRequired2', 'Please provide a feedback rating.'));
       return false;
     }
@@ -736,10 +742,16 @@ const UpdateStatusModal = () => {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.commentRequiredForTransition', 'A comment is required for this transition.'));
       return;
     }
-    if (transitionRequiresFeedback && feedbackRating === 0) {
+    if (transitionRequiresFeedback && !feedbackComment.trim()) {
+      CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackCommentRequiredError', 'Please provide a feedback comment for this transition.'));
+      return;
+    }
+
+    if (transitionRequiresRating && !feedbackRating) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.feedbackRatingRequiredError', 'Please provide a feedback rating for this transition.'));
       return;
     }
+
     if (isReadyToClose && !readyToCloseDuration) {
       CustomAlert.alert(t('common.error', 'Error'), t('incidents.durationRequired', 'Please select a duration'));
       return;
@@ -820,6 +832,32 @@ const UpdateStatusModal = () => {
       departmentId = selectedDepartmentId;
     }
 
+    // Map UUIDs of select/multiselect lookups to their codes in field_changes
+    let mappedFieldChanges: Record<string, any> | undefined;
+    if (Object.keys(fieldChangeValues).length > 0) {
+      mappedFieldChanges = {};
+      for (const [key, val] of Object.entries(fieldChangeValues)) {
+        if (key.startsWith('lookup:') && val) {
+          const code = key.replace('lookup:', '');
+          const category = lookupCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
+          if (category && (category.field_type === 'select' || category.field_type === 'multiselect' || !category.field_type)) {
+            if (Array.isArray(val)) {
+              mappedFieldChanges[key] = val
+                .map(id => category.values?.find(v => v.id === id)?.code || id)
+                .filter(Boolean);
+            } else {
+              const matchedVal = category.values?.find(v => v.id === val);
+              mappedFieldChanges[key] = matchedVal ? matchedVal.code : val;
+            }
+          } else {
+            mappedFieldChanges[key] = val;
+          }
+        } else {
+          mappedFieldChanges[key] = val;
+        }
+      }
+    }
+
     const transitionData: any = {
       transition_id: selectedTransition.transition.id,
       comment: comment.trim() || undefined,
@@ -829,14 +867,13 @@ const UpdateStatusModal = () => {
       feedback: feedbackRating > 0 ? { rating: feedbackRating, comment: feedbackComment.trim() || undefined } : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
-      field_changes: Object.keys(fieldChangeValues).length > 0 ? fieldChangeValues : undefined,
+      field_changes: mappedFieldChanges,
     };
 
     const response = await executeTransition(incidentId, transitionData);
 
     setLoading(false);
     setUploadProgress('');
-
     if (response.success) {
       // Get appropriate success message based on ticket type
       let successMessage = t('common.statusUpdated');
@@ -882,7 +919,7 @@ const UpdateStatusModal = () => {
     setSelectedUser(null);
     setMatchingUsers([]);
     setSingleUserMatch(false);
-    setFeedbackRating(5); // temproary giving as 5
+    setFeedbackRating(0); // temproary giving as 5
     setFeedbackComment('');
     setComment('');
     setFieldChangeValues({});
@@ -974,13 +1011,13 @@ const UpdateStatusModal = () => {
             <View style={styles.stateRow}>
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.from_state?.color || '#888') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.from_state?.color || '#888' }]}>
-                  {selectedTransition.transition.from_state?.name || t('incidents.currentStateFallback', 'Current')}
+                  {(i18n.language === 'ar' && selectedTransition.transition.from_state?.name_ar ? selectedTransition.transition.from_state?.name_ar : selectedTransition.transition.from_state?.name) || t('incidents.currentStateFallback', 'Current')}
                 </Text>
               </View>
               <Ionicons name={t('common.icons.arrowForward') as any} size={14} color="#888" style={{ marginHorizontal: 6 }} />
               <View style={[styles.stateBadge, { backgroundColor: (selectedTransition.transition.to_state?.color || '#2EC4B6') + '22' }]}>
                 <Text style={[styles.stateBadgeText, { color: selectedTransition.transition.to_state?.color || '#2EC4B6' }]}>
-                  {selectedTransition.transition.to_state?.name || t('incidents.nextStateFallback', 'Next')}
+                  {(i18n.language === 'ar' && selectedTransition.transition.to_state?.name_ar ? selectedTransition.transition.to_state?.name_ar : selectedTransition.transition.to_state?.name) || t('incidents.nextStateFallback', 'Next')}
                 </Text>
               </View>
             </View>
@@ -1018,7 +1055,7 @@ const UpdateStatusModal = () => {
                         <Text style={styles.transitionCardStateLabel}>→ </Text>
                         <View style={[styles.stateBadge, { backgroundColor: (trans.transition.to_state.color || '#2EC4B6') + '22' }]}>
                           <Text style={[styles.stateBadgeText, { color: trans.transition.to_state.color || '#2EC4B6' }]}>
-                            {trans.transition.to_state.name}
+                            {(i18n.language === 'ar' && trans.transition.to_state.name_ar ? trans.transition.to_state.name_ar : trans.transition.to_state.name) || t('incidents.nextStateFallback', 'Next')}
                           </Text>
                         </View>
                       </View>
@@ -1359,23 +1396,71 @@ const UpdateStatusModal = () => {
               {/* ── FEEDBACK STEP ── */}
               {currentStepKey === 'feedback' && (
                 <>
-                  {/* <Text style={styles.stepHint}>{t('incidents.rateYourExperience', 'Rate your experience with this resolution')}</Text>
-                  <View style={styles.starRatingContainer}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <TouchableOpacity key={star} onPress={() => setFeedbackRating(star)} style={styles.starButton}>
-                        <Ionicons name={star <= feedbackRating ? 'star' : 'star-outline'} size={40} color={star <= feedbackRating ? '#FFD700' : '#CCC'} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {feedbackRating > 0 && (
-                    <Text style={[styles.ratingText, { textAlign: 'center', marginBottom: 12 }]}>
-                      {feedbackRating === 1 && t('incidents.ratingPoor')}
-                      {feedbackRating === 2 && t('incidents.ratingFair')}
-                      {feedbackRating === 3 && t('incidents.ratingGood')}
-                      {feedbackRating === 4 && t('incidents.ratingVeryGood')}
-                      {feedbackRating === 5 && t('incidents.ratingExcellent')}
-                    </Text>
-                  )} */}
+                  {
+                    selectedTransition.requirements?.find(
+                      (x: any) => x.requirement_type === "rating",
+                    ) &&
+                    <View>
+                      <Text style={styles.stepHint}>
+                        {t('incidents.rateYourExperience', 'Rate your experience with this resolution')}
+                        {selectedTransition.requirements?.find(
+                          (x: any) => x.requirement_type === "rating",
+                        )?.is_mandatory && (
+                            <Text style={{ color: "red" }}> *</Text>
+                          )}
+                      </Text>
+                      <View style={{
+                        justifyContent: "center", alignItems: "center", backgroundColor: '#F8F9FA',
+                        borderRadius: 10,
+                        padding: 15,
+                        borderWidth: 1,
+                        borderColor: '#E0E0E0',
+                      }}>
+                        <View style={styles.starRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                              key={star}
+                              onPress={() => setFeedbackRating(star)}
+                            >
+                              <Ionicons
+
+                                fill={
+                                  star <= feedbackRating
+                                    ? "#FFD700"
+                                    : "#CCC"
+                                }
+                                name={
+                                  star <= feedbackRating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={40}
+                                color={
+                                  star <= feedbackRating
+                                    ? "#FFD700"
+                                    : "#CCC"
+                                }
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        {feedbackRating > 0 && (
+                          <Text style={[styles.ratingText, { textAlign: 'center', marginTop: 12 }]}>
+                            {feedbackRating === 1 &&
+                              t("incidents.ratingPoor")}
+                            {feedbackRating === 2 &&
+                              t("incidents.ratingFair")}
+                            {feedbackRating === 3 &&
+                              t("incidents.ratingGood")}
+                            {feedbackRating === 4 &&
+                              t("incidents.ratingVeryGood")}
+                            {feedbackRating === 5 &&
+                              t("incidents.ratingExcellent")}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  }
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -1744,11 +1829,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    width: "100%"
   },
   starButton: {
     padding: 5,

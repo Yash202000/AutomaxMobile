@@ -174,7 +174,7 @@ export function createWatermarkText(info: WatermarkInfo): string {
   }
 
   const timestamp = info.timestamp || new Date();
-  const dateStr = timestamp.toLocaleDateString('en-GB'); // DD/MM/YYYY
+  const dateStr = timestamp.toLocaleDateString('en-GB');
   const timeStr = timestamp.toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',

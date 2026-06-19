@@ -70,10 +70,10 @@ interface IncidentData {
   description?: string;
   classification?: { id: string; name: string };
   classification_id?: string;
-  current_state?: { id: string; name: string };
+  current_state?: { id: string; name: string; name_ar: string };
   department?: { id: string; name: string };
   department_id?: string;
-  location?: { id: string; name: string; address?: string };
+  location?: { id: string; name: string; address?: string; name_ar: string };
   location_id?: string;
   assignee?: { id: string; first_name?: string; last_name?: string; phone?: string };
   assignee_id?: string;
@@ -439,13 +439,13 @@ const IncidentDetailsScreen = () => {
                 <Ionicons name="flag" size={12} color={COLORS.white} />
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
               </View> */}
-              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString()}</Text>
+              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString('en-GB')}</Text>
             </View>
             <Text style={styles.incidentTitle}>{incident.title}</Text>
             {incident.current_state && (
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{incident.current_state.name}</Text>
+                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state.name_ar) ? incident.current_state.name : incident.current_state.name_ar}</Text>
               </View>
             )}
           </View>
@@ -541,7 +541,7 @@ const IncidentDetailsScreen = () => {
                   if (field.field_type === 'checkbox') {
                     displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
-                    displayValue = new Date(field.value).toLocaleDateString();
+                    displayValue = new Date(field.value).toLocaleDateString('en-GB');
                   }
 
                   return (
@@ -846,16 +846,16 @@ const IncidentDetailsScreen = () => {
                     <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
                       <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString()}
+                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
                       </Text>
                     </View>
                     <View style={styles.transitionBadges}>
                       <View style={styles.fromBadge}>
-                        <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
+                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state.name_ar) ? item.from_state.name_ar : item.from_state.name}</Text>
                       </View>
                       <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
-                        <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
+                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state.name_ar) ? item.to_state.name_ar : item.to_state.name}</Text>
                       </View>
                     </View>
                     {item.comment && (
@@ -870,6 +870,31 @@ const IncidentDetailsScreen = () => {
                         <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
+                    {
+                      item?.feedbacks?.rating > 0 && item?.transition?.is_final_close &&
+                      (
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                          {[
+                            ...Array(5).keys(),
+                          ].map((i) => (
+                            <Ionicons
+                              key={i}
+                              name={
+                                i <= item.feedbacks?.rating
+                                  ? "star"
+                                  : "star-outline"
+                              }
+                              size={14}
+                              color={
+                                i <= item.feedbacks?.rating
+                                  ? "#FFD700"
+                                  : "#CCC"
+                              }
+                            />
+                          ))}
+                        </View>
+                      )
+                    }
                   </View>
                 </View>
               ))}
@@ -903,7 +928,7 @@ const IncidentDetailsScreen = () => {
         {/* Update Status Button */}
         {availableTransitions.length > 0 && (
           <TouchableOpacity
-            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled]}
+            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled, { bottom: insets.bottom }]}
             onPress={handleUpdateStatusPress}
             activeOpacity={isDefaultLocation ? 1 : 0.8}
           >
@@ -1094,7 +1119,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   updateButton: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
+    position: 'absolute', left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({
