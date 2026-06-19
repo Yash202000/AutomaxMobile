@@ -836,7 +836,7 @@
       "email": "Email"
     },
     "toggle": "Push Notifications",
-    "toggleDescription": "Receive alerts for new incidents and updates"
+    "toggleDescription": "Receive alerts for incidents and updates"
   },
   "locationPicker": {
     "loadingMap": "Loading map...",

@@ -615,7 +615,7 @@ const LoginScreen = () => {
                 <Text
                   style={[
                     styles.welcomeText,
-                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                    { textAlign: "left" },
                   ]}
                 >
                   {t("auth.welcomeBack")}
@@ -623,7 +623,7 @@ const LoginScreen = () => {
                 <Text
                   style={[
                     styles.subtitleText,
-                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                    { textAlign: "left" },
                   ]}
                 >
                   {t("auth.loginSubtitle")}
@@ -719,7 +719,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.name", "Name")}
@@ -772,7 +772,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.mobileNumber", "Mobile Number")}
@@ -825,7 +825,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.otpChannel")}
@@ -885,7 +885,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.adUsername", "Username")}
@@ -939,7 +939,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.password")}
@@ -1013,7 +1013,7 @@ const LoginScreen = () => {
                   <Text
                     style={[
                       styles.inputLabel,
-                      { textAlign: currentLang === "ar" ? "right" : "left" },
+                      { textAlign: "left" },
                     ]}
                   >
                     {t("auth.nationalId", "National ID")}
@@ -1073,7 +1073,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.email")}
@@ -1121,7 +1121,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.password")}
@@ -1182,7 +1182,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.phone")}
@@ -1224,8 +1224,7 @@ const LoginScreen = () => {
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
-                        styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        styles.inputLabel
                       ]}
                     >
                       {t("auth.otpChannel")}

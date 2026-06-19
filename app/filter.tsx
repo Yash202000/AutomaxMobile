@@ -397,377 +397,379 @@ const FilterScreen = () => {
       </View>
 
       <ScrollView style={styles.optionsContainer}>
-        {/* Status Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('status')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="flag-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.status')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.state_ids.length > 0 && styles.filterValueActive]}>
-                {getSelectedStateName()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'status' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'status' && (
-            <View style={styles.filterOptions}>
-              {loadingStates ? (
-                <ActivityIndicator size="small" color="#1A237E" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.filterOption, filters.state_ids.length === 0 && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, state_ids: [], state_names: [] })}
-                  >
-                    <Text style={[styles.filterOptionText, filters.state_ids.length === 0 && styles.filterOptionTextSelected]}>
-                      {t('filter.allStatuses')}
-                    </Text>
-                    {filters.state_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                  </TouchableOpacity>
-                  {states.map((state) => (
-                    <TouchableOpacity
-                      key={state.id}
-                      style={[styles.filterOption, filters.state_ids.includes(state.id) && styles.filterOptionSelected]}
-                      onPress={() => selectState(state)}
-                    >
-                      <View style={styles.stateOption}>
-                        <View style={[styles.stateColor, { backgroundColor: state.color || '#6366f1' }]} />
-                        <Text style={[styles.filterOptionText, filters.state_ids.includes(state.id) && styles.filterOptionTextSelected]}>
-                          {(i18n.language === 'en' || !state.name_ar) ? state.name : state.name_ar}
-                        </Text>
-                      </View>
-                      {filters.state_ids.includes(state.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Priority Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('priority')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="alert-circle-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.priority')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.priorities.length > 0 && styles.filterValueActive]}>
-                {getSelectedPriorityLabel()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'priority' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'priority' && (
-            <View style={styles.filterOptions}>
-              <TouchableOpacity
-                style={[styles.filterOption, filters.priorities.length === 0 && styles.filterOptionSelected]}
-                onPress={() => setFilters({ ...filters, priorities: [] })}
-              >
-                <Text style={[styles.filterOptionText, filters.priorities.length === 0 && styles.filterOptionTextSelected]}>
-                  {t('filter.allPriorities')}
+        <View style={{ padding: 20 }}>
+          {/* Status Filter */}
+          <View style={styles.filterSection}>
+            <TouchableOpacity
+              style={styles.filterHeader}
+              onPress={() => toggleSection('status')}
+            >
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="flag-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.status')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, filters.state_ids.length > 0 && styles.filterValueActive]}>
+                  {getSelectedStateName()}
                 </Text>
-                {filters.priorities.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-              </TouchableOpacity>
-              {priorities.map((priority) => (
-                <TouchableOpacity
-                  key={priority.value}
-                  style={[styles.filterOption, filters.priorities.includes(priority.value) && styles.filterOptionSelected]}
-                  onPress={() => selectPriority(priority.value)}
-                >
-                  <View style={styles.priorityOption}>
-                    <View style={[styles.priorityDot, { backgroundColor: priority.color }]} />
-                    <Text style={[styles.filterOptionText, filters.priorities.includes(priority.value) && styles.filterOptionTextSelected]}>
-                      {t(`priorities.${priority.key}`)}
-                    </Text>
-                  </View>
-                  {filters.priorities.includes(priority.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                <Ionicons
+                  name={expandedSection === 'status' ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </View>
+            </TouchableOpacity>
 
-        {/* Classification Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.filterHeader}>
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="layers-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.classification')}</Text>
-            </View>
-          </View>
-          <View style={styles.treeSelectWrapper}>
-            <TreeSelect
-              label={t('filter.classification')}
-              value=""
-              data={classifications}
-              loading={loadingClassifications}
-              onSelect={() => { }}
-              leafOnly={true}
-              placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : t('filter.allClassifications')}
-              iconType="classification"
-              multiSelect={true}
-              selectedIds={filters.classification_ids}
-              onMultiSelect={handleClassificationMultiSelect}
-            />
-          </View>
-        </View>
-
-        {/* Location Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.filterHeader}>
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="location-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.location')}</Text>
-            </View>
-          </View>
-          <View style={styles.treeSelectWrapper}>
-            <TreeSelect
-              label={t('filter.location')}
-              value=""
-              data={locations}
-              loading={loadingLocations}
-              onSelect={() => { }}
-              leafOnly={true}
-              placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : t('filter.allLocations')}
-              iconType="location"
-              multiSelect={true}
-              selectedIds={filters.location_ids}
-              onMultiSelect={handleLocationMultiSelect}
-            />
-          </View>
-        </View>
-
-        {/* Assignee Filter */}
-        {canViewAllIncidents() && <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('assignee')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="person-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.assignee')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.assignee_ids.length > 0 && styles.filterValueActive]}>
-                {getSelectedAssigneeName()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'assignee' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'assignee' && (
-            <View style={styles.filterOptions}>
-              {loadingUsers ? (
-                <ActivityIndicator size="small" color="#1A237E" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.filterOption, filters.assignee_ids.length === 0 && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, assignee_ids: [], assignee_names: [] })}
-                  >
-                    <Text style={[styles.filterOptionText, filters.assignee_ids.length === 0 && styles.filterOptionTextSelected]}>
-                      {t('filter.allAssignees')}
-                    </Text>
-                    {filters.assignee_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                  </TouchableOpacity>
-                  {users.map((user) => (
+            {expandedSection === 'status' && (
+              <View style={styles.filterOptions}>
+                {loadingStates ? (
+                  <ActivityIndicator size="small" color="#1A237E" />
+                ) : (
+                  <>
                     <TouchableOpacity
-                      key={user.id}
-                      style={[styles.filterOption, filters.assignee_ids.includes(user.id) && styles.filterOptionSelected]}
-                      onPress={() => selectAssignee(user)}
+                      style={[styles.filterOption, filters.state_ids.length === 0 && styles.filterOptionSelected]}
+                      onPress={() => setFilters({ ...filters, state_ids: [], state_names: [] })}
                     >
-                      <View style={styles.stateOption}>
-                        <View style={styles.userAvatar}>
-                          <Text style={styles.userAvatarText}>
-                            {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+                      <Text style={[styles.filterOptionText, filters.state_ids.length === 0 && styles.filterOptionTextSelected]}>
+                        {t('filter.allStatuses')}
+                      </Text>
+                      {filters.state_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    </TouchableOpacity>
+                    {states.map((state) => (
+                      <TouchableOpacity
+                        key={state.id}
+                        style={[styles.filterOption, filters.state_ids.includes(state.id) && styles.filterOptionSelected]}
+                        onPress={() => selectState(state)}
+                      >
+                        <View style={styles.stateOption}>
+                          <View style={[styles.stateColor, { backgroundColor: state.color || '#6366f1' }]} />
+                          <Text style={[styles.filterOptionText, filters.state_ids.includes(state.id) && styles.filterOptionTextSelected]}>
+                            {(i18n.language === 'en' || !state.name_ar) ? state.name : state.name_ar}
                           </Text>
                         </View>
-                        <Text style={[styles.filterOptionText, filters.assignee_ids.includes(user.id) && styles.filterOptionTextSelected]}>
-                          {user.first_name} {user.last_name}
-                        </Text>
-                      </View>
-                      {filters.assignee_ids.includes(user.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-        </View>}
+                        {filters.state_ids.includes(state.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+              </View>
+            )}
+          </View>
 
-        {/* Department Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('department')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="business-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.department')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.department_ids.length > 0 && styles.filterValueActive]}>
-                {getSelectedDepartmentName()}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'department' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSection === 'department' && (
-            <View style={styles.filterOptions}>
-              {loadingDepartments ? (
-                <ActivityIndicator size="small" color="#1A237E" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={[styles.filterOption, filters.department_ids.length === 0 && styles.filterOptionSelected]}
-                    onPress={() => setFilters({ ...filters, department_ids: [], department_names: [] })}
-                  >
-                    <Text style={[styles.filterOptionText, filters.department_ids.length === 0 && styles.filterOptionTextSelected]}>
-                      {t('filter.allDepartments')}
-                    </Text>
-                    {filters.department_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                  </TouchableOpacity>
-                  {departments.map((department) => (
-                    <TouchableOpacity
-                      key={department.id}
-                      style={[styles.filterOption, filters.department_ids.includes(department.id) && styles.filterOptionSelected]}
-                      onPress={() => selectDepartment(department)}
-                    >
-                      <Text style={[styles.filterOptionText, filters.department_ids.includes(department.id) && styles.filterOptionTextSelected]}>
-                        {department.name}
-                      </Text>
-                      {filters.department_ids.includes(department.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Source Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity
-            style={styles.filterHeader}
-            onPress={() => toggleSection('source')}
-          >
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="git-network-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.source', 'Source')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
-                {filters.sources.length === 0 ? t('filter.allLabel') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : t('filter.nSelected', { count: filters.sources.length }))}
-              </Text>
-              <Ionicons
-                name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#666"
-              />
-            </View>
-          </TouchableOpacity>
-          {expandedSection === 'source' && (
-            <View style={styles.filterOptions}>
-              <TouchableOpacity
-                style={[styles.filterOption, filters.sources.length === 0 && styles.filterOptionSelected]}
-                onPress={() => setFilters({ ...filters, sources: [] })}
-              >
-                <Text style={[styles.filterOptionText, filters.sources.length === 0 && styles.filterOptionTextSelected]}>
-                  {t('filter.allSources')}
+          {/* Priority Filter */}
+          <View style={styles.filterSection}>
+            <TouchableOpacity
+              style={styles.filterHeader}
+              onPress={() => toggleSection('priority')}
+            >
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="alert-circle-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.priority')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, filters.priorities.length > 0 && styles.filterValueActive]}>
+                  {getSelectedPriorityLabel()}
                 </Text>
-                {filters.sources.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-              </TouchableOpacity>
-              {sources.map((s) => (
+                <Ionicons
+                  name={expandedSection === 'priority' ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {expandedSection === 'priority' && (
+              <View style={styles.filterOptions}>
                 <TouchableOpacity
-                  key={s.value}
-                  style={[styles.filterOption, filters.sources.includes(s.value) && styles.filterOptionSelected]}
-                  onPress={() => selectSource(s.value)}
+                  style={[styles.filterOption, filters.priorities.length === 0 && styles.filterOptionSelected]}
+                  onPress={() => setFilters({ ...filters, priorities: [] })}
                 >
-                  <Text style={[styles.filterOptionText, filters.sources.includes(s.value) && styles.filterOptionTextSelected]}>
-                    {t(`incidents.sources.${s.value}`)}
+                  <Text style={[styles.filterOptionText, filters.priorities.length === 0 && styles.filterOptionTextSelected]}>
+                    {t('filter.allPriorities')}
                   </Text>
-                  {filters.sources.includes(s.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                  {filters.priorities.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                 </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Date Range Filter */}
-        <View style={styles.filterSection}>
-          <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
-            <View style={styles.filterHeaderLeft}>
-              <Ionicons name="calendar-outline" size={20} color="#1A237E" />
-              <Text style={styles.filterLabel}>{t('filter.dateRange')}</Text>
-            </View>
-            <View style={styles.filterHeaderRight}>
-              <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
-                {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
-              </Text>
-              <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
-            </View>
-          </TouchableOpacity>
-          {expandedSection === 'date_range' && (
-            <View style={styles.filterOptions}>
-              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
-                <Ionicons name="calendar" size={18} color="#1A237E" />
-                <Text style={styles.dateLabel}>{t('filter.from')}</Text>
-                <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
-                  {filters.start_date ? formatDisplayDate(filters.start_date) : t('filter.anyDate')}
-                </Text>
-                {filters.start_date ? (
-                  <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
-                    <Ionicons name="close-circle" size={18} color="#999" />
+                {priorities.map((priority) => (
+                  <TouchableOpacity
+                    key={priority.value}
+                    style={[styles.filterOption, filters.priorities.includes(priority.value) && styles.filterOptionSelected]}
+                    onPress={() => selectPriority(priority.value)}
+                  >
+                    <View style={styles.priorityOption}>
+                      <View style={[styles.priorityDot, { backgroundColor: priority.color }]} />
+                      <Text style={[styles.filterOptionText, filters.priorities.includes(priority.value) && styles.filterOptionTextSelected]}>
+                        {t(`priorities.${priority.key}`)}
+                      </Text>
+                    </View>
+                    {filters.priorities.includes(priority.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
                   </TouchableOpacity>
-                ) : null}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
-                <Ionicons name="calendar" size={18} color="#1A237E" />
-                <Text style={styles.dateLabel}>{t('filter.to')}</Text>
-                <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
-                  {filters.end_date ? formatDisplayDate(filters.end_date) : t('filter.anyDate')}
-                </Text>
-                {filters.end_date ? (
-                  <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>
-                    <Ionicons name="close-circle" size={18} color="#999" />
-                  </TouchableOpacity>
-                ) : null}
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+                ))}
+              </View>
+            )}
+          </View>
 
-        {/* Add some bottom padding for scroll */}
-        <View style={{ height: 20 }} />
+          {/* Classification Filter */}
+          <View style={styles.filterSection}>
+            <View style={styles.filterHeader}>
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="layers-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.classification')}</Text>
+              </View>
+            </View>
+            <View style={styles.treeSelectWrapper}>
+              <TreeSelect
+                label={t('filter.classification')}
+                value=""
+                data={classifications}
+                loading={loadingClassifications}
+                onSelect={() => { }}
+                leafOnly={true}
+                placeholder={filters.classification_ids.length > 0 ? `${filters.classification_ids.length} selected` : t('filter.allClassifications')}
+                iconType="classification"
+                multiSelect={true}
+                selectedIds={filters.classification_ids}
+                onMultiSelect={handleClassificationMultiSelect}
+              />
+            </View>
+          </View>
+
+          {/* Location Filter */}
+          <View style={styles.filterSection}>
+            <View style={styles.filterHeader}>
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="location-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.location')}</Text>
+              </View>
+            </View>
+            <View style={styles.treeSelectWrapper}>
+              <TreeSelect
+                label={t('filter.location')}
+                value=""
+                data={locations}
+                loading={loadingLocations}
+                onSelect={() => { }}
+                leafOnly={true}
+                placeholder={filters.location_ids.length > 0 ? `${filters.location_ids.length} selected` : t('filter.allLocations')}
+                iconType="location"
+                multiSelect={true}
+                selectedIds={filters.location_ids}
+                onMultiSelect={handleLocationMultiSelect}
+              />
+            </View>
+          </View>
+
+          {/* Assignee Filter */}
+          {canViewAllIncidents() && <View style={styles.filterSection}>
+            <TouchableOpacity
+              style={styles.filterHeader}
+              onPress={() => toggleSection('assignee')}
+            >
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="person-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.assignee')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, filters.assignee_ids.length > 0 && styles.filterValueActive]}>
+                  {getSelectedAssigneeName()}
+                </Text>
+                <Ionicons
+                  name={expandedSection === 'assignee' ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {expandedSection === 'assignee' && (
+              <View style={styles.filterOptions}>
+                {loadingUsers ? (
+                  <ActivityIndicator size="small" color="#1A237E" />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.filterOption, filters.assignee_ids.length === 0 && styles.filterOptionSelected]}
+                      onPress={() => setFilters({ ...filters, assignee_ids: [], assignee_names: [] })}
+                    >
+                      <Text style={[styles.filterOptionText, filters.assignee_ids.length === 0 && styles.filterOptionTextSelected]}>
+                        {t('filter.allAssignees')}
+                      </Text>
+                      {filters.assignee_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    </TouchableOpacity>
+                    {users.map((user) => (
+                      <TouchableOpacity
+                        key={user.id}
+                        style={[styles.filterOption, filters.assignee_ids.includes(user.id) && styles.filterOptionSelected]}
+                        onPress={() => selectAssignee(user)}
+                      >
+                        <View style={styles.stateOption}>
+                          <View style={styles.userAvatar}>
+                            <Text style={styles.userAvatarText}>
+                              {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+                            </Text>
+                          </View>
+                          <Text style={[styles.filterOptionText, filters.assignee_ids.includes(user.id) && styles.filterOptionTextSelected]}>
+                            {user.first_name} {user.last_name}
+                          </Text>
+                        </View>
+                        {filters.assignee_ids.includes(user.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+              </View>
+            )}
+          </View>}
+
+          {/* Department Filter */}
+          <View style={styles.filterSection}>
+            <TouchableOpacity
+              style={styles.filterHeader}
+              onPress={() => toggleSection('department')}
+            >
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="business-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, filters.department_ids.length > 0 && styles.filterValueActive]}>
+                  {getSelectedDepartmentName()}
+                </Text>
+                <Ionicons
+                  name={expandedSection === 'department' ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {expandedSection === 'department' && (
+              <View style={styles.filterOptions}>
+                {loadingDepartments ? (
+                  <ActivityIndicator size="small" color="#1A237E" />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.filterOption, filters.department_ids.length === 0 && styles.filterOptionSelected]}
+                      onPress={() => setFilters({ ...filters, department_ids: [], department_names: [] })}
+                    >
+                      <Text style={[styles.filterOptionText, filters.department_ids.length === 0 && styles.filterOptionTextSelected]}>
+                        {t('filter.allDepartments')}
+                      </Text>
+                      {filters.department_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                    </TouchableOpacity>
+                    {departments.map((department) => (
+                      <TouchableOpacity
+                        key={department.id}
+                        style={[styles.filterOption, filters.department_ids.includes(department.id) && styles.filterOptionSelected]}
+                        onPress={() => selectDepartment(department)}
+                      >
+                        <Text style={[styles.filterOptionText, filters.department_ids.includes(department.id) && styles.filterOptionTextSelected]}>
+                          {department.name}
+                        </Text>
+                        {filters.department_ids.includes(department.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Source Filter */}
+          <View style={styles.filterSection}>
+            <TouchableOpacity
+              style={styles.filterHeader}
+              onPress={() => toggleSection('source')}
+            >
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="git-network-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.source', 'Source')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, filters.sources.length > 0 && styles.filterValueActive]}>
+                  {filters.sources.length === 0 ? t('filter.allLabel') : (filters.sources.length === 1 ? t(`incidents.sources.${filters.sources[0]}`) : t('filter.nSelected', { count: filters.sources.length }))}
+                </Text>
+                <Ionicons
+                  name={expandedSection === 'source' ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#666"
+                />
+              </View>
+            </TouchableOpacity>
+            {expandedSection === 'source' && (
+              <View style={styles.filterOptions}>
+                <TouchableOpacity
+                  style={[styles.filterOption, filters.sources.length === 0 && styles.filterOptionSelected]}
+                  onPress={() => setFilters({ ...filters, sources: [] })}
+                >
+                  <Text style={[styles.filterOptionText, filters.sources.length === 0 && styles.filterOptionTextSelected]}>
+                    {t('filter.allSources')}
+                  </Text>
+                  {filters.sources.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                </TouchableOpacity>
+                {sources.map((s) => (
+                  <TouchableOpacity
+                    key={s.value}
+                    style={[styles.filterOption, filters.sources.includes(s.value) && styles.filterOptionSelected]}
+                    onPress={() => selectSource(s.value)}
+                  >
+                    <Text style={[styles.filterOptionText, filters.sources.includes(s.value) && styles.filterOptionTextSelected]}>
+                      {t(`incidents.sources.${s.value}`)}
+                    </Text>
+                    {filters.sources.includes(s.value) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Date Range Filter */}
+          <View style={styles.filterSection}>
+            <TouchableOpacity style={styles.filterHeader} onPress={() => toggleSection('date_range')}>
+              <View style={styles.filterHeaderLeft}>
+                <Ionicons name="calendar-outline" size={20} color="#1A237E" />
+                <Text style={styles.filterLabel}>{t('filter.dateRange')}</Text>
+              </View>
+              <View style={styles.filterHeaderRight}>
+                <Text style={[styles.filterValue, (filters.start_date || filters.end_date) && styles.filterValueActive]}>
+                  {filters.start_date || filters.end_date ? t('filter.setLabel') : t('filter.allLabel')}
+                </Text>
+                <Ionicons name={expandedSection === 'date_range' ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+              </View>
+            </TouchableOpacity>
+            {expandedSection === 'date_range' && (
+              <View style={styles.filterOptions}>
+                <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('from')}>
+                  <Ionicons name="calendar" size={18} color="#1A237E" />
+                  <Text style={styles.dateLabel}>{t('filter.from')}</Text>
+                  <Text style={[styles.dateValue, filters.start_date && styles.filterValueActive]}>
+                    {filters.start_date ? formatDisplayDate(filters.start_date) : t('filter.anyDate')}
+                  </Text>
+                  {filters.start_date ? (
+                    <TouchableOpacity onPress={() => setFilters({ ...filters, start_date: null })}>
+                      <Ionicons name="close-circle" size={18} color="#999" />
+                    </TouchableOpacity>
+                  ) : null}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dateRow} onPress={() => setShowDatePicker('to')}>
+                  <Ionicons name="calendar" size={18} color="#1A237E" />
+                  <Text style={styles.dateLabel}>{t('filter.to')}</Text>
+                  <Text style={[styles.dateValue, filters.end_date && styles.filterValueActive]}>
+                    {filters.end_date ? formatDisplayDate(filters.end_date) : t('filter.anyDate')}
+                  </Text>
+                  {filters.end_date ? (
+                    <TouchableOpacity onPress={() => setFilters({ ...filters, end_date: null })}>
+                      <Ionicons name="close-circle" size={18} color="#999" />
+                    </TouchableOpacity>
+                  ) : null}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Add some bottom padding for scroll */}
+          <View style={{ height: 20 }} />
+        </View>
       </ScrollView>
 
       {showDatePicker !== null && (
@@ -875,7 +877,7 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     flex: 1,
-    padding: 15,
+    // padding: 15,
   },
   filterSection: {
     marginBottom: 10,

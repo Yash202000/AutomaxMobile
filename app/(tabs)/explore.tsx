@@ -332,21 +332,23 @@ const DashboardScreen = () => {
               }
               activeOpacity={0.7}
             >
-              <View
-                style={[
-                  styles.myIncidentIconContainer,
-                  { backgroundColor: COLORS.assigned.bg },
-                ]}
-              >
-                <Ionicons
-                  name="checkbox-outline"
-                  size={22}
-                  color={COLORS.assigned.icon}
-                />
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
+                  style={[
+                    styles.myIncidentIconContainer,
+                    { backgroundColor: COLORS.assigned.bg },
+                  ]}
+                >
+                  <Ionicons
+                    name="checkbox-outline"
+                    size={22}
+                    color={COLORS.assigned.icon}
+                  />
+                </View>
+                <Text style={styles.myIncidentText}>
+                  {t("dashboard.assignedToMe")}
+                </Text>
               </View>
-              <Text style={styles.myIncidentText}>
-                {t("dashboard.assignedToMe")}
-              </Text>
               <Ionicons
                 name={t('common.icons.chevronForward') as any}
                 size={18}
@@ -366,21 +368,23 @@ const DashboardScreen = () => {
               }
               activeOpacity={0.7}
             >
-              <View
-                style={[
-                  styles.myIncidentIconContainer,
-                  { backgroundColor: COLORS.created.bg },
-                ]}
-              >
-                <Ionicons
-                  name="create-outline"
-                  size={22}
-                  color={COLORS.created.icon}
-                />
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
+                  style={[
+                    styles.myIncidentIconContainer,
+                    { backgroundColor: COLORS.created.bg },
+                  ]}
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={22}
+                    color={COLORS.created.icon}
+                  />
+                </View>
+                <Text style={styles.myIncidentText}>
+                  {t("dashboard.createdByMe")}
+                </Text>
               </View>
-              <Text style={styles.myIncidentText}>
-                {t("dashboard.createdByMe")}
-              </Text>
               <Ionicons
                 name={t('common.icons.chevronForward') as any}
                 size={18}
@@ -446,10 +450,12 @@ const DashboardScreen = () => {
               }
               activeOpacity={0.7}
             >
-              <View style={[styles.statusBar, { backgroundColor: barColor }]} />
-              <View style={styles.statusContent}>
-                <Text style={styles.statusName}>{(i18n.language === 'en' || !stateDetail?.name_ar) ? stateDetail.name : stateDetail?.name_ar}</Text>
-                <Text style={styles.statusCount}>{stateDetail.count}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <View style={[styles.statusBar, { backgroundColor: barColor }]} />
+                <View style={{ flexDirection: "column", alignItems: "flex-start" }}>
+                  <Text style={styles.statusName}>{(i18n.language === 'en' || !stateDetail?.name_ar) ? stateDetail.name : stateDetail?.name_ar}</Text>
+                  <Text style={styles.statusCount}>{stateDetail.count}</Text>
+                </View>
               </View>
               <Ionicons
                 name={t('common.icons.chevronForward') as any}
@@ -797,6 +803,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     ...Platform.select({
       ios: {
@@ -819,7 +826,7 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   myIncidentText: {
-    flex: 1,
+    // flex: 1,
     fontSize: 15,
     fontWeight: "600",
     color: COLORS.text.primary,
@@ -831,6 +838,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
