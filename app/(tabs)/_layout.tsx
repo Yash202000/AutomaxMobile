@@ -44,8 +44,8 @@ export default function TabLayout() {
         tabBarStyle: {
           position: "absolute",
           bottom: 0,
-          left: 16,
-          right: 16,
+          left: 0,
+          right: 0,
           height: tabBarHeight,
           backgroundColor: "#FFFFFF",
           paddingBottom: 8,

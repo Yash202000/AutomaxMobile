@@ -1102,7 +1102,7 @@ const styles = StyleSheet.create({
   timelineDot: { width: 12, height: 12, borderRadius: 6 },
   timelineLine: { width: 2, flex: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timelineContent: { flex: 1, paddingBottom: 20 },
-  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: "wrap", width: "100%" },
   fromBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   fromBadgeText: { fontSize: 12, color: COLORS.error, fontWeight: '600' },
   toBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },

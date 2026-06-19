@@ -59,7 +59,7 @@ const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
       {icon && <Ionicons name={icon as any} size={20} color={COLORS.secondary} style={styles.optionIcon} />}
       <View>
         <Text style={styles.optionLabel}>{label}</Text>
-        {description && <Text style={styles.optionDescription}>{description}</Text>}
+        {description && <Text style={styles.optionDescription} numberOfLines={1} ellipsizeMode='tail'>{description}</Text>}
       </View>
     </View>
     <Switch
@@ -67,6 +67,9 @@ const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
       onValueChange={onValueChange}
       trackColor={{ false: '#D1D1D1', true: COLORS.primary }}
       thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+      style={{
+        transform: Platform.OS === 'ios' ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [],
+      }}
     />
   </View>
 );
@@ -275,7 +278,7 @@ const SettingsScreen = () => {
                 </Text>
               </View>
               <View>
-                <Text style={styles.profileName}>
+                <Text style={[styles.profileName, { textAlign: "left" }]}>
                   {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : t('common.user', 'User')}
                 </Text>
                 <Text style={styles.profileEmail}>{user?.email || t('profile.noEmail')}</Text>
@@ -336,12 +339,12 @@ const SettingsScreen = () => {
         <View style={styles.logInfoContainer}>
           <View style={styles.logInfoRow}>
             <Ionicons name="document-text-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={styles.logInfoLabel}>{t('settings.logs.fileSize')}</Text>
+            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>{t('settings.logs.fileSize')}</Text>
             <Text style={styles.logInfoValue}>{logFileSize}</Text>
           </View>
           <View style={styles.logInfoRow}>
             <Ionicons name="albums-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={styles.logInfoLabel}>{t('settings.logs.status')}</Text>
+            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>{t('settings.logs.status')}</Text>
             <Text style={[styles.logInfoValue, { color: hasLogs ? COLORS.primary : COLORS.textMuted }]}>
               {hasLogs ? t('settings.logs.available') : t('settings.logs.empty')}
             </Text>
@@ -381,7 +384,7 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Version */}
-        <Text style={styles.versionText}>{t('settings.version')} 3.01</Text>
+        <Text style={styles.versionText}>{t('settings.version')} {process.env.EXPO_PUBLIC_APP_VERSION}</Text>
       </ScrollView>
 
       {/* Language Selection Modal */}
@@ -453,7 +456,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background
   },
   profileCard: {
     backgroundColor: COLORS.card,
@@ -512,6 +515,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
     textTransform: 'uppercase',
+    textAlign: "left"
   },
   optionsContainer: {
     backgroundColor: COLORS.card,
@@ -548,6 +552,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 16,
     color: COLORS.text,
+    textAlign: "left"
   },
   optionDescription: {
     fontSize: 12,
@@ -702,6 +707,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
+    textAlign: "left"
   },
   languageNameSelected: {
     color: COLORS.secondary,
@@ -710,6 +716,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
+    textAlign: "left"
   },
   modalCancelButton: {
     marginTop: 10,

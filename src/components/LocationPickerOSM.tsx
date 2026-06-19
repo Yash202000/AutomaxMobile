@@ -665,6 +665,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
+    textAlign: "left"
   },
   required: {
     color: '#E74C3C',
@@ -801,6 +802,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     marginBottom: 8,
+    textAlign: "left"
   },
   locationDetails: {
     backgroundColor: '#F8F9FA',

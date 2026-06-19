@@ -327,6 +327,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+    textAlign: 'left'
   },
   required: {
     color: '#E74C3C',

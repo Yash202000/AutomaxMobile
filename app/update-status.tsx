@@ -864,7 +864,7 @@ const UpdateStatusModal = () => {
       user_ids: selectedUser ? [selectedUser.id] : undefined,
       department_id: departmentId,
       attachments: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
-      feedback: feedbackRating > 0 ? { rating: feedbackRating, comment: feedbackComment.trim() || undefined } : undefined,
+      feedback: { rating: feedbackRating, comment: feedbackComment.trim() || undefined },
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
       field_changes: mappedFieldChanges,

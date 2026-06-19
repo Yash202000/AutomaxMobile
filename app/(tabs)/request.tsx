@@ -91,15 +91,15 @@ const RequestCard = ({ request, t }: { request: Request; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(request.created_at).toLocaleString('en-GB')}</Text>
-                <Text style={styles.statusText}>{t('incidents.status')}: {request.current_state?.name || 'N/A'}</Text>
+                <Text style={[styles.dateTime, { textAlign: "left" }]}>{new Date(request.created_at).toLocaleString('en-GB')}</Text>
+                <Text style={[styles.statusText, { textAlign: "left" }]}>{t('incidents.status')}: {request.current_state?.name || 'N/A'}</Text>
                 <View style={styles.detailRow}>
                     <Ionicons name="document-text" size={16} color={COLORS.request} style={styles.detailIcon} />
-                    <Text style={styles.detailText} numberOfLines={1}>{request.title}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]} numberOfLines={1}>{request.title}</Text>
                 </View>
                 <View style={styles.detailRow}>
                     <Ionicons name="location" size={16} color={COLORS.priority.low} style={styles.detailIcon} />
-                    <Text style={styles.detailText}>{request.location?.name || t('common.noData')}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]}>{request.location?.name || t('common.noData')}</Text>
                 </View>
             </View>
         </TouchableOpacity>
@@ -265,12 +265,12 @@ const RequestsScreen = () => {
 
     const renderHeader = () => (
         <View style={styles.listHeader}>
-            <Text style={styles.foundText}>
+            <Text style={[styles.foundText, { textAlign: "left" }]}>
                 {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.request').toLowerCase()}`}
                 {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
             </Text>
             {pagination.total_pages > 1 && (
-                <Text style={styles.paginationText}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+                <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
             )}
         </View>
     );
@@ -339,7 +339,7 @@ const RequestsScreen = () => {
                 ) : (
                     <>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{headerTitle}</Text>
+                            <Text style={[styles.headerTitle, { textAlign: "left" }]}>{headerTitle}</Text>
                         </View>
                         <View style={styles.headerIcons}>
                             <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({

@@ -16,11 +16,11 @@ const PasswordInput = ({ label, value, onChangeText }: any) => {
         <View style={styles.inputWrapper}>
             <Text style={styles.inputLabel}>{label}</Text>
             <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
-                <Ionicons 
-                    name="lock-closed-outline" 
-                    size={20} 
-                    color={isFocused ? '#2EC4B6' : '#666'} 
-                    style={styles.inputIcon} 
+                <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={isFocused ? '#2EC4B6' : '#666'}
+                    style={styles.inputIcon}
                 />
                 <TextInput
                     style={[styles.textInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
@@ -44,11 +44,11 @@ const PasswordInput = ({ label, value, onChangeText }: any) => {
 
 const ValidationItem = ({ label, isValid }: { label: string; isValid: boolean }) => (
     <View style={styles.valItem}>
-        <Ionicons 
-            name={isValid ? "checkmark-circle" : "ellipse-outline"} 
-            size={16} 
-            color={isValid ? "#2EC4B6" : "#9CA3AF"} 
-            style={styles.valIcon} 
+        <Ionicons
+            name={isValid ? "checkmark-circle" : "ellipse-outline"}
+            size={16}
+            color={isValid ? "#2EC4B6" : "#9CA3AF"}
+            style={styles.valIcon}
         />
         <Text style={[styles.valText, isValid && styles.valTextValid]}>{label}</Text>
     </View>
@@ -101,9 +101,9 @@ const ChangePasswordScreen = () => {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.form}>
                     <PasswordInput label={t('password.currentPassword')} value={currentPassword} onChangeText={setCurrentPassword} />
-                    
+
                     <PasswordInput label={t('password.newPassword')} value={newPassword} onChangeText={setNewPassword} />
-                    
+
                     {newPassword.length > 0 && (
                         <View style={styles.validationList}>
                             <ValidationItem label={t('password.minLengthError')} isValid={newPassword.length >= 8} />
@@ -148,6 +148,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#4B5563',
         marginBottom: 8,
+        textAlign: "left"
     },
     inputContainer: {
         flexDirection: 'row',
@@ -208,11 +209,13 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#92400E',
         marginBottom: 8,
+        textAlign: "left"
     },
     securityText: {
         fontSize: 13,
         color: '#B45309',
         marginBottom: 4,
+        textAlign: "left"
     },
     updateButton: {
         backgroundColor: '#2EC4B6',

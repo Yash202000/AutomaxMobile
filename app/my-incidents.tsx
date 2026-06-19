@@ -445,7 +445,7 @@ const MyIncidentsScreen = () => {
     <View style={[styles.safeArea]}>
       <ImageBackground
         source={require("@/assets/images/background.png")}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
+        style={[styles.header, { paddingTop: insets.top + 16, gap: 10 }]}
       >
         <TouchableOpacity
           style={styles.backButton}
@@ -706,7 +706,6 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 10,
   },
   headerTitle: {
     color: "white",
