@@ -243,7 +243,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -304,8 +304,8 @@ const LoginScreen = () => {
         } else {
           setError(
             response.data?.error ||
-              response.data?.message ||
-              t("auth.loginError"),
+            response.data?.message ||
+            t("auth.loginError"),
           );
         }
       } catch (err: any) {
@@ -401,7 +401,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -868,7 +868,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -1268,7 +1268,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
