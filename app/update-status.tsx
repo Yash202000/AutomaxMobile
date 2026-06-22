@@ -995,7 +995,7 @@ const UpdateStatusModal = () => {
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>{t('incidents.updateTheStatus')}</Text>
             {selectedTransition && transitionSteps.length > 0 && (
-              <Text style={styles.stepCounter}>
+              <Text style={[styles.stepCounter, { textAlign: "left" }]}>
                 {t('incidents.stepOf', 'Step {{current}} of {{total}}', { current: transitionStep + 1, total: transitionSteps.length })}
               </Text>
             )}
@@ -1040,8 +1040,8 @@ const UpdateStatusModal = () => {
           {/* ── TRANSITION SELECTION SCREEN (no transition picked yet) ── */}
           {!selectedTransition && (
             <>
-              <Text style={styles.stepLabel}>{t('incidents.selectStatus')}</Text>
-              <Text style={styles.stepHint}>{t('common.chooseTransition')}</Text>
+              <Text style={[styles.stepLabel, { textAlign: "left" }]}>{t('incidents.selectStatus')}</Text>
+              <Text style={[styles.stepHint, { textAlign: "left" }]}>{t('common.chooseTransition')}</Text>
               {availableTransitions.map((trans: any) => (
                 <TouchableOpacity
                   key={trans.transition.id}
@@ -1049,7 +1049,7 @@ const UpdateStatusModal = () => {
                   onPress={() => handleTransitionSelect(trans)}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.transitionCardTitle}>{trans.transition.name}</Text>
+                    <Text style={[styles.transitionCardTitle, { textAlign: "left" }]}>{trans.transition.name}</Text>
                     {trans.transition.to_state && (
                       <View style={styles.transitionCardStateRow}>
                         <Text style={styles.transitionCardStateLabel}>→ </Text>
@@ -1076,7 +1076,7 @@ const UpdateStatusModal = () => {
                   <Text style={styles.stepLabel}>{stepTitles[currentStepKey]}</Text>
                   {
                     currentStepKey === 'user' && selectedTransition.transition.auto_match_user &&
-                    <Text>{t('incidents.usersAssignedToAll', 'User will be assigned to all users')}</Text>
+                    <Text style={{ textAlign: "left" }}>{t('incidents.usersAssignedToAll', 'User will be assigned to all users')}</Text>
                   }
                 </View>
                 {
@@ -1099,7 +1099,7 @@ const UpdateStatusModal = () => {
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={styles.autoAssignedName}>{t('incidents.departmentPreConfigured', 'Department pre-configured')}</Text>
                       </View>
-                      <Text style={styles.autoAssignedBadge}>{t('incidents.auto', 'Auto')}</Text>
+                      <Text style={[styles.autoAssignedBadge, { textAlign: "left" }]}>{t('incidents.auto', 'Auto')}</Text>
                     </View>
                   ) : loadingDeptMatch ? (
                     <View style={styles.loadingContainer}>
@@ -1692,6 +1692,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: "left"
   },
   formContainer: {
     maxHeight: 400,
@@ -1789,16 +1790,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1a1a1a',
+    textAlign: "left"
   },
   autoAssignedSub: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+    textAlign: "left"
   },
   autoAssignedBadge: {
     fontSize: 11,
     color: '#2EC4B6',
     fontWeight: '600',
+    textAlign: "left"
   },
   noUsersContainer: {
     flexDirection: 'row',
@@ -2061,6 +2065,7 @@ const styles = StyleSheet.create({
   stateBadgeText: {
     fontSize: 12,
     fontWeight: '600',
+    textAlign: "left"
   },
   dotsRow: {
     flexDirection: 'row',
@@ -2094,6 +2099,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#222',
+    textAlign: "left"
   },
   stepHint: {
     fontSize: 13,
@@ -2153,6 +2159,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#333',
+    textAlign: "left"
   },
   selectionRowTitleSelected: {
     color: '#2EC4B6',
@@ -2162,6 +2169,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+    textAlign: "left"
   },
   wizardFooter: {
     flexDirection: 'row',

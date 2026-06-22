@@ -793,6 +793,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.text.primary,
     marginBottom: 12,
+    textAlign: "left"
   },
   myIncidentsContainer: {
     gap: 10,
