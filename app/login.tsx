@@ -1603,12 +1603,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     flex: 1,
+    textAlign: "left"
   },
   fieldErrorText: {
     color: "#E74C3C",
     fontSize: 13,
     marginTop: 6,
     fontWeight: "500",
+    textAlign: "left"
   },
   loginButton: {
     borderRadius: 14,

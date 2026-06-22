@@ -2,6 +2,7 @@
   "common": {
     "share": "Share",
     "stateChanged": "State changed",
+    "date": "Date",
     "system": "System",
     "fetchingLoc": "Please wait while we fetch your location..",
     "validationError": "Validation Error",
@@ -849,6 +850,7 @@
     "street": "Street:",
     "district": "District:",
     "municipality": "Municipality:",
-    "planNo": "Plan No:"
+    "planNo": "Plan No:",
+    "neighbourhood": "Neighbourhood"
   }
 }
