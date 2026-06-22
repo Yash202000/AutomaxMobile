@@ -729,7 +729,7 @@ const IncidentDetailsScreen = () => {
               {incident.address && (
                 <View style={styles.addressContainer}>
                   <Ionicons name="location" size={16} color={COLORS.error} />
-                  <Text style={styles.addressText}>{incident.address}</Text>
+                  <Text style={[styles.addressText, { textAlign: "left" }]}>{incident.address}</Text>
                 </View>
               )}
               <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
   priorityBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, gap: 4 },
   priorityBadgeText: { color: COLORS.white, fontSize: 11, fontWeight: 'bold' },
   dateText: { fontSize: 12, color: COLORS.text.muted },
-  incidentTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 8 },
+  incidentTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 8, textAlign: "left" },
   statusContainer: { flexDirection: 'row', alignItems: 'center' },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
   statusText: { fontSize: 14, color: COLORS.accent, fontWeight: '600' },
@@ -1007,14 +1007,14 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, color: COLORS.text.secondary },
   infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary, maxWidth: '50%', textAlign: 'right' },
 
-  descriptionText: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22 },
+  descriptionText: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22, textAlign: 'left' },
 
   reporterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 12, padding: 12 },
   reporterAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
   reporterAvatarText: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   reporterInfo: { flex: 1, marginLeft: 12 },
-  reporterName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
-  reporterEmail: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
+  reporterName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary, textAlign: "left" },
+  reporterEmail: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2, textAlign: "left" },
   reporterActions: { flexDirection: 'row', gap: 8 },
   reporterActionButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
 

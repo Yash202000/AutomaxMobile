@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
   mentionText: {
     color: '#2EC4B6',
     fontWeight: '600',
-    textDecorationLine: 'underline',
+    textDecorationLine: 'underline'
   },
 });

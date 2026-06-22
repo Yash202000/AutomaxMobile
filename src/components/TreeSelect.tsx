@@ -545,6 +545,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
+    textAlign: 'left'
   },
   modalOverlay: {
     flex: 1,
