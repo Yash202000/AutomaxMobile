@@ -1108,8 +1108,8 @@ const styles = StyleSheet.create({
   toBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   toBadgeText: { fontSize: 12, color: '#059669', fontWeight: '600' },
   transitionMeta: { fontSize: 12, color: COLORS.text.muted },
-  transitionComment: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, gap: 6 },
-  transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
+  transitionComment: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, gap: 6, textAlign: "left" },
+  transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1, textAlign: "left" },
 
   actionButtonsContainer: {
     position: 'absolute',
