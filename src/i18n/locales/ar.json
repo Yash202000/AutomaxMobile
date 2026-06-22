@@ -3,6 +3,7 @@
     "share": "مشاركة",
     "stateChanged": "تم تغيير الحالة",
     "system": "النظام",
+    "date": "تاريخ",
     "fetchingLoc": "يرجى الانتظار ريثما نحدد موقعك..",
     "validationError": "خطأ في التحقق",
     "recordingStartError": "فشل بدء التسجيل",
@@ -848,6 +849,7 @@
     "street": "الشارع:",
     "district": "الحي:",
     "municipality": "البلدية:",
-    "planNo": "رقم المخطط:"
+    "planNo": "رقم المخطط:",
+    "neighbourhood": "حي"
   }
 }
