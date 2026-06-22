@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
     color: '#E74C3C',
     fontSize: 12,
     marginTop: 4,
+    textAlign: "left"
   },
   dateButton: {
     backgroundColor: '#fff',
