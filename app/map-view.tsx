@@ -1,10 +1,13 @@
 import { getComplaints, getComplaintStats, getIncidents, getIncidentStats, getQueries, getQueryStats, getRequests, getRequestStats } from "@/src/api/incidents";
 import { useAuth } from "@/src/context/AuthContext";
 import usePermissions from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { t } from "i18next";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { I18nManager } from "react-native";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -35,7 +38,7 @@ interface IncidentMarker {
   latitude: number;
   longitude: number;
   priority?: number;
-  current_state?: { name: string; id: string; color?: string };
+  current_state?: { name: string; id: string; color?: string; name_ar: string };
   lookup_values?: any[];
 }
 
@@ -106,11 +109,11 @@ const MAP_HTML = `
         const marker = L.marker([incident.lat, incident.lng], { icon: customIcon })
           .addTo(map)
           .bindPopup(\`
-            <div style="min-width: 200px;">
+            <div style="min-width: 200px; direction: ${I18nManager.isRTL ? 'rtl' : 'ltr'}; text-align: ${I18nManager.isRTL ? 'right' : 'left'}">
               <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
               <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">Status: \${incident.state}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">Priority: \${priority}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">${t('incidents.status')}: \${incident.state}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">${t('incidents.priority')}: \${incident.priorityName}</span><br/>
               <button onclick="handleMarkerClick('\${incident.id}')" style="
                 margin-top: 8px;
                 padding: 6px 12px;
@@ -121,7 +124,7 @@ const MAP_HTML = `
                 cursor: pointer;
                 font-size: 12px;
                 font-weight: 600;
-              ">View Details</button>
+              ">${t('common.viewDetails')}</button>
             </div>
           \`);
 
@@ -282,10 +285,17 @@ const MapViewScreen = () => {
       title: inc.title,
       number: inc.incident_number,
       priority: inc.priority || 0,
-      state: inc.current_state?.name || "N/A",
+      state: i18n.language === 'ar' && inc.current_state?.name_ar ? inc.current_state?.name_ar : inc.current_state?.name || "N/A",
       markerColor: inc.current_state?.color || COLORS.accent,
       lookup_values: inc.lookup_values,
-      current_state: inc.current_state
+      current_state: inc.current_state,
+      priorityName: I18nManager.isRTL
+        ? inc.lookup_values?.find(
+          x => x.category?.code === 'PRIORITY'
+        )?.name_ar
+        : inc.lookup_values?.find(
+          x => x.category?.code === 'PRIORITY'
+        )?.name,
     }));
 
     const markersJson = JSON.stringify(markersData);
@@ -362,7 +372,7 @@ const MapViewScreen = () => {
           />
 
           {/* Info Badge */}
-          <View style={styles.infoBadge}>
+          <View style={[styles.infoBadge, { right: I18nManager.isRTL ? "auto" : 16, left: I18nManager.isRTL ? 16 : "auto" }]}>
             <Ionicons name="location" size={20} color={COLORS.accent} />
             <Text style={styles.infoBadgeText}>
               {incidents.length}{totalCount > incidents.length ? `/${totalCount}` : ""}{" "}
@@ -429,8 +439,7 @@ const styles = StyleSheet.create({
   },
   infoBadge: {
     position: "absolute",
-    top: 100,
-    right: 16,
+    top: 115,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -448,6 +457,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: COLORS.text.primary,
+    textAlign: "left"
   },
   refreshOverlay: {
     position: "absolute",

@@ -736,6 +736,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     flex: 1,
+    textAlign: "left"
   },
   suggestionDivider: {
     height: 1,

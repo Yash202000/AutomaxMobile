@@ -3,6 +3,8 @@
  * Adds watermark info to filename and optionally to image metadata
  */
 
+import { t } from "i18next";
+
 export interface WatermarkInfo {
   userName?: string;
   userId?: string;
@@ -93,15 +95,15 @@ export function generateWatermarkLines(data: WatermarkData): string[] {
 
   // 1. Municipality
   const municipality = data.subregion || data.city || 'N/A';
-  lines.push(`Municipality: ${municipality}`);
+  lines.push(`${t('locationPicker.municipality')} ${municipality}`);
 
   // 2. Street Name
   const streetName = data.street || 'N/A';
-  lines.push(`Street Name: ${streetName}`);
+  lines.push(`${t('locationPicker.street')} ${streetName}`);
 
   // 3. Neighborhood
   const neighborhood = data.district || 'N/A';
-  lines.push(`Neighborhood: ${neighborhood}`);
+  lines.push(`${t('locationPicker.neighbourhood')}: ${neighborhood}`);
 
   // 4. Street Name Latitude/Longitude
   if (data.latitude !== undefined && data.longitude !== undefined) {
@@ -130,7 +132,7 @@ export function generateWatermarkLines(data: WatermarkData): string[] {
   const displayHours = String(hours % 12 || 12).padStart(2, '0');
 
   const fullDate = `${dayName}, ${monthName} ${dateNum}, ${year} ${displayHours}:${minutes}:${seconds} ${ampm}`;
-  lines.push(`Date: ${fullDate}`);
+  lines.push(`${t('common.date')}: ${fullDate}`);
 
   return lines;
 }

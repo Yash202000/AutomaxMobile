@@ -4,6 +4,7 @@ import React from 'react';
 import { Dimensions, Image, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WatermarkData, generateWatermarkLines } from '@/src/utils/watermarkUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { I18nManager } from 'react-native';
 
 interface WatermarkPreviewProps {
   visible: boolean;
@@ -110,7 +111,8 @@ const styles = StyleSheet.create({
   watermarkContainer: {
     position: 'absolute',
     bottom: 15,
-    right: 15,
+    left: I18nManager.isRTL ? 15 : 'auto',
+    right: I18nManager.isRTL ? 'auto' : 15,
     maxWidth: '90%',
   },
   watermarkBox: {
@@ -130,6 +132,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 4, // Stronger shadow for readability
+    textAlign: "left"
   },
   buttonContainer: {
     flexDirection: 'row',
