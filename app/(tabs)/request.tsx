@@ -71,7 +71,7 @@ const RequestCard = ({ request, t }: { request: Request; t: any }) => {
 
     if (priorityLookup) {
         config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-        priorityText = i18n.language === 'en' ? priorityLookup.name : priorityLookup.name_ar;
+        priorityText = i18n.language === 'en' ? priorityLookup.name : priorityLookup?.name_ar;
     }
 
     return (

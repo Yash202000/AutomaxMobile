@@ -281,7 +281,7 @@ const AddComplaintScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeClassifications(node.children) : undefined,
           }));
         };
@@ -309,7 +309,7 @@ const AddComplaintScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -341,7 +341,7 @@ const AddComplaintScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
@@ -369,7 +369,7 @@ const AddComplaintScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {

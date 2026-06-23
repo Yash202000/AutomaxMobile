@@ -59,10 +59,10 @@ export const useHierarchy = () => {
     const findPath = (nodes: TreeNode[], id: string, currentPath: string[] = []): string[] | null => {
       for (const node of nodes) {
         if (node && String(node.id) === String(id)) {
-          return [...currentPath, (lang === 'ar' && node.name_ar) ? node.name_ar : node.name];
+          return [...currentPath, (lang === 'ar' && node?.name_ar) ? node?.name_ar : node.name];
         }
         if (node && node.children && node.children.length > 0) {
-          const found = findPath(node.children, id, [...currentPath, (lang === 'ar' && node.name_ar) ? node.name_ar : node.name]);
+          const found = findPath(node.children, id, [...currentPath, (lang === 'ar' && node?.name_ar) ? node?.name_ar : node.name]);
           if (found) return found;
         }
       }
