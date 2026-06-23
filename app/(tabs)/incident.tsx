@@ -140,7 +140,7 @@ const IncidentCard = ({
       color: priorityLookup.color,
     };
     priorityText =
-      i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+      i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar;
   }
   const latestTransition = incident.transition_history?.reduce(
     (latest, current): any => {
@@ -360,7 +360,7 @@ const IncidentsScreen = () => {
         let priorityVal = t(`priorities.${priorityConfig[inc.priority]?.key || "unknown"}`);
         if (priorityLookup) {
           priorityVal =
-            i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+            i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar;
         }
 
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;

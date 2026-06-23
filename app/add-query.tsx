@@ -331,7 +331,7 @@ const AddQueryScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeClassifications(node.children) : undefined,
           }));
         };
@@ -359,7 +359,7 @@ const AddQueryScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -402,7 +402,7 @@ const AddQueryScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
@@ -430,7 +430,7 @@ const AddQueryScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -1358,10 +1358,10 @@ const AddQueryScreen = () => {
                 return (
                   <View key={category.id}>
                     <Text style={styles.sectionTitle}>
-                      {i18n.language === 'en' ? category.name : category.name_ar} <Text style={styles.required}>*</Text>
+                      {i18n.language === 'en' ? category.name : category?.name_ar} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category.name_ar}`}
+                      label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category?.name_ar}`}
                       value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
                       options={options}
                       onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}

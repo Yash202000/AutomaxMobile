@@ -332,7 +332,7 @@ const ComplaintDetailsScreen = () => {
                             { color: value.color || COLORS.text.primary },
                           ]}
                         >
-                          {i18n.language === 'en' ? value.name : value.name_ar}
+                          {i18n.language === 'en' ? value.name : value?.name_ar}
                         </Text>
                       </View>
                     ))}
@@ -353,7 +353,7 @@ const ComplaintDetailsScreen = () => {
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });

@@ -445,7 +445,7 @@ const IncidentDetailsScreen = () => {
             {incident.current_state && (
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state.name_ar) ? incident.current_state.name : incident.current_state.name_ar}</Text>
+                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
               </View>
             )}
           </View>
@@ -509,7 +509,7 @@ const IncidentDetailsScreen = () => {
                           },
                         ]}
                       >
-                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
+                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value?.name_ar || '')} style={styles.descriptionText} />
                       </View>
                     ))}
                   </View>
@@ -529,7 +529,7 @@ const IncidentDetailsScreen = () => {
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });
@@ -851,11 +851,11 @@ const IncidentDetailsScreen = () => {
                     </View>
                     <View style={styles.transitionBadges}>
                       <View style={styles.fromBadge}>
-                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state.name_ar) ? item.from_state.name_ar : item.from_state.name}</Text>
+                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state?.name_ar) ? item.from_state?.name_ar : item.from_state.name}</Text>
                       </View>
                       <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
-                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state.name_ar) ? item.to_state.name_ar : item.to_state.name}</Text>
+                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state?.name_ar) ? item.to_state?.name_ar : item.to_state.name}</Text>
                       </View>
                     </View>
                     {item.comment && (
@@ -1023,9 +1023,9 @@ const styles = StyleSheet.create({
   commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
   commentAvatarText: { color: COLORS.white, fontSize: 13, fontWeight: 'bold' },
   commentMeta: { marginLeft: 10 },
-  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
+  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary, textAlign: "left" },
   commentDate: { fontSize: 11, color: COLORS.text.muted },
-  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20 },
+  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20, textAlign: "left", marginLeft: 42 },
   seeMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',

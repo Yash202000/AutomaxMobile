@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  I18nManager,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -1538,10 +1539,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    direction: "ltr",
+    direction: I18nManager.isRTL ? 'rtl' : 'ltr',
   },
   inputIcon: {
     marginEnd: 12,
+    // marginStart: 12,
   },
   textInput: {
     flex: 1,

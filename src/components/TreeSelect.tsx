@@ -130,7 +130,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
             ]}
             numberOfLines={1}
           >
-            {i18n.language === 'ar' && node.name_ar ? node.name_ar : node.name}
+            {i18n.language === 'ar' && node?.name_ar ? node?.name_ar : node.name}
           </Text>
         </View>
         {multiSelect && canSelect ? (
