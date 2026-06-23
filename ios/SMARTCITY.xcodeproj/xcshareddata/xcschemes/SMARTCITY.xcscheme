@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "SMARTLIGHT.app"
-               BlueprintName = "SMARTLIGHT"
-               ReferencedContainer = "container:SMARTLIGHT.xcodeproj">
+               BuildableName = "SMARTCITY.app"
+               BlueprintName = "SMARTCITY"
+               ReferencedContainer = "container:SMARTCITY.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "SMARTLIGHTTests.xctest"
-               BlueprintName = "SMARTLIGHTTests"
-               ReferencedContainer = "container:SMARTLIGHT.xcodeproj">
+               BuildableName = "SMARTCITYTests.xctest"
+               BlueprintName = "SMARTCITYTests"
+               ReferencedContainer = "container:SMARTCITY.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SMARTLIGHT.app"
-            BlueprintName = "SMARTLIGHT"
-            ReferencedContainer = "container:SMARTLIGHT.xcodeproj">
+            BuildableName = "SMARTCITY.app"
+            BlueprintName = "SMARTCITY"
+            ReferencedContainer = "container:SMARTCITY.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SMARTLIGHT.app"
-            BlueprintName = "SMARTLIGHT"
-            ReferencedContainer = "container:SMARTLIGHT.xcodeproj">
+            BuildableName = "SMARTCITY.app"
+            BlueprintName = "SMARTCITY"
+            ReferencedContainer = "container:SMARTCITY.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

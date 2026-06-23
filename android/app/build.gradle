@@ -96,9 +96,9 @@ android {
         }
     }
 
-    namespace 'com.automax.sml'
+    namespace 'com.automax.smc'
     defaultConfig {
-        applicationId 'com.automax.sml'
+        applicationId 'com.automax.smc'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

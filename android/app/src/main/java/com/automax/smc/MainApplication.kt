@@ -1,4 +1,4 @@
-package com.automax.sml
+package com.automax.smc
 
 import android.app.Application
 import android.content.res.Configuration

@@ -1,4 +1,4 @@
-package com.automax.sml
+package com.automax.smc
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
