@@ -94,11 +94,16 @@ const UpdateStatusModal = () => {
 
   // User selection state
   const [matchingUsers, setMatchingUsers] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
   const [autoSelectUser, setAutoSelectUser] = useState(false);
+
+  const selectedUserIds = useMemo(
+    () => new Set(selectedUsers.map((user) => user?.id).filter(Boolean)),
+    [selectedUsers],
+  );
 
   // Department selection state (auto_detect_department)
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
@@ -522,8 +527,12 @@ const UpdateStatusModal = () => {
         );
         return false;
       }
-      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUser automatically)
-      if (needsUserSelection && !selectedUser && !trans.assign_user_id) {
+      // Block if user selection is needed and nothing selected (auto-single-match sets selectedUsers automatically)
+      if (
+        needsUserSelection &&
+        selectedUsers.length === 0 &&
+        !trans.assign_user_id
+      ) {
         CustomAlert.alert(
           t("common.required", "Required"),
           t(
@@ -691,13 +700,14 @@ const UpdateStatusModal = () => {
         const isSingle = response.data.single_match === true;
         setSingleUserMatch(isSingle);
         if (isSingle && users.length === 1) {
-          setSelectedUser(users[0]);
+          setSelectedUsers([users[0]]);
         } else {
-          setSelectedUser(null);
+          setSelectedUsers([]);
         }
       } else {
         setMatchingUsers([]);
         setSingleUserMatch(false);
+        setSelectedUsers([]);
       }
     };
 
@@ -991,7 +1001,7 @@ const UpdateStatusModal = () => {
       );
       return;
     }
-    if (needsUserSelection && !selectedUser) {
+    if (needsUserSelection && selectedUsers.length === 0) {
       CustomAlert.alert(
         t("common.error", "Error"),
         t(
@@ -1144,7 +1154,10 @@ const UpdateStatusModal = () => {
     const transitionData: any = {
       transition_id: selectedTransition.transition.id,
       comment: comment.trim() || undefined,
-      user_ids: selectedUser ? [selectedUser.id] : undefined,
+      user_ids:
+        selectedUsers.length > 0
+          ? selectedUsers.map((user) => user.id)
+          : undefined,
       department_id: departmentId,
       attachments:
         uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
@@ -1211,7 +1224,7 @@ const UpdateStatusModal = () => {
 
   const handleTransitionSelect = (trans: any) => {
     setSelectedTransition(trans);
-    setSelectedUser(null);
+    setSelectedUsers([]);
     setMatchingUsers([]);
     setSingleUserMatch(false);
     setFeedbackRating(0); // temproary giving as 5
@@ -1647,38 +1660,53 @@ const UpdateStatusModal = () => {
                       </Text>
                     </View>
                   ) : matchingUsers.length > 0 ? (
-                    matchingUsers.map((u: any) => (
-                      <TouchableOpacity
-                        key={u.id}
-                        style={[
-                          styles.selectionRow,
-                          selectedUser?.id === u.id &&
-                            styles.selectionRowSelected,
-                        ]}
-                        onPress={() => setSelectedUser(u)}
-                        disabled={selectedTransition.transition.auto_match_user}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[
-                              styles.selectionRowTitle,
-                              selectedUser?.id === u.id &&
-                                styles.selectionRowTitleSelected,
-                            ]}
-                          >
-                            {u.first_name} {u.last_name}
-                          </Text>
-                          <Text style={styles.selectionRowSub}>{u.email}</Text>
-                        </View>
-                        {selectedUser?.id === u.id && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={22}
-                            color="#2EC4B6"
-                          />
-                        )}
-                      </TouchableOpacity>
-                    ))
+                    matchingUsers.map((u: any) => {
+                      const isSelected = selectedUserIds.has(u.id);
+                      return (
+                        <TouchableOpacity
+                          key={u.id}
+                          style={[
+                            styles.selectionRow,
+                            isSelected && styles.selectionRowSelected,
+                          ]}
+                          onPress={() => {
+                            setSelectedUsers((prev) => {
+                              const exists = prev.some(
+                                (user) => user?.id === u.id,
+                              );
+                              if (exists) {
+                                return prev.filter((user) => user?.id !== u.id);
+                              }
+                              return [...prev, u];
+                            });
+                          }}
+                          disabled={
+                            selectedTransition.transition.auto_match_user
+                          }
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={[
+                                styles.selectionRowTitle,
+                                isSelected && styles.selectionRowTitleSelected,
+                              ]}
+                            >
+                              {u.first_name} {u.last_name}
+                            </Text>
+                            <Text style={styles.selectionRowSub}>
+                              {u.email}
+                            </Text>
+                          </View>
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={22}
+                              color="#2EC4B6"
+                            />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })
                   ) : (
                     <View style={styles.noUsersContainer}>
                       <Ionicons name="person-outline" size={32} color="#CCC" />
