@@ -1161,10 +1161,13 @@ const UpdateStatusModal = () => {
       department_id: departmentId,
       attachments:
         uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined,
-      feedback: {
-        rating: feedbackRating,
-        comment: feedbackComment.trim() || undefined,
-      },
+      feedback:
+        feedbackComment.trim() || feedbackRating > 0
+          ? {
+              rating: feedbackRating,
+              comment: feedbackComment.trim() || undefined,
+            }
+          : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
       field_changes: mappedFieldChanges,
