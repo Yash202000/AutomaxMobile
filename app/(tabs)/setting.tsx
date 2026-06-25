@@ -89,6 +89,11 @@ const SettingsScreen = () => {
 
   const insets = useSafeAreaInsets();
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some((role: any) => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   const loadLogInfo = useCallback(async () => {
     try {
       const size = await crashLogger.getLogFileSize();
@@ -262,7 +267,14 @@ const SettingsScreen = () => {
 
   return (
     <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <ImageBackground
+        source={
+          isViewerMode
+            ? require("@/assets/images/viewerBackground.png")
+            : require("@/assets/images/background.png")
+        }
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
       </ImageBackground>
       <ScrollView style={styles.container}>

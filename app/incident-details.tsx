@@ -4,6 +4,7 @@ import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { useAuth } from '@/src/context/AuthContext';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -213,6 +214,8 @@ const IncidentDetailsScreen = () => {
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
   const isDefaultLocation = incident?.location?.name?.trim().toLowerCase() === 'default';
 
+  const { user } = useAuth()
+
   useEffect(() => {
     const fetchToken = async () => {
       const storedToken = await SecureStore.getItemAsync('authToken');
@@ -415,10 +418,22 @@ const IncidentDetailsScreen = () => {
   const config = priorityConfig[incident.priority as number] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   return (
     <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <ImageBackground
+        source={
+          isViewerMode
+            ? require("@/assets/images/viewerBackground.png")
+            : require("@/assets/images/background.png")
+        }
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>

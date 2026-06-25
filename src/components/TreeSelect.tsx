@@ -43,7 +43,7 @@ interface TreeSelectProps {
   onMultiSelect?: (nodes: TreeNode[]) => void;
 }
 
-interface TreeItemProps {
+export interface TreeItemProps {
   node: TreeNode;
   level: number;
   expandedIds: Set<string>;
@@ -57,7 +57,7 @@ interface TreeItemProps {
   iconType?: 'classification' | 'location' | 'default';
 }
 
-const TreeItem: React.FC<TreeItemProps> = ({
+export const TreeItem: React.FC<TreeItemProps> = ({
   node,
   level,
   expandedIds,
@@ -86,8 +86,8 @@ const TreeItem: React.FC<TreeItemProps> = ({
           isSelected && styles.treeItemSelected,
         ]}
         onPress={() => {
-          if (hasChildren) onToggle(node.id);
           if (canSelect) onSelect(node);
+          else if (hasChildren) onToggle(node.id);
         }}
         activeOpacity={canSelect ? 0.7 : 1}
       >
@@ -317,10 +317,24 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
       if (!canSelect) return;
 
       if (multiSelect) {
+        const getAllNodeIds = (node: TreeNode, ids: string[] = []) => {
+          ids.push(node.id);
+          if (node.children && Array.isArray(node.children)) {
+            node.children.forEach((child) => getAllNodeIds(child, ids));
+          }
+          return ids;
+        };
+
         setPendingIds((prev) => {
           const newSet = new Set(prev);
-          if (newSet.has(node.id)) newSet.delete(node.id);
-          else newSet.add(node.id);
+          const isSelected = newSet.has(node.id);
+          const idsToToggle = getAllNodeIds(node);
+          
+          if (isSelected) {
+            idsToToggle.forEach(id => newSet.delete(id));
+          } else {
+            idsToToggle.forEach(id => newSet.add(id));
+          }
           return newSet;
         });
       } else {
