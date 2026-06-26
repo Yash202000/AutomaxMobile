@@ -44,7 +44,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
 
   const fieldLabel =
-    i18n.language === 'ar' ? category.name_ar || category.name : category.name;
+    i18n.language === 'ar' ? category?.name_ar || category.name : category.name;
 
   // Parse validation rules
   let validationRules: any = {};
@@ -183,7 +183,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     case 'select':
       const selectOptions = (category.values || [])
         .filter(v => v.is_active)
-        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v.name_ar || v.name : v.name }));
+        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v?.name_ar || v.name : v.name }));
 
       return (
         <View style={styles.container}>
@@ -245,7 +245,7 @@ export const DynamicLookupField: React.FC<DynamicLookupFieldProps> = ({
     case 'multiselect':
       const multiselectOptions = (category.values || [])
         .filter(v => v.is_active)
-        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v.name_ar || v.name : v.name }));
+        .map(v => ({ id: v.id, name: i18n.language === 'ar' ? v?.name_ar || v.name : v.name }));
 
       const selectedValues = Array.isArray(value) ? value : [];
 

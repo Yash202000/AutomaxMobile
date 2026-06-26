@@ -4,6 +4,7 @@ import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { useAuth } from '@/src/context/AuthContext';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -213,6 +214,8 @@ const IncidentDetailsScreen = () => {
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
   const isDefaultLocation = incident?.location?.name?.trim().toLowerCase() === 'default';
 
+  const { user } = useAuth()
+
   useEffect(() => {
     const fetchToken = async () => {
       const storedToken = await SecureStore.getItemAsync('authToken');
@@ -415,10 +418,22 @@ const IncidentDetailsScreen = () => {
   const config = priorityConfig[incident.priority as number] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   return (
     <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <ImageBackground
+        source={
+          isViewerMode
+            ? require("@/assets/images/viewerBackground.png")
+            : require("@/assets/images/background.png")
+        }
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -445,7 +460,7 @@ const IncidentDetailsScreen = () => {
             {incident.current_state && (
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state.name_ar) ? incident.current_state.name : incident.current_state.name_ar}</Text>
+                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
               </View>
             )}
           </View>
@@ -509,7 +524,7 @@ const IncidentDetailsScreen = () => {
                           },
                         ]}
                       >
-                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
+                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value?.name_ar || '')} style={styles.descriptionText} />
                       </View>
                     ))}
                   </View>
@@ -529,7 +544,7 @@ const IncidentDetailsScreen = () => {
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });
@@ -851,11 +866,11 @@ const IncidentDetailsScreen = () => {
                     </View>
                     <View style={styles.transitionBadges}>
                       <View style={styles.fromBadge}>
-                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state.name_ar) ? item.from_state.name_ar : item.from_state.name}</Text>
+                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state?.name_ar) ? item.from_state?.name_ar : item.from_state.name}</Text>
                       </View>
                       <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
-                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state.name_ar) ? item.to_state.name_ar : item.to_state.name}</Text>
+                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state?.name_ar) ? item.to_state?.name_ar : item.to_state.name}</Text>
                       </View>
                     </View>
                     {item.comment && (
@@ -1023,9 +1038,9 @@ const styles = StyleSheet.create({
   commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
   commentAvatarText: { color: COLORS.white, fontSize: 13, fontWeight: 'bold' },
   commentMeta: { marginLeft: 10 },
-  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
+  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary, textAlign: "left" },
   commentDate: { fontSize: 11, color: COLORS.text.muted },
-  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20 },
+  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20, textAlign: "left", marginLeft: 42 },
   seeMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -352,7 +352,7 @@ const AddIncidentScreen = () => {
               id: String(node.id),
               name: node.name,
               parent_id: node.parent_id ? String(node.parent_id) : null,
-              name_ar: node.name_ar
+              name_ar: node?.name_ar
             };
 
             if (node.children && node.children.length > 0) {
@@ -390,7 +390,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -420,7 +420,7 @@ const AddIncidentScreen = () => {
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             children: node.children ? normalizeLocations(node.children) : undefined,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
@@ -448,7 +448,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -575,7 +575,7 @@ const AddIncidentScreen = () => {
       chain = {
         id: nodeId,
         name: level.name,
-        name_ar: level.name_ar,
+        name_ar: level?.name_ar,
         type: level.type,
         children: chain ? [chain] : undefined,
       };
@@ -716,10 +716,10 @@ const AddIncidentScreen = () => {
           // For multiselect, check if array is empty
           if (category.field_type === 'multiselect') {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+              newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
             }
           } else if (!value) {
-            newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+            newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
           }
         }
         continue;

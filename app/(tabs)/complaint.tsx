@@ -72,7 +72,7 @@ const ComplaintCard = ({ complaint, t }: { complaint: Complaint; t: any }) => {
 
     if (priorityLookup) {
         config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-        priorityText = i18n.language === 'ar' ? priorityLookup.name_ar : priorityLookup.name;
+        priorityText = i18n.language === 'ar' ? priorityLookup?.name_ar : priorityLookup.name;
     }
 
     return (
