@@ -606,7 +606,7 @@ const DashboardScreen = () => {
       </View>
 
       {/* Chatbot / Voice Agent floating button — outside contentWrapper to avoid overflow:hidden clipping */}
-      <ChatbotWidget />
+      {/* <ChatbotWidget /> */}
     </View>
   );
 };

@@ -96,9 +96,9 @@ android {
         }
     }
 
-    namespace 'com.automax.mobile'
+    namespace 'com.leadergroup.epmcleaning.ax3'
     defaultConfig {
-        applicationId 'com.automax.mobile'
+        applicationId 'com.leadergroup.epmcleaning.ax3'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

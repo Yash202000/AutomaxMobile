@@ -1,4 +1,4 @@
-package com.automax.mobile
+package com.leadergroup.epmcleaning.ax3
 
 import android.app.Application
 import android.content.res.Configuration
