@@ -11,12 +11,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import i18n from '../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface TreeNode {
   id: string;
   name: string;
+  name_ar: string;
   type?: string;
   children?: TreeNode[];
   parent_id?: string | null;
@@ -41,7 +43,7 @@ interface TreeSelectProps {
   onMultiSelect?: (nodes: TreeNode[]) => void;
 }
 
-interface TreeItemProps {
+export interface TreeItemProps {
   node: TreeNode;
   level: number;
   expandedIds: Set<string>;
@@ -55,7 +57,7 @@ interface TreeItemProps {
   iconType?: 'classification' | 'location' | 'default';
 }
 
-const TreeItem: React.FC<TreeItemProps> = ({
+export const TreeItem: React.FC<TreeItemProps> = ({
   node,
   level,
   expandedIds,
@@ -84,8 +86,8 @@ const TreeItem: React.FC<TreeItemProps> = ({
           isSelected && styles.treeItemSelected,
         ]}
         onPress={() => {
-          if (hasChildren) onToggle(node.id);
           if (canSelect) onSelect(node);
+          else if (hasChildren) onToggle(node.id);
         }}
         activeOpacity={canSelect ? 0.7 : 1}
       >
@@ -121,13 +123,14 @@ const TreeItem: React.FC<TreeItemProps> = ({
           />
           <Text
             style={[
+              { textAlign: 'left' },
               styles.treeItemText,
               !canSelect && styles.treeItemTextDisabled,
               isSelected && styles.treeItemTextSelected,
             ]}
             numberOfLines={1}
           >
-            {node.name}
+            {i18n.language === 'ar' && node?.name_ar ? node?.name_ar : node.name}
           </Text>
         </View>
         {multiSelect && canSelect ? (
@@ -314,10 +317,24 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
       if (!canSelect) return;
 
       if (multiSelect) {
+        const getAllNodeIds = (node: TreeNode, ids: string[] = []) => {
+          ids.push(node.id);
+          if (node.children && Array.isArray(node.children)) {
+            node.children.forEach((child) => getAllNodeIds(child, ids));
+          }
+          return ids;
+        };
+
         setPendingIds((prev) => {
           const newSet = new Set(prev);
-          if (newSet.has(node.id)) newSet.delete(node.id);
-          else newSet.add(node.id);
+          const isSelected = newSet.has(node.id);
+          const idsToToggle = getAllNodeIds(node);
+          
+          if (isSelected) {
+            idsToToggle.forEach(id => newSet.delete(id));
+          } else {
+            idsToToggle.forEach(id => newSet.add(id));
+          }
           return newSet;
         });
       } else {
@@ -396,7 +413,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
         onPress={disabled ? undefined : handleOpen}
         activeOpacity={disabled ? 1 : 0.7}
       >
-        <Text style={[styles.dropdownText, !hasValue && styles.placeholderText]}>
+        <Text style={[styles.dropdownText, !hasValue && styles.placeholderText, { textAlign: 'left' }]}>
           {displayText}
         </Text>
         {loading ? (
@@ -542,6 +559,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
+    textAlign: 'left'
   },
   modalOverlay: {
     flex: 1,

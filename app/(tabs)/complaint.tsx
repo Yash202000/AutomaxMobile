@@ -72,7 +72,7 @@ const ComplaintCard = ({ complaint, t }: { complaint: Complaint; t: any }) => {
 
     if (priorityLookup) {
         config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-        priorityText = i18n.language === 'ar' ? priorityLookup.name_ar : priorityLookup.name;
+        priorityText = i18n.language === 'ar' ? priorityLookup?.name_ar : priorityLookup.name;
     }
 
     return (
@@ -92,20 +92,20 @@ const ComplaintCard = ({ complaint, t }: { complaint: Complaint; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(complaint.created_at).toLocaleString('en-GB')}</Text>
-                <Text style={styles.statusText}>{t('incidents.status')}: {complaint.current_state?.name || 'N/A'}</Text>
-                <View style={styles.detailRow}>
+                <Text style={[styles.dateTime, { textAlign: "left" }]}>{new Date(complaint.created_at).toLocaleString('en-GB')}</Text>
+                <Text style={[styles.statusText, { textAlign: "left" }]}>{t('incidents.status')}: {complaint.current_state?.name || 'N/A'}</Text>
+                <View style={[styles.detailRow]}>
                     <Ionicons name="chatbubble-ellipses" size={16} color={COLORS.complaint} style={styles.detailIcon} />
-                    <Text style={styles.detailText} numberOfLines={1}>{complaint.title}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]} numberOfLines={1}>{complaint.title}</Text>
                 </View>
-                <View style={styles.detailRow}>
+                <View style={[styles.detailRow]}>
                     <Ionicons name="location" size={16} color={COLORS.priority.low} style={styles.detailIcon} />
-                    <Text style={styles.detailText}>{complaint.location?.name || t('common.noData')}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]}>{complaint.location?.name || t('common.noData')}</Text>
                 </View>
                 {complaint.channel && (
-                    <View style={styles.detailRow}>
+                    <View style={[styles.detailRow]}>
                         <Ionicons name="megaphone" size={16} color="#F59E0B" style={styles.detailIcon} />
-                        <Text style={styles.detailText}>{t('complaints.channel')}: {complaint.channel}</Text>
+                        <Text style={[styles.detailText, { textAlign: "left" }]}>{t('complaints.channel')}: {complaint.channel}</Text>
                     </View>
                 )}
             </View>
@@ -270,12 +270,12 @@ const ComplaintsScreen = () => {
 
     const renderHeader = () => (
         <View style={styles.listHeader}>
-            <Text style={styles.foundText}>
+            <Text style={[styles.foundText, { textAlign: "left" }]}>
                 {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.complaint').toLowerCase()}`}
                 {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
             </Text>
             {pagination.total_pages > 1 && (
-                <Text style={styles.paginationText}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+                <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
             )}
         </View>
     );
@@ -344,7 +344,7 @@ const ComplaintsScreen = () => {
                 ) : (
                     <>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{headerTitle}</Text>
+                            <Text style={[styles.headerTitle, { textAlign: "left" }]}>{headerTitle}</Text>
                         </View>
                         <View style={styles.headerIcons}>
                             <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({

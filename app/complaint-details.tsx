@@ -332,7 +332,7 @@ const ComplaintDetailsScreen = () => {
                             { color: value.color || COLORS.text.primary },
                           ]}
                         >
-                          {i18n.language === 'en' ? value.name : value.name_ar}
+                          {i18n.language === 'en' ? value.name : value?.name_ar}
                         </Text>
                       </View>
                     ))}
@@ -353,7 +353,7 @@ const ComplaintDetailsScreen = () => {
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });
@@ -365,7 +365,7 @@ const ComplaintDetailsScreen = () => {
                   if (field.field_type === 'checkbox') {
                     displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
-                    displayValue = new Date(field.value).toLocaleDateString();
+                    displayValue = new Date(field.value).toLocaleDateString('en-GB');
                   }
 
                   return (
@@ -535,7 +535,7 @@ const ComplaintDetailsScreen = () => {
                       </View>
                     </View>
                     <Text style={styles.transitionMeta}>
-                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString()}
+                      {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
                     </Text>
                     {item.comment && (
                       <View style={styles.transitionComment}>

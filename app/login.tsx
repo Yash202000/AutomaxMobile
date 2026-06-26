@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  I18nManager,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -243,7 +244,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -304,8 +305,8 @@ const LoginScreen = () => {
         } else {
           setError(
             response.data?.error ||
-              response.data?.message ||
-              t("auth.loginError"),
+            response.data?.message ||
+            t("auth.loginError"),
           );
         }
       } catch (err: any) {
@@ -401,7 +402,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -615,7 +616,7 @@ const LoginScreen = () => {
                 <Text
                   style={[
                     styles.welcomeText,
-                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                    { textAlign: "left" },
                   ]}
                 >
                   {t("auth.welcomeBack")}
@@ -623,7 +624,7 @@ const LoginScreen = () => {
                 <Text
                   style={[
                     styles.subtitleText,
-                    { textAlign: currentLang === "ar" ? "right" : "left" },
+                    { textAlign: "left" },
                   ]}
                 >
                   {t("auth.loginSubtitle")}
@@ -719,7 +720,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.name", "Name")}
@@ -772,7 +773,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.mobileNumber", "Mobile Number")}
@@ -825,7 +826,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.otpChannel")}
@@ -868,7 +869,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -885,7 +886,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.adUsername", "Username")}
@@ -939,7 +940,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.password")}
@@ -1013,7 +1014,7 @@ const LoginScreen = () => {
                   <Text
                     style={[
                       styles.inputLabel,
-                      { textAlign: currentLang === "ar" ? "right" : "left" },
+                      { textAlign: "left" },
                     ]}
                   >
                     {t("auth.nationalId", "National ID")}
@@ -1073,7 +1074,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.email")}
@@ -1121,7 +1122,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.password")}
@@ -1182,7 +1183,7 @@ const LoginScreen = () => {
                     <Text
                       style={[
                         styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        { textAlign: "left" },
                       ]}
                     >
                       {t("auth.phone")}
@@ -1224,8 +1225,7 @@ const LoginScreen = () => {
                   <View style={styles.inputWrapper}>
                     <Text
                       style={[
-                        styles.inputLabel,
-                        { textAlign: currentLang === "ar" ? "right" : "left" },
+                        styles.inputLabel
                       ]}
                     >
                       {t("auth.otpChannel")}
@@ -1268,7 +1268,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
+                            styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -1539,10 +1539,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    direction: "ltr",
+    direction: I18nManager.isRTL ? 'rtl' : 'ltr',
   },
   inputIcon: {
     marginEnd: 12,
+    // marginStart: 12,
   },
   textInput: {
     flex: 1,
@@ -1604,12 +1605,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     flex: 1,
+    textAlign: "left"
   },
   fieldErrorText: {
     color: "#E74C3C",
     fontSize: 13,
     marginTop: 6,
     fontWeight: "500",
+    textAlign: "left"
   },
   loginButton: {
     borderRadius: 14,

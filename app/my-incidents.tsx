@@ -4,6 +4,7 @@ import {
 import { getProfile } from "@/src/api/user";
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { usePermissions } from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { RelativePathString, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -36,14 +37,15 @@ interface Incident {
   created_at: string;
   due_date?: string;
   sla_breached?: boolean;
-  current_state?: { name: string; color?: string };
-  location?: { name: string };
+  current_state?: { name: string; color?: string; name_ar?: string };
+  location?: { name: string; name_ar: string };
   assignee?: { first_name?: string; username: string };
   department?: { name: string };
   lookup_values?: Array<{
     category: { code: string };
     code: string;
     name: string;
+    name_ar?: string;
     color: string;
   }>;
   transition_history?: Array<{
@@ -87,7 +89,7 @@ const IncidentCard = ({
       key: priorityLookup.code.toLowerCase(),
       color: priorityLookup.color,
     };
-    priorityText = priorityLookup.name;
+    priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar || '';
   }
 
   // Determine the correct detail page based on ticket type
@@ -151,13 +153,14 @@ const IncidentCard = ({
             <Text style={styles.incidentTagText}>{priorityText}</Text>
           </View>
         </View>
-        <Text style={styles.dateTime}>
+        <Text style={[styles.dateTime, { textAlign: "left" }]}>
           {new Date(incident.created_at).toLocaleString('en-GB')}
         </Text>
         {latestTransition?.transition && (
           <Text
             style={[
               styles.rejectText,
+              { textAlign: "left" },
               ...(latestTransition?.transition?.code !== "reject"
                 ? [
                   {
@@ -172,8 +175,8 @@ const IncidentCard = ({
           </Text>
         )}
 
-        <Text style={styles.statusText}>
-          {t('incidents.status')}: {incident.current_state?.name || t('common.na')}
+        <Text style={[styles.statusText, { textAlign: "left" }]}>
+          {t('incidents.status')}: {(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state?.name : incident.current_state?.name_ar || t('common.na')}
         </Text>
         <View style={styles.detailRow}>
           <Ionicons
@@ -182,7 +185,7 @@ const IncidentCard = ({
             color="#10B981"
             style={styles.detailIcon}
           />
-          <Text style={styles.detailText} numberOfLines={1}>
+          <Text style={[styles.detailText, { textAlign: "left" }]} numberOfLines={1}>
             {incident.title}
           </Text>
         </View>
@@ -193,8 +196,8 @@ const IncidentCard = ({
             color="#3B82F6"
             style={styles.detailIcon}
           />
-          <Text style={styles.detailText}>
-            {incident.location?.name || t("common.noData")}
+          <Text style={[styles.detailText, { textAlign: "left" }]}>
+            {(i18n.language === 'en' || !incident.location?.name_ar) ? incident.location?.name : incident.location?.name_ar || t("common.noData")}
           </Text>
         </View>
       </View>
@@ -426,11 +429,11 @@ const MyIncidentsScreen = () => {
 
     return (
       <View style={styles.listHeader}>
-        <Text style={styles.incidentsFoundText}>
+        <Text style={[styles.incidentsFoundText, { textAlign: "left" }]}>
           {pagination.total_items} {statusLabel} {ticketTypeLabel}
         </Text>
         {pagination.total_pages > 1 && (
-          <Text style={styles.paginationText}>
+          <Text style={[styles.paginationText, { textAlign: "left" }]}>
             {t("myIncidents.page")} {pagination.page} {t("myIncidents.of")}{" "}
             {pagination.total_pages}
           </Text>
@@ -443,7 +446,7 @@ const MyIncidentsScreen = () => {
     <View style={[styles.safeArea]}>
       <ImageBackground
         source={require("@/assets/images/background.png")}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
+        style={[styles.header, { paddingTop: insets.top + 16, gap: 10 }]}
       >
         <TouchableOpacity
           style={styles.backButton}
@@ -516,7 +519,7 @@ const MyIncidentsScreen = () => {
 
         {/* Ticket Type Tabs */}
         <View style={styles.ticketTypeContainer}>
-          {(canCreateIncidents() || canUpdateIncidents()) && (
+          {(canCreateIncidents() || canUpdateIncidents() || canTransitionIncidents()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -534,7 +537,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateRequests() || canUpdateRequests()) && (
+          {(canCreateRequests() || canUpdateRequests() || canTransitionRequests()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -552,7 +555,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateComplaints() || canUpdateComplaints()) && (
+          {(canCreateComplaints() || canUpdateComplaints() || canTransitionComplaints()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -570,7 +573,7 @@ const MyIncidentsScreen = () => {
               </Text>
             </TouchableOpacity>
           )}
-          {(canCreateQueries() || canUpdateQueries()) && (
+          {(canCreateQueries() || canUpdateQueries() || canTransitionQueries()) && (
             <TouchableOpacity
               style={[
                 styles.ticketTypeTab,
@@ -704,17 +707,18 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 10,
   },
   headerTitle: {
     color: "white",
     fontSize: 20,
     fontWeight: "bold",
+    textAlign: "left"
   },
   headerSubtitle: {
     color: "rgba(255,255,255,0.8)",
     fontSize: 12,
     marginTop: 2,
+    textAlign: "left"
   },
   headerIcon: {
     padding: 8,

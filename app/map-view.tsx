@@ -1,10 +1,13 @@
 import { getComplaints, getComplaintStats, getIncidents, getIncidentStats, getQueries, getQueryStats, getRequests, getRequestStats } from "@/src/api/incidents";
 import { useAuth } from "@/src/context/AuthContext";
 import usePermissions from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { t } from "i18next";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { I18nManager } from "react-native";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -35,11 +38,33 @@ interface IncidentMarker {
   latitude: number;
   longitude: number;
   priority?: number;
-  current_state?: { name: string };
+  current_state?: { name: string; id: string; color?: string; name_ar: string };
   lookup_values?: any[];
 }
 
-const MAP_HTML = `
+const MapViewScreen = () => {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const {
+    type, state_id, priority, severity, assignee_id, department_id,
+    classification_ids, location_ids, source, start_date, end_date, search,
+  } = useLocalSearchParams<{
+    type?: string; state_id?: string; priority?: string; severity?: string;
+    assignee_id?: string; department_id?: string; classification_ids?: string;
+    location_ids?: string; source?: string; start_date?: string; end_date?: string;
+    search?: string;
+  }>();
+  const recordType = type || "incident";
+  const webViewRef = useRef<WebView>(null);
+
+  const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
+  const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
+  const { user } = useAuth();
+
+  const mapHTML = useMemo(() => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -92,9 +117,9 @@ const MAP_HTML = `
 
       incidentsData.forEach(incident => {
         const priorityLookup = incident?.lookup_values?.find(x => x.category && x.category.code === 'PRIORITY');
-        const p = priorityLookup?.name || 'N/A';
-        const color = priorityLookup?.color || '#2EC4B6';
-        const markerHtml = '<div class="custom-marker" style="background-color: ' + color + ';"></div>';
+        const markerColor = incident.markerColor || '#2EC4B6';
+        const priority = priorityLookup?.name || incident.priority || 'N/A';
+        const markerHtml = '<div class="custom-marker" style="background-color: ' + markerColor + ';"></div>';
         const customIcon = L.divIcon({
           html: markerHtml,
           className: 'custom-div-icon',
@@ -106,11 +131,11 @@ const MAP_HTML = `
         const marker = L.marker([incident.lat, incident.lng], { icon: customIcon })
           .addTo(map)
           .bindPopup(\`
-            <div style="min-width: 200px;">
+            <div style="min-width: 200px; direction: ${I18nManager.isRTL ? 'rtl' : 'ltr'}; text-align: ${I18nManager.isRTL ? 'right' : 'left'}">
               <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
               <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">Status: \${incident.state}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">Priority: \${p}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">${t('incidents.status')}: \${incident.state}</span><br/>
+              <span style="font-size: 12px; color: #64748B;">${t('incidents.priority')}: \${incident.priorityName}</span><br/>
               <button onclick="handleMarkerClick('\${incident.id}')" style="
                 margin-top: 8px;
                 padding: 6px 12px;
@@ -121,7 +146,7 @@ const MAP_HTML = `
                 cursor: pointer;
                 font-size: 12px;
                 font-weight: 600;
-              ">View Details</button>
+              ">${t('common.viewDetails')}</button>
             </div>
           \`);
 
@@ -149,29 +174,8 @@ const MAP_HTML = `
   </script>
 </body>
 </html>
-`;
-
-const MapViewScreen = () => {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const {
-    type, state_id, priority, severity, assignee_id, department_id,
-    classification_ids, location_ids, source, start_date, end_date, search,
-  } = useLocalSearchParams<{
-    type?: string; state_id?: string; priority?: string; severity?: string;
-    assignee_id?: string; department_id?: string; classification_ids?: string;
-    location_ids?: string; source?: string; start_date?: string; end_date?: string;
-    search?: string;
-  }>();
-  const recordType = type || "incident";
-  const webViewRef = useRef<WebView>(null);
-
-  const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
-  const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
-  const { user } = useAuth();
+`
+    , [t, i18n.language])
 
   useEffect(() => {
     fetchIncidentsWithLocation();
@@ -216,11 +220,17 @@ const MapViewScreen = () => {
       if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
         const statsResponse = await statsFunction();
         if (statsResponse.success) {
-          filterParams.current_state_id = statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || []
+          filterParams.current_state_id = statsResponse.data.workflow_stats?.[0].by_state_details?.map((s: any) => s.id) || []
         }
       }
 
-      if (!canViewAllIncidents() && recordType === 'incident') {
+      const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === "true";
+      const viewerRoles = process.env.EXPO_PUBLIC_VIEWER_APP_ROLES?.split(",") || [];
+      const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+      const isViewerMode = isViewerApp && isViewerRole;
+
+
+      if (!canViewAllIncidents() && recordType === 'incident' && !isViewerMode) {
         filterParams.my_record = user?.id;
       }
 
@@ -282,8 +292,17 @@ const MapViewScreen = () => {
       title: inc.title,
       number: inc.incident_number,
       priority: inc.priority || 0,
-      state: inc.current_state?.name || "N/A",
+      state: i18n.language === 'ar' && inc.current_state?.name_ar ? inc.current_state?.name_ar : inc.current_state?.name || "N/A",
+      markerColor: inc.current_state?.color || COLORS.accent,
       lookup_values: inc.lookup_values,
+      current_state: inc.current_state,
+      priorityName: I18nManager.isRTL
+        ? inc.lookup_values?.find(
+          x => x.category?.code === 'PRIORITY'
+        )?.name_ar || t('common.unknown')
+        : inc.lookup_values?.find(
+          x => x.category?.code === 'PRIORITY'
+        )?.name || t('common.unknown'),
     }));
 
     const markersJson = JSON.stringify(markersData);
@@ -293,7 +312,7 @@ const MapViewScreen = () => {
     `);
   };
 
-  const mapSource = useMemo(() => ({ html: MAP_HTML, baseUrl: 'https://localhost/' }), []);
+  const mapSource = useMemo(() => ({ html: mapHTML, baseUrl: 'https://localhost/' }), []);
 
   const handleMessage = (event: any) => {
     try {
@@ -360,7 +379,7 @@ const MapViewScreen = () => {
           />
 
           {/* Info Badge */}
-          <View style={styles.infoBadge}>
+          <View style={[styles.infoBadge, { right: I18nManager.isRTL ? "auto" : 16, left: I18nManager.isRTL ? 16 : "auto" }]}>
             <Ionicons name="location" size={20} color={COLORS.accent} />
             <Text style={styles.infoBadgeText}>
               {incidents.length}{totalCount > incidents.length ? `/${totalCount}` : ""}{" "}
@@ -427,8 +446,7 @@ const styles = StyleSheet.create({
   },
   infoBadge: {
     position: "absolute",
-    top: 100,
-    right: 16,
+    top: 115,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -446,6 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: COLORS.text.primary,
+    textAlign: "left"
   },
   refreshOverlay: {
     position: "absolute",

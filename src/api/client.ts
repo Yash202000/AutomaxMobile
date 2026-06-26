@@ -3,6 +3,7 @@ import axios from 'axios';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { notifySessionExpired } from '../utils/authEvents';
+import i18n from '../i18n';
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error('EXPO_PUBLIC_API_URL is not set');
@@ -69,6 +70,8 @@ apiClient.interceptors.request.use(
       (error as any).isNoToken = true;
       return Promise.reject(error);
     }
+    //accept language
+    config.headers['Accept-Language'] = i18n.language || 'en';
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

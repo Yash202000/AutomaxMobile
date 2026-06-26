@@ -92,7 +92,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         style={[styles.dropdown, error && styles.dropdownError]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
+        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
           {value || label}
         </Text>
         {loading ? (
@@ -331,6 +331,7 @@ const AddQueryScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeClassifications(node.children) : undefined,
           }));
         };
@@ -358,6 +359,7 @@ const AddQueryScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -400,6 +402,7 @@ const AddQueryScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
@@ -427,6 +430,7 @@ const AddQueryScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -1185,40 +1189,41 @@ const AddQueryScreen = () => {
       ) : (
         <>
           <ScrollView style={[styles.formContainer, { marginBottom: insets.bottom }]} showsVerticalScrollIndicator={false}>
-            <View style={styles.workflowCard}>
-              <View style={styles.workflowHeader}>
-                <Ionicons name="git-branch" size={20} color="#3498DB" />
-                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
-              </View>
-              {matchedWorkflow ? (
-                <View style={styles.workflowMatched}>
-                  <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                  <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+            <View style={{ padding: 20 }}>
+              <View style={styles.workflowCard}>
+                <View style={styles.workflowHeader}>
+                  <Ionicons name="git-branch" size={20} color="#3498DB" />
+                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
                 </View>
-              ) : (
-                <Text style={styles.workflowHint}>
-                  {t('addQuery.autoWorkflow')}
-                </Text>
-              )}
-              {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
-            </View>
+                {matchedWorkflow ? (
+                  <View style={styles.workflowMatched}>
+                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.workflowHint}>
+                    {t('addQuery.autoWorkflow')}
+                  </Text>
+                )}
+                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
+              </View>
 
-            <Text style={styles.sectionTitle}>
-              {t('incidents.title')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-              placeholder={t('addQuery.titlePlaceholder')}
-              value={title}
-              onChangeText={(text) => {
-                setTitle(text);
-                if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
-              }}
-              placeholderTextColor="#999"
-            />
-            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+              <Text style={styles.sectionTitle}>
+                {t('incidents.title')} <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                placeholder={t('addQuery.titlePlaceholder')}
+                value={title}
+                onChangeText={(text) => {
+                  setTitle(text);
+                  if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                }}
+                placeholderTextColor="#999"
+              />
+              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            {/* <Text style={styles.sectionTitle}>
+              {/* <Text style={styles.sectionTitle}>
               {t('addQuery.channel')} {isFieldRequired('channel') && <Text style={styles.required}>*</Text>}
             </Text>
             <Dropdown
@@ -1230,63 +1235,63 @@ const AddQueryScreen = () => {
               error={errors.channel}
             /> */}
 
-            {isFieldRequired('source_incident_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
-                </Text>
-
-                {/* Dropdown trigger */}
-                <TouchableOpacity
-                  style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
-                  onPress={() => {
-                    setIncidentSearch('');
-                    setIncidentDropdownOpen(true);
-                  }}
-                >
-                  <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText]}>
-                    {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+              {isFieldRequired('source_incident_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {selectedSourceIncident && (
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          setSelectedSourceIncident(null);
-                          if (errors.source_incident_id) {
-                            setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                          }
-                        }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="close-circle" size={18} color="#999" />
-                      </TouchableOpacity>
-                    )}
-                    {loadingData ? (
-                      <ActivityIndicator size="small" color="#666" />
-                    ) : (
-                      <FontAwesome name="chevron-down" size={16} color="#666" />
-                    )}
-                  </View>
-                </TouchableOpacity>
 
-                {errors.source_incident_id && (
-                  <Text style={styles.errorText}>{errors.source_incident_id}</Text>
-                )}
+                  {/* Dropdown trigger */}
+                  <TouchableOpacity
+                    style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
+                    onPress={() => {
+                      setIncidentSearch('');
+                      setIncidentDropdownOpen(true);
+                    }}
+                  >
+                    <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText]}>
+                      {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {selectedSourceIncident && (
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setSelectedSourceIncident(null);
+                            if (errors.source_incident_id) {
+                              setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                            }
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#999" />
+                        </TouchableOpacity>
+                      )}
+                      {loadingData ? (
+                        <ActivityIndicator size="small" color="#666" />
+                      ) : (
+                        <FontAwesome name="chevron-down" size={16} color="#666" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
 
-                <IncidentPicker
-                  incidentDropdownOpen={incidentDropdownOpen}
-                  onClose={setIncidentDropdownOpen}
-                  selectedSourceIncident={selectedSourceIncident}
-                  onSelect={setSelectedSourceIncident}
-                />
+                  {errors.source_incident_id && (
+                    <Text style={styles.errorText}>{errors.source_incident_id}</Text>
+                  )}
 
-                {/* Incident picker modal */}
+                  <IncidentPicker
+                    incidentDropdownOpen={incidentDropdownOpen}
+                    onClose={setIncidentDropdownOpen}
+                    selectedSourceIncident={selectedSourceIncident}
+                    onSelect={setSelectedSourceIncident}
+                  />
 
-              </>
-            )}
+                  {/* Incident picker modal */}
 
-            {/* <Text style={styles.sectionTitle}>
+                </>
+              )}
+
+              {/* <Text style={styles.sectionTitle}>
               {t('incidents.classification')} <Text style={styles.required}>*</Text>
             </Text>
             <TreeSelect
@@ -1301,314 +1306,315 @@ const AddQueryScreen = () => {
               iconType="classification"
             /> */}
 
-            {/* Location - only show if required */}
-            {isFieldRequired('location_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.location')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TreeSelect
-                  label={t('addIncident.selectLocation')}
-                  value={selectedLocation?.name || ''}
-                  data={locations}
-                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
-                  required={true}
-                  error={errors.location_id}
-                  leafOnly={true}
-                  placeholder={t('addIncident.selectLocation')}
-                  iconType="location"
-                />
-              </>
-            )}
-
-            {/* Source field - always mobile for mobile app, non-editable */}
-            <Text style={styles.sectionTitle}>
-              {t('incidents.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label={t('addQuery.selectSource')}
-              value={selectedSource?.name || ''}
-              options={sourceOptions}
-              onSelect={() => { }} // No-op, field is not editable
-              required={isFieldRequired('source')}
-              error={errors.source}
-              disabled={true}
-            />
-
-            {/* Lookup Fields - Dynamic master data fields */}
-            {lookupCategories.map(category => {
-              const lookupFieldKey = `lookup:${category.code}`;
-              const isRequired = requiredFields.includes(lookupFieldKey);
-
-              // Only show if required by workflow
-              if (!isRequired) return null;
-
-              const options = (category.values || [])
-                .filter(v => v.is_active)
-                .map(v => ({
-                  id: v.id,
-                  name: v.name
-                }));
-
-              return (
-                <View key={category.id}>
+              {/* Location - only show if required */}
+              {isFieldRequired('location_id') && (
+                <>
                   <Text style={styles.sectionTitle}>
-                    {i18n.language === 'en' ? category.name : category.name_ar} <Text style={styles.required}>*</Text>
+                    {t('incidents.location')} <Text style={styles.required}>*</Text>
                   </Text>
-                  <Dropdown
-                    label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category.name_ar}`}
-                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
-                    options={options}
-                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
-                    required={isRequired}
-                    error={errors[lookupFieldKey]}
+                  <TreeSelect
+                    label={t('addIncident.selectLocation')}
+                    value={selectedLocation?.name || ''}
+                    data={locations}
+                    onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
+                    required={true}
+                    error={errors.location_id}
+                    leafOnly={true}
+                    placeholder={t('addIncident.selectLocation')}
+                    iconType="location"
                   />
-                </View>
-              );
-            })}
+                </>
+              )}
 
-            {/* Priority & Severity - only show if either is required */}
-            {(isFieldRequired('priority') || isFieldRequired('severity')) && (
-              <View style={styles.row}>
-                {isFieldRequired('priority') && (
-                  <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+              {/* Source field - always mobile for mobile app, non-editable */}
+              <Text style={styles.sectionTitle}>
+                {t('incidents.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+              </Text>
+              <Dropdown
+                label={t('addQuery.selectSource')}
+                value={selectedSource?.name || ''}
+                options={sourceOptions}
+                onSelect={() => { }} // No-op, field is not editable
+                required={isFieldRequired('source')}
+                error={errors.source}
+                disabled={true}
+              />
+
+              {/* Lookup Fields - Dynamic master data fields */}
+              {lookupCategories.map(category => {
+                const lookupFieldKey = `lookup:${category.code}`;
+                const isRequired = requiredFields.includes(lookupFieldKey);
+
+                // Only show if required by workflow
+                if (!isRequired) return null;
+
+                const options = (category.values || [])
+                  .filter(v => v.is_active)
+                  .map(v => ({
+                    id: v.id,
+                    name: v.name
+                  }));
+
+                return (
+                  <View key={category.id}>
                     <Text style={styles.sectionTitle}>
-                      {t('incidents.priority')} <Text style={styles.required}>*</Text>
+                      {i18n.language === 'en' ? category.name : category?.name_ar} <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label={t('addQuery.selectPriority')}
-                      value={selectedPriority.name}
-                      options={priorityOptions}
-                      onSelect={(opt) => opt && setSelectedPriority(opt)}
-                      allowClear={false}
+                      label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category?.name_ar}`}
+                      value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                      options={options}
+                      onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                      required={isRequired}
+                      error={errors[lookupFieldKey]}
                     />
                   </View>
-                )}
-                {isFieldRequired('severity') && (
-                  <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
-                    <Text style={styles.sectionTitle}>
-                      {t('incidents.severity')} <Text style={styles.required}>*</Text>
-                    </Text>
-                    <Dropdown
-                      label={t('addQuery.selectSeverity')}
-                      value={selectedSeverity.name}
-                      options={severityOptions}
-                      onSelect={(opt) => opt && setSelectedSeverity(opt)}
-                      allowClear={false}
-                    />
-                  </View>
-                )}
-              </View>
-            )}
+                );
+              })}
 
-            {/* Assignee - only show if required */}
-            {isFieldRequired('assignee_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.assignee')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addQuery.selectAssignee')}
-                  value={selectedAssignee?.name || ''}
-                  options={users}
-                  onSelect={setSelectedAssignee}
-                  required={true}
-                  error={errors.assignee_id}
-                />
-              </>
-            )}
-
-            {/* Department - only show if required */}
-            {isFieldRequired('department_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.department')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addQuery.selectDepartment')}
-                  value={selectedDepartment?.name || ''}
-                  options={departments}
-                  onSelect={setSelectedDepartment}
-                  required={true}
-                  error={errors.department_id}
-                />
-              </>
-            )}
-
-            {/* Description - only show if required */}
-            {isFieldRequired('description') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.description')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addQuery.descriptionPlaceholder')}
-                  multiline
-                  value={description}
-                  onChangeText={(text) => {
-                    setDescription(text);
-                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-              </>
-            )}
-
-            {/* Comment - only show if required */}
-            {isFieldRequired('comment') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
-                  multiline
-                  value={comment}
-                  onChangeText={(text) => {
-                    setComment(text);
-                    if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
-              </>
-            )}
-
-            {/* Reporter Name - only show if required */}
-            {isFieldRequired('reporter_name') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addQuery.reporterName')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addQuery.reporterNamePlaceholder')}
-                  value={reporterName}
-                  onChangeText={(text) => {
-                    setReporterName(text);
-                    if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                />
-                {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
-              </>
-            )}
-
-            {/* Reporter Email - only show if required */}
-            {isFieldRequired('reporter_email') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addQuery.reporterEmail')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addQuery.reporterEmailPlaceholder')}
-                  value={reporterEmail}
-                  onChangeText={(text) => {
-                    setReporterEmail(text);
-                    if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
-              </>
-            )}
-
-            {/* Geolocation - only show if required */}
-            {isFieldRequired('geolocation') && (
-              <>
-                <LocationPicker
-                  label={t('details.geolocation', 'Geolocation')}
-                  value={locationData}
-                  onChange={handleLocationChange}
-                  required
-                  autoFetch={true}
-                  error={errors.geolocation}
-                />
-                {/* Show address loading status */}
-                {locationData?.latitude && !locationData?.address && !locationData?.city && (
-                  <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    {t('common.gettingAddress')}
-                  </Text>
-                )}
-                {(locationData?.address || locationData?.city) && (
-                  <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
-                  </Text>
-                )}
-              </>
-            )}
-
-            {/* Attachments Section */}
-            {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.attachments')} <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={[styles.attachmentsContainer, (errors.attachments || errors.attachment) && styles.attachmentsContainerError]}>
-                  {attachments.length > 0 && (
-                    <View style={styles.attachmentsList}>
-                      {attachments.map((file, index) => (
-                        <View key={index} style={styles.attachmentItem}>
-                          <View style={styles.attachmentInfo}>
-                            <Ionicons
-                              name={file.isVoice ? "mic" : "document-attach"}
-                              size={20}
-                              color="#3498DB"
-                            />
-                            <Text style={styles.attachmentName} numberOfLines={1}>
-                              {file.name}
-                            </Text>
-                            {file.size && (
-                              <Text style={styles.attachmentSize}>
-                                ({(file.size / 1024).toFixed(1)} KB)
-                              </Text>
-                            )}
-                            {file.isVoice && file.duration && (
-                              <Text style={styles.attachmentSize}>
-                                ({formatDuration(file.duration)})
-                              </Text>
-                            )}
-                          </View>
-                          <TouchableOpacity onPress={() => removeAttachment(index)}>
-                            <Ionicons name="close-circle" size={22} color="#E74C3C" />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
+              {/* Priority & Severity - only show if either is required */}
+              {(isFieldRequired('priority') || isFieldRequired('severity')) && (
+                <View style={styles.row}>
+                  {isFieldRequired('priority') && (
+                    <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                      <Text style={styles.sectionTitle}>
+                        {t('incidents.priority')} <Text style={styles.required}>*</Text>
+                      </Text>
+                      <Dropdown
+                        label={t('addQuery.selectPriority')}
+                        value={selectedPriority.name}
+                        options={priorityOptions}
+                        onSelect={(opt) => opt && setSelectedPriority(opt)}
+                        allowClear={false}
+                      />
                     </View>
                   )}
-                  {recording ? (
-                    <TouchableOpacity
-                      style={[styles.attachmentButton, styles.recordingButton]}
-                      onPress={stopRecording}
-                    >
-                      <Ionicons name="stop" size={24} color="#EF4444" />
-                      <Text style={[styles.attachmentButtonText, styles.recordingButtonText]}>
-                        {t('addComplaint.stopRecording')} ({formatDuration(recordingDuration)})
+                  {isFieldRequired('severity') && (
+                    <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                      <Text style={styles.sectionTitle}>
+                        {t('incidents.severity')} <Text style={styles.required}>*</Text>
                       </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
-                      <Ionicons name="cloud-upload-outline" size={24} color="#3498DB" />
-                      <Text style={styles.attachmentButtonText}>
-                        {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
-                      </Text>
-                    </TouchableOpacity>
+                      <Dropdown
+                        label={t('addQuery.selectSeverity')}
+                        value={selectedSeverity.name}
+                        options={severityOptions}
+                        onSelect={(opt) => opt && setSelectedSeverity(opt)}
+                        allowClear={false}
+                      />
+                    </View>
                   )}
                 </View>
-                {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
-                {errors.attachment && <Text style={styles.errorText}>{errors.attachment}</Text>}
-              </>
-            )}
+              )}
 
-            <View style={styles.bottomPadding} />
+              {/* Assignee - only show if required */}
+              {isFieldRequired('assignee_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.assignee')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addQuery.selectAssignee')}
+                    value={selectedAssignee?.name || ''}
+                    options={users}
+                    onSelect={setSelectedAssignee}
+                    required={true}
+                    error={errors.assignee_id}
+                  />
+                </>
+              )}
+
+              {/* Department - only show if required */}
+              {isFieldRequired('department_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.department')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addQuery.selectDepartment')}
+                    value={selectedDepartment?.name || ''}
+                    options={departments}
+                    onSelect={setSelectedDepartment}
+                    required={true}
+                    error={errors.department_id}
+                  />
+                </>
+              )}
+
+              {/* Description - only show if required */}
+              {isFieldRequired('description') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.description')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addQuery.descriptionPlaceholder')}
+                    multiline
+                    value={description}
+                    onChangeText={(text) => {
+                      setDescription(text);
+                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                </>
+              )}
+
+              {/* Comment - only show if required */}
+              {isFieldRequired('comment') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
+                    multiline
+                    value={comment}
+                    onChangeText={(text) => {
+                      setComment(text);
+                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                </>
+              )}
+
+              {/* Reporter Name - only show if required */}
+              {isFieldRequired('reporter_name') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addQuery.reporterName')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addQuery.reporterNamePlaceholder')}
+                    value={reporterName}
+                    onChangeText={(text) => {
+                      setReporterName(text);
+                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                  />
+                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                </>
+              )}
+
+              {/* Reporter Email - only show if required */}
+              {isFieldRequired('reporter_email') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addQuery.reporterEmail')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addQuery.reporterEmailPlaceholder')}
+                    value={reporterEmail}
+                    onChangeText={(text) => {
+                      setReporterEmail(text);
+                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                </>
+              )}
+
+              {/* Geolocation - only show if required */}
+              {isFieldRequired('geolocation') && (
+                <>
+                  <LocationPicker
+                    label={t('details.geolocation', 'Geolocation')}
+                    value={locationData}
+                    onChange={handleLocationChange}
+                    required
+                    autoFetch={true}
+                    error={errors.geolocation}
+                  />
+                  {/* Show address loading status */}
+                  {locationData?.latitude && !locationData?.address && !locationData?.city && (
+                    <Text style={{ fontSize: 12, color: '#FF9800', textAlign: "left", marginBottom: 10 }}>
+                      {t('common.gettingAddress')}
+                    </Text>
+                  )}
+                  {(locationData?.address || locationData?.city) && (
+                    <Text style={{ fontSize: 12, color: '#4CAF50', textAlign: "left", marginBottom: 10 }}>
+                      {t('common.locationLabel', { address: locationData.city || locationData.address })}
+                    </Text>
+                  )}
+                </>
+              )}
+
+              {/* Attachments Section */}
+              {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.attachments')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.attachmentsContainer, (errors.attachments || errors.attachment) && styles.attachmentsContainerError]}>
+                    {attachments.length > 0 && (
+                      <View style={styles.attachmentsList}>
+                        {attachments.map((file, index) => (
+                          <View key={index} style={styles.attachmentItem}>
+                            <View style={styles.attachmentInfo}>
+                              <Ionicons
+                                name={file.isVoice ? "mic" : "document-attach"}
+                                size={20}
+                                color="#3498DB"
+                              />
+                              <Text style={styles.attachmentName} numberOfLines={1}>
+                                {file.name}
+                              </Text>
+                              {file.size && (
+                                <Text style={styles.attachmentSize}>
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </Text>
+                              )}
+                              {file.isVoice && file.duration && (
+                                <Text style={styles.attachmentSize}>
+                                  ({formatDuration(file.duration)})
+                                </Text>
+                              )}
+                            </View>
+                            <TouchableOpacity onPress={() => removeAttachment(index)}>
+                              <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {recording ? (
+                      <TouchableOpacity
+                        style={[styles.attachmentButton, styles.recordingButton]}
+                        onPress={stopRecording}
+                      >
+                        <Ionicons name="stop" size={24} color="#EF4444" />
+                        <Text style={[styles.attachmentButtonText, styles.recordingButtonText]}>
+                          {t('addComplaint.stopRecording')} ({formatDuration(recordingDuration)})
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
+                        <Ionicons name="cloud-upload-outline" size={24} color="#3498DB" />
+                        <Text style={styles.attachmentButtonText}>
+                          {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
+                  {errors.attachment && <Text style={styles.errorText}>{errors.attachment}</Text>}
+                </>
+              )}
+
+              <View style={styles.bottomPadding} />
+            </View>
           </ScrollView>
 
           {/* Attachment Picker Modal (Android) */}
@@ -1751,8 +1757,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   formContainer: {
-    flex: 1,
-    padding: 20,
+    flex: 1
   },
   workflowCard: {
     backgroundColor: '#E3F2FD',
@@ -1793,6 +1798,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
+    textAlign: "left"
   },
   required: {
     color: '#E74C3C',

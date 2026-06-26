@@ -72,7 +72,7 @@ const QueryCard = ({ query, t }: { query: Query; t: any }) => {
 
     if (priorityLookup) {
         config = { key: priorityLookup.code.toLowerCase(), color: priorityLookup.color };
-        priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+        priorityText = i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar;
     }
 
     return (
@@ -92,20 +92,20 @@ const QueryCard = ({ query, t }: { query: Query; t: any }) => {
                         <Text style={styles.priorityText}>{priorityText}</Text>
                     </View>
                 </View>
-                <Text style={styles.dateTime}>{new Date(query.created_at).toLocaleString('en-GB')}</Text>
-                <Text style={styles.statusText}>{t('incidents.status')}: {query.current_state?.name || 'N/A'}</Text>
-                <View style={styles.detailRow}>
+                <Text style={[styles.dateTime, { textAlign: "left" }]}>{new Date(query.created_at).toLocaleString('en-GB')}</Text>
+                <Text style={[styles.statusText, { textAlign: "left" }]}>{t('incidents.status')}: {query.current_state?.name || 'N/A'}</Text>
+                <View style={[styles.detailRow]}>
                     <Ionicons name="help-circle" size={16} color={COLORS.query} style={styles.detailIcon} />
-                    <Text style={styles.detailText} numberOfLines={1}>{query.title}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]} numberOfLines={1}>{query.title}</Text>
                 </View>
-                <View style={styles.detailRow}>
+                <View style={[styles.detailRow]}>
                     <Ionicons name="location" size={16} color={COLORS.priority.low} style={styles.detailIcon} />
-                    <Text style={styles.detailText}>{query.location?.name || t('common.noData')}</Text>
+                    <Text style={[styles.detailText, { textAlign: "left" }]}>{query.location?.name || t('common.noData')}</Text>
                 </View>
                 {query.channel && (
-                    <View style={styles.detailRow}>
+                    <View style={[styles.detailRow]}>
                         <Ionicons name="megaphone" size={16} color="#F59E0B" style={styles.detailIcon} />
-                        <Text style={styles.detailText}>{t('queries.channel')}: {query.channel}</Text>
+                        <Text style={[styles.detailText, { textAlign: "left" }]}>{t('queries.channel')}: {query.channel}</Text>
                     </View>
                 )}
             </View>
@@ -274,12 +274,12 @@ const QueriesScreen = () => {
 
     const renderHeader = () => (
         <View style={styles.listHeader}>
-            <Text style={styles.foundText}>
+            <Text style={[styles.foundText, { textAlign: "left" }]}>
                 {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.query').toLowerCase()}`}
                 {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
             </Text>
             {pagination.total_pages > 1 && (
-                <Text style={styles.paginationText}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+                <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
             )}
         </View>
     );
@@ -347,8 +347,8 @@ const QueriesScreen = () => {
                     </View>
                 ) : (
                     <>
-                        <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{headerTitle}</Text>
+                        <View style={[styles.headerTitleContainer]}>
+                            <Text style={[styles.headerTitle, { textAlign: 'left' }]}>{headerTitle}</Text>
                         </View>
                         <View style={styles.headerIcons}>
                             <TouchableOpacity style={styles.headerIcon} onPress={() => router.push({

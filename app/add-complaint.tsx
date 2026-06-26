@@ -85,7 +85,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         onPress={() => setModalVisible(true)}
         disabled={disabled}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
+        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
           {value || label}
         </Text>
         {loading ? (
@@ -281,6 +281,7 @@ const AddComplaintScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeClassifications(node.children) : undefined,
           }));
         };
@@ -308,6 +309,7 @@ const AddComplaintScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -339,6 +341,7 @@ const AddComplaintScreen = () => {
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
+            name_ar: node?.name_ar,
             children: node.children ? normalizeLocations(node.children) : undefined,
           }));
         };
@@ -366,6 +369,7 @@ const AddComplaintScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -751,463 +755,465 @@ const AddComplaintScreen = () => {
       ) : (
         <>
           <ScrollView style={[styles.formContainer, { marginBottom: insets.bottom }]} showsVerticalScrollIndicator={false}>
-            <View style={styles.workflowCard}>
-              <View style={styles.workflowHeader}>
-                <Ionicons name="git-branch" size={20} color="#E74C3C" />
-                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
-              </View>
-              {matchedWorkflow ? (
-                <View style={styles.workflowMatched}>
-                  <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                  <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+            <View style={{ padding: 20 }}>
+              <View style={styles.workflowCard}>
+                <View style={styles.workflowHeader}>
+                  <Ionicons name="git-branch" size={20} color="#E74C3C" />
+                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
                 </View>
-              ) : (
-                <Text style={styles.workflowHint}>
-                  {t('addComplaint.workflowHint')}
-                </Text>
-              )}
-              {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
-            </View>
+                {matchedWorkflow ? (
+                  <View style={styles.workflowMatched}>
+                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.workflowHint}>
+                    {t('addComplaint.workflowHint')}
+                  </Text>
+                )}
+                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
+              </View>
 
-            <Text style={styles.sectionTitle}>
-              {t('addComplaint.title')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-              placeholder={t('addComplaint.titlePlaceholder')}
-              value={title}
-              onChangeText={(text) => {
-                setTitle(text);
-                if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
-              }}
-              placeholderTextColor="#999"
-            />
-            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+              <Text style={styles.sectionTitle}>
+                {t('addComplaint.title')} <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                placeholder={t('addComplaint.titlePlaceholder')}
+                value={title}
+                onChangeText={(text) => {
+                  setTitle(text);
+                  if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                }}
+                placeholderTextColor="#999"
+              />
+              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            {isFieldRequired('channel') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.channel')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addComplaint.selectChannel')}
-                  value={selectedChannel?.name || ''}
-                  options={channelOptions}
-                  onSelect={setSelectedChannel}
-                  required={true}
-                  error={errors.channel}
-                />
-              </>
-            )}
-
-            {isFieldRequired('location_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.location')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TreeSelect
-                  label={t('addIncident.selectLocation')}
-                  value={selectedLocation?.name || ''}
-                  data={locations}
-                  onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
-                  required={true}
-                  error={errors.location_id}
-                  leafOnly={true}
-                  placeholder={t('addIncident.selectLocation')}
-                  iconType="location"
-                />
-              </>
-            )}
-            {
-              isFieldRequired('classification_id') &&
-              (<>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.classification')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TreeSelect
-                  label={t('addIncident.selectClassification')}
-                  value={selectedClassification?.name || ''}
-                  data={classifications}
-                  onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
-                  required={true}
-                  error={errors.classification_id}
-                  leafOnly={true}
-                  placeholder={t('addIncident.selectClassification')}
-                  iconType="classification"
-                />
-              </>)
-            }
-
-            {/* Source field - always mobile for mobile app, non-editable */}
-            <Text style={styles.sectionTitle}>
-              {t('addComplaint.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
-            </Text>
-            <Dropdown
-              label={t('addComplaint.selectSource')}
-              value={selectedSource?.name || ''}
-              options={sourceOptions}
-              onSelect={() => { }} // No-op, field is not editable
-              required={isFieldRequired('source')}
-              error={errors.source}
-              disabled={true}
-            />
-
-            {/* Lookup Fields - Dynamic master data fields */}
-            {lookupCategories.map(category => {
-              const lookupFieldKey = `lookup:${category.code}`;
-              const isRequired = requiredFields.includes(lookupFieldKey);
-
-              // Only show if required by workflow
-              if (!isRequired) return null;
-
-              const options = (category.values || [])
-                .filter(v => v.is_active)
-                .map(v => ({
-                  id: v.id,
-                  name: v.name
-                }));
-
-              return (
-                <View key={category.id}>
+              {isFieldRequired('channel') && (
+                <>
                   <Text style={styles.sectionTitle}>
-                    {category.name} <Text style={styles.required}>*</Text>
+                    {t('addComplaint.channel')} <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={`Select ${category.name.toLowerCase()}`}
-                    value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
-                    options={options}
-                    onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
-                    required={isRequired}
-                    error={errors[lookupFieldKey]}
+                    label={t('addComplaint.selectChannel')}
+                    value={selectedChannel?.name || ''}
+                    options={channelOptions}
+                    onSelect={setSelectedChannel}
+                    required={true}
+                    error={errors.channel}
                   />
-                </View>
-              );
-            })}
+                </>
+              )}
 
-            {(isFieldRequired('priority') || isFieldRequired('severity')) && (
-              <View style={styles.row}>
-                {isFieldRequired('priority') && (
-                  <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
-                    <Text style={styles.sectionTitle}>
-                      {t('addComplaint.priority')} <Text style={styles.required}>*</Text>
-                    </Text>
-                    <Dropdown
-                      label={t('addComplaint.selectPriority')}
-                      value={selectedPriority.name}
-                      options={priorityOptions}
-                      onSelect={(opt) => opt && setSelectedPriority(opt)}
-                      allowClear={false}
-                    />
-                  </View>
-                )}
-                {isFieldRequired('severity') && (
-                  <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
-                    <Text style={styles.sectionTitle}>
-                      {t('addComplaint.severity')} <Text style={styles.required}>*</Text>
-                    </Text>
-                    <Dropdown
-                      label={t('addComplaint.selectSeverity')}
-                      value={selectedSeverity.name}
-                      options={severityOptions}
-                      onSelect={(opt) => opt && setSelectedSeverity(opt)}
-                      allowClear={false}
-                    />
-                  </View>
-                )}
-              </View>
-            )}
-
-            {isFieldRequired('assignee_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.assignee')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addComplaint.selectAssignee')}
-                  value={selectedAssignee?.name || ''}
-                  options={users}
-                  onSelect={setSelectedAssignee}
-                  required={true}
-                  error={errors.assignee_id}
-                />
-              </>
-            )}
-
-            {isFieldRequired('department_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.department')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addComplaint.selectDepartment')}
-                  value={selectedDepartment?.name || ''}
-                  options={departments}
-                  onSelect={setSelectedDepartment}
-                  required={true}
-                  error={errors.department_id}
-                />
-              </>
-            )}
-
-            {isFieldRequired('source_incident_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
-                </Text>
-
-                {/* Dropdown trigger */}
-                <TouchableOpacity
-                  style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
-                  onPress={() => {
-                    setIncidentSearch('');
-                    setIncidentDropdownOpen(true);
-                  }}
-                >
-                  <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText]}>
-                    {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+              {isFieldRequired('location_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.location')} <Text style={styles.required}>*</Text>
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {selectedSourceIncident && (
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          setSelectedSourceIncident(null);
-                          if (errors.source_incident_id) {
-                            setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                          }
-                        }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="close-circle" size={18} color="#999" />
-                      </TouchableOpacity>
-                    )}
-                    {loadingData ? (
-                      <ActivityIndicator size="small" color="#666" />
-                    ) : (
-                      <FontAwesome name="chevron-down" size={16} color="#666" />
-                    )}
+                  <TreeSelect
+                    label={t('addIncident.selectLocation')}
+                    value={selectedLocation?.name || ''}
+                    data={locations}
+                    onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
+                    required={true}
+                    error={errors.location_id}
+                    leafOnly={true}
+                    placeholder={t('addIncident.selectLocation')}
+                    iconType="location"
+                  />
+                </>
+              )}
+              {
+                isFieldRequired('classification_id') &&
+                (<>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TreeSelect
+                    label={t('addIncident.selectClassification')}
+                    value={selectedClassification?.name || ''}
+                    data={classifications}
+                    onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                    required={true}
+                    error={errors.classification_id}
+                    leafOnly={true}
+                    placeholder={t('addIncident.selectClassification')}
+                    iconType="classification"
+                  />
+                </>)
+              }
+
+              {/* Source field - always mobile for mobile app, non-editable */}
+              <Text style={styles.sectionTitle}>
+                {t('addComplaint.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+              </Text>
+              <Dropdown
+                label={t('addComplaint.selectSource')}
+                value={selectedSource?.name || ''}
+                options={sourceOptions}
+                onSelect={() => { }} // No-op, field is not editable
+                required={isFieldRequired('source')}
+                error={errors.source}
+                disabled={true}
+              />
+
+              {/* Lookup Fields - Dynamic master data fields */}
+              {lookupCategories.map(category => {
+                const lookupFieldKey = `lookup:${category.code}`;
+                const isRequired = requiredFields.includes(lookupFieldKey);
+
+                // Only show if required by workflow
+                if (!isRequired) return null;
+
+                const options = (category.values || [])
+                  .filter(v => v.is_active)
+                  .map(v => ({
+                    id: v.id,
+                    name: v.name
+                  }));
+
+                return (
+                  <View key={category.id}>
+                    <Text style={styles.sectionTitle}>
+                      {category.name} <Text style={styles.required}>*</Text>
+                    </Text>
+                    <Dropdown
+                      label={`Select ${category.name.toLowerCase()}`}
+                      value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                      options={options}
+                      onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                      required={isRequired}
+                      error={errors[lookupFieldKey]}
+                    />
                   </View>
-                </TouchableOpacity>
+                );
+              })}
 
-                {errors.source_incident_id && (
-                  <Text style={styles.errorText}>{errors.source_incident_id}</Text>
-                )}
+              {(isFieldRequired('priority') || isFieldRequired('severity')) && (
+                <View style={styles.row}>
+                  {isFieldRequired('priority') && (
+                    <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                      <Text style={styles.sectionTitle}>
+                        {t('addComplaint.priority')} <Text style={styles.required}>*</Text>
+                      </Text>
+                      <Dropdown
+                        label={t('addComplaint.selectPriority')}
+                        value={selectedPriority.name}
+                        options={priorityOptions}
+                        onSelect={(opt) => opt && setSelectedPriority(opt)}
+                        allowClear={false}
+                      />
+                    </View>
+                  )}
+                  {isFieldRequired('severity') && (
+                    <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                      <Text style={styles.sectionTitle}>
+                        {t('addComplaint.severity')} <Text style={styles.required}>*</Text>
+                      </Text>
+                      <Dropdown
+                        label={t('addComplaint.selectSeverity')}
+                        value={selectedSeverity.name}
+                        options={severityOptions}
+                        onSelect={(opt) => opt && setSelectedSeverity(opt)}
+                        allowClear={false}
+                      />
+                    </View>
+                  )}
+                </View>
+              )}
 
-                {/* Incident picker modal */}
-                <Modal
-                  visible={incidentDropdownOpen}
-                  transparent
-                  animationType="slide"
-                  onRequestClose={() => setIncidentDropdownOpen(false)}
-                >
+              {isFieldRequired('assignee_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.assignee')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addComplaint.selectAssignee')}
+                    value={selectedAssignee?.name || ''}
+                    options={users}
+                    onSelect={setSelectedAssignee}
+                    required={true}
+                    error={errors.assignee_id}
+                  />
+                </>
+              )}
+
+              {isFieldRequired('department_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.department')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addComplaint.selectDepartment')}
+                    value={selectedDepartment?.name || ''}
+                    options={departments}
+                    onSelect={setSelectedDepartment}
+                    required={true}
+                    error={errors.department_id}
+                  />
+                </>
+              )}
+
+              {isFieldRequired('source_incident_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
+                  </Text>
+
+                  {/* Dropdown trigger */}
                   <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setIncidentDropdownOpen(false)}
+                    style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
+                    onPress={() => {
+                      setIncidentSearch('');
+                      setIncidentDropdownOpen(true);
+                    }}
                   >
-                    <View style={styles.modalContent}>
-                      <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>
-                          {t('addComplaint.selectSourceIncident')}
-                        </Text>
-                        <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
-                          <Ionicons name="close" size={24} color="#333" />
+                    <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText, { textAlign: "left" }]}>
+                      {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {selectedSourceIncident && (
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setSelectedSourceIncident(null);
+                            if (errors.source_incident_id) {
+                              setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                            }
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#999" />
                         </TouchableOpacity>
-                      </View>
-
-                      {/* Search inside the modal */}
-                      <View style={styles.searchInputContainer}>
-                        <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
-                        <TextInput
-                          style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                          placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
-                          value={incidentSearch}
-                          onChangeText={setIncidentSearch}
-                          placeholderTextColor="#999"
-                          autoFocus
-                        />
-                        {incidentSearch.length > 0 && (
-                          <TouchableOpacity onPress={() => setIncidentSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#999" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-
-                      {/* Results list */}
-                      {filteredIncidents.length === 0 ? (
-                        <View style={styles.emptyList}>
-                          <Text style={styles.emptyText}>
-                            {userIncidents.length === 0
-                              ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
-                              : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
-                          </Text>
-                        </View>
+                      )}
+                      {loadingData ? (
+                        <ActivityIndicator size="small" color="#666" />
                       ) : (
-                        <FlatList
-                          data={filteredIncidents}
-                          keyExtractor={(item) => item.id}
-                          keyboardShouldPersistTaps="handled"
-                          renderItem={({ item }) => (
-                            <TouchableOpacity
-                              style={styles.optionItem}
-                              onPress={() => {
-                                setSelectedSourceIncident(item);
-                                setIncidentDropdownOpen(false);
-                                setIncidentSearch('');
-                                if (errors.source_incident_id) {
-                                  setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                                }
-                              }}
-                            >
-                              <Text style={styles.optionText}>{item.name}</Text>
-                              {selectedSourceIncident?.id === item.id && (
-                                <Ionicons name="checkmark" size={20} color="#E74C3C" />
-                              )}
-                            </TouchableOpacity>
-                          )}
-                        />
+                        <FontAwesome name="chevron-down" size={16} color="#666" />
                       )}
                     </View>
                   </TouchableOpacity>
-                </Modal>
-              </>
-            )}
 
-            {isFieldRequired('description') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.description')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addComplaint.descriptionPlaceholder')}
-                  multiline
-                  value={description}
-                  onChangeText={(text) => {
-                    setDescription(text);
-                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-              </>
-            )}
-
-            {/* Comment - only show if required */}
-            {isFieldRequired('comment') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
-                  multiline
-                  value={comment}
-                  onChangeText={(text) => {
-                    setComment(text);
-                    if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
-              </>
-            )}
-
-            {isFieldRequired('reporter_name') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.reporterName')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addComplaint.reporterNamePlaceholder')}
-                  value={reporterName}
-                  onChangeText={(text) => {
-                    setReporterName(text);
-                    if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                />
-                {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
-              </>
-            )}
-
-            {isFieldRequired('reporter_email') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.reporterEmail')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addComplaint.reporterEmailPlaceholder')}
-                  value={reporterEmail}
-                  onChangeText={(text) => {
-                    setReporterEmail(text);
-                    if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
-              </>
-            )}
-
-            {/* Voice Recording Section */}
-            {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addComplaint.voiceRecording')} <Text style={styles.required}>*</Text>
-                </Text>
-
-                {/* Recorded Audio Files */}
-                {audioFiles.length > 0 && (
-                  <View style={styles.audioList}>
-                    {audioFiles.map((audio, index) => (
-                      <View key={index} style={styles.audioItem}>
-                        <View style={styles.audioInfo}>
-                          <Ionicons name="mic" size={20} color="#3B82F6" />
-                          <Text style={styles.audioText}>
-                            {t('common.recording')} {index + 1} ({formatDuration(audio.duration)})
-                          </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => removeAudio(index)}>
-                          <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Recording Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.recordButton,
-                    recording && styles.recordingButton
-                  ]}
-                  onPress={recording ? stopRecording : startRecording}
-                >
-                  {recording ? (
-                    <>
-                      <Ionicons name="stop" size={24} color="#fff" />
-                      <Text style={styles.recordButtonText}>
-                        {t('addComplaint.stopRecording')} ({formatDuration(recordingDuration)})
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="mic" size={24} color="#fff" />
-                      <Text style={styles.recordButtonText}>{t('addComplaint.startRecording')}</Text>
-                    </>
+                  {errors.source_incident_id && (
+                    <Text style={styles.errorText}>{errors.source_incident_id}</Text>
                   )}
-                </TouchableOpacity>
-              </>
-            )}
 
-            <View style={styles.bottomPadding} />
+                  {/* Incident picker modal */}
+                  <Modal
+                    visible={incidentDropdownOpen}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setIncidentDropdownOpen(false)}
+                  >
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setIncidentDropdownOpen(false)}
+                    >
+                      <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>
+                            {t('addComplaint.selectSourceIncident')}
+                          </Text>
+                          <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
+                            <Ionicons name="close" size={24} color="#333" />
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Search inside the modal */}
+                        <View style={styles.searchInputContainer}>
+                          <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
+                          <TextInput
+                            style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                            placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
+                            value={incidentSearch}
+                            onChangeText={setIncidentSearch}
+                            placeholderTextColor="#999"
+                            autoFocus
+                          />
+                          {incidentSearch.length > 0 && (
+                            <TouchableOpacity onPress={() => setIncidentSearch('')}>
+                              <Ionicons name="close-circle" size={18} color="#999" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        {/* Results list */}
+                        {filteredIncidents.length === 0 ? (
+                          <View style={styles.emptyList}>
+                            <Text style={styles.emptyText}>
+                              {userIncidents.length === 0
+                                ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
+                                : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
+                            </Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={filteredIncidents}
+                            keyExtractor={(item) => item.id}
+                            keyboardShouldPersistTaps="handled"
+                            renderItem={({ item }) => (
+                              <TouchableOpacity
+                                style={styles.optionItem}
+                                onPress={() => {
+                                  setSelectedSourceIncident(item);
+                                  setIncidentDropdownOpen(false);
+                                  setIncidentSearch('');
+                                  if (errors.source_incident_id) {
+                                    setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                                  }
+                                }}
+                              >
+                                <Text style={styles.optionText}>{item.name}</Text>
+                                {selectedSourceIncident?.id === item.id && (
+                                  <Ionicons name="checkmark" size={20} color="#E74C3C" />
+                                )}
+                              </TouchableOpacity>
+                            )}
+                          />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </Modal>
+                </>
+              )}
+
+              {isFieldRequired('description') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.description')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addComplaint.descriptionPlaceholder')}
+                    multiline
+                    value={description}
+                    onChangeText={(text) => {
+                      setDescription(text);
+                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                </>
+              )}
+
+              {/* Comment - only show if required */}
+              {isFieldRequired('comment') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
+                    multiline
+                    value={comment}
+                    onChangeText={(text) => {
+                      setComment(text);
+                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                </>
+              )}
+
+              {isFieldRequired('reporter_name') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.reporterName')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addComplaint.reporterNamePlaceholder')}
+                    value={reporterName}
+                    onChangeText={(text) => {
+                      setReporterName(text);
+                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                  />
+                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                </>
+              )}
+
+              {isFieldRequired('reporter_email') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.reporterEmail')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addComplaint.reporterEmailPlaceholder')}
+                    value={reporterEmail}
+                    onChangeText={(text) => {
+                      setReporterEmail(text);
+                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                </>
+              )}
+
+              {/* Voice Recording Section */}
+              {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addComplaint.voiceRecording')} <Text style={styles.required}>*</Text>
+                  </Text>
+
+                  {/* Recorded Audio Files */}
+                  {audioFiles.length > 0 && (
+                    <View style={styles.audioList}>
+                      {audioFiles.map((audio, index) => (
+                        <View key={index} style={styles.audioItem}>
+                          <View style={styles.audioInfo}>
+                            <Ionicons name="mic" size={20} color="#3B82F6" />
+                            <Text style={styles.audioText}>
+                              {t('common.recording')} {index + 1} ({formatDuration(audio.duration)})
+                            </Text>
+                          </View>
+                          <TouchableOpacity onPress={() => removeAudio(index)}>
+                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Recording Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.recordButton,
+                      recording && styles.recordingButton
+                    ]}
+                    onPress={recording ? stopRecording : startRecording}
+                  >
+                    {recording ? (
+                      <>
+                        <Ionicons name="stop" size={24} color="#fff" />
+                        <Text style={styles.recordButtonText}>
+                          {t('addComplaint.stopRecording')} ({formatDuration(recordingDuration)})
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="mic" size={24} color="#fff" />
+                        <Text style={styles.recordButtonText}>{t('addComplaint.startRecording')}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+
+              <View style={styles.bottomPadding} />
+            </View>
           </ScrollView>
 
           <View style={[styles.submitContainer, { paddingBottom: insets.bottom + 10 }]}>
@@ -1261,7 +1267,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    padding: 20,
+    // padding: 20,
   },
   workflowCard: {
     backgroundColor: '#FDEAEA',
@@ -1302,6 +1308,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
+    textAlign: "left"
   },
   required: {
     color: '#E74C3C',
@@ -1339,7 +1346,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   placeholderText: {
-    color: '#999',
+    color: '#999'
   },
   row: {
     flexDirection: 'row',

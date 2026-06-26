@@ -50,11 +50,12 @@ const DISABLE_AUTO_LOCATION_RETRIEVAL =
 
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
-  levels: { name: string; type: string }[];
+  levels: { name: string; type: string; name_ar: string }[];
   /** Index in levels[] where we start creating (levels before this index already exist). */
   startLevelIndex: number;
   virtualId: string;
   name: string;
+  name_ar: string;
   parent_id?: string;
 }
 
@@ -109,7 +110,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         style={[styles.dropdown, error && styles.dropdownError]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
+        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
           {value || label}
         </Text>
         {loading ? (
@@ -351,6 +352,7 @@ const AddIncidentScreen = () => {
               id: String(node.id),
               name: node.name,
               parent_id: node.parent_id ? String(node.parent_id) : null,
+              name_ar: node?.name_ar
             };
 
             if (node.children && node.children.length > 0) {
@@ -388,6 +390,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -417,6 +420,7 @@ const AddIncidentScreen = () => {
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             children: node.children ? normalizeLocations(node.children) : undefined,
+            name_ar: node?.name_ar,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
@@ -444,6 +448,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -570,6 +575,7 @@ const AddIncidentScreen = () => {
       chain = {
         id: nodeId,
         name: level.name,
+        name_ar: level?.name_ar,
         type: level.type,
         children: chain ? [chain] : undefined,
       };
@@ -710,10 +716,10 @@ const AddIncidentScreen = () => {
           // For multiselect, check if array is empty
           if (category.field_type === 'multiselect') {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+              newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
             }
           } else if (!value) {
-            newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+            newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
           }
         }
         continue;
@@ -1646,324 +1652,326 @@ const AddIncidentScreen = () => {
         </View>
       ) : (
         <>
-          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView style={[styles.formContainer]} showsVerticalScrollIndicator={false}>
             {/* Auto-matched Workflow Display */}
-            <View style={styles.workflowCard}>
-              <View style={styles.workflowHeader}>
-                <Ionicons name="git-branch" size={20} color="#2EC4B6" />
-                <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
+            <View style={{ padding: 20 }}>
+              <View style={[styles.workflowCard]}>
+                <View style={styles.workflowHeader}>
+                  <Ionicons name="git-branch" size={20} color="#2EC4B6" />
+                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
+                </View>
+                {matchedWorkflow ? (
+                  <View style={styles.workflowMatched}>
+                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.workflowHint}>
+                    Select classification, location, or source to auto-match a workflow
+                  </Text>
+                )}
+                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
               </View>
-              {matchedWorkflow ? (
-                <View style={styles.workflowMatched}>
-                  <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                  <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
-                </View>
-              ) : (
-                <Text style={styles.workflowHint}>
-                  Select classification, location, or source to auto-match a workflow
-                </Text>
-              )}
-              {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
-            </View>
 
-            {/* Title - Auto-generated */}
-            <Text style={styles.sectionTitle}>
-              {t('addIncident.incidentTitle')} <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
-              <Text style={[styles.autoGeneratedText, !title && styles.placeholderText]}>
-                {title || t('incidents.titlePlaceholder')}
+              {/* Title - Auto-generated */}
+              <Text style={styles.sectionTitle}>
+                {t('addIncident.incidentTitle')} <Text style={styles.required}>*</Text>
               </Text>
-              <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
-            </View>
-            <Text style={styles.helperText}>
-              {t('incidents.autoTitle')}
-            </Text>
-            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
-
-            {/* Classification - Always required on mobile */}
-            <Text style={styles.sectionTitle}>
-              {t('incidents.classification')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TreeSelect
-              label={t('addIncident.selectClassification')}
-              value={selectedClassification?.name || ''}
-              valueId={selectedClassification?.id}
-              data={classifications}
-              onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
-              required={true}
-              error={errors.classification_id}
-              leafOnly={true}
-              placeholder={t('addIncident.selectClassification')}
-              iconType="classification"
-            />
-
-            {/* Location - Always required on mobile */}
-            <Text style={styles.sectionTitle}>
-              {t('incidents.location')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TreeSelect
-              label={t('addIncident.selectLocation')}
-              value={selectedLocation?.name || ''}
-              valueId={selectedLocation?.id !== 'virtual_new_location' ? selectedLocation?.id : undefined}
-              data={locationsWithVirtual}
-              onSelect={(node) => {
-                setSelectedLocation(node as DropdownOption | null);
-                // User manually selected from the dropdown — clear any pending auto-matched location
-                setPendingNewLocation(null);
-                lastProcessedGeoRef.current = null;
-              }}
-              required={true}
-              error={errors.location_id}
-              leafOnly={true}
-              placeholder={t('addIncident.selectLocation')}
-              iconType="location"
-              disabled={!DISABLE_AUTO_LOCATION_RETRIEVAL}
-            />
-
-            {/* Source - Always mobile for mobile app, non-editable, Always required */}
-            <Text style={styles.sectionTitle}>
-              {t('addIncident.source')} <Text style={styles.required}>*</Text>
-            </Text>
-            <Dropdown
-              label={t('addIncident.selectSource')}
-              value={selectedSource?.name || ''}
-              options={sourceOptions}
-              onSelect={() => { }} // No-op, field is not editable on mobile
-              required={true}
-              error={errors.source}
-              allowClear={false}
-            />
-
-            {/* Lookup Fields - Dynamic master data fields */}
-            {lookupCategories.map(category => {
-              const lookupFieldKey = `lookup:${category.code}`;
-              const isRequired = requiredFields.includes(lookupFieldKey);
-              // Only show if required by workflow
-              if (!isRequired) return null;
-
-              return (
-                <DynamicLookupField
-                  key={category.id}
-                  category={category}
-                  value={lookupValues[category.id]}
-                  onChange={handleLookupChange}
-                  required={isRequired}
-                  error={errors[lookupFieldKey]}
-                />
-              );
-            })}
-
-            {/* Severity - Only show if required by workflow */}
-            {isFieldRequired('severity') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.severity')} <Text style={styles.required}>*</Text>
+              <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
+                <Text style={[styles.autoGeneratedText, !title && styles.placeholderText, { textAlign: 'left' }]}>
+                  {title || t('incidents.titlePlaceholder')}
                 </Text>
-                <Dropdown
-                  label={t('addIncident.selectSeverity')}
-                  value={selectedSeverity.name}
-                  options={severityOptions}
-                  onSelect={(opt) => opt && setSelectedSeverity(opt)}
-                  allowClear={false}
-                  error={errors.severity}
-                />
-              </>
-            )}
+                <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
+              </View>
+              <Text style={styles.helperText}>
+                {t('incidents.autoTitle')}
+              </Text>
+              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
 
-            {/* Assignee - only show if required */}
-            {isFieldRequired('assignee_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.assignee')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addIncident.selectAssignee')}
-                  value={selectedAssignee?.name || ''}
-                  options={users}
-                  onSelect={setSelectedAssignee}
-                  required={true}
-                  error={errors.assignee_id}
-                />
-              </>
-            )}
+              {/* Classification - Always required on mobile */}
+              <Text style={styles.sectionTitle}>
+                {t('incidents.classification')} <Text style={styles.required}>*</Text>
+              </Text>
+              <TreeSelect
+                label={t('addIncident.selectClassification')}
+                value={selectedClassification?.name || ''}
+                valueId={selectedClassification?.id}
+                data={classifications}
+                onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                required={true}
+                error={errors.classification_id}
+                leafOnly={true}
+                placeholder={t('addIncident.selectClassification')}
+                iconType="classification"
+              />
 
-            {/* Department - only show if required */}
-            {isFieldRequired('department_id') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.department')} <Text style={styles.required}>*</Text>
-                </Text>
-                <Dropdown
-                  label={t('addIncident.selectDepartment')}
-                  value={selectedDepartment?.name || ''}
-                  options={departments}
-                  onSelect={setSelectedDepartment}
-                  required={true}
-                  error={errors.department_id}
-                />
-              </>
-            )}
+              {/* Location - Always required on mobile */}
+              <Text style={styles.sectionTitle}>
+                {t('incidents.location')} <Text style={styles.required}>*</Text>
+              </Text>
+              <TreeSelect
+                label={t('addIncident.selectLocation')}
+                value={selectedLocation?.name || ''}
+                valueId={selectedLocation?.id !== 'virtual_new_location' ? selectedLocation?.id : undefined}
+                data={locationsWithVirtual}
+                onSelect={(node) => {
+                  setSelectedLocation(node as DropdownOption | null);
+                  // User manually selected from the dropdown — clear any pending auto-matched location
+                  setPendingNewLocation(null);
+                  lastProcessedGeoRef.current = null;
+                }}
+                required={true}
+                error={errors.location_id}
+                leafOnly={true}
+                placeholder={t('addIncident.selectLocation')}
+                iconType="location"
+                disabled={!DISABLE_AUTO_LOCATION_RETRIEVAL}
+              />
 
-            {/* Description - only show if required */}
-            {isFieldRequired('description') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.description')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addIncident.descriptionPlaceholder')}
-                  multiline
-                  value={description}
-                  onChangeText={(text) => {
-                    setDescription(text);
-                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-              </>
-            )}
+              {/* Source - Always mobile for mobile app, non-editable, Always required */}
+              <Text style={styles.sectionTitle}>
+                {t('addIncident.source')} <Text style={styles.required}>*</Text>
+              </Text>
+              <Dropdown
+                label={t('addIncident.selectSource')}
+                value={selectedSource?.name || ''}
+                options={sourceOptions}
+                onSelect={() => { }} // No-op, field is not editable on mobile
+                required={true}
+                error={errors.source}
+                allowClear={false}
+              />
 
-            {/* Comment - only show if required */}
-            {isFieldRequired('comment') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.comment')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
-                  multiline
-                  value={comment}
-                  onChangeText={(text) => {
-                    setComment(text);
-                    if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  textAlignVertical="top"
-                />
-                {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
-              </>
-            )}
+              {/* Lookup Fields - Dynamic master data fields */}
+              {lookupCategories.map(category => {
+                const lookupFieldKey = `lookup:${category.code}`;
+                const isRequired = requiredFields.includes(lookupFieldKey);
+                // Only show if required by workflow
+                if (!isRequired) return null;
 
-            {/* Reporter Name - only show if required */}
-            {isFieldRequired('reporter_name') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addIncident.reporterName')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addIncident.reporterNamePlaceholder')}
-                  value={reporterName}
-                  onChangeText={(text) => {
-                    setReporterName(text);
-                    if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                />
-                {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
-              </>
-            )}
+                return (
+                  <DynamicLookupField
+                    key={category.id}
+                    category={category}
+                    value={lookupValues[category.id]}
+                    onChange={handleLookupChange}
+                    required={isRequired}
+                    error={errors[lookupFieldKey]}
+                  />
+                );
+              })}
 
-            {/* Reporter Email - only show if required */}
-            {isFieldRequired('reporter_email') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('addIncident.reporterEmail')} <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                  placeholder={t('addIncident.reporterEmailPlaceholder')}
-                  value={reporterEmail}
-                  onChangeText={(text) => {
-                    setReporterEmail(text);
-                    if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
-                  }}
-                  placeholderTextColor="#999"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
-              </>
-            )}
-
-            {/* Geolocation - only show if required */}
-            {isFieldRequired('geolocation') && (
-              <>
-                <LocationPicker
-                  label={t('details.geolocation')}
-                  value={locationData}
-                  onChange={handleLocationChange}
-                  onGpsLocation={(loc) => { gpsLocationRef.current = loc; }}
-                  required
-                  autoFetch={true}
-                  error={errors.geolocation}
-                />
-                {/* Show address loading status */}
-                {locationData?.latitude && !locationData?.address && !locationData?.city && (
-                  <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 4, marginLeft: 4 }}>
-                    {t('common.gettingAddress')}
+              {/* Severity - Only show if required by workflow */}
+              {isFieldRequired('severity') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.severity')} <Text style={styles.required}>*</Text>
                   </Text>
-                )}
-                {(locationData?.address || locationData?.city) && (
-                  <Text style={{ fontSize: 12, color: '#4CAF50', marginTop: 4, marginLeft: 4 }}>
-                    {t('common.locationLabel', { address: locationData.city || locationData.address })}
-                  </Text>
-                )}
-              </>
-            )}
+                  <Dropdown
+                    label={t('addIncident.selectSeverity')}
+                    value={selectedSeverity.name}
+                    options={severityOptions}
+                    onSelect={(opt) => opt && setSelectedSeverity(opt)}
+                    allowClear={false}
+                    error={errors.severity}
+                  />
+                </>
+              )}
 
-            {/* Attachments - only show if required */}
-            {isFieldRequired('attachments') && (
-              <>
-                <Text style={styles.sectionTitle}>
-                  {t('incidents.attachments')} <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError, { marginBottom: insets.bottom }]}>
-                  {attachments.length > 0 && (
-                    <View style={styles.attachmentsList}>
-                      {attachments.map((file, index) => (
-                        <View key={index} style={styles.attachmentItem}>
-                          <TouchableOpacity
-                            style={styles.attachmentInfo}
-                            onPress={() => openImagePreview(index)}
-                            activeOpacity={file.type?.startsWith('image/') ? 0.6 : 1}
-                          >
-                            <Ionicons
-                              name={file.type?.startsWith('image/') ? 'image-outline' : 'document-attach'}
-                              size={20}
-                              color="#2EC4B6"
-                            />
-                            <Text style={styles.attachmentName} numberOfLines={1}>
-                              {file.name}
-                            </Text>
-                            <Text style={styles.attachmentSize}>
-                              ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => removeAttachment(index)}>
-                            <Ionicons name="close-circle" size={22} color="#E74C3C" />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  <TouchableOpacity style={[styles.attachmentButton]} onPress={handleTakePhoto}>
-                    <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
-                    <Text style={styles.attachmentButtonText}>
-                      {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+              {/* Assignee - only show if required */}
+              {isFieldRequired('assignee_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.assignee')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addIncident.selectAssignee')}
+                    value={selectedAssignee?.name || ''}
+                    options={users}
+                    onSelect={setSelectedAssignee}
+                    required={true}
+                    error={errors.assignee_id}
+                  />
+                </>
+              )}
+
+              {/* Department - only show if required */}
+              {isFieldRequired('department_id') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.department')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <Dropdown
+                    label={t('addIncident.selectDepartment')}
+                    value={selectedDepartment?.name || ''}
+                    options={departments}
+                    onSelect={setSelectedDepartment}
+                    required={true}
+                    error={errors.department_id}
+                  />
+                </>
+              )}
+
+              {/* Description - only show if required */}
+              {isFieldRequired('description') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.description')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addIncident.descriptionPlaceholder')}
+                    multiline
+                    value={description}
+                    onChangeText={(text) => {
+                      setDescription(text);
+                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                </>
+              )}
+
+              {/* Comment - only show if required */}
+              {isFieldRequired('comment') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
+                    multiline
+                    value={comment}
+                    onChangeText={(text) => {
+                      setComment(text);
+                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    textAlignVertical="top"
+                  />
+                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                </>
+              )}
+
+              {/* Reporter Name - only show if required */}
+              {isFieldRequired('reporter_name') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addIncident.reporterName')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addIncident.reporterNamePlaceholder')}
+                    value={reporterName}
+                    onChangeText={(text) => {
+                      setReporterName(text);
+                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                  />
+                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                </>
+              )}
+
+              {/* Reporter Email - only show if required */}
+              {isFieldRequired('reporter_email') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('addIncident.reporterEmail')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
+                    placeholder={t('addIncident.reporterEmailPlaceholder')}
+                    value={reporterEmail}
+                    onChangeText={(text) => {
+                      setReporterEmail(text);
+                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                    }}
+                    placeholderTextColor="#999"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                </>
+              )}
+
+              {/* Geolocation - only show if required */}
+              {isFieldRequired('geolocation') && (
+                <>
+                  <LocationPicker
+                    label={t('details.geolocation')}
+                    value={locationData}
+                    onChange={handleLocationChange}
+                    onGpsLocation={(loc) => { gpsLocationRef.current = loc; }}
+                    required
+                    autoFetch={true}
+                    error={errors.geolocation}
+                  />
+                  {/* Show address loading status */}
+                  {locationData?.latitude && !locationData?.address && !locationData?.city && (
+                    <Text style={{ fontSize: 12, color: '#FF9800', textAlign: "left", marginBottom: 10 }}>
+                      {t('common.gettingAddress')}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-                {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
-              </>
-            )}
+                  )}
+                  {(locationData?.address || locationData?.city) && (
+                    <Text style={{ fontSize: 12, color: '#4CAF50', textAlign: "left", marginBottom: 10 }}>
+                      {t('common.locationLabel', { address: locationData.city || locationData.address })}
+                    </Text>
+                  )}
+                </>
+              )}
 
-            <View style={styles.bottomPadding} />
+              {/* Attachments - only show if required */}
+              {isFieldRequired('attachments') && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t('incidents.attachments')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError, { marginBottom: insets.bottom }]}>
+                    {attachments.length > 0 && (
+                      <View style={styles.attachmentsList}>
+                        {attachments.map((file, index) => (
+                          <View key={index} style={styles.attachmentItem}>
+                            <TouchableOpacity
+                              style={styles.attachmentInfo}
+                              onPress={() => openImagePreview(index)}
+                              activeOpacity={file.type?.startsWith('image/') ? 0.6 : 1}
+                            >
+                              <Ionicons
+                                name={file.type?.startsWith('image/') ? 'image-outline' : 'document-attach'}
+                                size={20}
+                                color="#2EC4B6"
+                              />
+                              <Text style={styles.attachmentName} numberOfLines={1}>
+                                {file.name}
+                              </Text>
+                              <Text style={styles.attachmentSize}>
+                                ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => removeAttachment(index)}>
+                              <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <TouchableOpacity style={[styles.attachmentButton]} onPress={handleTakePhoto}>
+                      <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
+                      <Text style={styles.attachmentButtonText}>
+                        {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
+                </>
+              )}
+
+              <View style={styles.bottomPadding} />
+            </View>
           </ScrollView>
 
           {/* Attachment Picker Modal (Android) */}
@@ -2152,7 +2160,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    padding: 20,
+    // padding: 20,
   },
   workflowCard: {
     backgroundColor: '#E8F8F7',
@@ -2193,6 +2201,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
+    textAlign: 'left'
   },
   required: {
     color: '#E74C3C',
@@ -2232,6 +2241,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: -15,
     marginBottom: 15,
+    textAlign: 'left'
   },
   placeholderText: {
     color: '#999',
@@ -2311,6 +2321,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
+    textAlign: "left"
   },
   // Modal styles
   modalOverlay: {

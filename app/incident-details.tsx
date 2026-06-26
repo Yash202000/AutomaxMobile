@@ -4,6 +4,7 @@ import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { useAuth } from '@/src/context/AuthContext';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -70,10 +71,10 @@ interface IncidentData {
   description?: string;
   classification?: { id: string; name: string };
   classification_id?: string;
-  current_state?: { id: string; name: string };
+  current_state?: { id: string; name: string; name_ar: string };
   department?: { id: string; name: string };
   department_id?: string;
-  location?: { id: string; name: string; address?: string };
+  location?: { id: string; name: string; address?: string; name_ar: string };
   location_id?: string;
   assignee?: { id: string; first_name?: string; last_name?: string; phone?: string };
   assignee_id?: string;
@@ -212,6 +213,8 @@ const IncidentDetailsScreen = () => {
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
   const isDefaultLocation = incident?.location?.name?.trim().toLowerCase() === 'default';
+
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -415,10 +418,22 @@ const IncidentDetailsScreen = () => {
   const config = priorityConfig[incident.priority as number] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   return (
     <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <ImageBackground
+        source={
+          isViewerMode
+            ? require("@/assets/images/viewerBackground.png")
+            : require("@/assets/images/background.png")
+        }
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -439,13 +454,13 @@ const IncidentDetailsScreen = () => {
                 <Ionicons name="flag" size={12} color={COLORS.white} />
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
               </View> */}
-              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString()}</Text>
+              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString('en-GB')}</Text>
             </View>
             <Text style={styles.incidentTitle}>{incident.title}</Text>
             {incident.current_state && (
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{incident.current_state.name}</Text>
+                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
               </View>
             )}
           </View>
@@ -509,7 +524,7 @@ const IncidentDetailsScreen = () => {
                           },
                         ]}
                       >
-                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value.name_ar || '')} style={styles.descriptionText} />
+                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value?.name_ar || '')} style={styles.descriptionText} />
                       </View>
                     ))}
                   </View>
@@ -529,7 +544,7 @@ const IncidentDetailsScreen = () => {
                   if (key.startsWith('lookup:')) {
                     allFields.push({
                       key,
-                      label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),
+                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
                       value: fieldData.value,
                       field_type: fieldData.field_type || 'text',
                     });
@@ -541,7 +556,7 @@ const IncidentDetailsScreen = () => {
                   if (field.field_type === 'checkbox') {
                     displayValue = field.value ? t('common.yes') : t('common.no');
                   } else if (field.field_type === 'date' && field.value) {
-                    displayValue = new Date(field.value).toLocaleDateString();
+                    displayValue = new Date(field.value).toLocaleDateString('en-GB');
                   }
 
                   return (
@@ -729,7 +744,7 @@ const IncidentDetailsScreen = () => {
               {incident.address && (
                 <View style={styles.addressContainer}>
                   <Ionicons name="location" size={16} color={COLORS.error} />
-                  <Text style={styles.addressText}>{incident.address}</Text>
+                  <Text style={[styles.addressText, { textAlign: "left" }]}>{incident.address}</Text>
                 </View>
               )}
               <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
@@ -846,16 +861,16 @@ const IncidentDetailsScreen = () => {
                     <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
                       <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString()}
+                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
                       </Text>
                     </View>
                     <View style={styles.transitionBadges}>
                       <View style={styles.fromBadge}>
-                        <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
+                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state?.name_ar) ? item.from_state?.name_ar : item.from_state.name}</Text>
                       </View>
                       <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
                       <View style={styles.toBadge}>
-                        <Text style={styles.toBadgeText}>{item.to_state.name}</Text>
+                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state?.name_ar) ? item.to_state?.name_ar : item.to_state.name}</Text>
                       </View>
                     </View>
                     {item.comment && (
@@ -870,6 +885,31 @@ const IncidentDetailsScreen = () => {
                         <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
                       </View>
                     )}
+                    {
+                      item?.feedbacks?.rating > 0 && item?.transition?.is_final_close &&
+                      (
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                          {[
+                            ...Array(5).keys(),
+                          ].map((i) => (
+                            <Ionicons
+                              key={i}
+                              name={
+                                i <= item.feedbacks?.rating
+                                  ? "star"
+                                  : "star-outline"
+                              }
+                              size={14}
+                              color={
+                                i <= item.feedbacks?.rating
+                                  ? "#FFD700"
+                                  : "#CCC"
+                              }
+                            />
+                          ))}
+                        </View>
+                      )
+                    }
                   </View>
                 </View>
               ))}
@@ -903,7 +943,7 @@ const IncidentDetailsScreen = () => {
         {/* Update Status Button */}
         {availableTransitions.length > 0 && (
           <TouchableOpacity
-            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled]}
+            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled, { bottom: insets.bottom }]}
             onPress={handleUpdateStatusPress}
             activeOpacity={isDefaultLocation ? 1 : 0.8}
           >
@@ -961,7 +1001,7 @@ const styles = StyleSheet.create({
   priorityBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, gap: 4 },
   priorityBadgeText: { color: COLORS.white, fontSize: 11, fontWeight: 'bold' },
   dateText: { fontSize: 12, color: COLORS.text.muted },
-  incidentTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 8 },
+  incidentTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text.primary, marginBottom: 8, textAlign: "left" },
   statusContainer: { flexDirection: 'row', alignItems: 'center' },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
   statusText: { fontSize: 14, color: COLORS.accent, fontWeight: '600' },
@@ -982,14 +1022,14 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, color: COLORS.text.secondary },
   infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary, maxWidth: '50%', textAlign: 'right' },
 
-  descriptionText: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22 },
+  descriptionText: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22, textAlign: 'left' },
 
   reporterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 12, padding: 12 },
   reporterAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
   reporterAvatarText: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   reporterInfo: { flex: 1, marginLeft: 12 },
-  reporterName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
-  reporterEmail: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2 },
+  reporterName: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary, textAlign: "left" },
+  reporterEmail: { fontSize: 12, color: COLORS.text.secondary, marginTop: 2, textAlign: "left" },
   reporterActions: { flexDirection: 'row', gap: 8 },
   reporterActionButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
 
@@ -998,9 +1038,9 @@ const styles = StyleSheet.create({
   commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
   commentAvatarText: { color: COLORS.white, fontSize: 13, fontWeight: 'bold' },
   commentMeta: { marginLeft: 10 },
-  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary },
+  commentAuthor: { fontSize: 13, fontWeight: '600', color: COLORS.text.primary, textAlign: "left" },
   commentDate: { fontSize: 11, color: COLORS.text.muted },
-  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20 },
+  commentContent: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 20, textAlign: "left", marginLeft: 42 },
   seeMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1077,14 +1117,14 @@ const styles = StyleSheet.create({
   timelineDot: { width: 12, height: 12, borderRadius: 6 },
   timelineLine: { width: 2, flex: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timelineContent: { flex: 1, paddingBottom: 20 },
-  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  transitionBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: "wrap", width: "100%" },
   fromBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   fromBadgeText: { fontSize: 12, color: COLORS.error, fontWeight: '600' },
   toBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   toBadgeText: { fontSize: 12, color: '#059669', fontWeight: '600' },
   transitionMeta: { fontSize: 12, color: COLORS.text.muted },
-  transitionComment: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, gap: 6 },
-  transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
+  transitionComment: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 8, gap: 6, textAlign: "left" },
+  transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1, textAlign: "left" },
 
   actionButtonsContainer: {
     position: 'absolute',
@@ -1094,7 +1134,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   updateButton: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
+    position: 'absolute', left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({

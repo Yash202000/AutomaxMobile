@@ -2,6 +2,7 @@
   "common": {
     "share": "Share",
     "stateChanged": "State changed",
+    "date": "Date",
     "system": "System",
     "fetchingLoc": "Please wait while we fetch your location..",
     "validationError": "Validation Error",
@@ -293,6 +294,7 @@
     "myIncidents": "My Incidents",
     "newIncident": "New Incident",
     "addIncident": "Add Incident",
+    "feedbackCommentRequiredError": "Please provide a feedback comment for this transition.",
     "incidentDetails": "Incident Details",
     "incidentNumber": "Incident Number",
     "status": "Status",
@@ -427,6 +429,7 @@
       "manual": "Manual Entry",
       "viusional": "Viusional",
       "chatbot": "Chat bot",
+      "ivr": "IVR",
       "other": "Other"
     },
     "channels": {
@@ -834,7 +837,7 @@
       "email": "Email"
     },
     "toggle": "Push Notifications",
-    "toggleDescription": "Receive alerts for new incidents and updates"
+    "toggleDescription": "Receive alerts for incidents and updates"
   },
   "locationPicker": {
     "loadingMap": "Loading map...",
@@ -847,6 +850,7 @@
     "street": "Street:",
     "district": "District:",
     "municipality": "Municipality:",
-    "planNo": "Plan No:"
+    "planNo": "Plan No:",
+    "neighbourhood": "Neighbourhood"
   }
 }

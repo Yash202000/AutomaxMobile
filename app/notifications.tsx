@@ -377,11 +377,13 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         color: "#333",
         marginBottom: 4,
+        textAlign: "left"
     },
     body: {
         fontSize: 14,
         color: "#666",
         lineHeight: 18,
+        textAlign: "left"
     },
     recipientText: {
         fontSize: 12,
