@@ -163,9 +163,18 @@ function RootLayoutNav() {
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup && segments[0] !== 'otp') {
       // Redirect to tabs if authenticated and in auth group (except OTP)
-      router.replace('/(tabs)/explore');
+      const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+      const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
+      const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+      const isViewerMode = isViewerApp && isViewerRole;
+
+      if (isViewerMode) {
+        router.replace('/(tabs)/incident');
+      } else {
+        router.replace('/(tabs)/explore');
+      }
     }
-  }, [isAuthenticated, isLoading, segments, isLoggingOut]);
+  }, [isAuthenticated, isLoading, segments, isLoggingOut, user]);
 
   useEffect(() => {
     createChannel();

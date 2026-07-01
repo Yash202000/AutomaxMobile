@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
 const TAB_BAR_HEIGHT = 70;
@@ -31,11 +32,19 @@ export default function TabLayout() {
     canCreateQueries,
   } = usePermissions();
 
+  const { user } = useAuth();
+
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   const tabBarHeight =
     TAB_BAR_HEIGHT + (insets.bottom > 0 ? insets.bottom - 10 : 0);
 
   return (
     <Tabs
+      backBehavior={isViewerMode ? 'none' : 'firstRoute'}
       screenOptions={{
         tabBarActiveTintColor: "#2EC4B6",
         tabBarInactiveTintColor: "#94A3B8",
@@ -94,6 +103,7 @@ export default function TabLayout() {
               />
             </View>
           ),
+          href: isViewerMode ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -115,7 +125,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            canViewIncidents() || canViewAllIncidents() || canCreateIncidents()
+            isViewerMode || canViewIncidents() || canViewAllIncidents() || canCreateIncidents()
               ? "/(tabs)/incident"
               : null,
         }}
@@ -139,7 +149,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            canViewRequests() || canViewAllRequests() || canCreateRequests()
+            !isViewerMode && (canViewRequests() || canViewAllRequests() || canCreateRequests())
               ? "/(tabs)/request"
               : null,
         }}
@@ -167,9 +177,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            canViewComplaints() ||
-              canViewAllComplaints() ||
-              canCreateComplaints()
+            !isViewerMode && (canViewComplaints() || canViewAllComplaints() || canCreateComplaints())
               ? "/(tabs)/complaint"
               : null,
         }}
@@ -193,7 +201,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            canViewQueries() || canViewAllQueries() || canCreateQueries()
+            !isViewerMode && (canViewQueries() || canViewAllQueries() || canCreateQueries())
               ? "/(tabs)/query"
               : null,
         }}
@@ -216,6 +224,7 @@ export default function TabLayout() {
               />
             </View>
           ),
+          href: "/(tabs)/setting",
         }}
       />
     </Tabs>

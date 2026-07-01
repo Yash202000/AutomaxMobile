@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  I18nManager,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -266,8 +267,17 @@ const LoginScreen = () => {
         const result = await ldapLogin(adUsername.trim(), adPassword);
         if (result.success && result.token) {
           await SecureStore.setItemAsync("loginMethod", "ad");
-          await login(result.token, result.refresh_token);
-          router.replace("/(tabs)/explore");
+          const loggedInUser = await login(result.token, result.refresh_token);
+          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
+          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+          const isViewerMode = isViewerApp && isViewerRole;
+
+          if (isViewerMode) {
+            router.replace("/(tabs)/incident");
+          } else {
+            router.replace("/(tabs)/explore");
+          }
         } else {
           setError(result.error || t("auth.loginError"));
         }
@@ -294,12 +304,21 @@ const LoginScreen = () => {
         if (response.data?.success && response.data.data?.token) {
           const { token, refresh_token, validation_url } = response.data.data;
           await SecureStore.setItemAsync("loginMethod", "sso");
-          await login(token, refresh_token);
+          const loggedInUser = await login(token, refresh_token);
 
           if (validation_url) {
             await Linking.openURL(validation_url);
           } else {
-            router.replace("/(tabs)/explore");
+            const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+            const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
+            const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+            const isViewerMode = isViewerApp && isViewerRole;
+
+            if (isViewerMode) {
+              router.replace("/(tabs)/incident");
+            } else {
+              router.replace("/(tabs)/explore");
+            }
           }
         } else {
           setError(
@@ -343,8 +362,17 @@ const LoginScreen = () => {
 
         if (response.data && response.data.success) {
           const { token, refresh_token } = response.data.data;
-          await login(token, refresh_token);
-          router.replace("/(tabs)/explore");
+          const loggedInUser = await login(token, refresh_token);
+          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
+          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+          const isViewerMode = isViewerApp && isViewerRole;
+
+          if (isViewerMode) {
+            router.replace("/(tabs)/incident");
+          } else {
+            router.replace("/(tabs)/explore");
+          }
         } else {
           setError(t("auth.loginError"));
         }
@@ -1538,10 +1566,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    direction: "ltr",
+    direction: I18nManager.isRTL ? 'rtl' : 'ltr',
   },
   inputIcon: {
     marginEnd: 12,
+    // marginStart: 12,
   },
   textInput: {
     flex: 1,

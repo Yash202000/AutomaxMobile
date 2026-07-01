@@ -40,7 +40,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import ImageViewing from 'react-native-image-viewing';
+import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // When true, skip reverse geocoding + location-dropdown auto-matching after map taps/GPS.
@@ -352,7 +352,7 @@ const AddIncidentScreen = () => {
               id: String(node.id),
               name: node.name,
               parent_id: node.parent_id ? String(node.parent_id) : null,
-              name_ar: node.name_ar
+              name_ar: node?.name_ar
             };
 
             if (node.children && node.children.length > 0) {
@@ -390,7 +390,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -420,7 +420,7 @@ const AddIncidentScreen = () => {
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             children: node.children ? normalizeLocations(node.children) : undefined,
-            name_ar: node.name_ar,
+            name_ar: node?.name_ar,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
@@ -448,7 +448,7 @@ const AddIncidentScreen = () => {
                 id: node.id,
                 name: node.name,
                 parent_id: node.parent_id,
-                name_ar: node.name_ar
+                name_ar: node?.name_ar
               };
 
               if (node.children && node.children.length > 0) {
@@ -575,7 +575,7 @@ const AddIncidentScreen = () => {
       chain = {
         id: nodeId,
         name: level.name,
-        name_ar: level.name_ar,
+        name_ar: level?.name_ar,
         type: level.type,
         children: chain ? [chain] : undefined,
       };
@@ -716,10 +716,10 @@ const AddIncidentScreen = () => {
           // For multiselect, check if array is empty
           if (category.field_type === 'multiselect') {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+              newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
             }
           } else if (!value) {
-            newErrors[field] = `${i18n.language === 'en' ? category.name : category.name_ar} ${t('common.isRequired')}`;
+            newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
           }
         }
         continue;
@@ -2046,35 +2046,17 @@ const AddIncidentScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <ImageViewing
+          <AuthenticatedImageViewer
             images={attachments
               .filter(f => f.type?.startsWith('image/'))
-              .map(f => ({ uri: f.uri }))}
+              .map((f, i) => ({
+                id: String(i),
+                uri: f.uri,
+                file_name: f.name || `Image_${i}.jpg`,
+              }))}
             imageIndex={imageViewerIndex}
             visible={imageViewerVisible}
             onRequestClose={() => setImageViewerVisible(false)}
-            HeaderComponent={() => (
-              <View style={{
-                paddingTop: Platform.OS === 'ios' ? 50 : 30,
-                paddingHorizontal: 20,
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-              }}>
-                <TouchableOpacity
-                  onPress={() => setImageViewerVisible(false)}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Ionicons name="close" size={24} color="#FFF" />
-                </TouchableOpacity>
-              </View>
-            )}
           />
         </>
       )}
@@ -2264,9 +2246,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     flex: 1,
-  },
-  placeholderText: {
-    color: '#999',
   },
   row: {
     flexDirection: 'row',

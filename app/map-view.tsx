@@ -220,11 +220,17 @@ const MapViewScreen = () => {
       if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
         const statsResponse = await statsFunction();
         if (statsResponse.success) {
-          filterParams.current_state_id = statsResponse.data.workflow_stats[0].by_state_details?.map((s: any) => s.id) || []
+          filterParams.current_state_id = statsResponse.data.workflow_stats?.[0].by_state_details?.map((s: any) => s.id) || []
         }
       }
 
-      if (!canViewAllIncidents() && recordType === 'incident') {
+      const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === "true";
+      const viewerRoles = process.env.EXPO_PUBLIC_VIEWER_APP_ROLES?.split(",") || [];
+      const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+      const isViewerMode = isViewerApp && isViewerRole;
+
+
+      if (!canViewAllIncidents() && recordType === 'incident' && !isViewerMode) {
         filterParams.my_record = user?.id;
       }
 
@@ -293,10 +299,10 @@ const MapViewScreen = () => {
       priorityName: I18nManager.isRTL
         ? inc.lookup_values?.find(
           x => x.category?.code === 'PRIORITY'
-        )?.name_ar
+        )?.name_ar || t('common.unknown')
         : inc.lookup_values?.find(
           x => x.category?.code === 'PRIORITY'
-        )?.name,
+        )?.name || t('common.unknown'),
     }));
 
     const markersJson = JSON.stringify(markersData);
