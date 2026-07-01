@@ -2,6 +2,8 @@ import { getIncidents, getIncidentStats } from "@/src/api/incidents";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { useHierarchy } from "@/src/hooks/useHierarchy";
+import { TreeItem, TreeNode } from "@/src/components/TreeSelect";
 import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -18,6 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -112,12 +115,14 @@ const IncidentCard = ({
   selectionMode,
   onSelect,
   onLongPress,
+  viewer
 }: {
   incident: Incident;
   isSelected?: boolean;
   selectionMode?: boolean;
   onSelect?: () => void;
   onLongPress?: () => void;
+  viewer?: boolean;
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -140,7 +145,7 @@ const IncidentCard = ({
       color: priorityLookup.color,
     };
     priorityText =
-      i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+      i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar;
   }
   const latestTransition = incident.transition_history?.reduce(
     (latest, current): any => {
@@ -194,7 +199,11 @@ const IncidentCard = ({
         <View style={styles.cardHeader}>
           <View style={styles.idContainer}>
             <View style={[styles.dot, { backgroundColor: config.color }]} />
-            <Text style={styles.idText}>{incident.incident_number}</Text>
+            {
+              !viewer ?
+                <Text style={styles.idText}>{incident.incident_number}</Text>
+                : <Text style={[styles.idText, { maxWidth: '85%' }]} numberOfLines={2} ellipsizeMode="tail">{incident.title}</Text>
+            }
           </View>
           <View
             style={[styles.priorityBadge, { backgroundColor: config.color }]}
@@ -235,7 +244,7 @@ const IncidentCard = ({
             style={styles.detailIcon}
           />
           <Text style={[styles.detailText, { textAlign: 'left' }]} numberOfLines={1}>
-            {incident.title}
+            {!viewer ? incident.title : incident.incident_number}
           </Text>
         </View>
         <View style={styles.detailRow}>
@@ -314,6 +323,44 @@ const IncidentsScreen = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const insets = useSafeAreaInsets();
 
+  // Viewer mode classification tree state
+  const { classTree, classTreeStats } = useHierarchy();
+  const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(new Set());
+  const [treeSelectedIds, setTreeSelectedIds] = useState<Set<string>>(new Set());
+  const [showViewerTree, setShowViewerTree] = useState(true);
+
+  const handleTreeToggle = useCallback((id: string) => {
+    setTreeExpandedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  }, []);
+
+  const getAllNodeIds = (node: TreeNode, ids: string[] = []) => {
+    ids.push(node.id);
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((child) => getAllNodeIds(child, ids));
+    }
+    return ids;
+  };
+
+  const handleTreeSelect = useCallback((node: TreeNode) => {
+    setTreeSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      const isSelected = newSet.has(node.id);
+      const idsToToggle = getAllNodeIds(node);
+
+      if (isSelected) {
+        idsToToggle.forEach(id => newSet.delete(id));
+      } else {
+        idsToToggle.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  }, []);
+
   const toggleSelectIncident = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -360,7 +407,7 @@ const IncidentsScreen = () => {
         let priorityVal = t(`priorities.${priorityConfig[inc.priority]?.key || "unknown"}`);
         if (priorityLookup) {
           priorityVal =
-            i18n.language === "en" ? priorityLookup.name : priorityLookup.name_ar;
+            i18n.language === "en" ? priorityLookup.name : priorityLookup?.name_ar;
         }
 
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
@@ -419,6 +466,8 @@ const IncidentsScreen = () => {
     if (department_id) params.department_id = department_id.split(",");
     if (classification_ids)
       params.classification_id = classification_ids.split(",");
+    else if (treeSelectedIds.size > 0 && isViewerMode)
+      params.classification_id = Array.from(treeSelectedIds);
     if (location_ids) params.location_id = location_ids.split(",");
     if (source) params.source = source.split(",");
     if (start_date) params.start_date = start_date;
@@ -452,7 +501,7 @@ const IncidentsScreen = () => {
           state_id = params.current_state_id.join(",");
         }
       }
-      if (!canViewAllIncidents()) {
+      if (!canViewAllIncidents() && !isViewerMode) {
         params.my_record = user?.id;
       }
       const response = await getIncidents(params);
@@ -521,7 +570,13 @@ const IncidentsScreen = () => {
     fetchIncidents(1, false);
   };
 
-  const clearFilter = () => router.replace("/(tabs)/incident");
+  const clearFilter = () => {
+    if (isViewerMode) {
+      setTreeSelectedIds(new Set());
+      setShowViewerTree(true);
+    }
+    router.replace("/(tabs)/incident");
+  };
 
   const hasManualFilters =
     state_id ||
@@ -704,10 +759,111 @@ const IncidentsScreen = () => {
     );
   };
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
+  if (isViewerMode && showViewerTree) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#F5F7FA" }}>
+        <ImageBackground
+          source={require("@/assets/images/viewerBackground.png")}
+          style={[styles.header, { paddingTop: insets.top + 16, paddingBottom: 16 }]}
+        >
+          <View style={{ flexDirection: "row", width: "100%", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16 }}>
+            <Text style={[styles.headerTitle, { textAlign: 'left' }]}>
+              {t("tabs.incident")}
+            </Text>
+            {treeSelectedIds.size > 0 && (
+              <Text style={{ fontSize: 12, color: "#fff" }}>
+                {treeSelectedIds.size} {t("filter.selected")}
+              </Text>
+            )}
+          </View>
+        </ImageBackground>
+
+        {classTreeStats.length === 0 ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>{t("common.loading", "Loading...")}</Text>
+          </View>
+        ) : (
+          <View style={{ flex: 1, backgroundColor: "white", margin: 16, marginBottom: insets.bottom + 80, borderRadius: 12, overflow: "hidden", ...Platform.select({ ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, android: { elevation: 4 } }) }}>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: "#333", textAlign: "left" }}>
+                {t("filter.classification", "Classification")}
+              </Text>
+            </View>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+              showsVerticalScrollIndicator={true}
+            >
+              {classTreeStats.map((item: any) => (
+                <TreeItem
+                  key={String(item.id)}
+                  node={item}
+                  level={0}
+                  expandedIds={treeExpandedIds}
+                  onToggle={handleTreeToggle}
+                  onSelect={handleTreeSelect}
+                  leafOnly={false}
+                  multiSelect={true}
+                  selectedIds={treeSelectedIds}
+                  iconType="classification"
+                />
+              ))}
+            </ScrollView>
+
+            {treeSelectedIds.size > 0 && (
+              <View style={{ padding: 10, borderTopWidth: 1, borderTopColor: "#F0F0F0", backgroundColor: "#F8F9FA" }}>
+                <TouchableOpacity
+                  style={{ backgroundColor: COLORS.accent, padding: 14, borderRadius: 10, alignItems: "center" }}
+                  onPress={() => {
+                    setShowViewerTree(false);
+
+                    const selectedNames: string[] = [];
+                    const findNames = (nodes: TreeNode[]) => {
+                      for (const node of nodes) {
+                        if (treeSelectedIds.has(node.id)) {
+                          selectedNames.push(node.name);
+                        }
+                        if (node.children && Array.isArray(node.children)) {
+                          findNames(node.children);
+                        }
+                      }
+                    };
+                    findNames(classTree);
+
+                    router.setParams({
+                      classification_ids: Array.from(treeSelectedIds).join(","),
+                      classification_names: selectedNames.join(","),
+                    });
+
+                    fetchIncidents(1, false);
+                  }}
+                >
+                  <Text style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>
+                    {t("incidents.viewIncidents", "View Incidents")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.safeArea}>
       <ImageBackground
-        source={require("@/assets/images/background.png")}
+        source={
+          isViewerMode
+            ? require("@/assets/images/viewerBackground.png")
+            : require("@/assets/images/background.png")
+        }
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         {selectionMode ? (
@@ -763,6 +919,11 @@ const IncidentsScreen = () => {
           </View>
         ) : (
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 5 }}>
+            {isViewerMode && (
+              <TouchableOpacity onPress={() => setShowViewerTree(true)} style={{ marginRight: 8, marginLeft: 4 }}>
+                <Ionicons name={i18n.language === 'ar' ? "arrow-forward" : "arrow-back"} size={28} color="white" />
+              </TouchableOpacity>
+            )}
             <View style={{ flex: 1 }}>
               <Text
                 style={[styles.headerTitle, { textAlign: 'left' }]}
@@ -886,6 +1047,7 @@ const IncidentsScreen = () => {
               selectionMode={selectionMode}
               onSelect={() => toggleSelectIncident(item.id)}
               onLongPress={() => handleLongPressIncident(item.id)}
+              viewer={isViewerMode}
             />
           )}
           keyExtractor={(item) => item.id}
@@ -1074,8 +1236,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 6,
+    gap: 2
   },
-  idContainer: { flexDirection: "row", alignItems: "center" },
+  idContainer: { flexDirection: "row", alignItems: "center", flex: 1 },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
   idText: { fontSize: 16, fontWeight: "bold", color: COLORS.text.primary },
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },

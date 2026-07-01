@@ -444,7 +444,7 @@ const FilterScreen = () => {
                         <View style={styles.stateOption}>
                           <View style={[styles.stateColor, { backgroundColor: state.color || '#6366f1' }]} />
                           <Text style={[styles.filterOptionText, filters.state_ids.includes(state.id) && styles.filterOptionTextSelected]}>
-                            {(i18n.language === 'en' || !state.name_ar) ? state.name : state.name_ar}
+                            {(i18n.language === 'en' || !state?.name_ar) ? state.name : state?.name_ar}
                           </Text>
                         </View>
                         {filters.state_ids.includes(state.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}

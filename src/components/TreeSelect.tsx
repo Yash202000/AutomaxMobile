@@ -22,6 +22,23 @@ export interface TreeNode {
   type?: string;
   children?: TreeNode[];
   parent_id?: string | null;
+  count?: number;
+}
+
+export interface TreeNodeWithStats {
+  id: string;
+  name: string;
+  name_ar: string;
+  description: string;
+  description_ar: string;
+  types: string[];
+  parent_id: string | null;
+  level: number;
+  path: string;
+  is_active: boolean;
+  sort_order: number;
+  count: number;
+  children: TreeNodeWithStats[];
 }
 
 interface TreeSelectProps {
@@ -43,7 +60,7 @@ interface TreeSelectProps {
   onMultiSelect?: (nodes: TreeNode[]) => void;
 }
 
-interface TreeItemProps {
+export interface TreeItemProps {
   node: TreeNode;
   level: number;
   expandedIds: Set<string>;
@@ -57,7 +74,7 @@ interface TreeItemProps {
   iconType?: 'classification' | 'location' | 'default';
 }
 
-const TreeItem: React.FC<TreeItemProps> = ({
+export const TreeItem: React.FC<TreeItemProps> = ({
   node,
   level,
   expandedIds,
@@ -86,8 +103,8 @@ const TreeItem: React.FC<TreeItemProps> = ({
           isSelected && styles.treeItemSelected,
         ]}
         onPress={() => {
-          if (hasChildren) onToggle(node.id);
           if (canSelect) onSelect(node);
+          else if (hasChildren) onToggle(node.id);
         }}
         activeOpacity={canSelect ? 0.7 : 1}
       >
@@ -121,17 +138,26 @@ const TreeItem: React.FC<TreeItemProps> = ({
             }
             style={styles.nodeIcon}
           />
-          <Text
-            style={[
-              { textAlign: 'left' },
-              styles.treeItemText,
-              !canSelect && styles.treeItemTextDisabled,
-              isSelected && styles.treeItemTextSelected,
-            ]}
-            numberOfLines={1}
-          >
-            {i18n.language === 'ar' && node.name_ar ? node.name_ar : node.name}
-          </Text>
+          <View style={styles.textContainer}>
+            <Text
+              style={[
+                { textAlign: 'left' },
+                styles.treeItemText,
+                !canSelect && styles.treeItemTextDisabled,
+                isSelected && styles.treeItemTextSelected,
+              ]}
+              numberOfLines={1}
+            >
+              {i18n.language === 'ar' && node?.name_ar ? node?.name_ar : node.name}
+            </Text>
+            {node?.count !== undefined && node?.count !== null && (
+              <View style={[styles.badge, isSelected && styles.badgeSelected]}>
+                <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
+                  {node.count}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
         {multiSelect && canSelect ? (
           <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
@@ -317,10 +343,24 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
       if (!canSelect) return;
 
       if (multiSelect) {
+        const getAllNodeIds = (node: TreeNode, ids: string[] = []) => {
+          ids.push(node.id);
+          if (node.children && Array.isArray(node.children)) {
+            node.children.forEach((child) => getAllNodeIds(child, ids));
+          }
+          return ids;
+        };
+
         setPendingIds((prev) => {
           const newSet = new Set(prev);
-          if (newSet.has(node.id)) newSet.delete(node.id);
-          else newSet.add(node.id);
+          const isSelected = newSet.has(node.id);
+          const idsToToggle = getAllNodeIds(node);
+
+          if (isSelected) {
+            idsToToggle.forEach(id => newSet.delete(id));
+          } else {
+            idsToToggle.forEach(id => newSet.add(id));
+          }
           return newSet;
         });
       } else {
@@ -684,6 +724,33 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: '#2EC4B6',
     borderColor: '#2EC4B6',
+  },
+  textContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  badge: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  badgeSelected: {
+    backgroundColor: '#2EC4B6',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  badgeTextSelected: {
+    color: '#FFFFFF',
   },
   emptyList: {
     padding: 40,
