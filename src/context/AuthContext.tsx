@@ -48,7 +48,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, refreshToken?: string) => Promise<void>;
+  login: (token: string, refreshToken?: string) => Promise<User | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         setIsAdLogin(false);
         setIsLoading(false);
-        return;
+        return null;
       }
 
       // Read the login method persisted at login time
@@ -101,15 +101,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setRequiresBiometric(true);
           }
         }
+        return response.data;
       } else {
         // Token might be invalid, clear it
         await SecureStore.deleteItemAsync('authToken');
         await SecureStore.deleteItemAsync('refreshToken');
         setUser(null);
+        return null;
       }
     } catch (error) {
       console.error('Error loading user:', error);
       setUser(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await SecureStore.setItemAsync('refreshToken', refreshToken);
     }
     setRequiresBiometric(false);
-    await loadUser(false);
+    return await loadUser(false);
   }, [loadUser]);
 
   const logout = useCallback(async () => {
