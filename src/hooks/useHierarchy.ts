@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartmentsTree } from '@/src/api/departments';
 import { getLocationsTree } from '@/src/api/locations';
-import { TreeNode } from '@/src/components/TreeSelect';
+import { TreeNode, TreeNodeWithStats } from '@/src/components/TreeSelect';
 import i18n from '../i18n';
+import { getClassificationsTreeWithStats } from '@/src/api/classifications';
 
 export const useHierarchy = () => {
   const [classTree, setClassTree] = useState<TreeNode[]>([]);
+  const [classTreeStats, setClassTreeStats] = useState<TreeNodeWithStats[]>([]);
   const [deptTree, setDeptTree] = useState<TreeNode[]>([]);
   const [locTree, setLocTree] = useState<TreeNode[]>([]);
 
@@ -15,8 +17,12 @@ export const useHierarchy = () => {
 
     const fetchTrees = async () => {
       try {
-        const [classRes, deptRes, locRes] = await Promise.all([
+        const [classRes, classResStats, deptRes, locRes] = await Promise.all([
           getClassificationsTree().catch(err => {
+            console.error('Error fetching classification tree:', err);
+            return { success: false, data: [] };
+          }),
+          getClassificationsTreeWithStats().catch(err => {
             console.error('Error fetching classification tree:', err);
             return { success: false, data: [] };
           }),
@@ -39,6 +45,9 @@ export const useHierarchy = () => {
           }
           if (locRes.success && locRes.data) {
             setLocTree(locRes.data);
+          }
+          if (classResStats.success && classResStats.data) {
+            setClassTreeStats(classResStats.data);
           }
         }
       } catch (err) {
@@ -75,6 +84,7 @@ export const useHierarchy = () => {
 
   return {
     classTree,
+    classTreeStats,
     deptTree,
     locTree,
     getPath,
