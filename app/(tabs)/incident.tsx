@@ -324,7 +324,7 @@ const IncidentsScreen = () => {
   const insets = useSafeAreaInsets();
 
   // Viewer mode classification tree state
-  const { classTree } = useHierarchy();
+  const { classTree, classTreeStats } = useHierarchy();
   const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(new Set());
   const [treeSelectedIds, setTreeSelectedIds] = useState<Set<string>>(new Set());
   const [showViewerTree, setShowViewerTree] = useState(true);
@@ -783,7 +783,7 @@ const IncidentsScreen = () => {
           </View>
         </ImageBackground>
 
-        {classTree.length === 0 ? (
+        {classTreeStats.length === 0 ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingText}>{t("common.loading", "Loading...")}</Text>
@@ -800,7 +800,7 @@ const IncidentsScreen = () => {
               contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
               showsVerticalScrollIndicator={true}
             >
-              {classTree.map((item) => (
+              {classTreeStats.map((item: any) => (
                 <TreeItem
                   key={String(item.id)}
                   node={item}

@@ -32,7 +32,7 @@ interface AuthenticatedImageViewerProps {
   imageIndex: number;
   visible: boolean;
   onRequestClose: () => void;
-  token: string;
+  token?: string;
 }
 
 export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> = ({
@@ -128,9 +128,13 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
                 <Image
                   source={{
                     uri: currentImage?.uri,
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
+                    ...(token
+                      ? {
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                          },
+                        }
+                      : {}),
                   }}
                   style={styles.image}
                   contentFit="contain"

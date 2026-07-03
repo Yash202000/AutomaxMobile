@@ -44,6 +44,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      backBehavior={isViewerMode ? 'none' : 'firstRoute'}
       screenOptions={{
         tabBarActiveTintColor: "#2EC4B6",
         tabBarInactiveTintColor: "#94A3B8",
