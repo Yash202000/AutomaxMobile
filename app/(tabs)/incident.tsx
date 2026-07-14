@@ -90,6 +90,7 @@ interface Incident {
   title: string;
   priority: number;
   created_at: string;
+  updated_at?: string;
   current_state?: { name: string; name_ar: string };
   location?: { name: string; name_ar: string };
   lookup_values?: Array<{
@@ -317,6 +318,18 @@ const IncidentsScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
+  const [sortByUpdated, setSortByUpdated] = useState(false);
+
+  const sortedIncidents = React.useMemo(() => {
+    if (sortByUpdated) {
+      return [...incidents].sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at).getTime();
+        const dateB = new Date(b.updated_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
+    }
+    return incidents;
+  }, [incidents, sortByUpdated]);
 
   // Multi-selection states & operations
   const [selectionMode, setSelectionMode] = useState(false);
@@ -324,7 +337,7 @@ const IncidentsScreen = () => {
   const insets = useSafeAreaInsets();
 
   // Viewer mode classification tree state
-  const { classTree } = useHierarchy();
+  const { classTree, classTreeStats } = useHierarchy();
   const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(new Set());
   const [treeSelectedIds, setTreeSelectedIds] = useState<Set<string>>(new Set());
   const [showViewerTree, setShowViewerTree] = useState(true);
@@ -643,20 +656,48 @@ const IncidentsScreen = () => {
   };
 
   const renderHeader = () => (
-    <View style={styles.listHeader}>
-      <Text style={[styles.foundText, { textAlign: 'left' }]}>
-        {hasManualFilters
-          ? t("incidents.incidentsFound", { count: pagination.total_items }) +
-          ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
-          : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
-      </Text>
-      {pagination.total_pages > 1 && (
-        <Text style={[styles.paginationText, { textAlign: 'left' }]}>
-          {t("incidents.page", {
-            current: pagination.page,
-            total: pagination.total_pages,
-          })}
+    <View style={[styles.listHeader, { flexDirection: 'row', alignItems: 'center' }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.foundText, { textAlign: 'left' }]}>
+          {hasManualFilters
+            ? t("incidents.incidentsFound", { count: pagination.total_items }) +
+            ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
+            : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
         </Text>
+        {pagination.total_pages > 1 && (
+          <Text style={[styles.paginationText, { textAlign: 'left' }]}>
+            {t("incidents.page", {
+              current: pagination.page,
+              total: pagination.total_pages,
+            })}
+          </Text>
+        )}
+      </View>
+      {incidents.length > 0 && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: sortByUpdated ? COLORS.accent : COLORS.white,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: sortByUpdated ? COLORS.accent : COLORS.text.muted,
+            marginLeft: 8
+          }}
+          onPress={() => setSortByUpdated(!sortByUpdated)}
+        >
+          <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
+          <Text style={{
+            marginLeft: 4,
+            fontSize: 12,
+            color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+            fontWeight: '500'
+          }}>
+            {t("sort.updated", "Latest Updated")}
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -783,7 +824,7 @@ const IncidentsScreen = () => {
           </View>
         </ImageBackground>
 
-        {classTree.length === 0 ? (
+        {classTreeStats.length === 0 ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingText}>{t("common.loading", "Loading...")}</Text>
@@ -800,7 +841,7 @@ const IncidentsScreen = () => {
               contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
               showsVerticalScrollIndicator={true}
             >
-              {classTree.map((item) => (
+              {classTreeStats.map((item: any) => (
                 <TreeItem
                   key={String(item.id)}
                   node={item}
@@ -1039,7 +1080,7 @@ const IncidentsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={incidents}
+          data={sortedIncidents}
           renderItem={({ item }) => (
             <IncidentCard
               incident={item}

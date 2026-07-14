@@ -39,6 +39,7 @@ interface Request {
     title: string;
     priority: number;
     created_at: string;
+    updated_at?: string;
     current_state?: { name: string };
     location?: { name: string };
     lookup_values?: Array<{
@@ -132,6 +133,18 @@ const RequestsScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
+    const [sortByUpdated, setSortByUpdated] = useState(false);
+
+    const sortedRequests = React.useMemo(() => {
+        if (sortByUpdated) {
+            return [...requests].sort((a, b) => {
+                const dateA = new Date(a.updated_at || a.created_at).getTime();
+                const dateB = new Date(b.updated_at || b.created_at).getTime();
+                return dateB - dateA;
+            });
+        }
+        return requests;
+    }, [requests, sortByUpdated]);
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { canViewAllRequests } = usePermissions()
@@ -264,13 +277,41 @@ const RequestsScreen = () => {
     };
 
     const renderHeader = () => (
-        <View style={styles.listHeader}>
-            <Text style={[styles.foundText, { textAlign: "left" }]}>
-                {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.request').toLowerCase()}`}
-                {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
-            </Text>
-            {pagination.total_pages > 1 && (
-                <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+        <View style={[styles.listHeader, { flexDirection: 'row', alignItems: 'center' }]}>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.foundText, { textAlign: "left" }]}>
+                    {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.request').toLowerCase()}`}
+                    {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
+                </Text>
+                {pagination.total_pages > 1 && (
+                    <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+                )}
+            </View>
+            {requests.length > 0 && (
+                <TouchableOpacity
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: sortByUpdated ? COLORS.accent : COLORS.white,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: sortByUpdated ? COLORS.accent : COLORS.text.muted,
+                        marginLeft: 8
+                    }}
+                    onPress={() => setSortByUpdated(!sortByUpdated)}
+                >
+                    <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
+                    <Text style={{
+                        marginLeft: 4,
+                        fontSize: 12,
+                        color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+                        fontWeight: '500'
+                    }}>
+                        {t('sort.updated', 'Latest Updated')}
+                    </Text>
+                </TouchableOpacity>
             )}
         </View>
     );
@@ -385,7 +426,7 @@ const RequestsScreen = () => {
                 </View>
             ) : (
                 <FlatList
-                    data={requests}
+                    data={sortedRequests}
                     renderItem={({ item }) => <RequestCard request={item} t={t} />}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
