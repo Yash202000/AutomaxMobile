@@ -544,3 +544,59 @@ export const getReadyToCloseDurationOptions = async () => {
     return { success: false, error: error.response?.data?.message || error.message };
   }
 };
+
+export interface ConvertToRequestRequest {
+  transition_id?: string;
+  transition_comment?: string;
+  classification_id: string;
+  workflow_id: string;
+  title?: string;
+  description?: string;
+  assignee_id?: string;
+  department_id?: string;
+  due_date?: string;
+  feedback?: {
+    comment: string;
+    rating?: number;
+  };
+  existing_request_id?: string;
+}
+
+export interface ConvertToRequestResponse {
+  original_incident: any;
+  new_request: any;
+}
+
+export interface CanConvertToRequestResponse {
+  can_convert: boolean;
+  reason?: string;
+}
+
+export const convertToRequest = async (id: string, data: ConvertToRequestRequest) => {
+  try {
+    const response = await apiClient.post(`/incidents/${id}/convert-to-request`, data);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data as ConvertToRequestResponse };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    const errData = error.response?.data;
+    let errMsg = errData?.message || error.message;
+    if (errData?.errors) {
+      errMsg = JSON.stringify(errData.errors);
+    }
+    return { success: false, error: errMsg };
+  }
+};
+
+export const canConvertToRequest = async (id: string) => {
+  try {
+    const response = await apiClient.get(`/incidents/${id}/can-convert`);
+    if (response.data && response.data.success) {
+      return { success: true, data: response.data.data as CanConvertToRequestResponse };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};

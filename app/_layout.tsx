@@ -261,6 +261,7 @@ function RootLayoutNav() {
         <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="convert-to-request" options={{ title: t('requests.convertToRequest', 'Convert to Request') }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal') }} />
       </Stack>
