@@ -16,8 +16,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
                BuildableName = "EPM940.app"
-               BlueprintName = "EPMSTG"
-               ReferencedContainer = "container:EPMSTG.xcodeproj">
+               BlueprintName = "EPM940"
+               ReferencedContainer = "container:EPM940.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "EPMSTGTests.xctest"
-               BlueprintName = "EPMSTGTests"
-               ReferencedContainer = "container:EPMSTG.xcodeproj">
+               BuildableName = "EPM940Tests.xctest"
+               BlueprintName = "EPM940Tests"
+               ReferencedContainer = "container:EPM940.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -56,8 +56,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
             BuildableName = "EPM940.app"
-            BlueprintName = "EPMSTG"
-            ReferencedContainer = "container:EPMSTG.xcodeproj">
+            BlueprintName = "EPM940"
+            ReferencedContainer = "container:EPM940.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -73,8 +73,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
             BuildableName = "EPM940.app"
-            BlueprintName = "EPMSTG"
-            ReferencedContainer = "container:EPMSTG.xcodeproj">
+            BlueprintName = "EPM940"
+            ReferencedContainer = "container:EPM940.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
