@@ -71,6 +71,11 @@ const MapViewScreen = () => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
   <style>
     body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
@@ -93,6 +98,12 @@ const MapViewScreen = () => {
       border-radius: 50%;
       transform: translate(-50%, -50%);
     }
+    .marker-cluster-small { background-color: rgba(46, 196, 182, 0.6); }
+    .marker-cluster-small div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
+    .marker-cluster-medium { background-color: rgba(46, 196, 182, 0.6); }
+    .marker-cluster-medium div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
+    .marker-cluster-large { background-color: rgba(46, 196, 182, 0.6); }
+    .marker-cluster-large div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -105,15 +116,22 @@ const MapViewScreen = () => {
       maxZoom: 19
     }).addTo(map);
 
-    let markers = [];
+    const markerClusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true
+    });
+    map.addLayer(markerClusterGroup);
 
     window.updateMarkers = function(incidentsData) {
-      markers.forEach(marker => map.removeLayer(marker));
-      markers = [];
+      markerClusterGroup.clearLayers();
 
       if (!incidentsData || incidentsData.length === 0) {
         return;
       }
+
+      const newMarkers = [];
 
       incidentsData.forEach(incident => {
         const priorityLookup = incident?.lookup_values?.find(x => x.category && x.category.code === 'PRIORITY');
@@ -129,7 +147,6 @@ const MapViewScreen = () => {
         });
 
         const marker = L.marker([incident.lat, incident.lng], { icon: customIcon })
-          .addTo(map)
           .bindPopup(\`
             <div style="min-width: 200px; direction: ${I18nManager.isRTL ? 'rtl' : 'ltr'}; text-align: ${I18nManager.isRTL ? 'right' : 'left'}">
               <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
@@ -150,12 +167,13 @@ const MapViewScreen = () => {
             </div>
           \`);
 
-        markers.push(marker);
+        newMarkers.push(marker);
       });
 
-      if (markers.length > 0) {
-        const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1));
+      markerClusterGroup.addLayers(newMarkers);
+
+      if (newMarkers.length > 0) {
+        map.fitBounds(markerClusterGroup.getBounds().pad(0.1));
       }
     };
 
