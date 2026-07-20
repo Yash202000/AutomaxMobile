@@ -26,6 +26,7 @@ module.exports = {
         backgroundColor: process.env.APP_ICON_BG_COLOR || '#ffffff',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: [
@@ -47,6 +48,7 @@ module.exports = {
     },
     plugins: [
       './plugins/withAndroidGoogleServices',
+      '@react-native-firebase/app',
       'expo-router',
       'expo-font',
       [
