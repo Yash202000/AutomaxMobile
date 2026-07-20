@@ -1,5 +1,5 @@
 import { baseURL } from '@/src/api/client';
-import { getAvailableTransitions, getIncidentById, getIncidentHistory } from '@/src/api/incidents';
+import { getAvailableTransitions, getIncidentById, getIncidentHistory, canConvertToRequest } from '@/src/api/incidents';
 import { getLookupCategories } from '@/src/api/lookups';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -105,6 +105,10 @@ interface IncidentData {
     comment?: string;
   }>;
   version?: number;
+  converted_request_id?: string;
+  converted_request?: { incident_number: string; title: string };
+  source_incident_id?: string;
+  source_incident?: { incident_number: string; title: string };
 }
 
 interface TransitionData {
@@ -196,6 +200,7 @@ const IncidentDetailsScreen = () => {
   const [incident, setIncident] = useState<IncidentData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
+  const [canConvert, setCanConvert] = useState<boolean>(false);
   const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; mime_type: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -231,10 +236,11 @@ const IncidentDetailsScreen = () => {
     setLoading(true);
 
     try {
-      const [detailsResponse, historyResponse, transitionsResponse] = await Promise.all([
+      const [detailsResponse, historyResponse, transitionsResponse, canConvertResponse] = await Promise.all([
         getIncidentById(incidentId),
         getIncidentHistory(incidentId),
         getAvailableTransitions(incidentId),
+        canConvertToRequest(incidentId),
       ]);
 
       if (detailsResponse.success) {
@@ -265,6 +271,12 @@ const IncidentDetailsScreen = () => {
         setAvailableTransitions(executableTransitions);
       } else {
         setAvailableTransitions([]);
+      }
+
+      if (canConvertResponse.success) {
+        setCanConvert(canConvertResponse.data?.can_convert || false);
+      } else {
+        setCanConvert(false);
       }
     } catch (err: any) {
       if (err?.isLogoutCancel) return;
@@ -388,6 +400,35 @@ const IncidentDetailsScreen = () => {
     });
   };
 
+  const handleConvertToRequestPress = () => {
+    if (!incident) return;
+
+    if (isDefaultLocation) {
+      CustomAlert.alert(
+        t('common.notAllowed', 'Not allowed'),
+        t('incidents.defaultLocationTransitionBlocked', 'Transition is not allowed while the incident location is Default. Incident location should be updated first.')
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/convert-to-request',
+      params: {
+        id: incident.id,
+        transitions: JSON.stringify(availableTransitions),
+        incident: JSON.stringify({
+          id: incident.id,
+          classification_id: incident.classification_id || incident.classification?.id,
+          location_id: incident.location_id || incident.location?.id,
+          department_id: incident.department_id || incident.department?.id,
+          assignee_id: incident.assignee_id || incident.assignee?.id,
+          version: incident?.version,
+        }),
+      },
+    });
+  };
+
+
   if (loading) {
     return (
       <View style={[styles.safeArea]}>
@@ -466,6 +507,56 @@ const IncidentDetailsScreen = () => {
           </View>
         </View>
 
+        {/* Converted to Request Banner */}
+        {incident.converted_request_id && (
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+            onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.converted_request_id } })}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ backgroundColor: '#DBEAFE', padding: 8, borderRadius: 8 }}>
+                <Ionicons name="git-branch-outline" size={24} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, color: '#1E3A8A', fontWeight: '600' }}>
+                  {t('incidents.convertedToRequest', 'Converted to Request')}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#3B82F6', marginTop: 2 }}>
+                  {incident.converted_request?.incident_number
+                    ? t('incidents.tapToViewRequest', { number: incident.converted_request.incident_number, defaultValue: `Tap to view ${incident.converted_request.incident_number}` })
+                    : t('incidents.tapToViewConverted', 'Tap to view converted request')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Source Incident Banner */}
+        {incident.source_incident_id && (
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
+            onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.source_incident_id } })}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ backgroundColor: '#DCFCE7', padding: 8, borderRadius: 8 }}>
+                <Ionicons name="arrow-undo-outline" size={24} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600' }}>
+                  {t('incidents.convertedFromIncident', 'Converted from Incident')}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>
+                  {incident.source_incident?.incident_number
+                    ? t('incidents.tapToViewSource', { number: incident.source_incident.incident_number, defaultValue: `Tap to view source ${incident.source_incident.incident_number}` })
+                    : t('incidents.tapToViewSourceIncident', 'Tap to view source incident')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#22C55E" />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Details Card with Lookup Values and Custom Fields Inside */}
         <View style={styles.card}>
           <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
@@ -490,7 +581,7 @@ const IncidentDetailsScreen = () => {
               <InfoRow
                 icon="git-network-outline"
                 label={t('incidents.source')}
-                value={t(`incidents.sources.${incident.source}`).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                value={t(`incidents.sources.${incident.source?.toLowerCase()}`).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 iconColor="#0EA5E9"
               />
             )}
@@ -939,16 +1030,25 @@ const IncidentDetailsScreen = () => {
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        {/* Update Status Button */}
+      <View style={[styles.actionButtonsContainer, { bottom: insets.bottom + 20 }]}>
         {availableTransitions.length > 0 && (
           <TouchableOpacity
-            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled, { bottom: insets.bottom }]}
+            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled, { flex: 1 }]}
             onPress={handleUpdateStatusPress}
             activeOpacity={isDefaultLocation ? 1 : 0.8}
           >
             <Ionicons name="sync" size={20} color={COLORS.white} />
             <Text style={styles.updateButtonText}>{t('details.update')}</Text>
+          </TouchableOpacity>
+        )}
+        {canConvert && (
+          <TouchableOpacity
+            style={[styles.updateButton, isDefaultLocation && styles.updateButtonDisabled, { backgroundColor: COLORS.priority.high, flex: 1 }]}
+            onPress={handleConvertToRequestPress}
+            activeOpacity={isDefaultLocation ? 1 : 0.8}
+          >
+            <Ionicons name="git-branch" size={20} color={COLORS.white} />
+            <Text style={styles.updateButtonText}>{t('incidents.convert', 'Convert')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -1129,12 +1229,12 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     position: 'absolute',
     bottom: 20,
-    left: 16,
-    right: 16,
-    gap: 10,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    gap: 12,
   },
   updateButton: {
-    position: 'absolute', left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({
