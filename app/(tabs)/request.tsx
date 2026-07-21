@@ -133,7 +133,7 @@ const RequestsScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
-    const [sortByUpdated, setSortByUpdated] = useState(false);
+    const [sortByUpdated, setSortByUpdated] = useState(true);
 
     const sortedRequests = React.useMemo(() => {
         if (sortByUpdated) {

@@ -172,9 +172,9 @@ const RequestDetailsScreen = () => {
   const priorityText = t(`priorities.${config.key}`, config.key);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -209,6 +209,52 @@ const RequestDetailsScreen = () => {
             )}
           </View>
         </View>
+
+        {/* Source Incident(s) Banner */}
+        {request.source_incidents && request.source_incidents.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
+            <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600', marginBottom: 8 }}>
+              {t('incidents.convertedFromIncident', 'Converted from Incident')}
+            </Text>
+            {request.source_incidents.map((incident: any) => (
+              <TouchableOpacity
+                key={incident.id}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }}
+                onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.id } })}
+              >
+                <View style={{ backgroundColor: '#DCFCE7', padding: 8, borderRadius: 8 }}>
+                  <Ionicons name="arrow-undo-outline" size={20} color="#16A34A" />
+                </View>
+                <Text style={{ flex: 1, fontSize: 13, color: '#22C55E' }}>
+                  {t('incidents.tapToViewSource', { number: incident.incident_number, defaultValue: `Tap to view source ${incident.incident_number}` })}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="#22C55E" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : request.source_incident_id ? (
+          <TouchableOpacity
+            style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
+            onPress={() => router.push({ pathname: '/incident-details', params: { id: request.source_incident_id } })}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ backgroundColor: '#DCFCE7', padding: 8, borderRadius: 8 }}>
+                <Ionicons name="arrow-undo-outline" size={24} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600' }}>
+                  {t('incidents.convertedFromIncident', 'Converted from Incident')}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>
+                  {request.source_incident?.incident_number
+                    ? t('incidents.tapToViewSource', { number: request.source_incident.incident_number, defaultValue: `Tap to view source ${request.source_incident.incident_number}` })
+                    : t('incidents.tapToViewSourceIncident', 'Tap to view source incident')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#22C55E" />
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Details Card */}
         <View style={styles.card}>
@@ -493,7 +539,7 @@ const RequestDetailsScreen = () => {
           <Text style={styles.updateButtonText}>{t('details.update')}</Text>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -607,7 +653,7 @@ const styles = StyleSheet.create({
   transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
 
   updateButton: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
+    position: 'absolute', bottom: 0, left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({
