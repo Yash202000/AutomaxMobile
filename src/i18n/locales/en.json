@@ -476,6 +476,8 @@
     "newRequest": "New Request",
     "existingRequest": "Existing Request",
     "searchRequest": "Search Request",
+    "searchRequestPlaceholder": "Search by request number or title...",
+    "searchRequestHint": "Showing latest 15 requests. Search to find others.",
     "transition": "Transition",
     "review": "Review",
     "type": "Type",

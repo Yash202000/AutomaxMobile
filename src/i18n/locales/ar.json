@@ -470,6 +470,8 @@
     "newRequest": "طلب جديد",
     "existingRequest": "طلب موجود",
     "searchRequest": "بحث عن طلب",
+    "searchRequestPlaceholder": "ابحث برقم الطلب أو العنوان...",
+    "searchRequestHint": "يتم عرض أحدث 15 طلبًا. يمكنك البحث للعثور على طلبات أخرى.",
     "transition": "انتقال",
     "review": "مراجعة",
     "type": "النوع",

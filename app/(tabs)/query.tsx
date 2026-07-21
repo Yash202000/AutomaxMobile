@@ -140,7 +140,7 @@ const QueriesScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
-    const [sortByUpdated, setSortByUpdated] = useState(false);
+    const [sortByUpdated, setSortByUpdated] = useState(true);
 
     const sortedQueries = React.useMemo(() => {
         if (sortByUpdated) {

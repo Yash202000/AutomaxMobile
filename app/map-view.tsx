@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
 const COLORS = {
@@ -56,6 +56,7 @@ const MapViewScreen = () => {
   }>();
   const recordType = type || "incident";
   const webViewRef = useRef<WebView>(null);
+  const insets = useSafeAreaInsets()
 
   const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -351,9 +352,9 @@ const MapViewScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={[styles.container]} >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
@@ -419,7 +420,7 @@ const MapViewScreen = () => {
           )}
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
