@@ -511,7 +511,7 @@ const IncidentDetailsScreen = () => {
         {incident.converted_request_id && (
           <TouchableOpacity
             style={[styles.card, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
-            onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.converted_request_id } })}
+            onPress={() => router.push({ pathname: '/request-details', params: { id: incident.converted_request_id } })}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ backgroundColor: '#DBEAFE', padding: 8, borderRadius: 8 }}>

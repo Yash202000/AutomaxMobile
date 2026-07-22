@@ -317,9 +317,9 @@ const QueryDetailsScreen = () => {
   const priorityText = t(`priorities.${config.key}`, config.key);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -771,7 +771,7 @@ const QueryDetailsScreen = () => {
           <Text style={styles.updateButtonText}>{t('details.update')}</Text>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
   transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
 
   updateButton: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
+    position: 'absolute', bottom: 0, left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({

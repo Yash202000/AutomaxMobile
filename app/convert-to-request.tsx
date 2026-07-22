@@ -4,7 +4,6 @@ import { convertToRequest, executeTransition, getIncidents, uploadAttachment } f
 import * as DocumentPicker from "expo-document-picker";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
-import { useAuth } from "@/src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState, useMemo } from "react";
@@ -72,6 +71,7 @@ export default function ConvertToRequestScreen() {
   const [searchedRequests, setSearchedRequests] = useState<any[]>([]);
   const [searchingRequests, setSearchingRequests] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [convertableRequestId, setConvertableRequestId] = useState<string>('');
 
   // -- For new
   const [transitionId, setTransitionId] = useState<string | null>("");
@@ -131,6 +131,8 @@ export default function ConvertToRequestScreen() {
         const fetchedWorkflows = wfRes.data || [];
         setWorkflows(fetchedWorkflows);
         if (fetchedWorkflows.length === 1) {
+          const convertableRequestState = fetchedWorkflows[0].states.find((x: any) => x.state_type === 'initial')?.id || '';
+          setConvertableRequestId(convertableRequestState);
           setWorkflowId(fetchedWorkflows[0].id);
         }
       }
@@ -142,7 +144,9 @@ export default function ConvertToRequestScreen() {
   const searchExistingRequests = async (query: string) => {
     setSearchingRequests(true);
     try {
-      const res = await getIncidents({ record_type: 'request', search: query });
+      const params: Record<string, any> = { record_type: 'request', limit: 15, current_state_id: convertableRequestId };
+      if (query) params.search = query;
+      const res = await getIncidents(params);
       if (res.success && res.data) {
         setSearchedRequests(res.data || []);
       }
@@ -370,7 +374,7 @@ export default function ConvertToRequestScreen() {
             <Ionicons name="search" size={20} color={COLORS.text.muted} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-              placeholder={t("common.search")}
+              placeholder={t("requests.searchRequestPlaceholder")}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -378,9 +382,13 @@ export default function ConvertToRequestScreen() {
 
           {searchingRequests && <ActivityIndicator style={{ marginTop: 10 }} color={COLORS.accent} />}
 
+          {!searchingRequests && !searchQuery && searchedRequests.length > 0 && (
+            <Text style={styles.searchHint}>{t("requests.searchRequestHint")}</Text>
+          )}
+
           {!searchingRequests && searchedRequests.length > 0 && (
             <View style={styles.searchResults}>
-              {searchedRequests.slice(0, 5).map((req) => (
+              {searchedRequests.map((req) => (
                 <TouchableOpacity
                   key={req.id}
                   style={[styles.resultItem, selectedRequest?.id === req.id && styles.resultItemSelected]}
@@ -921,6 +929,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text.primary
   },
+  searchHint: {
+    fontSize: 12,
+    color: COLORS.text.muted,
+    marginTop: 6,
+  },
+
   searchResults: {
     marginTop: 8,
     backgroundColor: COLORS.white,

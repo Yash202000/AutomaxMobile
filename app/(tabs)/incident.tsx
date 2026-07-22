@@ -318,7 +318,7 @@ const IncidentsScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
-  const [sortByUpdated, setSortByUpdated] = useState(false);
+  const [sortByUpdated, setSortByUpdated] = useState(true);
 
   const sortedIncidents = React.useMemo(() => {
     if (sortByUpdated) {
