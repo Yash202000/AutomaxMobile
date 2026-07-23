@@ -228,6 +228,14 @@ export default function ConvertToRequestScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!feedbackComment.trim()) {
+      CustomAlert.alert(
+        t("common.error"),
+        t("incidents.feedbackMandatoryError", "Feedback comment is required to submit.")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. If a real transition was selected, execute it via the dedicated transition
@@ -289,14 +297,11 @@ export default function ConvertToRequestScreen() {
         payload.existing_request_id = selectedRequest.id;
       }
 
-      if (convertType === "new") {
-        // Backend requires feedback whenever existing_request_id is absent (required_without=ExistingRequestID)
-        // Always send feedback for new requests — matches web behavior exactly
-        payload.feedback = {
-          rating: feedbackRating || 0,
-          comment: feedbackComment || "",
-        };
-      }
+      // Feedback is mandatory for every conversion (new or existing) — matches web behavior
+      payload.feedback = {
+        rating: feedbackRating || 0,
+        comment: feedbackComment.trim(),
+      };
 
       const response = await convertToRequest(incidentId, payload);
 
@@ -660,10 +665,25 @@ export default function ConvertToRequestScreen() {
           </View>
 
           {/* Workflow */}
-          <View style={styles.summaryRow}>
+          <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
             <Text style={styles.summaryLabel}>{t("common.workflow")}</Text>
             <Text style={styles.summaryValue}>{workflowName}</Text>
           </View>
+        </View>
+
+        {/* Mandatory Feedback */}
+        <View style={[styles.formGroup, { marginTop: 20 }]}>
+          <Text style={styles.label}>
+            {t("incidents.feedback")} <Text style={{ color: COLORS.error }}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.textArea}
+            multiline
+            numberOfLines={3}
+            placeholder={t("incidents.feedbackCommentPlaceholder")}
+            value={feedbackComment}
+            onChangeText={setFeedbackComment}
+          />
         </View>
       </View>
     );
