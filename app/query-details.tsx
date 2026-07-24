@@ -1,9 +1,12 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { DetailScreenSkeleton } from '@/src/components/DetailScreenSkeleton';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { Skeleton } from '@/src/components/Skeleton';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -16,7 +19,7 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
@@ -288,12 +291,19 @@ const QueryDetailsScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.safeArea}>
+        <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Skeleton width={120} height={18} style={{ backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            <Text style={styles.headerSubtitle}>{t('details.query')}</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </ImageBackground>
+        <DetailScreenSkeleton sections={[4, 3, 2]} />
+      </View>
     );
   }
 
@@ -316,6 +326,9 @@ const QueryDetailsScreen = () => {
   const config = priorityConfig[query.priority] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  let sectionIndex = 0;
+  const nextSection = () => sectionIndex++;
+
   return (
     <View style={styles.safeArea}>
       {/* Header */}
@@ -332,6 +345,7 @@ const QueryDetailsScreen = () => {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Title Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.titleCard}>
           <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
           <View style={styles.titleCardContent}>
@@ -354,8 +368,10 @@ const QueryDetailsScreen = () => {
             )}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Details Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('queries.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
@@ -387,7 +403,7 @@ const QueryDetailsScreen = () => {
             {/* Lookup Values as InfoRows */}
             {query.lookup_values && query.lookup_values.length > 0 && (() => {
               const grouped: Record<string, LookupValue[]> = {};
-              query.lookup_values.forEach(value => {
+              query.lookup_values.forEach((value: any) => {
                 const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
                 if (!grouped[categoryName]) {
                   grouped[categoryName] = [];
@@ -472,16 +488,20 @@ const QueryDetailsScreen = () => {
             })()}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Description Card */}
         {query.description && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
             <RenderWithIncidentMentions text={query.description} style={styles.descriptionText} />
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Comments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {query.comments && query.comments.length > 0 ? (
@@ -506,8 +526,10 @@ const QueryDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         {/* Attachments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.attachments')} icon="attach" />
           {imageAttachments.length > 0 && (
@@ -549,6 +571,7 @@ const QueryDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
@@ -564,6 +587,7 @@ const QueryDetailsScreen = () => {
 
         {/* Geolocation Card */}
         {(query.latitude !== undefined && query.longitude !== undefined) && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.geolocation')} icon="navigate" />
             <View style={styles.mapContainer}>
@@ -680,10 +704,12 @@ const QueryDetailsScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Location Card (fallback for legacy data) */}
         {query.location && !(query.latitude !== undefined && query.longitude !== undefined) && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.location')} icon="location" />
             <View style={styles.locationInfo}>
@@ -694,9 +720,11 @@ const QueryDetailsScreen = () => {
               </View>
             </View>
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Transition History Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {query.transition_history && query.transition_history.length > 0 ? (
@@ -743,6 +771,7 @@ const QueryDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
       </ScrollView>
 
       {/* Update Button */}

@@ -1,8 +1,11 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { DetailScreenSkeleton } from '@/src/components/DetailScreenSkeleton';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { Skeleton } from '@/src/components/Skeleton';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +15,7 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -143,12 +146,19 @@ const RequestDetailsScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.safeArea}>
+        <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Skeleton width={120} height={18} style={{ backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            <Text style={styles.headerSubtitle}>{t('details.request')}</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </ImageBackground>
+        <DetailScreenSkeleton sections={[4, 3, 2]} />
+      </View>
     );
   }
 
@@ -171,6 +181,9 @@ const RequestDetailsScreen = () => {
   const config = priorityConfig[request.priority] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  let sectionIndex = 0;
+  const nextSection = () => sectionIndex++;
+
   return (
     <View style={styles.safeArea}>
       {/* Header */}
@@ -187,6 +200,7 @@ const RequestDetailsScreen = () => {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Title Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.titleCard}>
           <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
           <View style={styles.titleCardContent}>
@@ -209,9 +223,11 @@ const RequestDetailsScreen = () => {
             )}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Source Incident(s) Banner */}
         {request.source_incidents && request.source_incidents.length > 0 ? (
+          <AnimatedListItem index={nextSection()}>
           <View style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
             <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600', marginBottom: 8 }}>
               {t('incidents.convertedFromIncident', 'Converted from Incident')}
@@ -232,7 +248,9 @@ const RequestDetailsScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          </AnimatedListItem>
         ) : request.source_incident_id ? (
+          <AnimatedListItem index={nextSection()}>
           <TouchableOpacity
             style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
             onPress={() => router.push({ pathname: '/incident-details', params: { id: request.source_incident_id } })}
@@ -254,9 +272,11 @@ const RequestDetailsScreen = () => {
               <Ionicons name="chevron-forward" size={20} color="#22C55E" />
             </View>
           </TouchableOpacity>
+          </AnimatedListItem>
         ) : null}
 
         {/* Details Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('requests.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
@@ -363,16 +383,20 @@ const RequestDetailsScreen = () => {
             })()}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Description Card */}
         {request.description && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
             <RenderWithIncidentMentions text={request.description} style={styles.descriptionText} />
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Comments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {request.comments && request.comments.length > 0 ? (
@@ -397,8 +421,10 @@ const RequestDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         {/* Attachments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.attachments')} icon="attach" />
           {imageAttachments.length > 0 && (
@@ -437,6 +463,7 @@ const RequestDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
@@ -452,6 +479,7 @@ const RequestDetailsScreen = () => {
 
         {/* Location Card */}
         {request.location && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.location')} icon="location" />
             <View style={styles.locationInfo}>
@@ -462,9 +490,11 @@ const RequestDetailsScreen = () => {
               </View>
             </View>
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Transition History Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {request.transition_history && request.transition_history.length > 0 ? (
@@ -511,6 +541,7 @@ const RequestDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
       </ScrollView>
 
       {/* Update Button */}
