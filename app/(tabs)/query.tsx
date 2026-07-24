@@ -1,4 +1,6 @@
 import { getQueries, getQueryStats } from '@/src/api/incidents';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { TicketListSkeleton } from '@/src/components/TicketListSkeleton';
 import { useAuth } from '@/src/context/AuthContext';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
@@ -419,10 +421,7 @@ const QueriesScreen = () => {
             <FilterBadges />
 
             {loading ? (
-                <View style={styles.centered}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>{t('common.loading')}</Text>
-                </View>
+                <TicketListSkeleton style={{ backgroundColor: COLORS.background }} />
             ) : error ? (
                 <View style={styles.centered}>
                     <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
@@ -436,7 +435,11 @@ const QueriesScreen = () => {
             ) : (
                 <FlatList
                     data={sortedQueries}
-                    renderItem={({ item }) => <QueryCard query={item} t={t} />}
+                    renderItem={({ item, index }) => (
+                        <AnimatedListItem index={index}>
+                            <QueryCard query={item} t={t} />
+                        </AnimatedListItem>
+                    )}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
                     ListHeaderComponent={renderHeader}

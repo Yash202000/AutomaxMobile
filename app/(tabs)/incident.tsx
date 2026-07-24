@@ -1,5 +1,7 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { CustomAlert } from "@/src/components/CustomAlert";
+import { TicketListSkeleton } from "@/src/components/TicketListSkeleton";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { useHierarchy } from "@/src/hooks/useHierarchy";
@@ -101,6 +103,10 @@ interface Incident {
     color: string;
   }>;
   transition_history?: Array<any>;
+  classification?: any;
+  description?: string;
+  reporter?: any;
+  reporter_phone?: string
 }
 
 interface PaginationInfo {
@@ -1055,12 +1061,7 @@ const IncidentsScreen = () => {
       <FilterBadges />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
-            {t("incidents.loadingIncidents")}
-          </Text>
-        </View>
+        <TicketListSkeleton style={{ backgroundColor: COLORS.background }} />
       ) : error ? (
         <View style={styles.centered}>
           <Ionicons
@@ -1081,15 +1082,17 @@ const IncidentsScreen = () => {
       ) : (
         <FlatList
           data={sortedIncidents}
-          renderItem={({ item }) => (
-            <IncidentCard
-              incident={item}
-              isSelected={selectedIds.has(item.id)}
-              selectionMode={selectionMode}
-              onSelect={() => toggleSelectIncident(item.id)}
-              onLongPress={() => handleLongPressIncident(item.id)}
-              viewer={isViewerMode}
-            />
+          renderItem={({ item, index }) => (
+            <AnimatedListItem index={index}>
+              <IncidentCard
+                incident={item}
+                isSelected={selectedIds.has(item.id)}
+                selectionMode={selectionMode}
+                onSelect={() => toggleSelectIncident(item.id)}
+                onLongPress={() => handleLongPressIncident(item.id)}
+                viewer={isViewerMode}
+              />
+            </AnimatedListItem>
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
