@@ -535,7 +535,10 @@
     "chooseMapsApp": "Open Directions With",
     "googleMaps": "Google Maps",
     "appleMaps": "Apple Maps",
-    "openInBrowser": "Open in Browser"
+    "openInBrowser": "Open in Browser",
+    "googleMapsNotInstalled": "Google Maps Not Installed",
+    "googleMapsNotInstalledDesc": "Google Maps is required to show directions. Would you like to install it?",
+    "install": "Install"
   },
   "priorities": {
     "critical": "Critical",
