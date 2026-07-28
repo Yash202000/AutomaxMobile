@@ -12,6 +12,7 @@ import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { crashLogger } from '@/src/utils/crashLogger';
+import { openMapsDirections } from '@/src/utils/openMapsDirections';
 import { Ionicons } from '@expo/vector-icons';
 import { AudioSource, useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
@@ -338,39 +339,16 @@ const IncidentDetailsScreen = () => {
 
   const handleOpenDirections = () => {
     if (incident?.latitude && incident?.longitude) {
-      const destination = `${incident.latitude},${incident.longitude}`;
-      const url = Platform.select({
-        ios: `maps://app?daddr=${destination}`,
-        android: `google.navigation:q=${destination}`,
+      openMapsDirections(incident.latitude, incident.longitude, (error) => {
+        crashLogger.logError(error as Error, {
+          screen: 'IncidentDetailsScreen',
+          action: 'openDirections',
+          incidentId: incident?.id,
+          latitude: incident?.latitude,
+          longitude: incident?.longitude,
+          context: 'Failed to open maps directions',
+        }).catch(err => console.error('Failed to log error:', err));
       });
-      const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-
-      Linking.canOpenURL(url || webUrl)
-        .then((supported) => {
-          if (supported && url) {
-            return Linking.openURL(url);
-          } else {
-            return Linking.openURL(webUrl);
-          }
-        })
-        .catch((error) => {
-          console.error('Error opening directions:', error);
-
-          // Log error
-          crashLogger.logError(error as Error, {
-            screen: 'IncidentDetailsScreen',
-            action: 'openDirections',
-            incidentId: incident?.id,
-            latitude: incident?.latitude,
-            longitude: incident?.longitude,
-            context: 'Failed to open maps directions',
-          }).catch(err => console.error('Failed to log error:', err));
-
-          CustomAlert.alert(
-            t('common.error'),
-            t('errors.mapsFailed', 'Failed to open maps. Please check if you have a maps app installed.')
-          );
-        });
     }
   };
 

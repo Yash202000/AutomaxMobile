@@ -15,7 +15,12 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.mobile',
       buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
-      googleServicesFile: "./GoogleService-Info.plist"
+      googleServicesFile: "./GoogleService-Info.plist",
+      infoPlist: {
+        // Required for Linking.canOpenURL('comgooglemaps://...') to detect
+        // whether the Google Maps app is installed (iOS 9+ query whitelist).
+        LSApplicationQueriesSchemes: ['comgooglemaps'],
+      },
     },
     android: {
       package: process.env.ANDROID_PACKAGE || 'com.automax.mobile',

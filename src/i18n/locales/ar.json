@@ -525,7 +525,11 @@
     "reporter": "المبلغ",
     "geolocation": "الموقع الجغرافي",
     "directions": "الاتجاهات",
-    "additionalInfo": "معلومات إضافية"
+    "additionalInfo": "معلومات إضافية",
+    "chooseMapsApp": "فتح الاتجاهات باستخدام",
+    "googleMaps": "خرائط جوجل",
+    "appleMaps": "خرائط أبل",
+    "openInBrowser": "فتح في المتصفح"
   },
   "priorities": {
     "critical": "حرج",
