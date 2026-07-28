@@ -10,6 +10,7 @@ import { Skeleton } from '@/src/components/Skeleton';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
+import { openMapsDirections } from '@/src/utils/openMapsDirections';
 import { Ionicons } from '@expo/vector-icons';
 import { AudioSource, useAudioPlayer } from 'expo-audio';
 import { Audio } from 'expo-av';
@@ -19,7 +20,7 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
@@ -173,19 +174,9 @@ const QueryDetailsScreen = () => {
 
   const handleOpenDirections = () => {
     if (query?.latitude !== undefined && query?.longitude !== undefined) {
-      const url = Platform.select({
-        ios: `maps://app?daddr=${query.latitude},${query.longitude}`,
-        android: `google.navigation:q=${query.latitude},${query.longitude}`,
+      openMapsDirections(query.latitude, query.longitude).catch((error) => {
+        console.error('Error opening directions:', error);
       });
-      if (url) {
-        Linking.canOpenURL(url).then(supported => {
-          if (supported) {
-            Linking.openURL(url);
-          } else {
-            Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query.latitude},${query.longitude}`);
-          }
-        });
-      }
     }
   };
 

@@ -531,7 +531,11 @@
     "reporter": "Reporter",
     "geolocation": "Geolocation",
     "directions": "Directions",
-    "additionalInfo": "Additional Information"
+    "additionalInfo": "Additional Information",
+    "chooseMapsApp": "Open Directions With",
+    "googleMaps": "Google Maps",
+    "appleMaps": "Apple Maps",
+    "openInBrowser": "Open in Browser"
   },
   "priorities": {
     "critical": "Critical",
