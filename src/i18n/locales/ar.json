@@ -529,7 +529,10 @@
     "chooseMapsApp": "فتح الاتجاهات باستخدام",
     "googleMaps": "خرائط جوجل",
     "appleMaps": "خرائط أبل",
-    "openInBrowser": "فتح في المتصفح"
+    "openInBrowser": "فتح في المتصفح",
+    "googleMapsNotInstalled": "خرائط جوجل غير مثبتة",
+    "googleMapsNotInstalledDesc": "يتطلب عرض الاتجاهات تثبيت خرائط جوجل. هل ترغب في تثبيته؟",
+    "install": "تثبيت"
   },
   "priorities": {
     "critical": "حرج",

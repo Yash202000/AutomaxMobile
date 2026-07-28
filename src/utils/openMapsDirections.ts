@@ -73,8 +73,34 @@ export const openMapsDirections = async (
 
   if (Platform.OS === 'android') {
     const googleNavUrl = `google.navigation:q=${destination}`;
-    const url = (await canOpen(googleNavUrl)) ? googleNavUrl : webUrl;
-    await openAndReport(url);
+    if (await canOpen(googleNavUrl)) {
+      await openAndReport(googleNavUrl);
+      return;
+    }
+
+    const playStoreMarketUrl = 'market://details?id=com.google.android.apps.maps';
+    const playStoreWebUrl = 'https://play.google.com/store/apps/details?id=com.google.android.apps.maps';
+    const playStoreUrl = (await canOpen(playStoreMarketUrl)) ? playStoreMarketUrl : playStoreWebUrl;
+
+    CustomAlert.alert(
+      i18n.t('details.googleMapsNotInstalled'),
+      i18n.t('details.googleMapsNotInstalledDesc'),
+      [
+        {
+          text: i18n.t('details.install'),
+          onPress: () => {
+            openAndReport(playStoreUrl);
+          },
+        },
+        {
+          text: i18n.t('details.openInBrowser'),
+          onPress: () => {
+            openAndReport(webUrl);
+          },
+        },
+        { text: i18n.t('common.cancel'), style: 'cancel' as const },
+      ],
+    );
     return;
   }
 
