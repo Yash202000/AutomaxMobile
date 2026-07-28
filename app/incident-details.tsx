@@ -1,14 +1,18 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById, getIncidentHistory, canConvertToRequest } from '@/src/api/incidents';
 import { getLookupCategories } from '@/src/api/lookups';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { DetailScreenSkeleton } from '@/src/components/DetailScreenSkeleton';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { Skeleton } from '@/src/components/Skeleton';
 import { useAuth } from '@/src/context/AuthContext';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
 import { crashLogger } from '@/src/utils/crashLogger';
+import { openMapsDirections } from '@/src/utils/openMapsDirections';
 import { Ionicons } from '@expo/vector-icons';
 import { AudioSource, useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
@@ -17,7 +21,7 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ImageBackground, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
@@ -335,39 +339,16 @@ const IncidentDetailsScreen = () => {
 
   const handleOpenDirections = () => {
     if (incident?.latitude && incident?.longitude) {
-      const destination = `${incident.latitude},${incident.longitude}`;
-      const url = Platform.select({
-        ios: `maps://app?daddr=${destination}`,
-        android: `google.navigation:q=${destination}`,
+      openMapsDirections(incident.latitude, incident.longitude, (error) => {
+        crashLogger.logError(error as Error, {
+          screen: 'IncidentDetailsScreen',
+          action: 'openDirections',
+          incidentId: incident?.id,
+          latitude: incident?.latitude,
+          longitude: incident?.longitude,
+          context: 'Failed to open maps directions',
+        }).catch(err => console.error('Failed to log error:', err));
       });
-      const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-
-      Linking.canOpenURL(url || webUrl)
-        .then((supported) => {
-          if (supported && url) {
-            return Linking.openURL(url);
-          } else {
-            return Linking.openURL(webUrl);
-          }
-        })
-        .catch((error) => {
-          console.error('Error opening directions:', error);
-
-          // Log error
-          crashLogger.logError(error as Error, {
-            screen: 'IncidentDetailsScreen',
-            action: 'openDirections',
-            incidentId: incident?.id,
-            latitude: incident?.latitude,
-            longitude: incident?.longitude,
-            context: 'Failed to open maps directions',
-          }).catch(err => console.error('Failed to log error:', err));
-
-          CustomAlert.alert(
-            t('common.error'),
-            t('errors.mapsFailed', 'Failed to open maps. Please check if you have a maps app installed.')
-          );
-        });
     }
   };
 
@@ -429,13 +410,32 @@ const IncidentDetailsScreen = () => {
   };
 
 
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
+  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
+  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
+  const isViewerMode = isViewerApp && isViewerRole;
+
   if (loading) {
     return (
-      <View style={[styles.safeArea]}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
+      <View style={styles.safeArea}>
+        <ImageBackground
+          source={
+            isViewerMode
+              ? require("@/assets/images/viewerBackground.png")
+              : require("@/assets/images/background.png")
+          }
+          style={[styles.header, { paddingTop: insets.top }]}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Skeleton width={120} height={18} style={{ backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            <Text style={styles.headerSubtitle}>{t('incidents.incidentDetails')}</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </ImageBackground>
+        <DetailScreenSkeleton sections={[4, 3, 2]} />
       </View>
     );
   }
@@ -459,10 +459,8 @@ const IncidentDetailsScreen = () => {
   const config = priorityConfig[incident.priority as number] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
-  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
-  const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-  const isViewerMode = isViewerApp && isViewerRole;
+  let sectionIndex = 0;
+  const nextSection = () => sectionIndex++;
 
   return (
     <View style={styles.safeArea}>
@@ -487,77 +485,84 @@ const IncidentDetailsScreen = () => {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Title Card */}
-        <View style={styles.titleCard}>
-          {/* <View style={[styles.priorityBar, { backgroundColor: config.color }]} /> */}
-          <View style={styles.titleCardContent}>
-            <View style={styles.titleHeader}>
-              {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
+        <AnimatedListItem index={nextSection()}>
+          <View style={styles.titleCard}>
+            {/* <View style={[styles.priorityBar, { backgroundColor: config.color }]} /> */}
+            <View style={styles.titleCardContent}>
+              <View style={styles.titleHeader}>
+                {/* <View style={[styles.priorityBadge, { backgroundColor: config.color }]}>
                 <Ionicons name="flag" size={12} color={COLORS.white} />
                 <Text style={styles.priorityBadgeText}>{priorityText}</Text>
               </View> */}
-              <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString('en-GB')}</Text>
-            </View>
-            <Text style={styles.incidentTitle}>{incident.title}</Text>
-            {incident.current_state && (
-              <View style={styles.statusContainer}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
+                <Text style={styles.dateText}>{new Date(incident.created_at).toLocaleDateString('en-GB')}</Text>
               </View>
-            )}
+              <Text style={styles.incidentTitle}>{incident.title}</Text>
+              {incident.current_state && (
+                <View style={styles.statusContainer}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        </AnimatedListItem>
 
         {/* Converted to Request Banner */}
         {incident.converted_request_id && (
-          <TouchableOpacity
-            style={[styles.card, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
-            onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.converted_request_id } })}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ backgroundColor: '#DBEAFE', padding: 8, borderRadius: 8 }}>
-                <Ionicons name="git-branch-outline" size={24} color="#2563EB" />
+          <AnimatedListItem index={nextSection()}>
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+              onPress={() => router.push({ pathname: '/request-details', params: { id: incident.converted_request_id } })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: '#DBEAFE', padding: 8, borderRadius: 8 }}>
+                  <Ionicons name="git-branch-outline" size={24} color="#2563EB" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: '#1E3A8A', fontWeight: '600' }}>
+                    {t('incidents.convertedToRequest', 'Converted to Request')}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#3B82F6', marginTop: 2 }}>
+                    {incident.converted_request?.incident_number
+                      ? t('incidents.tapToViewRequest', { number: incident.converted_request.incident_number, defaultValue: `Tap to view ${incident.converted_request.incident_number}` })
+                      : t('incidents.tapToViewConverted', 'Tap to view converted request')}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, color: '#1E3A8A', fontWeight: '600' }}>
-                  {t('incidents.convertedToRequest', 'Converted to Request')}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#3B82F6', marginTop: 2 }}>
-                  {incident.converted_request?.incident_number
-                    ? t('incidents.tapToViewRequest', { number: incident.converted_request.incident_number, defaultValue: `Tap to view ${incident.converted_request.incident_number}` })
-                    : t('incidents.tapToViewConverted', 'Tap to view converted request')}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </AnimatedListItem>
         )}
 
         {/* Source Incident Banner */}
         {incident.source_incident_id && (
-          <TouchableOpacity
-            style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
-            onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.source_incident_id } })}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ backgroundColor: '#DCFCE7', padding: 8, borderRadius: 8 }}>
-                <Ionicons name="arrow-undo-outline" size={24} color="#16A34A" />
+          <AnimatedListItem index={nextSection()}>
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
+              onPress={() => router.push({ pathname: '/incident-details', params: { id: incident.source_incident_id } })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: '#DCFCE7', padding: 8, borderRadius: 8 }}>
+                  <Ionicons name="arrow-undo-outline" size={24} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600' }}>
+                    {t('incidents.convertedFromIncident', 'Converted from Incident')}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>
+                    {incident.source_incident?.incident_number
+                      ? t('incidents.tapToViewSource', { number: incident.source_incident.incident_number, defaultValue: `Tap to view source ${incident.source_incident.incident_number}` })
+                      : t('incidents.tapToViewSourceIncident', 'Tap to view source incident')}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#22C55E" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, color: '#14532D', fontWeight: '600' }}>
-                  {t('incidents.convertedFromIncident', 'Converted from Incident')}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>
-                  {incident.source_incident?.incident_number
-                    ? t('incidents.tapToViewSource', { number: incident.source_incident.incident_number, defaultValue: `Tap to view source ${incident.source_incident.incident_number}` })
-                    : t('incidents.tapToViewSourceIncident', 'Tap to view source incident')}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#22C55E" />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </AnimatedListItem>
         )}
 
         {/* Details Card with Lookup Values and Custom Fields Inside */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
 
@@ -667,8 +672,10 @@ const IncidentDetailsScreen = () => {
             })()}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Attachments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.attachments')} icon="attach" />
           {imageAttachments.length > 0 && (
@@ -710,6 +717,7 @@ const IncidentDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
@@ -725,6 +733,7 @@ const IncidentDetailsScreen = () => {
 
         {/* Geolocation Card */}
         {(incident.latitude !== undefined && incident.longitude !== undefined) && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.geolocation')} icon="navigate" />
             <View style={styles.mapContainer}>
@@ -844,17 +853,21 @@ const IncidentDetailsScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Description Card */}
         {incident.description && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
             <RenderWithIncidentMentions text={incident.description} style={styles.descriptionText} />
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Reporter Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.reporter')} icon="person-circle" />
           <View style={styles.reporterCard}>
@@ -893,8 +906,10 @@ const IncidentDetailsScreen = () => {
             </View>
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Comments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {incident.comments && incident.comments.length > 0 ? (
@@ -936,8 +951,10 @@ const IncidentDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         {/* Transition History Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {history && history.length > 0 ? (
@@ -1027,6 +1044,7 @@ const IncidentDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
       </ScrollView>
 
       {/* Action Buttons */}

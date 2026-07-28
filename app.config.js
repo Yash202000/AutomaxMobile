@@ -15,7 +15,12 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.mobile',
       buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
-      googleServicesFile: "./GoogleService-Info.plist"
+      googleServicesFile: "./GoogleService-Info.plist",
+      infoPlist: {
+        // Required for Linking.canOpenURL('comgooglemaps://...') to detect
+        // whether the Google Maps app is installed (iOS 9+ query whitelist).
+        LSApplicationQueriesSchemes: ['comgooglemaps'],
+      },
     },
     android: {
       googleServicesFile: "./google-services.json",
@@ -27,6 +32,7 @@ module.exports = {
         backgroundColor: process.env.APP_ICON_BG_COLOR || '#ffffff',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: [

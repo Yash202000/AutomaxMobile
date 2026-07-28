@@ -341,7 +341,8 @@
     "commentRequired": "Comment (Required)",
     "commentOptional": "Comment (Optional)",
     "addCommentPlaceholder": "Add a comment...",
-    "feedbackCommentPlaceholder": "Add feedback comment (optional)...",
+    "feedbackCommentPlaceholder": "Add feedback comment...",
+    "feedbackMandatoryError": "Feedback comment is required to submit.",
     "feedbackRating": "Feedback Rating",
     "feedbackRatingRequired": "Feedback Rating (Required)",
     "feedbackRatingOptional": "Feedback Rating (Optional)",
@@ -476,6 +477,8 @@
     "newRequest": "New Request",
     "existingRequest": "Existing Request",
     "searchRequest": "Search Request",
+    "searchRequestPlaceholder": "Search by request number or title...",
+    "searchRequestHint": "Showing latest 15 requests. Search to find others.",
     "transition": "Transition",
     "review": "Review",
     "type": "Type",
@@ -528,7 +531,11 @@
     "reporter": "Reporter",
     "geolocation": "Geolocation",
     "directions": "Directions",
-    "additionalInfo": "Additional Information"
+    "additionalInfo": "Additional Information",
+    "chooseMapsApp": "Open Directions With",
+    "googleMaps": "Google Maps",
+    "appleMaps": "Apple Maps",
+    "openInBrowser": "Open in Browser"
   },
   "priorities": {
     "critical": "Critical",

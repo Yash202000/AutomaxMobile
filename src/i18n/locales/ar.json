@@ -338,7 +338,8 @@
     "commentRequired": "تعليق (مطلوب)",
     "commentOptional": "تعليق (اختياري)",
     "addCommentPlaceholder": "إضافة تعليق",
-    "feedbackCommentPlaceholder": "أضف تعليق تقييم (اختياري)...",
+    "feedbackCommentPlaceholder": "أضف تعليق تقييم...",
+    "feedbackMandatoryError": "تعليق التقييم مطلوب للإرسال.",
     "feedbackRating": "تقييم الأداء",
     "feedbackRatingRequired": "تقييم الأداء (مطلوب)",
     "feedbackRatingOptional": "تقييم الأداء (اختياري)",
@@ -470,6 +471,8 @@
     "newRequest": "طلب جديد",
     "existingRequest": "طلب موجود",
     "searchRequest": "بحث عن طلب",
+    "searchRequestPlaceholder": "ابحث برقم الطلب أو العنوان...",
+    "searchRequestHint": "يتم عرض أحدث 15 طلبًا. يمكنك البحث للعثور على طلبات أخرى.",
     "transition": "انتقال",
     "review": "مراجعة",
     "type": "النوع",
@@ -522,7 +525,11 @@
     "reporter": "المبلغ",
     "geolocation": "الموقع الجغرافي",
     "directions": "الاتجاهات",
-    "additionalInfo": "معلومات إضافية"
+    "additionalInfo": "معلومات إضافية",
+    "chooseMapsApp": "فتح الاتجاهات باستخدام",
+    "googleMaps": "خرائط جوجل",
+    "appleMaps": "خرائط أبل",
+    "openInBrowser": "فتح في المتصفح"
   },
   "priorities": {
     "critical": "حرج",
