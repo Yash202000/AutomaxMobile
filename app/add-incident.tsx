@@ -67,6 +67,7 @@ interface DropdownOption {
 interface Workflow {
   id: string;
   name: string;
+  name_ar: string;
   is_active: boolean;
   is_default?: boolean;
   required_fields?: string[];
@@ -1663,7 +1664,10 @@ const AddIncidentScreen = () => {
                 {matchedWorkflow ? (
                   <View style={styles.workflowMatched}>
                     <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
+                    <Text style={styles.workflowName}>{
+                      i18n.language === 'ar' && matchedWorkflow.name_ar ? matchedWorkflow.name_ar :
+                        matchedWorkflow.name
+                    }</Text>
                   </View>
                 ) : (
                   <Text style={styles.workflowHint}>
