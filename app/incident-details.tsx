@@ -500,7 +500,7 @@ const IncidentDetailsScreen = () => {
               {incident.current_state && (
                 <View style={styles.statusContainer}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state.name : incident.current_state?.name_ar}</Text>
+                  <Text style={styles.statusText}>{(i18n.language === 'en' || !incident.current_state?.name_ar) ? incident.current_state?.name : incident.current_state?.name_ar}</Text>
                 </View>
               )}
             </View>
@@ -563,160 +563,160 @@ const IncidentDetailsScreen = () => {
 
         {/* Details Card with Lookup Values and Custom Fields Inside */}
         <AnimatedListItem index={nextSection()}>
-        <View style={styles.card}>
-          <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
+          <View style={styles.card}>
+            <SectionHeader title={t('incidents.incidentDetails')} icon="information-circle" />
 
-          <View style={styles.infoContainer}>
-            {/* Basic Info */}
-            <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, incident.classification?.id) || incident.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, incident.department?.id) || incident.department?.name || ''} iconColor="#8B5CF6" />
-            <InfoRow icon="person-outline" label={t('details.assignees')}
-              value={incident.assignees?.length
-                ? incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
-                : incident.assignee
-                  ? `${incident.assignee.first_name || ''} ${incident.assignee.last_name || ''}`.trim()
-                  : ''
-              }
-              iconColor="#EC4899"
-            />
-            {incident.location && (
-              <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, incident.location.id) || incident.location.name} iconColor={COLORS.error} />
-            )}
-            {incident.source && (
-              <InfoRow
-                icon="git-network-outline"
-                label={t('incidents.source')}
-                value={t(`incidents.sources.${incident.source?.toLowerCase()}`).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                iconColor="#0EA5E9"
-              />
-            )}
-
-            {/* Lookup Values as InfoRows */}
-            {incident.lookup_values && incident.lookup_values.length > 0 && (() => {
-              const grouped: Record<string, LookupValue[]> = {};
-              incident.lookup_values.forEach(value => {
-                const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
-                if (!grouped[categoryName]) {
-                  grouped[categoryName] = [];
+            <View style={styles.infoContainer}>
+              {/* Basic Info */}
+              <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, incident.classification?.id) || incident.classification?.name || ''} iconColor={COLORS.accent} />
+              <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, incident.department?.id) || incident.department?.name || ''} iconColor="#8B5CF6" />
+              <InfoRow icon="person-outline" label={t('details.assignees')}
+                value={incident.assignees?.length
+                  ? incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+                  : incident.assignee
+                    ? `${incident.assignee.first_name || ''} ${incident.assignee.last_name || ''}`.trim()
+                    : ''
                 }
-                grouped[categoryName].push(value);
-              });
+                iconColor="#EC4899"
+              />
+              {incident.location && (
+                <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, incident.location.id) || incident.location.name} iconColor={COLORS.error} />
+              )}
+              {incident.source && (
+                <InfoRow
+                  icon="git-network-outline"
+                  label={t('incidents.source')}
+                  value={t(`incidents.sources.${incident.source?.toLowerCase()}`).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  iconColor="#0EA5E9"
+                />
+              )}
 
-              return Object.entries(grouped).map(([category, values]) => (
-                <View key={category} style={styles.infoRow}>
-                  <View style={styles.infoRowLeft}>
-                    <Ionicons name="pricetag" size={18} color="#10B981" />
-                    <Text style={styles.infoLabel}>{category}</Text>
-                  </View>
-                  <View style={styles.lookupValuesList}>
-                    {values.map(value => (
-                      <View
-                        key={value.id}
-                        style={[
-                          styles.lookupValueTag,
-                          {
-                            backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
-                            borderColor: value.color || '#CBD5E1',
-                          },
-                        ]}
-                      >
-                        <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value?.name_ar || '')} style={styles.descriptionText} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ));
-            })()}
-
-            {/* Custom Fields as InfoRows */}
-            {incident.custom_fields && (() => {
-              try {
-                const customFields = JSON.parse(incident.custom_fields);
-                const allFields: any[] = [];
-
-                // Extract all custom fields
-                Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
-                  const ld = categories.find((c: any) => c.id === fieldData.category_id);
-                  if (key.startsWith('lookup:')) {
-                    allFields.push({
-                      key,
-                      label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
-                      value: fieldData.value,
-                      field_type: fieldData.field_type || 'text',
-                    });
+              {/* Lookup Values as InfoRows */}
+              {incident.lookup_values && incident.lookup_values.length > 0 && (() => {
+                const grouped: Record<string, LookupValue[]> = {};
+                incident.lookup_values.forEach(value => {
+                  const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
+                  if (!grouped[categoryName]) {
+                    grouped[categoryName] = [];
                   }
+                  grouped[categoryName].push(value);
                 });
 
-                return allFields.map((field) => {
-                  let displayValue = field.value || 'N/A';
-                  if (field.field_type === 'checkbox') {
-                    displayValue = field.value ? t('common.yes') : t('common.no');
-                  } else if (field.field_type === 'date' && field.value) {
-                    displayValue = new Date(field.value).toLocaleDateString('en-GB');
-                  }
+                return Object.entries(grouped).map(([category, values]) => (
+                  <View key={category} style={styles.infoRow}>
+                    <View style={styles.infoRowLeft}>
+                      <Ionicons name="pricetag" size={18} color="#10B981" />
+                      <Text style={styles.infoLabel}>{category}</Text>
+                    </View>
+                    <View style={styles.lookupValuesList}>
+                      {values.map(value => (
+                        <View
+                          key={value.id}
+                          style={[
+                            styles.lookupValueTag,
+                            {
+                              backgroundColor: value.color ? `${value.color}20` : '#E2E8F0',
+                              borderColor: value.color || '#CBD5E1',
+                            },
+                          ]}
+                        >
+                          <RenderWithIncidentMentions text={i18n.language === 'en' ? (value.name || '') : (value?.name_ar || '')} style={styles.descriptionText} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ));
+              })()}
 
-                  return (
-                    <InfoRow
-                      key={field.key}
-                      icon="list-outline"
-                      label={field.label}
-                      value={String(displayValue)}
-                      iconColor="#F59E0B"
-                    />
-                  );
-                });
-              } catch (error) {
-                console.error('Error parsing custom_fields:', error);
-                return null;
-              }
-            })()}
+              {/* Custom Fields as InfoRows */}
+              {incident.custom_fields && (() => {
+                try {
+                  const customFields = JSON.parse(incident.custom_fields);
+                  const allFields: any[] = [];
+
+                  // Extract all custom fields
+                  Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
+                    const ld = categories.find((c: any) => c.id === fieldData.category_id);
+                    if (key.startsWith('lookup:')) {
+                      allFields.push({
+                        key,
+                        label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
+                        value: fieldData.value,
+                        field_type: fieldData.field_type || 'text',
+                      });
+                    }
+                  });
+
+                  return allFields.map((field) => {
+                    let displayValue = field.value || 'N/A';
+                    if (field.field_type === 'checkbox') {
+                      displayValue = field.value ? t('common.yes') : t('common.no');
+                    } else if (field.field_type === 'date' && field.value) {
+                      displayValue = new Date(field.value).toLocaleDateString('en-GB');
+                    }
+
+                    return (
+                      <InfoRow
+                        key={field.key}
+                        icon="list-outline"
+                        label={field.label}
+                        value={String(displayValue)}
+                        iconColor="#F59E0B"
+                      />
+                    );
+                  });
+                } catch (error) {
+                  console.error('Error parsing custom_fields:', error);
+                  return null;
+                }
+              })()}
+            </View>
           </View>
-        </View>
         </AnimatedListItem>
 
         {/* Attachments Card */}
         <AnimatedListItem index={nextSection()}>
-        <View style={styles.card}>
-          <SectionHeader title={t('details.attachments')} icon="attach" />
-          {imageAttachments.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-              {imageAttachments.map((att, index) => (
-                <TouchableOpacity
-                  key={att.id}
-                  onPress={() => { setCurrentImageIndex(index); setImageViewerVisible(true); }}
-                  style={styles.imageThumb}
-                >
-                  <Image
-                    source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
-                    style={styles.attachmentImage}
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-          {audioAttachments.map(att => (
-            <AudioPlayer key={att.id} attachment={att} token={token || ''} />
-          ))}
-          {otherAttachments.map(att => (
-            <TouchableOpacity
-              key={att.id}
-              onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
-              style={styles.fileAttachment}
-            >
-              <View style={styles.fileIconContainer}>
-                <Ionicons name="document" size={20} color={COLORS.accent} />
+          <View style={styles.card}>
+            <SectionHeader title={t('details.attachments')} icon="attach" />
+            {imageAttachments.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+                {imageAttachments.map((att, index) => (
+                  <TouchableOpacity
+                    key={att.id}
+                    onPress={() => { setCurrentImageIndex(index); setImageViewerVisible(true); }}
+                    style={styles.imageThumb}
+                  >
+                    <Image
+                      source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
+                      style={styles.attachmentImage}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+            {audioAttachments.map(att => (
+              <AudioPlayer key={att.id} attachment={att} token={token || ''} />
+            ))}
+            {otherAttachments.map(att => (
+              <TouchableOpacity
+                key={att.id}
+                onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
+                style={styles.fileAttachment}
+              >
+                <View style={styles.fileIconContainer}>
+                  <Ionicons name="document" size={20} color={COLORS.accent} />
+                </View>
+                <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
+                <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
+              </TouchableOpacity>
+            ))}
+            {attachments.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="images-outline" size={32} color={COLORS.text.muted} />
+                <Text style={styles.emptyStateText}>{t('details.noAttachments')}</Text>
               </View>
-              <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
-              <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
-            </TouchableOpacity>
-          ))}
-          {attachments.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons name="images-outline" size={32} color={COLORS.text.muted} />
-              <Text style={styles.emptyStateText}>{t('details.noAttachments')}</Text>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
         </AnimatedListItem>
 
         <AuthenticatedImageViewer
@@ -734,13 +734,13 @@ const IncidentDetailsScreen = () => {
         {/* Geolocation Card */}
         {(incident.latitude !== undefined && incident.longitude !== undefined) && (
           <AnimatedListItem index={nextSection()}>
-          <View style={styles.card}>
-            <SectionHeader title={t('details.geolocation')} icon="navigate" />
-            <View style={styles.mapContainer}>
-              <WebView
-                ref={mapRef}
-                source={{
-                  html: `
+            <View style={styles.card}>
+              <SectionHeader title={t('details.geolocation')} icon="navigate" />
+              <View style={styles.mapContainer}>
+                <WebView
+                  ref={mapRef}
+                  source={{
+                    html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -811,239 +811,239 @@ const IncidentDetailsScreen = () => {
 </body>
 </html>
                 `, baseUrl: 'https://localhost/'
-                }}
-                style={styles.map}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                startInLoadingState={false}
-                originWhitelist={['*']}
-                mixedContentMode="compatibility"
-                onMessage={(event) => {
-                  try {
-                    const data = JSON.parse(event.nativeEvent.data);
-                    if (data.type === 'mapReady') {
-                      // Map is ready
+                  }}
+                  style={styles.map}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  startInLoadingState={false}
+                  originWhitelist={['*']}
+                  mixedContentMode="compatibility"
+                  onMessage={(event) => {
+                    try {
+                      const data = JSON.parse(event.nativeEvent.data);
+                      if (data.type === 'mapReady') {
+                        // Map is ready
+                      }
+                    } catch (error) {
+                      console.error('❌ [IncidentDetails OSM] Error handling message:', error);
                     }
-                  } catch (error) {
-                    console.error('❌ [IncidentDetails OSM] Error handling message:', error);
-                  }
-                }}
-              />
-              {/* Zoom Controls */}
-              <View style={styles.mapControls}>
-                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomIn}>
-                  <Ionicons name="add" size={22} color={COLORS.text.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomOut}>
-                  <Ionicons name="remove" size={22} color={COLORS.text.primary} />
+                  }}
+                />
+                {/* Zoom Controls */}
+                <View style={styles.mapControls}>
+                  <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomIn}>
+                    <Ionicons name="add" size={22} color={COLORS.text.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.mapControlButton} onPress={handleZoomOut}>
+                    <Ionicons name="remove" size={22} color={COLORS.text.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {/* Address and Directions */}
+              <View style={styles.mapFooter}>
+                {incident.address && (
+                  <View style={styles.addressContainer}>
+                    <Ionicons name="location" size={16} color={COLORS.error} />
+                    <Text style={[styles.addressText, { textAlign: "left" }]}>{incident.address}</Text>
+                  </View>
+                )}
+                <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
+                  <Ionicons name="navigate" size={18} color={COLORS.white} />
+                  <Text style={styles.directionsButtonText}>{t('details.directions') || 'Directions'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Address and Directions */}
-            <View style={styles.mapFooter}>
-              {incident.address && (
-                <View style={styles.addressContainer}>
-                  <Ionicons name="location" size={16} color={COLORS.error} />
-                  <Text style={[styles.addressText, { textAlign: "left" }]}>{incident.address}</Text>
-                </View>
-              )}
-              <TouchableOpacity style={styles.directionsButton} onPress={handleOpenDirections}>
-                <Ionicons name="navigate" size={18} color={COLORS.white} />
-                <Text style={styles.directionsButtonText}>{t('details.directions') || 'Directions'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           </AnimatedListItem>
         )}
 
         {/* Description Card */}
         {incident.description && (
           <AnimatedListItem index={nextSection()}>
-          <View style={styles.card}>
-            <SectionHeader title={t('details.description')} icon="document-text" />
-            <RenderWithIncidentMentions text={incident.description} style={styles.descriptionText} />
-          </View>
+            <View style={styles.card}>
+              <SectionHeader title={t('details.description')} icon="document-text" />
+              <RenderWithIncidentMentions text={incident.description} style={styles.descriptionText} />
+            </View>
           </AnimatedListItem>
         )}
 
         {/* Reporter Card */}
         <AnimatedListItem index={nextSection()}>
-        <View style={styles.card}>
-          <SectionHeader title={t('details.reporter')} icon="person-circle" />
-          <View style={styles.reporterCard}>
-            <View style={styles.reporterAvatar}>
-              <Text style={styles.reporterAvatarText}>
-                {incident.reporter?.first_name?.[0] || incident.reporter?.username?.[0] || 'U'}
-              </Text>
-            </View>
-            <View style={styles.reporterInfo}>
-              <Text style={styles.reporterName}>
-                {incident.reporter?.first_name
-                  ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
-                  : incident.reporter?.username || incident.reporter_name || t('common.unknown', 'Unknown')}
-              </Text>
-              {(incident.reporter_email || incident.reporter?.email) && (
-                <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
-              )}
-            </View>
-            <View style={styles.reporterActions}>
-              {(incident.reporter_email || incident.reporter?.email) && (
-                <TouchableOpacity
-                  style={styles.reporterActionButton}
-                  onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}
-                >
-                  <Ionicons name="mail" size={18} color={COLORS.accent} />
-                </TouchableOpacity>
-              )}
-              {incident.reporter?.phone && (
-                <TouchableOpacity
-                  style={styles.reporterActionButton}
-                  onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}
-                >
-                  <Ionicons name="call" size={18} color={COLORS.accent} />
-                </TouchableOpacity>
-              )}
+          <View style={styles.card}>
+            <SectionHeader title={t('details.reporter')} icon="person-circle" />
+            <View style={styles.reporterCard}>
+              <View style={styles.reporterAvatar}>
+                <Text style={styles.reporterAvatarText}>
+                  {incident.reporter?.first_name?.[0] || incident.reporter?.username?.[0] || 'U'}
+                </Text>
+              </View>
+              <View style={styles.reporterInfo}>
+                <Text style={styles.reporterName}>
+                  {incident.reporter?.first_name
+                    ? `${incident.reporter.first_name} ${incident.reporter.last_name || ''}`
+                    : incident.reporter?.username || incident.reporter_name || t('common.unknown', 'Unknown')}
+                </Text>
+                {(incident.reporter_email || incident.reporter?.email) && (
+                  <Text style={styles.reporterEmail}>{incident.reporter_email || incident.reporter?.email}</Text>
+                )}
+              </View>
+              <View style={styles.reporterActions}>
+                {(incident.reporter_email || incident.reporter?.email) && (
+                  <TouchableOpacity
+                    style={styles.reporterActionButton}
+                    onPress={() => Linking.openURL(`mailto:${incident.reporter_email || incident.reporter?.email}`)}
+                  >
+                    <Ionicons name="mail" size={18} color={COLORS.accent} />
+                  </TouchableOpacity>
+                )}
+                {incident.reporter?.phone && (
+                  <TouchableOpacity
+                    style={styles.reporterActionButton}
+                    onPress={() => Linking.openURL(`tel:${incident.reporter?.phone}`)}
+                  >
+                    <Ionicons name="call" size={18} color={COLORS.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
-        </View>
         </AnimatedListItem>
 
         {/* Comments Card */}
         <AnimatedListItem index={nextSection()}>
-        <View style={styles.card}>
-          <SectionHeader title={t('details.comments')} icon="chatbubbles" />
-          {incident.comments && incident.comments.length > 0 ? (
-            <>
-              {(showAllComments ? incident.comments : [incident.comments[0]]).map(comment => (
-                <View style={styles.commentItem} key={comment.id}>
-                  <View style={styles.commentHeader}>
-                    <View style={styles.commentAvatar}>
-                      <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+          <View style={styles.card}>
+            <SectionHeader title={t('details.comments')} icon="chatbubbles" />
+            {incident.comments && incident.comments.length > 0 ? (
+              <>
+                {(showAllComments ? incident.comments : [incident.comments[0]]).map(comment => (
+                  <View style={styles.commentItem} key={comment.id}>
+                    <View style={styles.commentHeader}>
+                      <View style={styles.commentAvatar}>
+                        <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+                      </View>
+                      <View style={styles.commentMeta}>
+                        <Text style={styles.commentAuthor}>{comment.author.username}</Text>
+                        <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
+                      </View>
                     </View>
-                    <View style={styles.commentMeta}>
-                      <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
-                    </View>
+                    <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
                   </View>
-                  <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
-                </View>
-              ))}
-              {incident.comments.length > 1 && (
-                <TouchableOpacity
-                  style={styles.seeMoreButton}
-                  onPress={() => setShowAllComments(!showAllComments)}
-                >
-                  <Text style={styles.seeMoreText}>
-                    {showAllComments ? t('common.showLess') : `${t('common.viewAll')} (${incident.comments.length})`}
-                  </Text>
-                  <Ionicons
-                    name={showAllComments ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={COLORS.accent}
-                  />
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
-              <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
-            </View>
-          )}
-        </View>
+                ))}
+                {incident.comments.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.seeMoreButton}
+                    onPress={() => setShowAllComments(!showAllComments)}
+                  >
+                    <Text style={styles.seeMoreText}>
+                      {showAllComments ? t('common.showLess') : `${t('common.viewAll')} (${incident.comments.length})`}
+                    </Text>
+                    <Ionicons
+                      name={showAllComments ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={COLORS.accent}
+                    />
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
+                <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
+              </View>
+            )}
+          </View>
         </AnimatedListItem>
 
         {/* Transition History Card */}
         <AnimatedListItem index={nextSection()}>
-        <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
-          <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
-          {history && history.length > 0 ? (
-            <View style={styles.timeline}>
-              {(showAllHistory ? history : [history[0]]).map((item, index) => (
-                <View key={item.id} style={styles.timelineItem}>
-                  <View style={styles.timelineLeft}>
-                    <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
-                    {(showAllHistory ? index < history.length - 1 : false) && <View style={styles.timelineLine} />}
-                  </View>
-                  <View style={styles.timelineContent}>
-                    <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
-                      <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
-                      </Text>
+          <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
+            <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
+            {history && history.length > 0 ? (
+              <View style={styles.timeline}>
+                {(showAllHistory ? history : [history[0]]).map((item, index) => (
+                  <View key={item.id} style={styles.timelineItem}>
+                    <View style={styles.timelineLeft}>
+                      <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
+                      {(showAllHistory ? index < history.length - 1 : false) && <View style={styles.timelineLine} />}
                     </View>
-                    <View style={styles.transitionBadges}>
-                      <View style={styles.fromBadge}>
-                        <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state?.name_ar) ? item.from_state?.name_ar : item.from_state.name}</Text>
+                    <View style={styles.timelineContent}>
+                      <View style={{ display: 'flex', flexDirection: 'row', gap: 5 }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 12 }}>{item.transition?.name || t('common.stateChanged', 'State Changed')}</Text>
+                        <Text style={styles.transitionMeta}>
+                          {t('details.by')} {item?.performed_by?.username || item?.performed_by?.name || t('common.system')} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
+                        </Text>
                       </View>
-                      <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
-                      <View style={styles.toBadge}>
-                        <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state?.name_ar) ? item.to_state?.name_ar : item.to_state.name}</Text>
-                      </View>
-                    </View>
-                    {item.comment && (
-                      <View style={styles.transitionComment}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                        <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
-                      </View>
-                    )}
-                    {item?.feedbacks?.comment && (
-                      <View style={styles.transitionComment}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                        <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
-                      </View>
-                    )}
-                    {
-                      item?.feedbacks?.rating > 0 && item?.transition?.is_final_close &&
-                      (
-                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                          {[
-                            ...Array(5).keys(),
-                          ].map((i) => (
-                            <Ionicons
-                              key={i}
-                              name={
-                                i <= item.feedbacks?.rating
-                                  ? "star"
-                                  : "star-outline"
-                              }
-                              size={14}
-                              color={
-                                i <= item.feedbacks?.rating
-                                  ? "#FFD700"
-                                  : "#CCC"
-                              }
-                            />
-                          ))}
+                      <View style={styles.transitionBadges}>
+                        <View style={styles.fromBadge}>
+                          <Text style={styles.fromBadgeText}>{(i18n.language === 'ar' && item.from_state?.name_ar) ? item.from_state?.name_ar : item.from_state.name}</Text>
                         </View>
-                      )
-                    }
+                        <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
+                        <View style={styles.toBadge}>
+                          <Text style={styles.toBadgeText}>{(i18n.language === 'ar' && item.to_state?.name_ar) ? item.to_state?.name_ar : item.to_state.name}</Text>
+                        </View>
+                      </View>
+                      {item.comment && (
+                        <View style={styles.transitionComment}>
+                          <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                          <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
+                        </View>
+                      )}
+                      {item?.feedbacks?.comment && (
+                        <View style={styles.transitionComment}>
+                          <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                          <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
+                        </View>
+                      )}
+                      {
+                        item?.feedbacks?.rating > 0 && item?.transition?.is_final_close &&
+                        (
+                          <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                            {[
+                              ...Array(5).keys(),
+                            ].map((i) => (
+                              <Ionicons
+                                key={i}
+                                name={
+                                  i <= item.feedbacks?.rating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={14}
+                                color={
+                                  i <= item.feedbacks?.rating
+                                    ? "#FFD700"
+                                    : "#CCC"
+                                }
+                              />
+                            ))}
+                          </View>
+                        )
+                      }
+                    </View>
                   </View>
-                </View>
-              ))}
-              {history.length > 1 && (
-                <TouchableOpacity
-                  style={styles.seeMoreButton}
-                  onPress={() => setShowAllHistory(!showAllHistory)}
-                >
-                  <Text style={styles.seeMoreText}>
-                    {showAllHistory ? t('common.showLess') || 'Show Less' : `${t('common.viewAll') || 'See More'} (${history.length})`}
-                  </Text>
-                  <Ionicons
-                    name={showAllHistory ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={COLORS.accent}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={32} color={COLORS.text.muted} />
-              <Text style={styles.emptyStateText}>{t('details.noTransitionHistory')}</Text>
-            </View>
-          )}
-        </View>
+                ))}
+                {history.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.seeMoreButton}
+                    onPress={() => setShowAllHistory(!showAllHistory)}
+                  >
+                    <Text style={styles.seeMoreText}>
+                      {showAllHistory ? t('common.showLess') || 'Show Less' : `${t('common.viewAll') || 'See More'} (${history.length})`}
+                    </Text>
+                    <Ionicons
+                      name={showAllHistory ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={COLORS.accent}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="time-outline" size={32} color={COLORS.text.muted} />
+                <Text style={styles.emptyStateText}>{t('details.noTransitionHistory')}</Text>
+              </View>
+            )}
+          </View>
         </AnimatedListItem>
       </ScrollView>
 
