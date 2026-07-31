@@ -446,6 +446,7 @@ const DashboardScreen = () => {
                   params: {
                     state_id: stateDetail.id,
                     state_name: stateDetail.name,
+                    state_name_ar: stateDetail.name_ar || "",
                   },
                 })
               }

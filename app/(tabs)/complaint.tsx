@@ -121,11 +121,11 @@ const ComplaintsScreen = () => {
     const router = useRouter();
     const { canCreateComplaints } = usePermissions();
     const {
-        state_id, state_name, priority, severity, assignee_id, assignee_name,
+        state_id, state_name, state_name_ar, priority, severity, assignee_id, assignee_name,
         department_id, department_name, classification_ids, classification_names,
         location_ids, location_names, channel, start_date, end_date
     } = useLocalSearchParams<{
-        state_id?: string; state_name?: string; priority?: string; severity?: string;
+        state_id?: string; state_name?: string; state_name_ar?: string; priority?: string; severity?: string;
         assignee_id?: string; assignee_name?: string; department_id?: string;
         department_name?: string; classification_ids?: string; classification_names?: string;
         location_ids?: string; location_names?: string; channel?: string;
@@ -159,7 +159,7 @@ const ComplaintsScreen = () => {
     const { canViewAllComplaints } = usePermissions();
     // Don't apply default status filter - show ALL complaints unless explicitly filtered
     const activeStateId = state_id;
-    const activeStateName = state_name;
+    const activeStateName = (i18n.language !== 'en' && state_name_ar) || state_name;
 
     const buildParams = (page: number) => {
         const params: Record<string, any> = { page, limit: 20 };
@@ -326,7 +326,7 @@ const ComplaintsScreen = () => {
     const FilterBadges = () => {
         if (!hasManualFilters) return null;
         const badges = [
-            state_id && state_name && { key: 'status', label: t('filter.status'), value: state_name },
+            state_id && state_name && { key: 'status', label: t('filter.status'), value: (i18n.language !== 'en' && state_name_ar) || state_name },
             priority && { key: 'priority', label: t('filter.priority'), value: t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
             assignee_id && assignee_name && { key: 'assignee', label: t('filter.assignee'), value: assignee_name },
             department_id && department_name && { key: 'dept', label: t('filter.department'), value: department_name },
@@ -403,7 +403,7 @@ const ComplaintsScreen = () => {
                                 style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
                                 onPress={() => router.push({
                                     pathname: '/complaint-filter',
-                                    params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_ids, classification_names, location_ids, location_names, channel, start_date, end_date }
+                                    params: { state_id, state_name, state_name_ar, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_ids, classification_names, location_ids, location_names, channel, start_date, end_date }
                                 })}
                             >
                                 <Ionicons name="filter" size={22} color="white" />
