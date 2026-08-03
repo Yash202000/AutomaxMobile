@@ -895,5 +895,8 @@
     "municipality": "Municipality:",
     "planNo": "Plan No:",
     "neighbourhood": "Neighbourhood"
+  },
+  "sort": {
+    "updated": "Latest Updated"
   }
 }
