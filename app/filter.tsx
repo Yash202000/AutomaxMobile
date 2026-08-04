@@ -78,6 +78,7 @@ const FilterScreen = () => {
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -295,6 +296,11 @@ const FilterScreen = () => {
     if (filters.state_ids.length > 0) {
       queryParams.state_id = filters.state_ids.join(',');
       queryParams.state_name = filters.state_names.join(',');
+      // Carry the Arabic name alongside so the destination screen's filter
+      // badge can localize it instead of always showing the English name.
+      queryParams.state_name_ar = filters.state_ids
+        .map(id => states.find(s => s.id === id)?.name_ar || '')
+        .join(',');
     }
     if (filters.priorities.length > 0) {
       queryParams.priority = filters.priorities.join(',');
@@ -343,7 +349,16 @@ const FilterScreen = () => {
 
   const getSelectedStateName = () => {
     if (filters.state_ids.length === 0) return t('filter.all');
-    if (filters.state_ids.length === 1) return filters.state_names[0] || t('filter.selected');
+    if (filters.state_ids.length === 1) {
+      const match = states.find(s => s.id === filters.state_ids[0]);
+      if (match) {
+        return (i18n.language === 'en' || !match.name_ar) ? match.name : match.name_ar;
+      }
+      // states hasn't loaded yet — use the Arabic name carried over via
+      // params instead of always falling back to English, so there's no
+      // flash of English text while the list is still fetching.
+      return (i18n.language !== 'en' && params.state_name_ar) || filters.state_names[0] || t('filter.selected');
+    }
     return `${filters.state_ids.length} ${t('filter.selected')}`;
   };
 

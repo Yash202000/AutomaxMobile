@@ -16,7 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Notification {
     id: string;
@@ -149,6 +149,7 @@ const NotificationsScreen = () => {
         total_pages: 0,
     });
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
 
     const isLoadingMore = useRef(false);
 
@@ -225,10 +226,10 @@ const NotificationsScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <ImageBackground
                 source={require("@/assets/images/background.png")}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top }]}
             >
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name={t('common.icons.arrowBack') as any} size={24} color="white" />
@@ -266,7 +267,7 @@ const NotificationsScreen = () => {
                     />
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 

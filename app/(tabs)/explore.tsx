@@ -446,6 +446,7 @@ const DashboardScreen = () => {
                   params: {
                     state_id: stateDetail.id,
                     state_name: stateDetail.name,
+                    state_name_ar: stateDetail.name_ar || "",
                   },
                 })
               }
@@ -660,6 +661,7 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
     fontSize: 14,
     fontWeight: "500",
+    textAlign: 'left'
   },
   userName: {
     color: COLORS.white,

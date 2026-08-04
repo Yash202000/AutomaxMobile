@@ -278,6 +278,7 @@ const IncidentsScreen = () => {
   let {
     state_id,
     state_name,
+    state_name_ar,
     priority,
     severity,
     assignee_id,
@@ -294,6 +295,7 @@ const IncidentsScreen = () => {
   } = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -474,7 +476,7 @@ const IncidentsScreen = () => {
 
   // Don't apply default status filter - show ALL incidents unless explicitly filtered
   const activeStateId = state_id;
-  const activeStateName = state_name;
+  const activeStateName = (i18n.language !== "en" && state_name_ar) || state_name;
 
   const buildParams = (page: number) => {
     const params: Record<string, any> = { page, limit: 20 };
@@ -695,14 +697,17 @@ const IncidentsScreen = () => {
           onPress={() => setSortByUpdated(!sortByUpdated)}
         >
           <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
-          <Text style={{
-            marginLeft: 4,
-            fontSize: 12,
-            color: sortByUpdated ? COLORS.white : COLORS.text.muted,
-            fontWeight: '500'
-          }}>
-            {t("sort.updated", "Latest Updated")}
-          </Text>
+          {
+            !hasManualFilters &&
+            <Text style={{
+              marginLeft: 4,
+              fontSize: 12,
+              color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+              fontWeight: '500'
+            }}>
+              {t("sort.updated", "Latest Updated")}
+            </Text>
+          }
         </TouchableOpacity>
       )}
     </View>
@@ -717,7 +722,7 @@ const IncidentsScreen = () => {
         value:
           state_id.split(",").length > 1
             ? `${state_id.split(",").length} ${t("filter.selected")}`
-            : state_name || state_id,
+            : (i18n.language !== "en" && state_name_ar) || state_name || state_id,
       },
       priority && {
         key: "priority",
@@ -1033,6 +1038,7 @@ const IncidentsScreen = () => {
                     params: {
                       state_id,
                       state_name,
+                      state_name_ar,
                       priority,
                       severity,
                       assignee_id,
