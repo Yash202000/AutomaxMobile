@@ -327,17 +327,10 @@ const IncidentsScreen = () => {
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
   const [sortByUpdated, setSortByUpdated] = useState(true);
-
-  const sortedIncidents = React.useMemo(() => {
-    if (sortByUpdated) {
-      return [...incidents].sort((a, b) => {
-        const dateA = new Date(a.updated_at || a.created_at).getTime();
-        const dateB = new Date(b.updated_at || b.created_at).getTime();
-        return dateB - dateA;
-      });
-    }
-    return incidents;
-  }, [incidents, sortByUpdated]);
+  // Ordering now comes from the backend (sort_by param in buildParams) so
+  // pages arrive already in the right order — no client-side re-sort of the
+  // accumulated list, which used to reshuffle already-rendered rows (and
+  // their entrance animations) every time a new page loaded.
 
   // Multi-selection states & operations
   const [selectionMode, setSelectionMode] = useState(false);
@@ -425,7 +418,7 @@ const IncidentsScreen = () => {
     }
 
     const doShare = async (incidentsToShare: typeof selectedIncidents) => {
-      let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
+      let shareText = `📋 *${t("incidents.title")} ${t("common.summary")}*:\n\n`;
       incidentsToShare.forEach((inc, index) => {
         const priorityLookup = inc.lookup_values?.find(
           (lv) => lv.category.code === "PRIORITY",
@@ -484,7 +477,11 @@ const IncidentsScreen = () => {
   const activeStateName = (i18n.language !== "en" && state_name_ar) || state_name;
 
   const buildParams = (page: number) => {
-    const params: Record<string, any> = { page, limit: 20 };
+    const params: Record<string, any> = {
+      page,
+      limit: 20,
+      sort_by: sortByUpdated ? "updated_at" : "created_at",
+    };
     if (activeStateId) params.current_state_id = activeStateId.split(",");
     if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
     if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
@@ -580,6 +577,7 @@ const IncidentsScreen = () => {
       start_date,
       end_date,
       searchQuery,
+      sortByUpdated,
     ]),
   );
 
@@ -1092,7 +1090,7 @@ const IncidentsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={sortedIncidents}
+          data={incidents}
           renderItem={({ item, index }) => (
             <AnimatedListItem index={index}>
               <IncidentCard
