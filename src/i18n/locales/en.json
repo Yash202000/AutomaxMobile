@@ -711,6 +711,8 @@
     "selectSource": "Select Source",
     "matchedWorkflow": "Matched Workflow",
     "noWorkflowMatched": "No workflow matched",
+    "workflowHint": "Select classification, location, or source to auto-match a workflow",
+    "matchingWorkflow": "Matching workflow...",
     "requiredFields": "Required Fields",
     "optional": "Optional",
     "reporterName": "Reporter Name",

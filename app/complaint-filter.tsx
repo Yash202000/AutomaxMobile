@@ -561,7 +561,9 @@ const ComplaintFilterScreen = () => {
               <View style={styles.dateModalContent}>
                 <View style={styles.dateModalHeader}>
                   <Text style={styles.dateModalTitle}>
-                    {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
+                    {showDatePicker === 'from'
+                      ? t('filter.selectFromDate', 'Select From Date')
+                      : t('filter.selectToDate', 'Select To Date')}
                   </Text>
                   <TouchableOpacity onPress={() => setShowDatePicker(null)}>
                     <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>

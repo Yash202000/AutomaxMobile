@@ -710,6 +710,8 @@
     "selectSource": "تحديد المصدر",
     "matchedWorkflow": "سير العمل المطابق",
     "noWorkflowMatched": "لا يوجد سير عمل مطابق",
+    "workflowHint": "اختر التصنيف أو الموقع أو المصدر لمطابقة سير العمل تلقائياً",
+    "matchingWorkflow": "جارٍ مطابقة سير العمل...",
     "requiredFields": "الحقول المطلوبة",
     "optional": "اختياري",
     "reporterName": "اسم المُبلغ",
