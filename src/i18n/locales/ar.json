@@ -8,6 +8,7 @@
     "validationError": "خطأ في التحقق",
     "recordingStartError": "فشل بدء التسجيل",
     "seconds": "ثانية قبل المحاولة مرة أخرى",
+    "summary": "ملخص",
     "icons": {
       "chevronForward": "chevron-back",
       "chevronBack": "chevron-forward",
