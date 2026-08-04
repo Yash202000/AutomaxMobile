@@ -419,6 +419,11 @@ const IncidentsScreen = () => {
 
     const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
 
+    const translationHelper = (a: any) => {
+      const isArabic = i18n.language === 'ar' && a.name_ar;
+      return isArabic ? a.name_ar : a.name;
+    }
+
     const doShare = async (incidentsToShare: typeof selectedIncidents) => {
       let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
       incidentsToShare.forEach((inc, index) => {
@@ -432,10 +437,10 @@ const IncidentsScreen = () => {
         }
 
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
-        shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
-        shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.classification")} : ${translationHelper(inc.classification) || t("common.na")}\n`;
+        shareText += `   ${t("incidents.location")} : ${translationHelper(inc.location) || t("common.na")}\n`;
         shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
-        shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.status")} : ${translationHelper(inc.current_state) || t("common.na")}\n`;
         shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
         shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
         shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
