@@ -295,6 +295,7 @@ const AddIncidentScreen = () => {
   // Workflow state
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
+  const [isMatchingWorkflow, setIsMatchingWorkflow] = useState(false);
 
   // Data state
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
@@ -594,6 +595,7 @@ const AddIncidentScreen = () => {
       priority: parseInt(selectedPriority.id),
     };
 
+    setIsMatchingWorkflow(true);
     try {
       const result = await matchWorkflowAPI(criteria);
       if (result.success && result.data?.workflow_id) {
@@ -606,6 +608,8 @@ const AddIncidentScreen = () => {
       if (allWorkflows.length > 0) {
         setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
       }
+    } finally {
+      setIsMatchingWorkflow(false);
     }
   }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
 
@@ -1669,9 +1673,16 @@ const AddIncidentScreen = () => {
                         matchedWorkflow.name
                     }</Text>
                   </View>
+                ) : isMatchingWorkflow ? (
+                  <View style={styles.workflowMatched}>
+                    <ActivityIndicator size="small" color="#2EC4B6" />
+                    <Text style={styles.workflowHint}>
+                      {t('addIncident.matchingWorkflow', 'Matching workflow...')}
+                    </Text>
+                  </View>
                 ) : (
                   <Text style={styles.workflowHint}>
-                    Select classification, location, or source to auto-match a workflow
+                    {t('addIncident.workflowHint', 'Select classification, location, or source to auto-match a workflow')}
                   </Text>
                 )}
                 {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
