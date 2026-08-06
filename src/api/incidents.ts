@@ -1,5 +1,62 @@
 import apiClient from './client';
 
+/**
+ * Builds the JSON body for POST /incidents/search from the same params shape
+ * screens previously sent as GET query params (see MOBILE-BRIEF-incidents-search.md).
+ * ID-list filters must be arrays for the backend (`dive,uuid` validation) even
+ * though some screens pass a single id as a string — wrap those here.
+ * `priority` must stay a single int (backend field is `*int`, not a slice).
+ */
+function buildSearchBody(params: Record<string, any>): Record<string, any> {
+  const body: Record<string, any> = {
+    page: params.page || 1,
+    limit: params.limit || 20,
+  };
+
+  const scalarFields = [
+    'record_type', 'search', 'source', 'channel', 'my_record', 'sort_by',
+    'reporter_phone', 'reporter_phone_search', 'caller_identity', 'momra_ref',
+    'task_id', 'source_incident_id', 'transition_id', 'from_state_id', 'to_state_id',
+  ];
+  for (const key of scalarFields) {
+    if (params[key]) body[key] = params[key];
+  }
+
+  if (params.sla_breached !== undefined) body.sla_breached = params.sla_breached;
+  if (params.converted_to_request !== undefined) body.converted_to_request = params.converted_to_request;
+
+  if (params.priority !== undefined && params.priority !== null && params.priority !== '') {
+    body.priority = Array.isArray(params.priority) ? params.priority[0] : params.priority;
+  }
+
+  // ID-list filters — backend requires arrays even when a screen passes one id as a string.
+  const arrayFields: Record<string, string> = {
+    workflow_id: 'workflow_id',
+    current_state_id: 'current_state_id',
+    current_state_code: 'current_state_code',
+    classification_id: 'classification_id',
+    classification_ids: 'classification_id', // alias used by some screens
+    department_id: 'department_id',
+    department_ids: 'department_id', // alias
+    location_id: 'location_id',
+    location_ids: 'location_id', // alias
+    assignee_id: 'assignee_id',
+    reporter_id: 'reporter_id',
+  };
+  for (const [paramKey, bodyKey] of Object.entries(arrayFields)) {
+    if (params[paramKey]) {
+      const val = params[paramKey];
+      body[bodyKey] = Array.isArray(val) ? val : [val];
+    }
+  }
+
+  // Dates — backend parses "start_date_str"/"end_date_str" manually (YYYY-MM-DD or RFC3339).
+  if (params.start_date) body.start_date_str = params.start_date;
+  if (params.end_date) body.end_date_str = params.end_date;
+
+  return body;
+}
+
 interface PaginationInfo {
   page: number;
   limit: number;
@@ -16,15 +73,9 @@ interface IncidentListResponse {
 
 export const getIncidents = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
   try {
-    // Set default pagination if not provided
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 20,
-      record_type: 'incident',
-      ...params,
-    };
+    const body = buildSearchBody({ record_type: 'incident', ...params });
 
-    const response = await apiClient.get('/incidents', { params: queryParams });
+    const response = await apiClient.post('/incidents/search', body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -267,14 +318,9 @@ export const getMyReportedIncidents = async (page = 1, limit = 20): Promise<Inci
 
 export const getRequests = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
   try {
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 20,
-      record_type: 'request',
-      ...params,
-    };
+    const body = buildSearchBody({ record_type: 'request', ...params });
 
-    const response = await apiClient.get('/incidents', { params: queryParams });
+    const response = await apiClient.post('/incidents/search', body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -326,13 +372,9 @@ export const createRequest = async (requestData: any) => {
 
 export const getComplaints = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
   try {
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 20,
-      record_type: 'complaint',
-      ...params,
-    };
-    const response = await apiClient.get('/incidents', { params: queryParams });
+    const body = buildSearchBody({ record_type: 'complaint', ...params });
+
+    const response = await apiClient.post('/incidents/search', body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -442,14 +484,9 @@ export const uploadMultipleComplaintAttachments = async (complaintId: string, fi
 
 export const getQueries = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
   try {
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 20,
-      record_type: 'query',
-      ...params,
-    };
+    const body = buildSearchBody({ record_type: 'query', ...params });
 
-    const response = await apiClient.get('/incidents', { params: queryParams });
+    const response = await apiClient.post('/incidents/search', body);
     if (response.data && response.data.success) {
       return {
         success: true,
