@@ -1,21 +1,20 @@
-import { getComplaints, getComplaintStats, getIncidents, getIncidentStats, getQueries, getQueryStats, getRequests, getRequestStats } from "@/src/api/incidents";
+import { getComplaintStats, getIncidentById, getIncidentMarkers, getIncidentStats, getQueryStats, getRequestStats, IncidentMapMarker } from "@/src/api/incidents";
 import { useAuth } from "@/src/context/AuthContext";
 import usePermissions from "@/src/hooks/usePermissions";
-import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { t } from "i18next";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nManager } from "react-native";
 import {
   ActivityIndicator,
+  I18nManager,
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
 const COLORS = {
@@ -31,17 +30,6 @@ const COLORS = {
   error: "#DC2626",
 };
 
-interface IncidentMarker {
-  id: string;
-  incident_number: string;
-  title: string;
-  latitude: number;
-  longitude: number;
-  priority?: number;
-  current_state?: { name: string; id: string; color?: string; name_ar: string };
-  lookup_values?: any[];
-}
-
 const MapViewScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -56,12 +44,21 @@ const MapViewScreen = () => {
   }>();
   const recordType = type || "incident";
   const webViewRef = useRef<WebView>(null);
-  const insets = useSafeAreaInsets()
+  const insets = useSafeAreaInsets();
 
-  const [incidents, setIncidents] = useState<IncidentMarker[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [markers, setMarkers] = useState<IncidentMapMarker[]>([]);
+  const [totalMatching, setTotalMatching] = useState(0);
+  const [capped, setCapped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+
+  // Detail sheet shown when a marker is tapped — fetched on demand, never
+  // pre-loaded, so the bulk marker payload stays tiny.
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [selectedIncident, setSelectedIncident] = useState<any | null>(null);
+
   const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
   const { user } = useAuth();
 
@@ -72,7 +69,7 @@ const MapViewScreen = () => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -81,8 +78,8 @@ const MapViewScreen = () => {
     body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
     .custom-marker {
-      width: 30px;
-      height: 30px;
+      width: 26px;
+      height: 26px;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
       border: 2px solid white;
@@ -93,8 +90,8 @@ const MapViewScreen = () => {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       background: white;
       border-radius: 50%;
       transform: translate(-50%, -50%);
@@ -110,101 +107,81 @@ const MapViewScreen = () => {
 <body>
   <div id="map"></div>
   <script>
-    const map = L.map('map').setView([24.7136, 46.6753], 6);
+    const map = L.map('map', { preferCanvas: true }).setView([24.7136, 46.6753], 6);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
 
+    // chunkedLoading spreads adding thousands of markers across animation
+    // frames instead of blocking the JS thread in one long synchronous call.
     const markerClusterGroup = L.markerClusterGroup({
-      maxClusterRadius: 50,
+      maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
-      zoomToBoundsOnClick: true
+      zoomToBoundsOnClick: true,
+      chunkedLoading: true,
+      chunkProgress: function (processed, total, elapsed) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'markersProgress',
+          processed: processed,
+          total: total,
+        }));
+      }
     });
     map.addLayer(markerClusterGroup);
 
-    window.updateMarkers = function(incidentsData) {
+    window.updateMarkers = function(markerData) {
       markerClusterGroup.clearLayers();
 
-      if (!incidentsData || incidentsData.length === 0) {
+      if (!markerData || markerData.length === 0) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markersRendered' }));
         return;
       }
 
-      const newMarkers = [];
-
-      incidentsData.forEach(incident => {
-        const priorityLookup = incident?.lookup_values?.find(x => x.category && x.category.code === 'PRIORITY');
-        const markerColor = incident.markerColor || '#2EC4B6';
-        const priority = priorityLookup?.name || incident.priority || 'N/A';
-        const markerHtml = '<div class="custom-marker" style="background-color: ' + markerColor + ';"></div>';
-        const customIcon = L.divIcon({
+      const newMarkers = markerData.map(function (m) {
+        const markerHtml = '<div class="custom-marker" style="background-color: ' + (m.color || '#2EC4B6') + ';"></div>';
+        const icon = L.divIcon({
           html: markerHtml,
           className: 'custom-div-icon',
-          iconSize: [30, 30],
-          iconAnchor: [15, 30],
-          popupAnchor: [0, -30]
+          iconSize: [26, 26],
+          iconAnchor: [13, 26],
         });
+        const marker = L.marker([m.lat, m.lng], { icon: icon });
+        marker.on('click', function () {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerClicked', id: m.id }));
+        });
+        return marker;
+      });
 
-        const marker = L.marker([incident.lat, incident.lng], { icon: customIcon })
-          .bindPopup(\`
-            <div style="min-width: 200px; direction: ${I18nManager.isRTL ? 'rtl' : 'ltr'}; text-align: ${I18nManager.isRTL ? 'right' : 'left'}">
-              <strong style="color: #1A237E; font-size: 14px;">\${incident.number}</strong><br/>
-              <span style="font-size: 13px; font-weight: 600;">\${incident.title}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">${t('incidents.status')}: \${incident.state}</span><br/>
-              <span style="font-size: 12px; color: #64748B;">${t('incidents.priority')}: \${incident.priorityName}</span><br/>
-              <button onclick="handleMarkerClick('\${incident.id}')" style="
-                margin-top: 8px;
-                padding: 6px 12px;
-                background: #2EC4B6;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: 600;
-              ">${t('common.viewDetails')}</button>
-            </div>
-          \`);
-
-        newMarkers.push(marker);
+      markerClusterGroup.on('chunkend', function onChunkEnd() {
+        markerClusterGroup.off('chunkend', onChunkEnd);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markersRendered' }));
+        map.fitBounds(markerClusterGroup.getBounds().pad(0.1));
       });
 
       markerClusterGroup.addLayers(newMarkers);
-
-      if (newMarkers.length > 0) {
-        map.fitBounds(markerClusterGroup.getBounds().pad(0.1));
-      }
-    };
-
-    window.handleMarkerClick = function(incidentId) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'markerClicked',
-        id: incidentId
-      }));
     };
 
     map.whenReady(function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'mapReady'
-      }));
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
     });
   </script>
 </body>
 </html>
 `
-    , [t, i18n.language])
+    , []);
 
   useEffect(() => {
-    fetchIncidentsWithLocation();
+    fetchMarkers();
   }, []);
 
   useEffect(() => {
-    if (mapReady && incidents.length > 0) {
-      updateMapMarkers(incidents);
+    if (mapReady) {
+      updateMapMarkers(markers);
     }
-  }, [mapReady, incidents]);
+  }, [mapReady, markers]);
 
   const buildFilterParams = () => {
     const params: Record<string, any> = {};
@@ -222,24 +199,22 @@ const MapViewScreen = () => {
     return params;
   };
 
-  const fetchIncidentsWithLocation = async () => {
+  const fetchMarkers = async () => {
     setLoading(true);
     try {
-      const fetchFunction = recordType === "request" ? getRequests :
-        recordType === "complaint" ? getComplaints :
-          recordType === "query" ? getQueries : getIncidents;
-
       const statsFunction = recordType === "request" ? getRequestStats :
         recordType === "complaint" ? getComplaintStats :
           recordType === "query" ? getQueryStats : getIncidentStats;
 
       let filterParams = buildFilterParams();
+      filterParams.record_type = recordType;
 
-      // Handle default states if no state_id is provided
+      // Handle default states if no state_id is provided — matches the same
+      // default-state behavior as the list tabs, for consistency.
       if (!filterParams.current_state_id || filterParams.current_state_id.length === 0) {
         const statsResponse = await statsFunction();
         if (statsResponse.success) {
-          filterParams.current_state_id = statsResponse.data.workflow_stats?.[0].by_state_details?.map((s: any) => s.id) || []
+          filterParams.current_state_id = statsResponse.data.workflow_stats?.[0].by_state_details?.map((s: any) => s.id) || [];
         }
       }
 
@@ -248,54 +223,25 @@ const MapViewScreen = () => {
       const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
       const isViewerMode = isViewerApp && isViewerRole;
 
-
       if (!canViewAllIncidents() && recordType === 'incident' && !isViewerMode) {
         filterParams.my_record = user?.id;
       }
-
       if (!canViewAllRequests() && recordType === 'request') {
         filterParams.my_record = user?.id;
       }
-
       if (!canViewAllComplaints() && recordType === 'complaint') {
         filterParams.my_record = user?.id;
       }
-
       if (!canViewAllQueries() && recordType === 'query') {
         filterParams.my_record = user?.id;
       }
 
-      // First fetch to get total count
-      const countResponse = await fetchFunction({ page: 1, limit: 1, ...filterParams });
-      const total = countResponse.success ? (countResponse.pagination?.total_items ?? 0) : 0;
-      setTotalCount(total);
-
-      // Backend caps limit at 100, so fetch all pages and aggregate
-      const PAGE_SIZE = 100;
-      const totalPages = Math.ceil(total / PAGE_SIZE);
-
-      const allData: any[] = [];
-      for (let page = 1; page <= totalPages; page++) {
-        const response = await fetchFunction({
-          page,
-          limit: PAGE_SIZE,
-          ...filterParams,
-        });
-        if (response.success && response.data) {
-          allData.push(...response.data);
-        }
+      const response = await getIncidentMarkers(filterParams);
+      if (response.success) {
+        setMarkers(response.data);
+        setTotalMatching(response.totalMatching);
+        setCapped(response.capped);
       }
-
-      const incidentsWithLocation = allData.filter(
-        (inc: any) =>
-          inc.latitude !== null &&
-          inc.latitude !== undefined &&
-          inc.longitude !== null &&
-          inc.longitude !== undefined &&
-          !isNaN(inc.latitude) &&
-          !isNaN(inc.longitude),
-      );
-      setIncidents(incidentsWithLocation);
     } catch (error) {
       // silent
     } finally {
@@ -303,25 +249,12 @@ const MapViewScreen = () => {
     }
   };
 
-  const updateMapMarkers = (incidentList: IncidentMarker[]) => {
-    const markersData = incidentList.map((inc) => ({
-      id: inc.id,
-      lat: parseFloat(String(inc.latitude)),
-      lng: parseFloat(String(inc.longitude)),
-      title: inc.title,
-      number: inc.incident_number,
-      priority: inc.priority || 0,
-      state: i18n.language === 'ar' && inc.current_state?.name_ar ? inc.current_state?.name_ar : inc.current_state?.name || "N/A",
-      markerColor: inc.current_state?.color || COLORS.accent,
-      lookup_values: inc.lookup_values,
-      current_state: inc.current_state,
-      priorityName: I18nManager.isRTL
-        ? inc.lookup_values?.find(
-          x => x.category?.code === 'PRIORITY'
-        )?.name_ar || t('common.unknown')
-        : inc.lookup_values?.find(
-          x => x.category?.code === 'PRIORITY'
-        )?.name || t('common.unknown'),
+  const updateMapMarkers = (markerList: IncidentMapMarker[]) => {
+    const markersData = markerList.map((m) => ({
+      id: m.id,
+      lat: m.latitude,
+      lng: m.longitude,
+      color: m.state_color || COLORS.accent,
     }));
 
     const markersJson = JSON.stringify(markersData);
@@ -331,7 +264,42 @@ const MapViewScreen = () => {
     `);
   };
 
-  const mapSource = useMemo(() => ({ html: mapHTML, baseUrl: 'https://localhost/' }), []);
+  const mapSource = useMemo(() => ({ html: mapHTML, baseUrl: 'https://localhost/' }), [mapHTML]);
+
+  const openMarkerDetail = async (id: string) => {
+    setDetailVisible(true);
+    setDetailLoading(true);
+    setDetailError(null);
+    setSelectedIncident(null);
+    try {
+      const res = await getIncidentById(id);
+      if (res.success) {
+        setSelectedIncident(res.data);
+      } else {
+        setDetailError(res.error || t('common.error'));
+      }
+    } catch (err: any) {
+      setDetailError(err.message || t('common.error'));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailVisible(false);
+    setSelectedIncident(null);
+    setDetailError(null);
+  };
+
+  const viewFullDetails = () => {
+    if (!selectedIncident) return;
+    const detailsPage =
+      recordType === "request" ? "/request-details" :
+        recordType === "complaint" ? "/complaint-details" :
+          recordType === "query" ? "/query-details" : "/incident-details";
+    closeDetail();
+    router.push(`${detailsPage}?id=${selectedIncident.id}`);
+  };
 
   const handleMessage = (event: any) => {
     try {
@@ -340,16 +308,21 @@ const MapViewScreen = () => {
       if (data.type === "mapReady") {
         setMapReady(true);
       } else if (data.type === "markerClicked") {
-        const detailsPage =
-          recordType === "request" ? "/request-details" :
-            recordType === "complaint" ? "/complaint-details" :
-              recordType === "query" ? "/query-details" : "/incident-details";
-        router.push(`${detailsPage}?id=${data.id}`);
+        openMarkerDetail(data.id);
       }
+      // 'markersProgress' / 'markersRendered' are informational only — the
+      // WebView already shows its own render state, nothing to mirror here.
     } catch (error) {
       console.error("❌ [MapView OSM] Error handling message:", error);
     }
   };
+
+  const selectedPriorityName = selectedIncident?.lookup_values?.find(
+    (x: any) => x.category?.code === 'PRIORITY',
+  );
+  const selectedStateName = I18nManager.isRTL && selectedIncident?.current_state?.name_ar
+    ? selectedIncident.current_state.name_ar
+    : selectedIncident?.current_state?.name;
 
   return (
     <View style={[styles.container]} >
@@ -371,7 +344,7 @@ const MapViewScreen = () => {
                 : t("map.incidents", "Incidents Map")}
         </Text>
         <TouchableOpacity
-          onPress={fetchIncidentsWithLocation}
+          onPress={fetchMarkers}
           style={styles.refreshButton}
         >
           <Ionicons name="refresh" size={24} color={COLORS.white} />
@@ -401,7 +374,7 @@ const MapViewScreen = () => {
           <View style={[styles.infoBadge, { right: I18nManager.isRTL ? "auto" : 16, left: I18nManager.isRTL ? 16 : "auto" }]}>
             <Ionicons name="location" size={20} color={COLORS.accent} />
             <Text style={styles.infoBadgeText}>
-              {incidents.length}{totalCount > incidents.length ? `/${totalCount}` : ""}{" "}
+              {markers.length}{capped ? `/${totalMatching}` : ""}{" "}
               {recordType === "request"
                 ? t("map.requestsOnMap", "requests on map")
                 : recordType === "complaint"
@@ -412,6 +385,19 @@ const MapViewScreen = () => {
             </Text>
           </View>
 
+          {/* Capped notice — never silently drop markers without saying so */}
+          {capped && (
+            <View style={[styles.cappedBadge, { right: I18nManager.isRTL ? "auto" : 16, left: I18nManager.isRTL ? 16 : "auto" }]}>
+              <Ionicons name="information-circle" size={16} color={COLORS.white} />
+              <Text style={styles.cappedBadgeText}>
+                {t('map.cappedNotice', 'Showing first {{shown}} of {{total}} — narrow your filters to see the rest', {
+                  shown: markers.length,
+                  total: totalMatching,
+                })}
+              </Text>
+            </View>
+          )}
+
           {/* Loading overlay for refresh */}
           {loading && mapReady && (
             <View style={styles.refreshOverlay}>
@@ -420,6 +406,47 @@ const MapViewScreen = () => {
           )}
         </>
       )}
+
+      {/* Marker detail sheet — fetched on demand when a marker is tapped */}
+      <Modal
+        visible={detailVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeDetail}
+      >
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={closeDetail}>
+          <TouchableOpacity activeOpacity={1} style={[styles.sheet, { paddingBottom: insets.bottom || 16 }]}>
+            {detailLoading ? (
+              <View style={styles.sheetLoading}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.loadingText}>{t('common.loading')}</Text>
+              </View>
+            ) : detailError ? (
+              <View style={styles.sheetLoading}>
+                <Text style={styles.sheetError}>{detailError}</Text>
+              </View>
+            ) : selectedIncident ? (
+              <>
+                <Text style={styles.sheetNumber}>{selectedIncident.incident_number}</Text>
+                <Text style={styles.sheetTitle} numberOfLines={2}>{selectedIncident.title}</Text>
+                <View style={styles.sheetRow}>
+                  <Text style={styles.sheetLabel}>{t('incidents.status')}</Text>
+                  <Text style={styles.sheetValue}>{selectedStateName || t('common.unknown')}</Text>
+                </View>
+                <View style={styles.sheetRow}>
+                  <Text style={styles.sheetLabel}>{t('incidents.priority')}</Text>
+                  <Text style={styles.sheetValue}>
+                    {(I18nManager.isRTL ? selectedPriorityName?.name_ar : selectedPriorityName?.name) || t('common.unknown')}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.viewDetailsButton} onPress={viewFullDetails}>
+                  <Text style={styles.viewDetailsButtonText}>{t('common.viewDetails')}</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -485,6 +512,24 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     textAlign: "left"
   },
+  cappedBadge: {
+    position: "absolute",
+    top: 160,
+    maxWidth: "70%",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(26, 35, 126, 0.92)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    gap: 6,
+  },
+  cappedBadgeText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: "500",
+    color: COLORS.white,
+  },
   refreshOverlay: {
     position: "absolute",
     top: 190,
@@ -493,6 +538,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    minHeight: 160,
+  },
+  sheetLoading: {
+    minHeight: 120,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sheetError: {
+    color: COLORS.error,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  sheetNumber: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text.primary,
+    marginBottom: 12,
+  },
+  sheetRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF0F4",
+  },
+  sheetLabel: {
+    fontSize: 13,
+    color: COLORS.text.secondary,
+  },
+  sheetValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.text.primary,
+  },
+  viewDetailsButton: {
+    marginTop: 16,
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  viewDetailsButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
 
