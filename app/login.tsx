@@ -1325,16 +1325,6 @@ const LoginScreen = () => {
               )}
             </View>
 
-            {/* Error Message */}
-            {error ? (
-              <Animated.View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
-                <Text style={styles.errorText}>
-                  {error.charAt(0).toUpperCase() + error.slice(1)}
-                </Text>
-              </Animated.View>
-            ) : null}
-
             {/* Login Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
               <TouchableOpacity
@@ -1371,6 +1361,17 @@ const LoginScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* Error Message */}
+            {error ? (
+              <Animated.View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
+                <Text style={styles.errorText}>
+                  {error.charAt(0).toUpperCase() + error.slice(1)}
+                </Text>
+              </Animated.View>
+            ) : null}
+
           </Animated.View>
         </ScrollView>
 
@@ -1623,7 +1624,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    marginTop: 20,
     borderLeftWidth: 4,
     borderLeftColor: "#E74C3C",
   },

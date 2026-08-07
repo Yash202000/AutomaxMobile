@@ -65,8 +65,8 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const webViewRef = useRef<WebView>(null);
-  const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const suggestionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const geocodingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -287,6 +287,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const handleSearchQueryChange = useCallback((text: string) => {
     setSearchQuery(text);
     setShowSuggestions(false);
+    setSearchError(null);
     if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
     if (text.trim().length >= 3) {
       suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), 800);

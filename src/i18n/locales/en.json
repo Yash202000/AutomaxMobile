@@ -151,7 +151,8 @@
     "complaintsOnMap": "complaints on map",
     "queries": "Queries Map",
     "queriesOnMap": "queries on map",
-    "tapToLoad": "Tap marker to load"
+    "tapToLoad": "Tap marker to load",
+    "cappedNotice": "Showing first {{shown}} of {{total}} — narrow your filters to see the rest"
   },
   "tabs": {
     "dashboard": "Dashboard",

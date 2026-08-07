@@ -71,6 +71,46 @@ interface IncidentListResponse {
   error?: string;
 }
 
+export interface IncidentMapMarker {
+  id: string;
+  latitude: number;
+  longitude: number;
+  current_state_id: string;
+  state_color: string;
+}
+
+interface IncidentMarkersResponse {
+  success: boolean;
+  data: IncidentMapMarker[];
+  totalMatching: number;
+  returnedCount: number;
+  capped: boolean;
+  error?: string;
+}
+
+// Fetches every geolocated incident matching the filter in one request (minimal
+// per-row fields only) instead of paginating — for plotting on the map view.
+// Fetch full details for a specific incident via getIncidentById when its
+// marker is tapped.
+export const getIncidentMarkers = async (params: Record<string, any> = {}): Promise<IncidentMarkersResponse> => {
+  try {
+    const body = buildSearchBody(params);
+    const response = await apiClient.post('/incidents/search/markers', body);
+    if (response.data && response.data.success) {
+      return {
+        success: true,
+        data: response.data.data || [],
+        totalMatching: response.data.total_matching || 0,
+        returnedCount: response.data.returned_count || 0,
+        capped: !!response.data.capped,
+      };
+    }
+    return { success: false, data: [], totalMatching: 0, returnedCount: 0, capped: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, data: [], totalMatching: 0, returnedCount: 0, capped: false, error: error.response?.data?.message || error.message };
+  }
+};
+
 export const getIncidents = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
   try {
     const body = buildSearchBody({ record_type: 'incident', ...params });
