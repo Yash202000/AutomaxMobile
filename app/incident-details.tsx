@@ -214,6 +214,7 @@ const IncidentDetailsScreen = () => {
   const [mapZoom, setMapZoom] = useState<number>(15);
   const [showAllComments, setShowAllComments] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showAllAssignees, setShowAllAssignees] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const mapRef = useRef<WebView>(null);
   const insets = useSafeAreaInsets();
@@ -570,15 +571,46 @@ const IncidentDetailsScreen = () => {
               {/* Basic Info */}
               <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, incident.classification?.id) || incident.classification?.name || ''} iconColor={COLORS.accent} />
               <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, incident.department?.id) || incident.department?.name || ''} iconColor="#8B5CF6" />
-              <InfoRow icon="person-outline" label={t('details.assignees')}
-                value={incident.assignees?.length
-                  ? incident.assignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+              {(() => {
+                const assigneesList = incident.assignees?.length
+                  ? incident.assignees
                   : incident.assignee
-                    ? `${incident.assignee.first_name || ''} ${incident.assignee.last_name || ''}`.trim()
-                    : ''
-                }
-                iconColor="#EC4899"
-              />
+                    ? [incident.assignee]
+                    : [];
+                const visibleAssignees = showAllAssignees ? assigneesList : assigneesList.slice(0, 4);
+                const hiddenCount = assigneesList.length - visibleAssignees.length;
+
+                return (
+                  <>
+                    <View style={[styles.infoRow, { borderBottomColor: assigneesList.length > 4 ? 'transparent' : COLORS.border, paddingBottom: assigneesList.length > 4 ? 0 : 12 }]}>
+                      <View style={styles.infoRowLeft}>
+                        <Ionicons name="person-outline" size={18} color="#EC4899" />
+                        <Text style={styles.infoLabel}>{t('details.assignees')}</Text>
+                      </View>
+                      <Text style={styles.infoValue}>
+                        {visibleAssignees.length
+                          ? visibleAssignees.map(a => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
+                          : t('common.na')}
+                      </Text>
+                    </View>
+                    {assigneesList.length > 4 && (
+                      <TouchableOpacity
+                        style={styles.seeMoreButton}
+                        onPress={() => setShowAllAssignees(!showAllAssignees)}
+                      >
+                        <Text style={styles.seeMoreText}>
+                          {showAllAssignees ? t('common.showLess') : `${t('common.viewAll')} (+${hiddenCount})`}
+                        </Text>
+                        <Ionicons
+                          name={showAllAssignees ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color={COLORS.accent}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </>
+                );
+              })()}
               {incident.location && (
                 <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, incident.location.id) || incident.location.name} iconColor={COLORS.error} />
               )}
@@ -1164,8 +1196,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
     marginTop: 8,
   },
   seeMoreText: {
