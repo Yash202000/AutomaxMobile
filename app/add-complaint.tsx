@@ -6,6 +6,7 @@ import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
 import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import IncidentPicker from '@/src/components/IncidentPicker';
 import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
@@ -218,6 +219,7 @@ const AddComplaintScreen = () => {
   const [incidentSearch, setIncidentSearch] = useState('');
   const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
+  const [closedStateId, setClosedStateId] = useState<undefined | string>(undefined);
 
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
@@ -264,15 +266,25 @@ const AddComplaintScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
+      const [classRes, locRes, workflowRes, incWorkflowRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
         getClassificationsTree('complaint'),
         getLocationsTree(),
         getWorkflows(true, 'complaint'),
+        getWorkflows(true, 'incident'),
         getUsers(),
         getDepartments(),
         getLookupCategories().catch(err => ({ success: false, error: err.message, data: [] })),
         getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({ success: false, data: [] })),
       ]);
+
+      if (incWorkflowRes.success && incWorkflowRes.data && incWorkflowRes.data.length > 0) {
+        const closedWorkflow = incWorkflowRes.data[0].states.find(
+          (w: any) => w.code === 'closed'
+        );
+        if (closedWorkflow) {
+          setClosedStateId(closedWorkflow?.id);
+        }
+      }
 
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
         // Normalize classification tree data
@@ -462,7 +474,6 @@ const AddComplaintScreen = () => {
   const requiredFields = matchedWorkflow?.required_fields || [];
 
   const isFieldRequired = (fieldName: string): boolean => {
-    console.log(matchedWorkflow?.name)
     return requiredFields.includes(fieldName);
   };
 
@@ -691,6 +702,9 @@ const AddComplaintScreen = () => {
     if (selectedSourceIncident) complaintData.source_incident_id = selectedSourceIncident.id;
     if (reporterName.trim()) complaintData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) complaintData.reporter_email = reporterEmail.trim();
+
+    const userPhone = user?.phone;
+    if (userPhone) complaintData.reporter_phone = userPhone;
 
     // Add lookup values if any selected
     const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
@@ -994,87 +1008,22 @@ const AddComplaintScreen = () => {
                     </View>
                   </TouchableOpacity>
 
+                  <IncidentPicker
+                    incidentDropdownOpen={incidentDropdownOpen}
+                    onClose={setIncidentDropdownOpen}
+                    currentStateId={closedStateId}
+                    selectedSourceIncident={selectedSourceIncident}
+                    onSelect={(value) => {
+                      setSelectedSourceIncident(value);
+                      if (errors.source_incident_id) {
+                        setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                      }
+                    }}
+                  />
+
                   {errors.source_incident_id && (
                     <Text style={styles.errorText}>{errors.source_incident_id}</Text>
                   )}
-
-                  {/* Incident picker modal */}
-                  <Modal
-                    visible={incidentDropdownOpen}
-                    transparent
-                    animationType="slide"
-                    onRequestClose={() => setIncidentDropdownOpen(false)}
-                  >
-                    <TouchableOpacity
-                      style={styles.modalOverlay}
-                      activeOpacity={1}
-                      onPress={() => setIncidentDropdownOpen(false)}
-                    >
-                      <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                          <Text style={styles.modalTitle}>
-                            {t('addComplaint.selectSourceIncident')}
-                          </Text>
-                          <TouchableOpacity onPress={() => setIncidentDropdownOpen(false)}>
-                            <Ionicons name="close" size={24} color="#333" />
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* Search inside the modal */}
-                        <View style={styles.searchInputContainer}>
-                          <Ionicons name="search" size={18} color="#999" style={{ marginRight: 8 }} />
-                          <TextInput
-                            style={[styles.searchInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                            placeholder={t('common.searchByIncidentNumOrTitle', 'Search by number or title...')}
-                            value={incidentSearch}
-                            onChangeText={setIncidentSearch}
-                            placeholderTextColor="#999"
-                            autoFocus
-                          />
-                          {incidentSearch.length > 0 && (
-                            <TouchableOpacity onPress={() => setIncidentSearch('')}>
-                              <Ionicons name="close-circle" size={18} color="#999" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-
-                        {/* Results list */}
-                        {filteredIncidents.length === 0 ? (
-                          <View style={styles.emptyList}>
-                            <Text style={styles.emptyText}>
-                              {userIncidents.length === 0
-                                ? t('addComplaint.noIncidentsCreated', 'You have no incidents yet')
-                                : t('addComplaint.noIncidentsFound', 'No incidents match your search')}
-                            </Text>
-                          </View>
-                        ) : (
-                          <FlatList
-                            data={filteredIncidents}
-                            keyExtractor={(item) => item.id}
-                            keyboardShouldPersistTaps="handled"
-                            renderItem={({ item }) => (
-                              <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={() => {
-                                  setSelectedSourceIncident(item);
-                                  setIncidentDropdownOpen(false);
-                                  setIncidentSearch('');
-                                  if (errors.source_incident_id) {
-                                    setErrors(prev => ({ ...prev, source_incident_id: '' }));
-                                  }
-                                }}
-                              >
-                                <Text style={styles.optionText}>{item.name}</Text>
-                                {selectedSourceIncident?.id === item.id && (
-                                  <Ionicons name="checkmark" size={20} color="#E74C3C" />
-                                )}
-                              </TouchableOpacity>
-                            )}
-                          />
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  </Modal>
                 </>
               )}
 
