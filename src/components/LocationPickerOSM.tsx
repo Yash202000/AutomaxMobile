@@ -505,7 +505,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         <View style={styles.suggestionsContainer}>
           <ScrollView
             keyboardShouldPersistTaps="always"
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             nestedScrollEnabled
           >
             {suggestions.map((item, i) => (

@@ -188,7 +188,7 @@
     "phoneVerificationRequiredDesc": "لحمايتك، يرجى تأكيد رقم هاتفك أو تحديثه والتحقق منه قبل المتابعة.",
     "otpChannel": "اختر قناة التحقق",
     "sms": "الهاتف المسجل",
-    "emailOtp": "البريد الإلكتروني المسجل",
+    "emailOtp": "رمز التحقق",
     "whatsapp": "واتساب",
     "twoFactorAuth": "المصادقة الثنائية",
     "sendOtpViaWhatsapp": "إرسال رمز التحقق عبر واتساب",
