@@ -62,7 +62,7 @@ apiClient.interceptors.request.use(
     const token = await SecureStore.getItemAsync('authToken');
 
     // If no token and not a public endpoint, reject the request
-    const publicEndpoints = ['/auth/login', '/auth/sso/login', '/auth/register', '/auth/forgot-password', '/auth/verify-reset-otp', '/auth/reset-password', '/auth/logout', '/otp/send', '/otp/verify', '/ldap/login'];
+    const publicEndpoints = ['/auth/login', '/auth/sso/login', '/auth/register', '/auth/forgot-password', '/auth/verify-reset-otp', '/auth/reset-password', '/auth/logout', '/otp/send', '/otp/verify', '/ldap/login', '/settings'];
     const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
 
     if (!token && !isPublicEndpoint) {
