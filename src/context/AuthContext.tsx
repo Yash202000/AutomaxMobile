@@ -33,6 +33,7 @@ export interface User {
   first_name: string;
   last_name: string;
   phone?: string;
+  mobile_verified?: boolean;
   avatar?: string;
   department_id?: string;
   location_id?: string;

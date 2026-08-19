@@ -21,11 +21,13 @@ const SEARCH_DEBOUNCE_MS = 400;
 const IncidentPicker = ({
     incidentDropdownOpen,
     onClose,
+    currentStateId,
     selectedSourceIncident,
     onSelect,
 }: {
     incidentDropdownOpen: boolean;
     onClose: (value: boolean) => void;
+    currentStateId?: string;
     selectedSourceIncident: any;
     onSelect: (value: any) => void;
 }) => {
@@ -62,6 +64,7 @@ const IncidentPicker = ({
                 reporter_id: user?.id,
                 limit: PAGE_SIZE,
                 page: pageNum,
+                current_state_id: currentStateId,
                 start_date: last3Months.toISOString(),
                 end_date: today.toISOString(),
             };

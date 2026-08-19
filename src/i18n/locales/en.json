@@ -8,6 +8,7 @@
     "validationError": "Validation Error",
     "recordingStartError": "Failed to start recording",
     "seconds": "second(s) before trying again..",
+    "summary": "Summary",
     "icons": {
       "chevronBack": "chevron-back",
       "chevronForward": "chevron-forward",
@@ -150,7 +151,8 @@
     "complaintsOnMap": "complaints on map",
     "queries": "Queries Map",
     "queriesOnMap": "queries on map",
-    "tapToLoad": "Tap marker to load"
+    "tapToLoad": "Tap marker to load",
+    "cappedNotice": "Showing first {{shown}} of {{total}} — narrow your filters to see the rest"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -186,10 +188,14 @@
     "invalidMobileNumber": "Please enter a valid mobile number",
     "forgotPassword": "Forgot Password?",
     "otpInstructions": "Please enter the OTP which was sent to your registered phone or email",
+    "phoneVerificationRequired": "Verify Your Phone Number",
+    "phoneVerificationRequiredDesc": "For your security, please confirm or update your phone number and verify it before continuing.",
     "otpChannel": "Select OTP Channel",
     "sms": "Registered Phone",
     "emailOtp": "Registered Email",
     "whatsapp": "Whatsapp",
+    "twoFactorAuth": "2FA",
+    "sendOtpViaWhatsapp": "Send OTP via WhatsApp",
     "loginButton": "LOGIN",
     "getStarted": "GET STARTED",
     "loggingIn": "Signing in...",
@@ -531,7 +537,14 @@
     "reporter": "Reporter",
     "geolocation": "Geolocation",
     "directions": "Directions",
-    "additionalInfo": "Additional Information"
+    "additionalInfo": "Additional Information",
+    "chooseMapsApp": "Open Directions With",
+    "googleMaps": "Google Maps",
+    "appleMaps": "Apple Maps",
+    "openInBrowser": "Open in Browser",
+    "googleMapsNotInstalled": "Google Maps Not Installed",
+    "googleMapsNotInstalledDesc": "Google Maps is required to show directions. Would you like to install it?",
+    "install": "Install"
   },
   "priorities": {
     "critical": "Critical",
@@ -704,6 +717,8 @@
     "selectSource": "Select Source",
     "matchedWorkflow": "Matched Workflow",
     "noWorkflowMatched": "No workflow matched",
+    "workflowHint": "Select classification, location, or source to auto-match a workflow",
+    "matchingWorkflow": "Matching workflow...",
     "requiredFields": "Required Fields",
     "optional": "Optional",
     "reporterName": "Reporter Name",
@@ -888,5 +903,8 @@
     "municipality": "Municipality:",
     "planNo": "Plan No:",
     "neighbourhood": "Neighbourhood"
+  },
+  "sort": {
+    "updated": "Latest Updated"
   }
 }

@@ -1164,9 +1164,9 @@ const UpdateStatusModal = () => {
       feedback:
         feedbackComment.trim() || feedbackRating > 0
           ? {
-              rating: feedbackRating,
-              comment: feedbackComment.trim() || undefined,
-            }
+            rating: feedbackRating,
+            comment: feedbackComment.trim() || undefined,
+          }
           : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
@@ -1208,7 +1208,7 @@ const UpdateStatusModal = () => {
         CustomAlert.alert(
           t("common.conflictDetected") || "Conflict Detected",
           t("common.incidentModifiedByAnother") ||
-            "This incident was modified by another user. Please review and try again.",
+          "This incident was modified by another user. Please review and try again.",
           [
             {
               text: t("common.refresh") || "Refresh",
@@ -1359,7 +1359,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                  selectedTransition.transition.from_state?.name_ar
+                    selectedTransition.transition.from_state?.name_ar
                     ? selectedTransition.transition.from_state?.name_ar
                     : selectedTransition.transition.from_state?.name) ||
                     t("incidents.currentStateFallback", "Current")}
@@ -1392,7 +1392,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                  selectedTransition.transition.to_state?.name_ar
+                    selectedTransition.transition.to_state?.name_ar
                     ? selectedTransition.transition.to_state?.name_ar
                     : selectedTransition.transition.to_state?.name) ||
                     t("incidents.nextStateFallback", "Next")}
@@ -1447,7 +1447,11 @@ const UpdateStatusModal = () => {
                     </Text>
                     {trans.transition.to_state && (
                       <View style={styles.transitionCardStateRow}>
-                        <Text style={styles.transitionCardStateLabel}>→ </Text>
+                        <Ionicons
+                          name={t("common.icons.arrowForward") as any}
+                          size={14}
+                          color="#888"
+                        />
                         <View
                           style={[
                             styles.stateBadge,
@@ -1468,7 +1472,7 @@ const UpdateStatusModal = () => {
                             ]}
                           >
                             {(i18n.language === "ar" &&
-                            trans.transition.to_state.name_ar
+                              trans.transition.to_state.name_ar
                               ? trans.transition.to_state.name_ar
                               : trans.transition.to_state.name) ||
                               t("incidents.nextStateFallback", "Next")}
@@ -1596,7 +1600,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRow,
                           selectedDepartmentId === dept.id &&
-                            styles.selectionRowSelected,
+                          styles.selectionRowSelected,
                         ]}
                         onPress={() => setSelectedDepartmentId(dept.id)}
                       >
@@ -1605,7 +1609,7 @@ const UpdateStatusModal = () => {
                             style={[
                               styles.selectionRowTitle,
                               selectedDepartmentId === dept.id &&
-                                styles.selectionRowTitleSelected,
+                              styles.selectionRowTitleSelected,
                             ]}
                           >
                             {dept.name}
@@ -1762,7 +1766,7 @@ const UpdateStatusModal = () => {
                                       paddingHorizontal: 4,
                                     },
                                     fieldChangeValues["priority"] === opt.id &&
-                                      styles.priorityBtnSelected,
+                                    styles.priorityBtnSelected,
                                   ]}
                                   onPress={() =>
                                     handleFieldChange("priority", opt.id)
@@ -1773,8 +1777,8 @@ const UpdateStatusModal = () => {
                                       styles.priorityBtnText,
                                       { fontSize: 11 },
                                       fieldChangeValues["priority"] ===
-                                        opt.id &&
-                                        styles.priorityBtnTextSelected,
+                                      opt.id &&
+                                      styles.priorityBtnTextSelected,
                                     ]}
                                     numberOfLines={1}
                                   >
@@ -1802,9 +1806,9 @@ const UpdateStatusModal = () => {
                             data={
                               fc.department_type_filter
                                 ? filterDeptTree(
-                                    departmentsTree,
-                                    fc.department_type_filter,
-                                  )
+                                  departmentsTree,
+                                  fc.department_type_filter,
+                                )
                                 : departmentsTree
                             }
                             onSelect={(node) => {
@@ -1996,7 +2000,7 @@ const UpdateStatusModal = () => {
                       style={[
                         styles.selectionRow,
                         readyToCloseDuration === opt &&
-                          styles.selectionRowSelected,
+                        styles.selectionRowSelected,
                       ]}
                       onPress={() => setReadyToCloseDuration(opt)}
                     >
@@ -2004,7 +2008,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRowTitle,
                           readyToCloseDuration === opt &&
-                            styles.selectionRowTitleSelected,
+                          styles.selectionRowTitleSelected,
                         ]}
                       >
                         {formatDurationLabel(opt)}
@@ -2091,71 +2095,71 @@ const UpdateStatusModal = () => {
                   {selectedTransition.requirements?.find(
                     (x: any) => x.requirement_type === "rating",
                   ) && (
-                    <View>
-                      <Text style={styles.stepHint}>
-                        {t(
-                          "incidents.rateYourExperience",
-                          "Rate your experience with this resolution",
-                        )}
-                        {selectedTransition.requirements?.find(
-                          (x: any) => x.requirement_type === "rating",
-                        )?.is_mandatory && (
-                          <Text style={{ color: "red" }}> *</Text>
-                        )}
-                      </Text>
-                      <View
-                        style={{
-                          justifyContent: "center",
-                          alignItems: "center",
-                          backgroundColor: "#F8F9FA",
-                          borderRadius: 10,
-                          padding: 15,
-                          borderWidth: 1,
-                          borderColor: "#E0E0E0",
-                        }}
-                      >
-                        <View style={styles.starRatingContainer}>
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <TouchableOpacity
-                              key={star}
-                              onPress={() => setFeedbackRating(star)}
+                      <View>
+                        <Text style={styles.stepHint}>
+                          {t(
+                            "incidents.rateYourExperience",
+                            "Rate your experience with this resolution",
+                          )}
+                          {selectedTransition.requirements?.find(
+                            (x: any) => x.requirement_type === "rating",
+                          )?.is_mandatory && (
+                              <Text style={{ color: "red" }}> *</Text>
+                            )}
+                        </Text>
+                        <View
+                          style={{
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: "#F8F9FA",
+                            borderRadius: 10,
+                            padding: 15,
+                            borderWidth: 1,
+                            borderColor: "#E0E0E0",
+                          }}
+                        >
+                          <View style={styles.starRatingContainer}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <TouchableOpacity
+                                key={star}
+                                onPress={() => setFeedbackRating(star)}
+                              >
+                                <Ionicons
+                                  fill={
+                                    star <= feedbackRating ? "#FFD700" : "#CCC"
+                                  }
+                                  name={
+                                    star <= feedbackRating
+                                      ? "star"
+                                      : "star-outline"
+                                  }
+                                  size={40}
+                                  color={
+                                    star <= feedbackRating ? "#FFD700" : "#CCC"
+                                  }
+                                />
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          {feedbackRating > 0 && (
+                            <Text
+                              style={[
+                                styles.ratingText,
+                                { textAlign: "center", marginTop: 12 },
+                              ]}
                             >
-                              <Ionicons
-                                fill={
-                                  star <= feedbackRating ? "#FFD700" : "#CCC"
-                                }
-                                name={
-                                  star <= feedbackRating
-                                    ? "star"
-                                    : "star-outline"
-                                }
-                                size={40}
-                                color={
-                                  star <= feedbackRating ? "#FFD700" : "#CCC"
-                                }
-                              />
-                            </TouchableOpacity>
-                          ))}
+                              {feedbackRating === 1 && t("incidents.ratingPoor")}
+                              {feedbackRating === 2 && t("incidents.ratingFair")}
+                              {feedbackRating === 3 && t("incidents.ratingGood")}
+                              {feedbackRating === 4 &&
+                                t("incidents.ratingVeryGood")}
+                              {feedbackRating === 5 &&
+                                t("incidents.ratingExcellent")}
+                            </Text>
+                          )}
                         </View>
-                        {feedbackRating > 0 && (
-                          <Text
-                            style={[
-                              styles.ratingText,
-                              { textAlign: "center", marginTop: 12 },
-                            ]}
-                          >
-                            {feedbackRating === 1 && t("incidents.ratingPoor")}
-                            {feedbackRating === 2 && t("incidents.ratingFair")}
-                            {feedbackRating === 3 && t("incidents.ratingGood")}
-                            {feedbackRating === 4 &&
-                              t("incidents.ratingVeryGood")}
-                            {feedbackRating === 5 &&
-                              t("incidents.ratingExcellent")}
-                          </Text>
-                        )}
                       </View>
-                    </View>
-                  )}
+                    )}
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -2936,6 +2940,7 @@ const styles = StyleSheet.create({
   transitionCardStateRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 5
   },
   transitionCardStateLabel: {
     fontSize: 12,

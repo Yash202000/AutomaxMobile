@@ -1,8 +1,10 @@
-import { ldapLogin } from "@/src/api/auth";
+import { ldapLogin, sendOtp } from "@/src/api/auth";
 import apiClient from "@/src/api/client";
+import { getSettings } from "@/src/api/common";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
+import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
@@ -71,6 +73,8 @@ const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [otpChannel, setOtpChannel] = useState<"sms" | "whatsapp">("sms");
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [otpViaWhatsapp, setOtpViaWhatsapp] = useState(false);
   const version = Constants.expoConfig?.version;
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
@@ -117,6 +121,17 @@ const LoginScreen = () => {
           : loginMethod === "sso"
             ? !trimmedNationalId
             : !phoneNumber);
+
+  useEffect(() => {
+    // Drives the "2FA" / "Send OTP via WhatsApp" checkbox shown below —
+    // see src/utils/postLoginNavigation.ts for where totp_enabled is
+    // actually enforced after login.
+    getSettings().then((res) => {
+      if (res.success && res.data?.auth_setting?.totp_enabled) {
+        setTotpEnabled(true);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     // Entrance animations
@@ -227,6 +242,7 @@ const LoginScreen = () => {
           phone: phoneNumber,
           channel: otpChannel,
           name: trimmedCitizenName,
+          type: 'citizen'
         });
 
         if (response.data && response.data.session_id) {
@@ -268,16 +284,7 @@ const LoginScreen = () => {
         if (result.success && result.token) {
           await SecureStore.setItemAsync("loginMethod", "ad");
           const loggedInUser = await login(result.token, result.refresh_token);
-          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-          const isViewerMode = isViewerApp && isViewerRole;
-
-          if (isViewerMode) {
-            router.replace("/(tabs)/incident");
-          } else {
-            router.replace("/(tabs)/explore");
-          }
+          await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
         } else {
           setError(result.error || t("auth.loginError"));
         }
@@ -309,16 +316,7 @@ const LoginScreen = () => {
           if (validation_url) {
             await Linking.openURL(validation_url);
           } else {
-            const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-            const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-            const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-            const isViewerMode = isViewerApp && isViewerRole;
-
-            if (isViewerMode) {
-              router.replace("/(tabs)/incident");
-            } else {
-              router.replace("/(tabs)/explore");
-            }
+            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
           }
         } else {
           setError(
@@ -358,20 +356,44 @@ const LoginScreen = () => {
         const response = await apiClient.post("/auth/login", {
           email: trimmedEmail,
           password,
+          type: 'employee'
         });
 
         if (response.data && response.data.success) {
-          const { token, refresh_token } = response.data.data;
-          const loggedInUser = await login(token, refresh_token);
-          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-          const isViewerMode = isViewerApp && isViewerRole;
+          const { token, refresh_token, user: loginUser } = response.data.data;
 
-          if (isViewerMode) {
-            router.replace("/(tabs)/incident");
+          if (token) {
+            // Full login already completed (super admin, or totp_enabled is off).
+            const loggedInUser = await login(token, refresh_token);
+            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: true, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
           } else {
-            router.replace("/(tabs)/explore");
+            // Not super admin & totp_enabled is on — the backend withholds the
+            // token until 2FA is completed, so only `user` comes back here.
+            // Send the 2FA OTP and go straight to the entry screen; whether
+            // that verify also needs to mark the phone verified depends on
+            // this same user's mobile_verified value (see app/otp.tsx).
+            if (!loginUser?.phone) {
+              setError(t("auth.otpSentFailed", "Failed to send OTP"));
+              return;
+            }
+            const channel = otpViaWhatsapp ? "whatsapp" : "sms";
+            const otpRes = await sendOtp(loginUser.phone, channel, 'employee');
+            if (otpRes.success) {
+              const otpParams: Record<string, string> = {
+                phoneNumber: loginUser.phone,
+                sessionId: otpRes.session_id,
+                channel,
+                pendingLogin: "true",
+                firstName: loginUser.first_name || "",
+                lastName: loginUser.last_name || "",
+              };
+              if (!loginUser.mobile_verified) {
+                otpParams.markMobileVerified = "true";
+              }
+              router.push({ pathname: "/otp", params: otpParams });
+            } else {
+              setError(otpRes.error || t("auth.otpSentFailed", "Failed to send OTP"));
+            }
           }
         } else {
           setError(t("auth.loginError"));
@@ -708,7 +730,7 @@ const LoginScreen = () => {
             {/* Employee method pill — Email / AD / Phone, only when citizen login is also enabled */}
             {loginType === "employee" && enableCitizenLogin && (
               <View style={styles.methodPillContainer}>
-                {(["email", "ad", "phone", "sso"] as const).map((method) => (
+                {(["email", "ad", "sso"] as const).map((method) => (
                   <TouchableOpacity
                     key={method}
                     style={[
@@ -1306,6 +1328,42 @@ const LoginScreen = () => {
                 </>
               )}
 
+              {/* 2FA channel preference — only relevant when the server has
+                  totp_enabled on, and only for methods that don't already
+                  have their own OTP channel picker (phone login has one). */}
+              {loginType === "employee" && loginMethod !== "phone" && totpEnabled && (
+                <View style={styles.inputWrapper}>
+                  <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                    {t("auth.twoFactorAuth", "2FA")}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.checkboxRow}
+                    onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        otpViaWhatsapp && styles.checkboxChecked,
+                      ]}
+                    >
+                      {otpViaWhatsapp && (
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      )}
+                    </View>
+                    <Ionicons
+                      name="logo-whatsapp"
+                      size={18}
+                      color="#666"
+                      style={{ marginLeft: 8, marginRight: 6 }}
+                    />
+                    <Text style={styles.checkboxLabel}>
+                      {t("auth.sendOtpViaWhatsapp", "Send OTP via WhatsApp")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Forgot Password - Only for email login */}
               {loginType === "employee" && loginMethod === "email" && (
                 <TouchableOpacity
@@ -1324,16 +1382,6 @@ const LoginScreen = () => {
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Error Message */}
-            {error ? (
-              <Animated.View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
-                <Text style={styles.errorText}>
-                  {error.charAt(0).toUpperCase() + error.slice(1)}
-                </Text>
-              </Animated.View>
-            ) : null}
 
             {/* Login Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
@@ -1371,6 +1419,17 @@ const LoginScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* Error Message */}
+            {error ? (
+              <Animated.View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
+                <Text style={styles.errorText}>
+                  {error.charAt(0).toUpperCase() + error.slice(1)}
+                </Text>
+              </Animated.View>
+            ) : null}
+
           </Animated.View>
         </ScrollView>
 
@@ -1588,6 +1647,28 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontWeight: "600",
   },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#CCC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#2EC4B6",
+    borderColor: "#2EC4B6",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: "#333",
+  },
   channelContainer: {
     flexDirection: "row",
     gap: 12,
@@ -1623,7 +1704,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    marginTop: 20,
     borderLeftWidth: 4,
     borderLeftColor: "#E74C3C",
   },

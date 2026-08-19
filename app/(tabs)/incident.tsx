@@ -1,5 +1,7 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { CustomAlert } from "@/src/components/CustomAlert";
+import { TicketListSkeleton } from "@/src/components/TicketListSkeleton";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { useHierarchy } from "@/src/hooks/useHierarchy";
@@ -101,6 +103,10 @@ interface Incident {
     color: string;
   }>;
   transition_history?: Array<any>;
+  classification?: any;
+  description?: string;
+  reporter?: any;
+  reporter_phone?: string
 }
 
 interface PaginationInfo {
@@ -272,6 +278,7 @@ const IncidentsScreen = () => {
   let {
     state_id,
     state_name,
+    state_name_ar,
     priority,
     severity,
     assignee_id,
@@ -288,6 +295,7 @@ const IncidentsScreen = () => {
   } = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -319,17 +327,10 @@ const IncidentsScreen = () => {
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
   const [sortByUpdated, setSortByUpdated] = useState(true);
-
-  const sortedIncidents = React.useMemo(() => {
-    if (sortByUpdated) {
-      return [...incidents].sort((a, b) => {
-        const dateA = new Date(a.updated_at || a.created_at).getTime();
-        const dateB = new Date(b.updated_at || b.created_at).getTime();
-        return dateB - dateA;
-      });
-    }
-    return incidents;
-  }, [incidents, sortByUpdated]);
+  // Ordering now comes from the backend (sort_by param in buildParams) so
+  // pages arrive already in the right order — no client-side re-sort of the
+  // accumulated list, which used to reshuffle already-rendered rows (and
+  // their entrance animations) every time a new page loaded.
 
   // Multi-selection states & operations
   const [selectionMode, setSelectionMode] = useState(false);
@@ -411,8 +412,13 @@ const IncidentsScreen = () => {
 
     const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
 
+    const translationHelper = (a: any) => {
+      const isArabic = i18n.language === 'ar' && a.name_ar;
+      return isArabic ? a.name_ar : a.name;
+    }
+
     const doShare = async (incidentsToShare: typeof selectedIncidents) => {
-      let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
+      let shareText = `📋 *${t("incidents.title")} ${t("common.summary")}*:\n\n`;
       incidentsToShare.forEach((inc, index) => {
         const priorityLookup = inc.lookup_values?.find(
           (lv) => lv.category.code === "PRIORITY",
@@ -424,10 +430,10 @@ const IncidentsScreen = () => {
         }
 
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
-        shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
-        shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.classification")} : ${translationHelper(inc.classification) || t("common.na")}\n`;
+        shareText += `   ${t("incidents.location")} : ${translationHelper(inc.location) || t("common.na")}\n`;
         shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
-        shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.status")} : ${translationHelper(inc.current_state) || t("common.na")}\n`;
         shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
         shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
         shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
@@ -468,10 +474,14 @@ const IncidentsScreen = () => {
 
   // Don't apply default status filter - show ALL incidents unless explicitly filtered
   const activeStateId = state_id;
-  const activeStateName = state_name;
+  const activeStateName = (i18n.language !== "en" && state_name_ar) || state_name;
 
   const buildParams = (page: number) => {
-    const params: Record<string, any> = { page, limit: 20 };
+    const params: Record<string, any> = {
+      page,
+      limit: 20,
+      sort_by: sortByUpdated ? "updated_at" : "created_at",
+    };
     if (activeStateId) params.current_state_id = activeStateId.split(",");
     if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
     if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
@@ -567,6 +577,7 @@ const IncidentsScreen = () => {
       start_date,
       end_date,
       searchQuery,
+      sortByUpdated,
     ]),
   );
 
@@ -689,14 +700,17 @@ const IncidentsScreen = () => {
           onPress={() => setSortByUpdated(!sortByUpdated)}
         >
           <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
-          <Text style={{
-            marginLeft: 4,
-            fontSize: 12,
-            color: sortByUpdated ? COLORS.white : COLORS.text.muted,
-            fontWeight: '500'
-          }}>
-            {t("sort.updated", "Latest Updated")}
-          </Text>
+          {
+            !hasManualFilters &&
+            <Text style={{
+              marginLeft: 4,
+              fontSize: 12,
+              color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+              fontWeight: '500'
+            }}>
+              {t("sort.updated", "Latest Updated")}
+            </Text>
+          }
         </TouchableOpacity>
       )}
     </View>
@@ -711,7 +725,7 @@ const IncidentsScreen = () => {
         value:
           state_id.split(",").length > 1
             ? `${state_id.split(",").length} ${t("filter.selected")}`
-            : state_name || state_id,
+            : (i18n.language !== "en" && state_name_ar) || state_name || state_id,
       },
       priority && {
         key: "priority",
@@ -1027,6 +1041,7 @@ const IncidentsScreen = () => {
                     params: {
                       state_id,
                       state_name,
+                      state_name_ar,
                       priority,
                       severity,
                       assignee_id,
@@ -1055,12 +1070,7 @@ const IncidentsScreen = () => {
       <FilterBadges />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
-            {t("incidents.loadingIncidents")}
-          </Text>
-        </View>
+        <TicketListSkeleton style={{ backgroundColor: COLORS.background }} />
       ) : error ? (
         <View style={styles.centered}>
           <Ionicons
@@ -1080,16 +1090,18 @@ const IncidentsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={sortedIncidents}
-          renderItem={({ item }) => (
-            <IncidentCard
-              incident={item}
-              isSelected={selectedIds.has(item.id)}
-              selectionMode={selectionMode}
-              onSelect={() => toggleSelectIncident(item.id)}
-              onLongPress={() => handleLongPressIncident(item.id)}
-              viewer={isViewerMode}
-            />
+          data={incidents}
+          renderItem={({ item, index }) => (
+            <AnimatedListItem index={index}>
+              <IncidentCard
+                incident={item}
+                isSelected={selectedIds.has(item.id)}
+                selectionMode={selectionMode}
+                onSelect={() => toggleSelectIncident(item.id)}
+                onLongPress={() => handleLongPressIncident(item.id)}
+                viewer={isViewerMode}
+              />
+            </AnimatedListItem>
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}

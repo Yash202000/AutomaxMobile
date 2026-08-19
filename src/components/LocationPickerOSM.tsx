@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { gisLocation } from '../api/locations';
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -65,8 +66,8 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const webViewRef = useRef<WebView>(null);
-  const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const suggestionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const geocodingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -287,6 +288,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const handleSearchQueryChange = useCallback((text: string) => {
     setSearchQuery(text);
     setShowSuggestions(false);
+    setSearchError(null);
     if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
     if (text.trim().length >= 3) {
       suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), 800);
@@ -501,18 +503,24 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          {suggestions.map((item, i) => (
-            <View key={i}>
-              <TouchableOpacity
-                style={styles.suggestionItem}
-                onPress={() => handleSelectSuggestion(item)}
-              >
-                <Ionicons name="location-outline" size={16} color="#2EC4B6" style={{ marginRight: 8 }} />
-                <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
-              </TouchableOpacity>
-              {i < suggestions.length - 1 && <View style={styles.suggestionDivider} />}
-            </View>
-          ))}
+          <ScrollView
+            keyboardShouldPersistTaps="always"
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
+            {suggestions.map((item, i) => (
+              <View key={i}>
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectSuggestion(item)}
+                >
+                  <Ionicons name="location-outline" size={16} color="#2EC4B6" style={{ marginRight: 8 }} />
+                  <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
+                </TouchableOpacity>
+                {i < suggestions.length - 1 && <View style={styles.suggestionDivider} />}
+              </View>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -719,6 +727,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 8,
     maxHeight: 200,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

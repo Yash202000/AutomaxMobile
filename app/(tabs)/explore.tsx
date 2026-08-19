@@ -6,6 +6,8 @@ import {
 } from "@/src/api/incidents";
 import { getNotifications } from "@/src/api/notifications";
 import { ChatbotWidget } from "@/src/components/ChatbotWidget";
+import { LayoutLoader } from "@/src/components/LayoutLoader";
+import { Skeleton } from "@/src/components/Skeleton";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
@@ -14,7 +16,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   Animated,
   ImageBackground,
   Platform,
@@ -445,6 +446,7 @@ const DashboardScreen = () => {
                   params: {
                     state_id: stateDetail.id,
                     state_name: stateDetail.name,
+                    state_name_ar: stateDetail.name_ar || "",
                   },
                 })
               }
@@ -482,9 +484,38 @@ const DashboardScreen = () => {
     return (
       <View style={styles.safeArea}>
         {renderHeader()}
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>{t("common.loading")}</Text>
+        <View style={styles.contentWrapper}>
+          <LayoutLoader>
+            <View style={styles.summaryCardsContainer}>
+              {[0, 1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  style={[styles.summaryCard, { backgroundColor: COLORS.white }]}
+                >
+                  <Skeleton width={48} height={48} borderRadius={12} />
+                  <Skeleton width={40} height={28} style={{ marginTop: 12 }} />
+                  <Skeleton width={70} height={14} style={{ marginTop: 8 }} />
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.section}>
+              <Skeleton width={120} height={18} style={{ marginBottom: 12 }} />
+              <View style={styles.myIncidentsContainer}>
+                <Skeleton height={64} borderRadius={14} />
+                <Skeleton height={64} borderRadius={14} />
+              </View>
+            </View>
+
+            {[0, 1].map((s) => (
+              <View key={s} style={styles.section}>
+                <Skeleton width={150} height={18} style={{ marginBottom: 12 }} />
+                <Skeleton height={64} borderRadius={14} style={{ marginBottom: 10 }} />
+                <Skeleton height={64} borderRadius={14} style={{ marginBottom: 10 }} />
+                <Skeleton height={64} borderRadius={14} />
+              </View>
+            ))}
+          </LayoutLoader>
         </View>
       </View>
     );
@@ -630,6 +661,7 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
     fontSize: 14,
     fontWeight: "500",
+    textAlign: 'left'
   },
   userName: {
     color: COLORS.white,
@@ -691,20 +723,6 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingHorizontal: 20,
     paddingBottom: 24,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -16,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: COLORS.text.secondary,
-    fontSize: 14,
   },
   errorContainer: {
     flex: 1,
