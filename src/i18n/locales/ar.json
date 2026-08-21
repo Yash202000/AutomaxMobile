@@ -113,6 +113,7 @@
     "recordVoice": "تسجيل صوتي",
     "workflow": "سير العمل",
     "pinchToZoom": "قرّب بإصبعين للتكبير",
+    "pinchToZoomAndRotate": "قرّب بإصبعين أو انقر مرتين للتكبير · استخدم زر التدوير للتدوير",
     "aiAssistant": "المساعد الذكي",
     "addComment": "إضافة تعليق",
     "title": "العنوان",

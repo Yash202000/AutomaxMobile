@@ -19,6 +19,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+const MIN_SCALE = 1;
+const MAX_SCALE = 3;
+const DOUBLE_TAP_SCALE = 2;
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface ImageItem {
@@ -46,49 +50,104 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
   const [currentIndex, setCurrentIndex] = useState(imageIndex);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+  const rotation = useSharedValue(0);
+
+  const resetTransform = () => {
+    scale.value = withSpring(1);
+    savedScale.value = 1;
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+    rotation.value = withSpring(0);
+  };
 
   // Update current index when imageIndex prop changes
   React.useEffect(() => {
     setCurrentIndex(imageIndex);
-    // Reset scale when image changes
-    scale.value = withSpring(1);
-    savedScale.value = 1;
+    // Reset zoom/pan/rotation when image changes
+    resetTransform();
   }, [imageIndex]);
 
-  // Create pinch gesture
+  const handleRotate = () => {
+    rotation.value = withSpring(rotation.value + 90);
+  };
+
+  // Pinch to zoom, clamped to [MIN_SCALE, MAX_SCALE]
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
       scale.value = savedScale.value * event.scale;
     })
     .onEnd(() => {
-      if (scale.value < 1) {
-        scale.value = withSpring(1);
-        savedScale.value = 1;
-      } else if (scale.value > 3) {
-        scale.value = withSpring(3);
-        savedScale.value = 3;
+      if (scale.value < MIN_SCALE) {
+        scale.value = withSpring(MIN_SCALE);
+        savedScale.value = MIN_SCALE;
+      } else if (scale.value > MAX_SCALE) {
+        scale.value = withSpring(MAX_SCALE);
+        savedScale.value = MAX_SCALE;
       } else {
         savedScale.value = scale.value;
       }
     });
 
+  // Drag to pan around once zoomed in — a no-op at the default zoom level so
+  // it never fights with swiping between images.
+  const panGesture = Gesture.Pan().onUpdate((event) => {
+    if (scale.value <= 1) return;
+    translateX.value = savedTranslateX.value + event.translationX;
+    translateY.value = savedTranslateY.value + event.translationY;
+  }).onEnd(() => {
+    savedTranslateX.value = translateX.value;
+    savedTranslateY.value = translateY.value;
+  });
+
+  // Double tap toggles between default zoom and a fixed zoomed-in level.
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        scale.value = withSpring(DOUBLE_TAP_SCALE);
+        savedScale.value = DOUBLE_TAP_SCALE;
+      }
+    });
+
+  const composedGesture = Gesture.Simultaneous(
+    doubleTapGesture,
+    pinchGesture,
+    panGesture,
+  );
+
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+      { rotate: `${rotation.value}deg` },
+    ],
   }));
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
-      scale.value = withSpring(1);
-      savedScale.value = 1;
+      resetTransform();
     }
   };
 
   const handleNext = () => {
     if (currentIndex < images.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      scale.value = withSpring(1);
-      savedScale.value = 1;
+      resetTransform();
     }
   };
 
@@ -116,14 +175,22 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
                 {currentImage?.file_name}
               </Text>
             </View>
-            <TouchableOpacity onPress={onRequestClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={handleRotate} style={styles.headerActionButton}>
+                <Ionicons name="reload-outline" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={resetTransform} style={styles.headerActionButton}>
+                <Ionicons name="scan-outline" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onRequestClose} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Image Container */}
           <View style={styles.imageContainer}>
-            <GestureDetector gesture={pinchGesture}>
+            <GestureDetector gesture={composedGesture}>
               <Animated.View style={[styles.imageWrapper, animatedStyle]}>
                 <Image
                   source={{
@@ -188,10 +255,12 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
             </View>
           )}
 
-          {/* Pinch to zoom hint */}
+          {/* Pinch to zoom / rotate hint */}
           <View style={styles.hintContainer}>
             <Ionicons name="expand-outline" size={16} color="#FFFFFF80" />
-            <Text style={styles.hintText}>{t('common.pinchToZoom', 'Pinch to zoom')}</Text>
+            <Text style={styles.hintText}>
+              {t('common.pinchToZoomAndRotate', 'Pinch or double-tap to zoom · rotate to turn')}
+            </Text>
           </View>
         </View>
       </GestureHandlerRootView>
@@ -230,6 +299,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF80',
     fontSize: 12,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionButton: {
+    padding: 4,
   },
   closeButton: {
     padding: 4,
