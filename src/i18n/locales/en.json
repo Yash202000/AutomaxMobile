@@ -729,6 +729,8 @@
     "reporterEmailPlaceholder": "Reporter's email",
     "tapToUpload": "Tap to upload files",
     "addMoreFiles": "Add more files",
+    "maxAttachmentsExceeded": "You can attach a maximum of {{max}} files",
+    "maxAttachmentsReached": "Maximum of {{max}} files reached",
     "getCurrentLocation": "Get Current Location",
     "fetchingLocation": "Fetching location...",
     "createButton": "CREATE INCIDENT",
