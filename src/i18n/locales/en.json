@@ -2,6 +2,7 @@
   "common": {
     "share": "Share",
     "stateChanged": "State changed",
+    "selectOption": "Select Option",
     "date": "Date",
     "system": "System",
     "fetchingLoc": "Please wait while we fetch your location..",

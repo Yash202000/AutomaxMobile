@@ -40,7 +40,11 @@ export async function navigateAfterLogin(user: User | null, router: Router, opts
     return;
   }
 
-  if (opts.skipTotpCheck) {
+  // Super admins bypass 2FA entirely, mirroring the backend's own rule (it
+  // already returns a token immediately for them regardless of
+  // totp_enabled) — without this, the gate below would try to send a 2FA
+  // OTP for an account the backend never expected to need one.
+  if (opts.skipTotpCheck || user?.is_super_admin) {
     routeToDashboard(user, router);
     return;
   }
