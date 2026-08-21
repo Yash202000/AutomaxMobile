@@ -12,6 +12,7 @@ import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { compressImage } from '@/src/utils/imageCompression';
@@ -193,6 +194,7 @@ const AddIncidentScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { canUploadAttachmentGallery } = usePermissions();
 
   const priorityOptions: DropdownOption[] = [
     { id: '1', name: t('priorities.critical') },
@@ -793,21 +795,32 @@ const AddIncidentScreen = () => {
   };
 
   const showAttachmentOptions = () => {
+    // No gallery permission — skip the options sheet entirely and go
+    // straight to the camera, same as before this permission existed.
+    if (!canUploadAttachmentGallery()) {
+      handleTakePhoto();
+      return;
+    }
+
     if (Platform.OS === 'ios') {
+      const options = ['Cancel', 'Take Photo', 'Choose from Gallery'];
+      // Choose File is still disabled — not wired to the permission check below.
+      // options.push('Choose File');
+
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo'/*, 'Choose from Gallery', 'Choose File'*/],
+          options,
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
-          if (buttonIndex === 1) {
+          const selected = options[buttonIndex];
+          if (selected === 'Take Photo') {
             handleTakePhoto();
+          } else if (selected === 'Choose from Gallery') {
+            handlePickFromGallery();
+          } else if (selected === 'Choose File') {
+            handlePickDocument();
           }
-          // } else if (buttonIndex === 2) {
-          //   handlePickFromGallery();
-          // } else if (buttonIndex === 3) {
-          //   handlePickDocument();
-          // }
         }
       );
     } else {
@@ -1974,7 +1987,7 @@ const AddIncidentScreen = () => {
                         ))}
                       </View>
                     )}
-                    <TouchableOpacity style={[styles.attachmentButton]} onPress={handleTakePhoto}>
+                    <TouchableOpacity style={[styles.attachmentButton]} onPress={showAttachmentOptions}>
                       <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
                       <Text style={styles.attachmentButtonText}>
                         {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
@@ -2015,18 +2028,20 @@ const AddIncidentScreen = () => {
                   <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
                 </TouchableOpacity>
 
-                {/* <TouchableOpacity
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setAttachmentPickerVisible(false);
-                    handlePickFromGallery();
-                  }}
-                >
-                  <Ionicons name="images" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
-                </TouchableOpacity>
+                {canUploadAttachmentGallery() && (
+                  <TouchableOpacity
+                    style={styles.pickerOption}
+                    onPress={() => {
+                      setAttachmentPickerVisible(false);
+                      handlePickFromGallery();
+                    }}
+                  >
+                    <Ionicons name="images" size={24} color="#2EC4B6" />
+                    <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                  </TouchableOpacity>
+                )}
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.pickerOption}
                   onPress={() => {
                     setAttachmentPickerVisible(false);
