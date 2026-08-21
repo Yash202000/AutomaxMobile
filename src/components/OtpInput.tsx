@@ -6,6 +6,7 @@ interface OtpInputProps {
   onChange: (otp: string[]) => void;
   length?: number;
   autoFocus?: boolean;
+  onComplete?: (code: string) => void;
 }
 
 // A single real TextInput backs the whole row (invisible, absolutely
@@ -14,7 +15,7 @@ interface OtpInputProps {
 // `autoComplete="one-time-code"` drives the equivalent on Android. The boxes
 // below are purely visual (`pointerEvents="none"`) — the real input sits on
 // top and receives every tap/keystroke/autofill.
-export const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, length = 6, autoFocus = true }) => {
+export const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, length = 6, autoFocus = true, onComplete }) => {
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
   const joined = value.join('');
@@ -22,6 +23,9 @@ export const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, length = 6,
   const handleChangeText = (text: string) => {
     const digits = text.replace(/[^0-9]/g, '').slice(0, length);
     onChange(Array.from({ length }, (_, i) => digits[i] || ''));
+    if (digits.length === length) {
+      onComplete?.(digits);
+    }
   };
 
   return (

@@ -17,8 +17,9 @@ export function routeToDashboard(user: User | null, router: Router) {
 
 interface NavigateAfterLoginOptions {
   // Whether this login path requires the account's phone to already be
-  // verified before reaching the dashboard (employee email/password and
-  // citizen phone/OTP logins do; AD/SSO don't).
+  // verified before reaching the dashboard. Only employee email/password
+  // does — AD/SSO and citizen/employee phone+OTP logins don't (the latter
+  // already prove phone ownership via the OTP step itself).
   enforcePhoneVerification: boolean;
   // Channel for the settings-driven 2FA OTP below, per the user's "Send OTP
   // via WhatsApp" checkbox on the login form. Defaults to 'sms'.
