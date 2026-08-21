@@ -34,9 +34,9 @@ const OtpScreen = () => {
   const [error, setError] = useState('');
   const { timer, reset: resetTimer } = useOtpResendTimer();
 
-  const handleVerify = async () => {
-    const enteredOtp = otp.join('');
-    if (enteredOtp.length < 6) return;
+  const handleVerify = async (codeOverride?: string) => {
+    const enteredOtp = codeOverride ?? otp.join('');
+    if (enteredOtp.length < 6 || loading) return;
 
     setLoading(true);
     setError('');
@@ -92,10 +92,12 @@ const OtpScreen = () => {
           } else {
             // Citizen tab / employee "phone" method — this OTP verify IS the
             // login itself, already proving phone ownership, so don't also
-            // run the settings-driven 2FA OTP gate right after it.
+            // run the settings-driven 2FA OTP gate right after it, and don't
+            // route through /verify-phone either — mobile_verified doesn't
+            // gate this path at all.
             const { token, refresh_token } = response.data.data;
             const loggedInUser = await login(token, refresh_token);
-            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: true, skipTotpCheck: true });
+            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, skipTotpCheck: true });
           }
         } else {
           setError(t('auth.invalidOTP'));
@@ -150,7 +152,7 @@ const OtpScreen = () => {
         {t('auth.otpInstructions')}
       </Text>
 
-      <OtpInput value={otp} onChange={setOtp} />
+      <OtpInput value={otp} onChange={setOtp} onComplete={(code) => handleVerify(code)} />
 
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
@@ -158,7 +160,7 @@ const OtpScreen = () => {
 
       <TouchableOpacity
         style={[styles.verifyButton, (loading || otp.join('').length < 6) && styles.disabledButton]}
-        onPress={handleVerify}
+        onPress={() => handleVerify()}
         disabled={loading || otp.join('').length < 6}
       >
         {loading ? (

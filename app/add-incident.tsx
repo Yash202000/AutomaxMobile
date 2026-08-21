@@ -12,6 +12,7 @@ import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
 import { WatermarkPreview } from '@/src/components/WatermarkPreview';
 import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
 import { useAuth } from '@/src/context/AuthContext';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
 import { crashLogger } from '@/src/utils/crashLogger';
 import { compressImage } from '@/src/utils/imageCompression';
@@ -187,12 +188,14 @@ const Dropdown: React.FC<DropdownProps> = ({
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_ATTACHMENTS_COUNT = Number(process.env.EXPO_PUBLIC_MAX_INCIDENT_ATTACHMENTS) || 10;
 
 const AddIncidentScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { canUploadAttachmentGallery } = usePermissions();
 
   const priorityOptions: DropdownOption[] = [
     { id: '1', name: t('priorities.critical') },
@@ -230,6 +233,12 @@ const AddIncidentScreen = () => {
 
   // Attachments state
   const [attachments, setAttachments] = useState<any[]>([]);
+  // Kept in sync so callbacks with stale closures (e.g. handleWatermarkComplete,
+  // memoized on unrelated deps) can still read the current count reliably.
+  const attachmentsCountRef = useRef(0);
+  useEffect(() => {
+    attachmentsCountRef.current = attachments.length;
+  }, [attachments.length]);
   const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
@@ -680,6 +689,13 @@ const AddIncidentScreen = () => {
       newErrors.geolocation = t("addIncident.gisError");
     }
 
+    if (attachments.length > MAX_ATTACHMENTS_COUNT) {
+      newErrors.attachments = t('addIncident.maxAttachmentsExceeded', {
+        max: MAX_ATTACHMENTS_COUNT,
+        defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+      });
+    }
+
     if (!title.trim()) {
       newErrors.title = t('addIncident.titlePlaceholder');
     }
@@ -793,21 +809,34 @@ const AddIncidentScreen = () => {
   };
 
   const showAttachmentOptions = () => {
+    // No gallery permission — skip the options sheet entirely and go
+    // straight to the camera, same as before this permission existed.
+    if (!canUploadAttachmentGallery()) {
+      handleTakePhoto();
+      return;
+    }
+
     if (Platform.OS === 'ios') {
+      const options = ['Cancel', 'Take Photo', 'Choose from Gallery'];
+      // Choose File is still disabled — not wired to the permission check below.
+      // options.push('Choose File');
+
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo'/*, 'Choose from Gallery', 'Choose File'*/],
+          options,
           cancelButtonIndex: 0,
+          title: t('common.selectOption'),
+          anchor: 1
         },
         (buttonIndex) => {
-          if (buttonIndex === 1) {
+          const selected = options[buttonIndex];
+          if (selected === 'Take Photo') {
             handleTakePhoto();
+          } else if (selected === 'Choose from Gallery') {
+            handlePickFromGallery();
+          } else if (selected === 'Choose File') {
+            handlePickDocument();
           }
-          // } else if (buttonIndex === 2) {
-          //   handlePickFromGallery();
-          // } else if (buttonIndex === 3) {
-          //   handlePickDocument();
-          // }
         }
       );
     } else {
@@ -1000,18 +1029,28 @@ const AddIncidentScreen = () => {
       ? compressionResult.compressedUri
       : watermarkedUri;
 
-    // Add watermarked image to attachments
-    setAttachments(prev => {
-      const newAttachments = [
-        ...prev,
-        {
-          uri: finalUri,
-          name: originalName,
-          type: 'image/jpeg',
-        },
-      ];
-      return newAttachments;
-    });
+    // Add watermarked image to attachments, unless the cap's already been hit
+    if (attachmentsCountRef.current >= MAX_ATTACHMENTS_COUNT) {
+      CustomAlert.alert(
+        t('common.error'),
+        t('addIncident.maxAttachmentsExceeded', {
+          max: MAX_ATTACHMENTS_COUNT,
+          defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+        })
+      );
+    } else {
+      setAttachments(prev => {
+        if (prev.length >= MAX_ATTACHMENTS_COUNT) return prev;
+        return [
+          ...prev,
+          {
+            uri: finalUri,
+            name: originalName,
+            type: 'image/jpeg',
+          },
+        ];
+      });
+    }
 
     // Remove from pending list
     setPendingWatermarks(prev => {
@@ -1079,11 +1118,27 @@ const AddIncidentScreen = () => {
           }
         });
 
-        // Add valid files
+        // Add valid files, capped to however many slots remain
         if (validFiles.length > 0) {
-          setAttachments(prev => [...prev, ...validFiles]);
-          if (errors.attachments) {
-            setErrors(prev => ({ ...prev, attachments: '' }));
+          const remainingSlots = Math.max(0, MAX_ATTACHMENTS_COUNT - attachments.length);
+          const filesToAdd = validFiles.slice(0, remainingSlots);
+          const excessCount = validFiles.length - filesToAdd.length;
+
+          if (filesToAdd.length > 0) {
+            setAttachments(prev => [...prev, ...filesToAdd]);
+            if (errors.attachments) {
+              setErrors(prev => ({ ...prev, attachments: '' }));
+            }
+          }
+
+          if (excessCount > 0) {
+            CustomAlert.alert(
+              t('common.error'),
+              t('addIncident.maxAttachmentsExceeded', {
+                max: MAX_ATTACHMENTS_COUNT,
+                defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+              })
+            );
           }
         }
 
@@ -1134,11 +1189,27 @@ const AddIncidentScreen = () => {
           }
         });
 
-        // Add valid files
+        // Add valid files, capped to however many slots remain
         if (validFiles.length > 0) {
-          setAttachments(prev => [...prev, ...validFiles]);
-          if (errors.attachments) {
-            setErrors(prev => ({ ...prev, attachments: '' }));
+          const remainingSlots = Math.max(0, MAX_ATTACHMENTS_COUNT - attachments.length);
+          const filesToAdd = validFiles.slice(0, remainingSlots);
+          const excessCount = validFiles.length - filesToAdd.length;
+
+          if (filesToAdd.length > 0) {
+            setAttachments(prev => [...prev, ...filesToAdd]);
+            if (errors.attachments) {
+              setErrors(prev => ({ ...prev, attachments: '' }));
+            }
+          }
+
+          if (excessCount > 0) {
+            CustomAlert.alert(
+              t('common.error'),
+              t('addIncident.maxAttachmentsExceeded', {
+                max: MAX_ATTACHMENTS_COUNT,
+                defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+              })
+            );
           }
         }
 
@@ -1974,10 +2045,23 @@ const AddIncidentScreen = () => {
                         ))}
                       </View>
                     )}
-                    <TouchableOpacity style={[styles.attachmentButton]} onPress={handleTakePhoto}>
-                      <Ionicons name="cloud-upload-outline" size={24} color="#2EC4B6" />
-                      <Text style={styles.attachmentButtonText}>
-                        {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+                    <TouchableOpacity
+                      style={[styles.attachmentButton, attachments.length >= MAX_ATTACHMENTS_COUNT && styles.attachmentButtonDisabled]}
+                      onPress={showAttachmentOptions}
+                      disabled={attachments.length >= MAX_ATTACHMENTS_COUNT}
+                    >
+                      <Ionicons
+                        name="cloud-upload-outline"
+                        size={24}
+                        color={attachments.length >= MAX_ATTACHMENTS_COUNT ? '#999999' : '#2EC4B6'}
+                      />
+                      <Text style={[styles.attachmentButtonText, attachments.length >= MAX_ATTACHMENTS_COUNT && styles.attachmentButtonTextDisabled]}>
+                        {attachments.length >= MAX_ATTACHMENTS_COUNT
+                          ? t('addIncident.maxAttachmentsReached', {
+                            max: MAX_ATTACHMENTS_COUNT,
+                            defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                          })
+                          : attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -2015,18 +2099,20 @@ const AddIncidentScreen = () => {
                   <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
                 </TouchableOpacity>
 
-                {/* <TouchableOpacity
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setAttachmentPickerVisible(false);
-                    handlePickFromGallery();
-                  }}
-                >
-                  <Ionicons name="images" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
-                </TouchableOpacity>
+                {canUploadAttachmentGallery() && (
+                  <TouchableOpacity
+                    style={styles.pickerOption}
+                    onPress={() => {
+                      setAttachmentPickerVisible(false);
+                      handlePickFromGallery();
+                    }}
+                  >
+                    <Ionicons name="images" size={24} color="#2EC4B6" />
+                    <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                  </TouchableOpacity>
+                )}
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.pickerOption}
                   onPress={() => {
                     setAttachmentPickerVisible(false);
@@ -2425,11 +2511,17 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 10,
   },
+  attachmentButtonDisabled: {
+    borderColor: '#B0B0B0',
+  },
   attachmentButtonText: {
     marginLeft: 8,
     color: '#2EC4B6',
     fontSize: 14,
     fontWeight: '500',
+  },
+  attachmentButtonTextDisabled: {
+    color: '#999999',
   },
   // Attachment picker modal styles
   pickerModalOverlay: {

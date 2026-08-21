@@ -49,9 +49,9 @@ const VerifyPhoneScreen = () => {
     }
   };
 
-  const handleVerifyOtp = async () => {
-    const enteredOtp = otp.join('');
-    if (enteredOtp.length < 6) return;
+  const handleVerifyOtp = async (codeOverride?: string) => {
+    const enteredOtp = codeOverride ?? otp.join('');
+    if (enteredOtp.length < 6 || verifying) return;
 
     setVerifying(true);
     try {
@@ -120,11 +120,11 @@ const VerifyPhoneScreen = () => {
             <>
               <Text style={[styles.instructions, isRTL && styles.textRTL]}>{t('auth.otpInstructions')}</Text>
 
-              <OtpInput value={otp} onChange={setOtp} />
+              <OtpInput value={otp} onChange={setOtp} onComplete={(code) => handleVerifyOtp(code)} />
 
               <TouchableOpacity
                 style={[styles.primaryButton, (verifying || otp.join('').length < 6) && styles.disabledButton]}
-                onPress={handleVerifyOtp}
+                onPress={() => handleVerifyOtp()}
                 disabled={verifying || otp.join('').length < 6}
               >
                 {verifying ? <ActivityIndicator color="#fff" size="small" /> : (
