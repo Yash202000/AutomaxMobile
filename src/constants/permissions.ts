@@ -52,6 +52,7 @@ export const PERMISSIONS = {
   INCIDENTS_COMMENT: 'incidents:comment',
   INCIDENTS_MANAGE_SLA: 'incidents:manage_sla',
   INCIDENTS_SHARE: 'incidents:share',
+  INCIDENTS_UPLOAD_ATTACHMENT_GALLERY: 'incidents:upload-attachment-gallery',
 
   // Request permissions
   REQUESTS_VIEW: 'requests:view',

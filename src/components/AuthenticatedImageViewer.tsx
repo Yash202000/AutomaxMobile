@@ -197,10 +197,10 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
                     uri: currentImage?.uri,
                     ...(token
                       ? {
-                          headers: {
-                            Authorization: `Bearer ${token}`,
-                          },
-                        }
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                        },
+                      }
                       : {}),
                   }}
                   style={styles.image}
@@ -285,6 +285,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingTop: Platform.OS === 'ios' ? 50 : 12,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 10,
+    elevation: 10,
   },
   headerLeft: {
     flex: 1,
