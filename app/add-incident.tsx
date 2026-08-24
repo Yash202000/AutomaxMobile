@@ -189,6 +189,11 @@ const Dropdown: React.FC<DropdownProps> = ({
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_ATTACHMENTS_COUNT = Number(process.env.EXPO_PUBLIC_MAX_INCIDENT_ATTACHMENTS) || 10;
+// Unset entirely (not just falsy) means no limit — no fallback default here,
+// unlike MAX_ATTACHMENTS_COUNT above.
+const MAX_DESCRIPTION_LENGTH = process.env.EXPO_PUBLIC_MAX_DESCRIPTION_LENGTH
+  ? Number(process.env.EXPO_PUBLIC_MAX_DESCRIPTION_LENGTH)
+  : undefined;
 
 const AddIncidentScreen = () => {
   const router = useRouter();
@@ -1910,12 +1915,18 @@ const AddIncidentScreen = () => {
                     multiline
                     value={description}
                     onChangeText={(text) => {
-                      setDescription(text);
+                      setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH));
                       if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                     }}
+                    maxLength={MAX_DESCRIPTION_LENGTH}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
+                  {MAX_DESCRIPTION_LENGTH !== undefined && (
+                    <Text style={styles.charCounter}>
+                      {description.length}/{MAX_DESCRIPTION_LENGTH}
+                    </Text>
+                  )}
                   {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
                 </>
               )}
@@ -2402,6 +2413,13 @@ const styles = StyleSheet.create({
     marginTop: -16,
     marginBottom: 16,
     textAlign: "left"
+  },
+  charCounter: {
+    fontSize: 11,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: -14,
+    marginBottom: 8,
   },
   // Modal styles
   modalOverlay: {
