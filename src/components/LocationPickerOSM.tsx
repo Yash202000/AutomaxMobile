@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { gisLocation } from '../api/locations';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -500,27 +499,26 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         </TouchableOpacity>
       </View>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown — deliberately NOT its own ScrollView. Nesting
+          a second vertical scroller inside the page's outer ScrollView made
+          both scroll together on touch. Nominatim is capped to 5 results
+          (see fetchSuggestions below), so it renders as a plain, unclipped
+          list and lets the outer page ScrollView scroll it like everything
+          else on the form. */}
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          <ScrollView
-            keyboardShouldPersistTaps="always"
-            showsVerticalScrollIndicator={true}
-            nestedScrollEnabled
-          >
-            {suggestions.map((item, i) => (
-              <View key={i}>
-                <TouchableOpacity
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelectSuggestion(item)}
-                >
-                  <Ionicons name="location-outline" size={16} color="#2EC4B6" style={{ marginRight: 8 }} />
-                  <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
-                </TouchableOpacity>
-                {i < suggestions.length - 1 && <View style={styles.suggestionDivider} />}
-              </View>
-            ))}
-          </ScrollView>
+          {suggestions.map((item, i) => (
+            <View key={i}>
+              <TouchableOpacity
+                style={styles.suggestionItem}
+                onPress={() => handleSelectSuggestion(item)}
+              >
+                <Ionicons name="location-outline" size={16} color="#2EC4B6" style={{ marginRight: 8 }} />
+                <Text style={styles.suggestionText} numberOfLines={2}>{item.display_name}</Text>
+              </TouchableOpacity>
+              {i < suggestions.length - 1 && <View style={styles.suggestionDivider} />}
+            </View>
+          ))}
         </View>
       )}
 
@@ -726,8 +724,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginTop: -8,
     marginBottom: 8,
-    maxHeight: 200,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
