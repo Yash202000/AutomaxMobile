@@ -99,6 +99,7 @@ const UpdateStatusModal = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [singleUserMatch, setSingleUserMatch] = useState(false);
   const [autoSelectUser, setAutoSelectUser] = useState(false);
+  const [showUserAssignment, setShowUserAssignment] = useState(true);
 
   const selectedUserIds = useMemo(
     () => new Set(selectedUsers.map((user) => user?.id).filter(Boolean)),
@@ -456,9 +457,9 @@ const UpdateStatusModal = () => {
     if (trans.assign_department_id || trans.auto_detect_department)
       steps.push("department");
     if (
-      trans.assign_user_id ||
-      ((trans.auto_match_user || trans.manual_select_user) &&
-        trans.assignment_roles?.length > 0)
+      (trans.assign_user_id ||
+        ((trans.auto_match_user || trans.manual_select_user) &&
+          trans.assignment_roles?.length > 0)) && showUserAssignment
     )
       steps.push("user");
     if (trans.field_changes?.length > 0) steps.push("field_changes");
@@ -475,7 +476,13 @@ const UpdateStatusModal = () => {
       )
     )
       steps.push("feedback");
-    steps.push("comment");
+    if (
+      selectedTransition.requirements?.some(
+        (r: any) => r.requirement_type === "comment",
+      )
+    )
+      steps.push("comment");
+    // steps.push("comment");
     return steps;
   }, [selectedTransition]);
 
@@ -517,7 +524,6 @@ const UpdateStatusModal = () => {
         return false;
       }
     }
-
     if (currentStepKey === "user") {
       // Block while still loading
       if (loadingUsers) {
@@ -1241,6 +1247,7 @@ const UpdateStatusModal = () => {
     setTransitionStep(0);
     setShowPicker(false);
     setAutoSelectUser(trans.auto_match_user);
+    setShowUserAssignment(trans.transition.view_assigne_user_list);
 
     getFeedbackTemplatesByTransition(trans.transition.id).then((r) => {
       if (r.success && Array.isArray(r.data)) {
@@ -1413,6 +1420,13 @@ const UpdateStatusModal = () => {
                   ]}
                 />
               ))}
+              {
+                transitionSteps.length === 0 && (
+                  <View style={{ paddingVertical: 10, paddingHorizontal: 5, backgroundColor: '#E6E7E8', width: '100%', alignItems: 'center', borderRadius: 10, marginTop: 10 }}>
+                    <Text style={{ color: '#888' }}>{t("common.noStepsConfigured")}</Text>
+                  </View>
+                )
+              }
             </View>
           </View>
         )}

@@ -103,6 +103,7 @@ interface Incident {
     color: string;
   }>;
   transition_history?: Array<any>;
+  department: any;
   classification?: any;
   description?: string;
   reporter?: any;
@@ -432,7 +433,7 @@ const IncidentsScreen = () => {
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
         shareText += `   ${t("incidents.classification")} : ${translationHelper(inc.classification) || t("common.na")}\n`;
         shareText += `   ${t("incidents.location")} : ${translationHelper(inc.location) || t("common.na")}\n`;
-        shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
+        shareText += `   ${t("incidents.department")} : ${translationHelper(inc.department) || t("common.na")}\n`;
         shareText += `   ${t("incidents.status")} : ${translationHelper(inc.current_state) || t("common.na")}\n`;
         shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
         shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
