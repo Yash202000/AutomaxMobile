@@ -4,6 +4,7 @@
     "stateChanged": "تم تغيير الحالة",
     "system": "النظام",
     "selectOption": "اختر خياراً",
+    "noStepsConfigured": "لم يتم تكوين خطوات انتقال",
     "date": "التاريخ",
     "fetchingLoc": "يرجى الانتظار ريثما نحدد موقعك..",
     "validationError": "خطأ في التحقق",
