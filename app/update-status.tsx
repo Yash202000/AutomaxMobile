@@ -18,6 +18,7 @@ import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
 import { WatermarkPreview } from "@/src/components/WatermarkPreview";
 import { WatermarkProcessor } from "@/src/components/WatermarkProcessor";
 import { useAuth } from "@/src/context/AuthContext";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { compressImage } from "@/src/utils/imageCompression";
 import { getLocationDetails } from "@/src/utils/location";
@@ -57,6 +58,7 @@ const UpdateStatusModal = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { canUploadAttachmentGallery } = usePermissions();
   const {
     id,
     type,
@@ -797,6 +799,17 @@ const UpdateStatusModal = () => {
     return true;
   };
 
+  // Entry point for the "Attach files" box — with the gallery permission,
+  // show the camera/gallery choice; without it, go straight to camera like
+  // before this permission existed.
+  const handleAttachPress = () => {
+    if (canUploadAttachmentGallery()) {
+      setShowAttachmentOptions(true);
+    } else {
+      takePhotoWithCamera();
+    }
+  };
+
   // Pick image from gallery
   const pickImageFromGallery = async () => {
     setShowAttachmentOptions(false);
@@ -1074,6 +1087,8 @@ const UpdateStatusModal = () => {
         incidentId,
         attachments,
       );
+
+      console.log(uploadResult)
 
       if (uploadResult.success) {
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
@@ -2083,7 +2098,7 @@ const UpdateStatusModal = () => {
                       styles.attachmentBox,
                       { opacity: locationLoading ? 0.5 : 1 },
                     ]}
-                    onPress={takePhotoWithCamera}
+                    onPress={handleAttachPress}
                     disabled={locationLoading}
                   >
                     <Ionicons
@@ -2356,15 +2371,17 @@ const UpdateStatusModal = () => {
               </View>
             </TouchableOpacity>
 
-            {/* <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
-              <View style={[styles.optionIconContainer, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="images" size={28} color="#2196F3" />
-              </View>
-              <View style={styles.optionTextContainer}>
-                <Text style={styles.optionTitle}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
-                <Text style={styles.optionSubtitle}>{t('common.selectImagesFromLibrary', 'Select images from your photo library')}</Text>
-              </View>
-            </TouchableOpacity> */}
+            {canUploadAttachmentGallery() && (
+              <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
+                <View style={[styles.optionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+                  <Ionicons name="images" size={28} color="#2196F3" />
+                </View>
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionTitle}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                  <Text style={styles.optionSubtitle}>{t('common.selectImagesFromLibrary', 'Select images from your photo library')}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.cancelButton}
