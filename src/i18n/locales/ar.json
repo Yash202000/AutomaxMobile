@@ -56,6 +56,8 @@
     "viewAll": "مشاهدة الكل",
     "showLess": "عرض أقل",
     "ok": "موافق",
+    "permissionsUpdatedTitle": "تم تحديث الصلاحيات",
+    "permissionsUpdatedMessage": "تم تحديث جلستك بأحدث صلاحيات الوصول.",
     "close": "إغلاق",
     "refresh": "تحديث",
     "noData": "لا توجد بيانات",
