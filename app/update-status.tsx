@@ -9,6 +9,7 @@ import {
   uploadMultipleAttachments,
 } from "@/src/api/incidents";
 import { getLocationsTree } from "@/src/api/locations";
+import { validateImage } from "@/src/api/images";
 import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DynamicLookupField } from "@/src/components/DynamicLookupField";
@@ -53,6 +54,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+// When true, every image attachment must pass server-side validation
+// (POST /images/validate) before a transition can be executed. Mirrors the
+// same gate in add-incident.tsx.
+const IMAGE_VALIDATION_REQUIRED =
+  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 const UpdateStatusModal = () => {
   const router = useRouter();
@@ -1049,6 +1056,27 @@ const UpdateStatusModal = () => {
         ),
       );
       return;
+    }
+
+    // Validate every image attachment before executing the transition — a
+    // transition must never go through with an unclear/invalid photo attached.
+    // Non-image attachments (documents, etc.) are left untouched.
+    if (IMAGE_VALIDATION_REQUIRED) {
+      const imageAttachments = attachments.filter((a) =>
+        a.type?.startsWith("image/"),
+      );
+      for (const image of imageAttachments) {
+        const result = await validateImage(image);
+        if (!result.valid) {
+          // Drop the invalid image so the user can add a replacement.
+          setAttachments((prev) => prev.filter((a) => a.uri !== image.uri));
+          CustomAlert.alert(
+            t("addIncident.invalidImageTitle"),
+            result.message || t("addIncident.invalidImageMessage"),
+          );
+          return;
+        }
+      }
     }
 
     // Validate required field changes

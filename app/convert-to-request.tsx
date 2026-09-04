@@ -1,6 +1,7 @@
 import { getClassificationsTree } from "@/src/api/classifications";
 import { getWorkflows } from "@/src/api/workflow";
 import { convertToRequest, executeTransition, getIncidents, uploadAttachment } from "@/src/api/incidents";
+import { validateImage } from "@/src/api/images";
 import * as DocumentPicker from "expo-document-picker";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
@@ -22,6 +23,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import i18n from "@/src/i18n";
+
+// When true, an image attachment must pass server-side validation
+// (POST /images/validate) before a transition can be executed. Mirrors the
+// same gate in add-incident.tsx / update-status.tsx.
+const IMAGE_VALIDATION_REQUIRED =
+  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 const COLORS = {
   primary: "#1A237E",
@@ -251,6 +258,20 @@ export default function ConvertToRequestScreen() {
             type: file.mimeType || 'application/octet-stream',
             name: file.name,
           };
+
+          if (IMAGE_VALIDATION_REQUIRED && fileToUpload.type?.startsWith("image/")) {
+            const result = await validateImage(fileToUpload);
+            if (!result.valid) {
+              setTransitionAttachment(null);
+              setLoading(false);
+              CustomAlert.alert(
+                t("addIncident.invalidImageTitle"),
+                result.message || t("addIncident.invalidImageMessage")
+              );
+              return;
+            }
+          }
+
           const uploadRes = await uploadAttachment(incidentId, fileToUpload);
           if (!uploadRes.success) {
             CustomAlert.alert(t("common.error"), t("incidents.uploadFailed"));

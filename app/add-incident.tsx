@@ -1,6 +1,7 @@
 import { getClassificationsTree } from '@/src/api/classifications';
 import { getDepartments } from '@/src/api/departments';
 import { createIncident, uploadMultipleAttachments } from '@/src/api/incidents';
+import { validateImage } from '@/src/api/images';
 import { getLocationsTree, createLocation } from '@/src/api/locations';
 import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
 import { getUsers } from '@/src/api/users';
@@ -48,6 +49,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Mirrors VITE_DISABLE_AUTO_LOCATION_RETRIEVAL from the web client.
 const DISABLE_AUTO_LOCATION_RETRIEVAL =
   process.env.EXPO_PUBLIC_DISABLE_AUTO_LOCATION_RETRIEVAL === 'true';
+
+// When true, every image attachment must pass server-side validation
+// (POST /images/validate) before the incident can be created.
+const IMAGE_VALIDATION_REQUIRED =
+  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === 'true';
 
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
@@ -1520,6 +1526,23 @@ const AddIncidentScreen = () => {
     setSubmitting(true);
 
     try {
+      if (IMAGE_VALIDATION_REQUIRED) {
+        const imageAttachments = attachments.filter(a => a.type?.startsWith('image/'));
+        for (const image of imageAttachments) {
+          const result = await validateImage(image);
+          if (!result.valid) {
+            // Drop the invalid image so the user can add a replacement.
+            setAttachments(prev => prev.filter(a => a.uri !== image.uri));
+            setSubmitting(false);
+            CustomAlert.alert(
+              t('addIncident.invalidImageTitle'),
+              result.message || t('addIncident.invalidImageMessage')
+            );
+            return;
+          }
+        }
+      }
+
       // Double-check matchedWorkflow exists with valid id
       if (!matchedWorkflow || !matchedWorkflow.id) {
         setSubmitting(false);
