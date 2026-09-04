@@ -88,6 +88,8 @@
     "conflictDetected": "Conflict Detected",
     "incidentModifiedByAnother": "This incident was modified by another user. Please review and try again.",
     "ok": "OK",
+    "permissionsUpdatedTitle": "Permissions Updated",
+    "permissionsUpdatedMessage": "Your session has been refreshed with the latest access rights.",
     "refresh": "Refresh",
     "tapLeafToSelectMultiple": "Tap leaf items to select multiple",
     "onlyItemWithoutChildren": "Only items without children can be selected",
