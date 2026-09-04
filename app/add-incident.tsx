@@ -23,7 +23,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { t } from 'i18next';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActionSheetIOS,
@@ -186,14 +186,17 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-const MAX_FILE_SIZE_MB = 10;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const MAX_ATTACHMENTS_COUNT = Number(process.env.EXPO_PUBLIC_MAX_INCIDENT_ATTACHMENTS) || 10;
-// Unset entirely (not just falsy) means no limit — no fallback default here,
-// unlike MAX_ATTACHMENTS_COUNT above.
-const MAX_DESCRIPTION_LENGTH = process.env.EXPO_PUBLIC_MAX_DESCRIPTION_LENGTH
-  ? Number(process.env.EXPO_PUBLIC_MAX_DESCRIPTION_LENGTH)
-  : undefined;
+const ENV_CONFIG_CATEGORY_CODE = 'CONFIG';
+const ATTACHMENT_COUNT_CODE = {
+  internal: 'INTERNAL_ATTACHMENT_LIMIT',
+  citizen: 'CITIZEN_ATTACHMENT_LIMIT',
+};
+const ATTACHMENT_SIZE_CODE = {
+  internal: 'INTERNAL_ATTACHMENT_SIZE_LIMIT',
+  citizen: 'CITIZEN_ATTACHMENT_SIZE_LIMIT',
+};
+// Single shared value (no internal/citizen split) under the same category.
+const DESCRIPTION_LENGTH_CODE = 'MAX_DESCRIPTION_LENGTH';
 
 const AddIncidentScreen = () => {
   const router = useRouter();
@@ -318,7 +321,33 @@ const AddIncidentScreen = () => {
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
   const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [allLookupCategories, setAllLookupCategories] = useState<LookupCategory[]>([]);
   const [lookupValues, setLookupValues] = useState<Record<string, any>>({});
+
+  const isCitizenUser = user?.roles?.some(role => role.code === 'citizen' && role.is_active) ?? false;
+  const envConfigValues = allLookupCategories.find(
+    cat => cat.code === ENV_CONFIG_CATEGORY_CODE
+  )?.values;
+
+  const MAX_ATTACHMENTS_COUNT = useMemo(() => {
+    const code = isCitizenUser ? ATTACHMENT_COUNT_CODE.citizen : ATTACHMENT_COUNT_CODE.internal;
+    const raw = Number(envConfigValues?.find(v => v.code === code)?.name);
+    return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
+  }, [envConfigValues, isCitizenUser]);
+
+  const MAX_FILE_SIZE_MB = useMemo(() => {
+    const code = isCitizenUser ? ATTACHMENT_SIZE_CODE.citizen : ATTACHMENT_SIZE_CODE.internal;
+    const raw = Number(envConfigValues?.find(v => v.code === code)?.name);
+    return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
+  }, [envConfigValues, isCitizenUser]);
+
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+  // Unset entirely (not just falsy) means no limit.
+  const MAX_DESCRIPTION_LENGTH = useMemo(() => {
+    const raw = Number(envConfigValues?.find(v => v.code === DESCRIPTION_LENGTH_CODE)?.name);
+    return Number.isFinite(raw) && raw > 0 ? raw : undefined;
+  }, [envConfigValues]);
 
   // Loading state
   const [loadingData, setLoadingData] = useState(true);
@@ -502,6 +531,7 @@ const AddIncidentScreen = () => {
         // Filter to only show categories that should be added to incident form
         const incidentCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
         setLookupCategories(incidentCategories);
+        setAllLookupCategories(lookupRes.data)
       }
 
       // Check if critical workflow data failed to load
@@ -1067,7 +1097,7 @@ const AddIncidentScreen = () => {
     if (errors.attachments) {
       setErrors(prev => ({ ...prev, attachments: '' }));
     }
-  }, [errors.attachments]);
+  }, [errors.attachments, MAX_ATTACHMENTS_COUNT]);
 
   const handlePickFromGallery = async () => {
     try {
