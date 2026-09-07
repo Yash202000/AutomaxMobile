@@ -29,6 +29,7 @@ import {
 } from "@/src/utils/watermarkUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -60,6 +61,19 @@ import {
 // same gate in add-incident.tsx.
 const IMAGE_VALIDATION_REQUIRED =
   process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
+
+// Attachment count/size limits, sourced from the ENV_CONFIGURATION lookup
+// category (server-configured, split by citizen vs internal user). Mirrors
+// the same lookup in add-incident.tsx.
+const ENV_CONFIG_CATEGORY_CODE = "ENV_CONFIGURATION";
+const ATTACHMENT_COUNT_CODE = {
+  internal: "INTERNAL_ATTACHMENT_LIMIT",
+  citizen: "CITIZEN_ATTACHMENT_LIMIT",
+};
+const ATTACHMENT_SIZE_CODE = {
+  internal: "INTERNAL_ATTACHMENT_SIZE_LIMIT",
+  citizen: "CITIZEN_ATTACHMENT_SIZE_LIMIT",
+};
 
 const UpdateStatusModal = () => {
   const router = useRouter();
@@ -184,6 +198,31 @@ const UpdateStatusModal = () => {
   const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>(
     [],
   );
+
+  const isCitizenUser =
+    user?.roles?.some((role) => role.code === "citizen" && role.is_active) ??
+    false;
+  const envConfigValues = lookupCategories.find(
+    (cat) => cat.code === ENV_CONFIG_CATEGORY_CODE,
+  )?.values;
+
+  const MAX_ATTACHMENTS_COUNT = useMemo(() => {
+    const code = isCitizenUser
+      ? ATTACHMENT_COUNT_CODE.citizen
+      : ATTACHMENT_COUNT_CODE.internal;
+    const raw = Number(envConfigValues?.find((v) => v.code === code)?.name);
+    return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
+  }, [envConfigValues, isCitizenUser]);
+
+  const MAX_FILE_SIZE_MB = useMemo(() => {
+    const code = isCitizenUser
+      ? ATTACHMENT_SIZE_CODE.citizen
+      : ATTACHMENT_SIZE_CODE.internal;
+    const raw = Number(envConfigValues?.find((v) => v.code === code)?.name);
+    return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
+  }, [envConfigValues, isCitizenUser]);
+
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
   // Recursively filter department tree by type ('internal' | 'external')
   const filterDeptTree = (nodes: TreeNode[], type: string): TreeNode[] =>
@@ -831,13 +870,59 @@ const UpdateStatusModal = () => {
     });
 
     if (!result.canceled && result.assets) {
-      const newAttachments = result.assets.map((asset) => ({
-        uri: asset.uri,
-        name: asset.fileName || `image_${Date.now()}.jpg`,
-        type: asset.mimeType || "image/jpeg",
-        size: asset.fileSize,
-      }));
-      setAttachments((prev) => [...prev, ...newAttachments]);
+      const validFiles: AttachmentItem[] = [];
+      const oversizedFiles: string[] = [];
+
+      result.assets.forEach((asset) => {
+        const fileSize = asset.fileSize || 0;
+        const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+        if (fileSize > MAX_FILE_SIZE_BYTES) {
+          oversizedFiles.push(
+            `${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`,
+          );
+        } else {
+          validFiles.push({
+            uri: asset.uri,
+            name: fileName,
+            type: asset.mimeType || "image/jpeg",
+            size: fileSize,
+          });
+        }
+      });
+
+      if (validFiles.length > 0) {
+        const remainingSlots = Math.max(
+          0,
+          MAX_ATTACHMENTS_COUNT - attachments.length,
+        );
+        const filesToAdd = validFiles.slice(0, remainingSlots);
+        const excessCount = validFiles.length - filesToAdd.length;
+
+        if (filesToAdd.length > 0) {
+          setAttachments((prev) => [...prev, ...filesToAdd]);
+        }
+
+        if (excessCount > 0) {
+          CustomAlert.alert(
+            t("common.error"),
+            t("addIncident.maxAttachmentsExceeded", {
+              max: MAX_ATTACHMENTS_COUNT,
+              defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+            }),
+          );
+        }
+      }
+
+      if (oversizedFiles.length > 0) {
+        CustomAlert.alert(
+          t("common.filesTooLargeTitle"),
+          t("common.filesTooLargeDesc", {
+            size: MAX_FILE_SIZE_MB,
+            files: oversizedFiles.join("\n"),
+          }),
+        );
+      }
     }
   };
 
@@ -934,19 +1019,42 @@ const UpdateStatusModal = () => {
         compressionResult.success && compressionResult.compressedUri
           ? compressionResult.compressedUri
           : watermarkedUri;
+      const finalSize =
+        compressionResult.compressedSize ?? compressionResult.originalSize;
 
-      // Add watermarked image to attachments
-      setAttachments((prev) => {
-        const newAttachments = [
-          ...prev,
-          {
-            uri: finalUri,
-            name: originalName,
-            type: "image/jpeg",
-          },
-        ];
-        return newAttachments;
-      });
+      if (finalSize !== undefined && finalSize > MAX_FILE_SIZE_BYTES) {
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
+        CustomAlert.alert(
+          t("common.filesTooLargeTitle"),
+          t("common.filesTooLargeDesc", {
+            size: MAX_FILE_SIZE_MB,
+            files: `${originalName} (${(finalSize / (1024 * 1024)).toFixed(1)}MB)`,
+          }),
+        );
+      } else if (attachments.length >= MAX_ATTACHMENTS_COUNT) {
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
+        CustomAlert.alert(
+          t("common.error"),
+          t("addIncident.maxAttachmentsExceeded", {
+            max: MAX_ATTACHMENTS_COUNT,
+            defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+          }),
+        );
+      } else {
+        // Add watermarked image to attachments
+        setAttachments((prev) => {
+          const newAttachments = [
+            ...prev,
+            {
+              uri: finalUri,
+              name: originalName,
+              type: "image/jpeg",
+              size: finalSize,
+            },
+          ];
+          return newAttachments;
+        });
+      }
 
       // Remove from pending list
       setPendingWatermarks((prev) => {
@@ -954,7 +1062,7 @@ const UpdateStatusModal = () => {
         return remaining;
       });
     },
-    [],
+    [attachments.length, MAX_ATTACHMENTS_COUNT, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, t],
   );
 
   // Handle preview accept
@@ -2139,9 +2247,14 @@ const UpdateStatusModal = () => {
                         ? t("incidents.addMoreFiles", "Add more files")
                         : t("incidents.attachFiles", "Attach files")}
                     </Text>
-                    <Text style={styles.attachmentSubText}>
-                      {t("incidents.maxFileSize", "Max file size: 5 MB")}
-                    </Text>
+                    {Number.isFinite(MAX_FILE_SIZE_MB) && (
+                      <Text style={styles.attachmentSubText}>
+                        {t("incidents.maxFileSize", {
+                          size: MAX_FILE_SIZE_MB,
+                          defaultValue: `Max file size: ${MAX_FILE_SIZE_MB} MB`,
+                        })}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </>
               )}

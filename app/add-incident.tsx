@@ -192,7 +192,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-const ENV_CONFIG_CATEGORY_CODE = 'CONFIG';
+const ENV_CONFIG_CATEGORY_CODE = 'ENV_CONFIGURATION';
 const ATTACHMENT_COUNT_CODE = {
   internal: 'INTERNAL_ATTACHMENT_LIMIT',
   citizen: 'CITIZEN_ATTACHMENT_LIMIT',
