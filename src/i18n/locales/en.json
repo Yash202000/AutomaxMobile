@@ -741,6 +741,8 @@
     "creating": "Creating incident...",
     "created": "Incident created successfully",
     "createFailed": "Failed to create incident",
+    "invalidImageTitle": "Invalid Image",
+    "invalidImageMessage": "This image could not be validated. Please remove it and upload another clear image.",
     "waitingForLocation": "Please wait for your location to be detected before taking a photo, or click 'Get Current Location' button.",
     "gettingLocationDetails": "Getting Location Details",
     "waitingForAddress": "Please wait while we get your address...",
