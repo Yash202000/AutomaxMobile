@@ -386,7 +386,7 @@
     "autoRevertHint": "If not closed within this duration, the incident will automatically revert.",
     "attachFiles": "Attach files",
     "addMoreFiles": "Add more files",
-    "maxFileSize": "Max file size: 5 MB",
+    "maxFileSize": "Max file size: {{size}} MB",
     "addAttachment": "Add Attachment",
     "takePhoto": "Take Photo",
     "takePhotoSubtitle": "Use your camera to capture an image",
