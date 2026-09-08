@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Modal,
@@ -11,10 +11,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { getLookupCategories } from "@/src/api/lookups";
 
-const CHATBOT_URL =
-  "https://livechat.discretal.com/preview/70975c26-55b2-41b6-9481-5f4dd2de54f5?workflow_id=112";
+const CHATBOT_BASE_URL =
+  "https://livechat.discretal.com/preview/010b1801-226f-4d97-85a6-d988c6ae1ccd?workflow_id=49";
 const VOICE_AGENT_URL = "https://livechat.discretal.com/va/epm-940-livechat";
+
+// Fallback used until the real value loads (or if it's missing server-side).
+const DEFAULT_MAX_ATTACHMENTS = 10;
+const ENV_CONFIG_CATEGORY_CODE = "ENV_CONFIGURATION";
+const CITIZEN_ATTACHMENT_LIMIT_CODE = "CITIZEN_ATTACHMENT_LIMIT";
 
 const TAB_BAR_HEIGHT = 70;
 
@@ -25,6 +31,37 @@ export const ChatbotWidget: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("chat");
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [chatReloadKey, setChatReloadKey] = useState(0);
+  const [voiceReloadKey, setVoiceReloadKey] = useState(0);
+  const [maxAttachments, setMaxAttachments] = useState(DEFAULT_MAX_ATTACHMENTS);
+
+  useEffect(() => {
+    getLookupCategories()
+      .then((res) => {
+        if (!res.success || !Array.isArray(res.data)) return;
+        const envConfig = res.data.find(
+          (cat: any) => cat.code === ENV_CONFIG_CATEGORY_CODE,
+        );
+        const raw = Number(
+          envConfig?.values?.find(
+            (v: any) => v.code === CITIZEN_ATTACHMENT_LIMIT_CODE,
+          )?.name,
+        );
+        if (Number.isFinite(raw) && raw > 0) {
+          setMaxAttachments(raw);
+        }
+      })
+      .catch((err) =>
+        console.warn("[ChatbotWidget] Failed to fetch CITIZEN_ATTACHMENT_LIMIT:", err),
+      );
+  }, []);
+
+  const chatbotUrl = useMemo(
+    () => `${CHATBOT_BASE_URL}&max_attachments=${maxAttachments}`,
+    [maxAttachments],
+  );
 
   // Position FAB above the floating tab bar
   const fabBottom =
@@ -115,13 +152,34 @@ export const ChatbotWidget: React.FC = () => {
                 { zIndex: activeTab === "chat" ? 1 : 0 },
               ]}
             >
-              <WebView
-                source={{ uri: CHATBOT_URL }}
-                style={styles.webview}
-                allowsInlineMediaPlayback
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled
-              />
+              {chatError ? (
+                <WebViewErrorState
+                  message={chatError}
+                  onRetry={() => {
+                    setChatError(null);
+                    setChatReloadKey((k) => k + 1);
+                  }}
+                />
+              ) : (
+                <WebView
+                  key={chatReloadKey}
+                  source={{ uri: chatbotUrl }}
+                  style={styles.webview}
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                  javaScriptEnabled
+                  onError={(e) => {
+                    const { description, code } = e.nativeEvent;
+                    console.warn("[ChatbotWidget] chat WebView error:", e.nativeEvent);
+                    setChatError(`${description || "Failed to load"} (code ${code})`);
+                  }}
+                  onHttpError={(e) => {
+                    const { statusCode, url } = e.nativeEvent;
+                    console.warn("[ChatbotWidget] chat WebView HTTP error:", e.nativeEvent);
+                    setChatError(`Server responded with ${statusCode} for ${url}`);
+                  }}
+                />
+              )}
             </View>
             <View
               style={[
@@ -129,18 +187,61 @@ export const ChatbotWidget: React.FC = () => {
                 { zIndex: activeTab === "voice" ? 1 : 0 },
               ]}
             >
-              <WebView
-                source={{ uri: VOICE_AGENT_URL }}
-                style={styles.webview}
-                allowsInlineMediaPlayback
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled
-              />
+              {voiceError ? (
+                <WebViewErrorState
+                  message={voiceError}
+                  onRetry={() => {
+                    setVoiceError(null);
+                    setVoiceReloadKey((k) => k + 1);
+                  }}
+                />
+              ) : (
+                <WebView
+                  key={voiceReloadKey}
+                  source={{ uri: VOICE_AGENT_URL }}
+                  style={styles.webview}
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                  javaScriptEnabled
+                  onError={(e) => {
+                    const { description, code } = e.nativeEvent;
+                    console.warn("[ChatbotWidget] voice WebView error:", e.nativeEvent);
+                    setVoiceError(`${description || "Failed to load"} (code ${code})`);
+                  }}
+                  onHttpError={(e) => {
+                    const { statusCode, url } = e.nativeEvent;
+                    console.warn("[ChatbotWidget] voice WebView HTTP error:", e.nativeEvent);
+                    setVoiceError(`Server responded with ${statusCode} for ${url}`);
+                  }}
+                />
+              )}
             </View>
           </View>
         </View>
       </Modal>
     </>
+  );
+};
+
+const WebViewErrorState: React.FC<{ message: string; onRetry: () => void }> = ({
+  message,
+  onRetry,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.errorState}>
+      <Ionicons name="cloud-offline-outline" size={40} color="#94A3B8" />
+      <Text style={styles.errorTitle}>
+        {t("common.failedToLoad", "Failed to load")}
+      </Text>
+      <Text style={styles.errorMessage} numberOfLines={4}>
+        {message}
+      </Text>
+      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+        <Ionicons name="refresh" size={16} color="#FFFFFF" />
+        <Text style={styles.retryButtonText}>{t("common.retry", "Retry")}</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -249,5 +350,41 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+  },
+
+  /* ── WebView error state ── */
+  errorState: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+    gap: 8,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A2E",
+    marginTop: 8,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#2EC4B6",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

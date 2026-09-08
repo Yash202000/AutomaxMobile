@@ -37,6 +37,7 @@
     "recording": "تسجيل",
     "error": "خطأ",
     "retry": "إعادة المحاولة",
+    "failedToLoad": "فشل التحميل",
     "cancel": "إلغاء",
     "partialSuccess": "نجاح جزئي",
     "save": "حفظ",
