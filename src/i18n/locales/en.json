@@ -145,7 +145,8 @@
     "authRequired": "Authentication required",
     "sharingNotAvailable": "Sharing is not available on this device",
     "downloadError": "Download Error",
-    "failedToDownload": "Failed to download attachment"
+    "failedToDownload": "Failed to download attachment",
+    "savedToPhotos": "Image saved to Photos"
   },
   "map": {
     "incidents": "Incidents Map",
