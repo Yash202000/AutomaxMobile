@@ -79,6 +79,14 @@ module.exports = {
         },
       ],
       '@react-native-community/datetimepicker',
+      [
+        'expo-media-library',
+        {
+          photosPermission: 'Allow $(PRODUCT_NAME) to save downloaded images to your Photos.',
+          savePhotosPermission: 'Allow $(PRODUCT_NAME) to save downloaded images to your Photos.',
+          isAccessMediaLocationEnabled: false,
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

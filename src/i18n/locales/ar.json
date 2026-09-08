@@ -141,7 +141,8 @@
     "authRequired": "المصادقة مطلوبة",
     "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز",
     "downloadError": "خطأ في التحميل",
-    "failedToDownload": "فشل في تحميل المرفق"
+    "failedToDownload": "فشل في تحميل المرفق",
+    "savedToPhotos": "تم حفظ الصورة في معرض الصور"
   },
   "map": {
     "incidents": "خريطة الحوادث",

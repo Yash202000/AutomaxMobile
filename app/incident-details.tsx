@@ -198,7 +198,7 @@ const AudioPlayer = ({ attachment, token, transition }: { attachment: Attachment
           {formatTime(currentTime)} / {formatTime(player.duration || 0)}
         </Text>
         <TouchableOpacity
-          onPress={() => downloadAndOpenAttachment(attachment.id, attachment.file_name)}
+          onPress={() => downloadAndOpenAttachment(attachment.id, attachment.file_name, attachment.mime_type)}
           style={styles.audioButton}
         >
           <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
@@ -794,7 +794,7 @@ const IncidentDetailsScreen = () => {
                   <AttachmentMeta attachment={att} transition={getHistoryById(att.transition_history_id)} />
                 </View>
                 <TouchableOpacity
-                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
+                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name, att.mime_type)}
                   style={styles.downloadButton}
                 >
                   <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
@@ -819,7 +819,7 @@ const IncidentDetailsScreen = () => {
                   <AttachmentMeta attachment={att} transition={getHistoryById(att.transition_history_id)} />
                 </View>
                 <TouchableOpacity
-                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
+                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name, att.mime_type)}
                   style={styles.downloadButton}
                 >
                   <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
