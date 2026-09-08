@@ -1,5 +1,5 @@
 import { baseURL } from '@/src/api/client';
-import { getAvailableTransitions, getIncidentById, getIncidentHistory, canConvertToRequest } from '@/src/api/incidents';
+import { getAvailableTransitions, getIncidentById, getIncidentHistory, getAttachments, canConvertToRequest } from '@/src/api/incidents';
 import { getLookupCategories } from '@/src/api/lookups';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
@@ -56,6 +56,29 @@ const priorityConfig: Record<number, { key: string; color: string }> = {
   5: { key: 'veryLow', color: COLORS.priority.veryLow },
 };
 
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+interface AttachmentData {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  file_size?: number;
+  created_at?: string;
+  transition_history_id?: string;
+  uploaded_by?: {
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    roles?: Array<{ name: string }>;
+    departments?: Array<{ name: string }>;
+  };
+}
+
 interface LookupValue {
   id: string;
   name: string;
@@ -98,7 +121,7 @@ interface IncidentData {
   created_at: string;
   lookup_values?: LookupValue[];
   custom_fields?: string;
-  attachments?: Array<{ id: string; file_name: string; mime_type: string }>;
+  attachments?: AttachmentData[];
   comments?: Array<{ id: string; content: string; author: { username: string }; created_at: string }>;
   transition_history?: Array<{
     id: string;
@@ -120,7 +143,7 @@ interface TransitionData {
   transition: { id: string; name: string };
 }
 
-const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_name: string }; token: string }) => {
+const AudioPlayer = ({ attachment, token, transition }: { attachment: AttachmentData; token: string; transition?: any }) => {
   const audioSource: AudioSource = {
     uri: `${baseURL}/attachments/${attachment.id}/preview`,
     headers: {
@@ -174,7 +197,49 @@ const AudioPlayer = ({ attachment, token }: { attachment: { id: string; file_nam
         <Text style={styles.audioTime}>
           {formatTime(currentTime)} / {formatTime(player.duration || 0)}
         </Text>
+        <TouchableOpacity
+          onPress={() => downloadAndOpenAttachment(attachment.id, attachment.file_name)}
+          style={styles.audioButton}
+        >
+          <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
+        </TouchableOpacity>
       </View>
+      <AttachmentMeta attachment={attachment} transition={transition} />
+    </View>
+  );
+};
+
+// Uploader / date / size / transition footer shown under every attachment,
+// mirroring the same fields the web admin app's incident detail page shows.
+const AttachmentMeta = ({ attachment, transition }: { attachment: AttachmentData; transition?: any }) => {
+  const { t } = useTranslation();
+  const uploader = attachment.uploaded_by;
+  const uploaderName = uploader?.first_name
+    ? `${uploader.first_name} ${uploader.last_name || ''}`.trim()
+    : uploader?.username;
+
+  const metaParts = [formatFileSize(attachment.file_size), attachment.created_at ? new Date(attachment.created_at).toLocaleString('en-GB') : ''].filter(Boolean);
+
+  if (metaParts.length === 0 && !uploaderName && !transition) return null;
+
+  return (
+    <View style={styles.attachmentMeta}>
+      {metaParts.length > 0 && (
+        <Text style={styles.attachmentMetaText}>{metaParts.join(' • ')}</Text>
+      )}
+      {uploaderName && (
+        <Text style={styles.attachmentMetaText} numberOfLines={2} ellipsizeMode="tail">
+          {uploaderName}
+          {uploader?.roles?.[0]?.name ? ` · ${uploader.roles[0].name}` : ''}
+        </Text>
+      )}
+      {transition && (
+        <View style={styles.transitionBadge}>
+          <Text style={styles.transitionBadgeText}>
+            {transition.from_state?.name || t('common.na')} → {transition.to_state?.name || t('common.na')}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -205,7 +270,7 @@ const IncidentDetailsScreen = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [availableTransitions, setAvailableTransitions] = useState<TransitionData[]>([]);
   const [canConvert, setCanConvert] = useState<boolean>(false);
-  const [attachments, setAttachments] = useState<Array<{ id: string; file_name: string; mime_type: string }>>([]);
+  const [attachments, setAttachments] = useState<AttachmentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [token, setToken] = useState<string | null>(null);
@@ -222,6 +287,7 @@ const IncidentDetailsScreen = () => {
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/'));
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/'));
+  const getHistoryById = (historyId?: string) => history.find((h: any) => h.id === historyId);
   const isDefaultLocation = incident?.location?.name?.trim().toLowerCase() === 'default';
 
   const { user } = useAuth()
@@ -241,16 +307,21 @@ const IncidentDetailsScreen = () => {
     setLoading(true);
 
     try {
-      const [detailsResponse, historyResponse, transitionsResponse, canConvertResponse] = await Promise.all([
+      const [detailsResponse, historyResponse, transitionsResponse, canConvertResponse, attachmentsResponse] = await Promise.all([
         getIncidentById(incidentId),
         getIncidentHistory(incidentId),
         getAvailableTransitions(incidentId),
         canConvertToRequest(incidentId),
+        getAttachments(incidentId),
       ]);
 
       if (detailsResponse.success) {
         setIncident(detailsResponse.data);
-        setAttachments(detailsResponse.data.attachments || []);
+        setAttachments(
+          attachmentsResponse.success
+            ? attachmentsResponse.data || []
+            : detailsResponse.data.attachments || [],
+        );
       } else {
         setError(detailsResponse.error);
 
@@ -710,37 +781,50 @@ const IncidentDetailsScreen = () => {
         <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.attachments')} icon="attach" />
-            {imageAttachments.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-                {imageAttachments.map((att, index) => (
-                  <TouchableOpacity
-                    key={att.id}
-                    onPress={() => { setCurrentImageIndex(index); setImageViewerVisible(true); }}
-                    style={styles.imageThumb}
-                  >
-                    <Image
-                      source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
-                      style={styles.attachmentImage}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+            {imageAttachments.map((att, index) => (
+              <View key={att.id} style={styles.fileAttachment}>
+                <TouchableOpacity onPress={() => { setCurrentImageIndex(index); setImageViewerVisible(true); }}>
+                  <Image
+                    source={{ uri: `${baseURL}/attachments/${att.id}/preview`, headers: { Authorization: `Bearer ${token}` } }}
+                    style={styles.attachmentThumbSmall}
+                  />
+                </TouchableOpacity>
+                <View style={styles.attachmentInfo}>
+                  <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
+                  <AttachmentMeta attachment={att} transition={getHistoryById(att.transition_history_id)} />
+                </View>
+                <TouchableOpacity
+                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
+                  style={styles.downloadButton}
+                >
+                  <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
+                </TouchableOpacity>
+              </View>
+            ))}
             {audioAttachments.map(att => (
-              <AudioPlayer key={att.id} attachment={att} token={token || ''} />
+              <AudioPlayer
+                key={att.id}
+                attachment={att}
+                token={token || ''}
+                transition={getHistoryById(att.transition_history_id)}
+              />
             ))}
             {otherAttachments.map(att => (
-              <TouchableOpacity
-                key={att.id}
-                onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
-                style={styles.fileAttachment}
-              >
+              <View key={att.id} style={styles.fileAttachment}>
                 <View style={styles.fileIconContainer}>
-                  <Ionicons name="document" size={20} color={COLORS.accent} />
+                  <Ionicons name="document" size={30} color={COLORS.accent} />
                 </View>
-                <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
-                <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
-              </TouchableOpacity>
+                <View style={styles.attachmentInfo}>
+                  <Text style={styles.fileName} numberOfLines={1}>{att.file_name}</Text>
+                  <AttachmentMeta attachment={att} transition={getHistoryById(att.transition_history_id)} />
+                </View>
+                <TouchableOpacity
+                  onPress={() => downloadAndOpenAttachment(att.id, att.file_name)}
+                  style={styles.downloadButton}
+                >
+                  <Ionicons name="download-outline" size={20} color={COLORS.text.muted} />
+                </TouchableOpacity>
+              </View>
             ))}
             {attachments.length === 0 && (
               <View style={styles.emptyState}>
@@ -1210,12 +1294,16 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 24 },
   emptyStateText: { fontSize: 14, color: COLORS.text.muted, marginTop: 8 },
 
-  imageScroll: { marginBottom: 12 },
-  imageThumb: { marginRight: 10, borderRadius: 12, overflow: 'hidden' },
-  attachmentImage: { width: 120, height: 90, borderRadius: 12 },
-  fileAttachment: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, padding: 12, marginBottom: 8 },
-  fileIconContainer: { width: 36, height: 36, borderRadius: 8, backgroundColor: `${COLORS.accent}20`, justifyContent: 'center', alignItems: 'center' },
-  fileName: { flex: 1, marginLeft: 12, fontSize: 14, color: COLORS.text.primary },
+  attachmentThumbSmall: { width: 72, height: 72, borderRadius: 10 },
+  fileAttachment: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.background, borderRadius: 10, padding: 12, marginBottom: 8 },
+  fileIconContainer: { width: 72, height: 72, borderRadius: 10, backgroundColor: `${COLORS.accent}20`, justifyContent: 'center', alignItems: 'center' },
+  fileName: { fontSize: 14, color: COLORS.text.primary, fontWeight: '500' },
+  attachmentInfo: { flex: 1, marginLeft: 12, marginRight: 8 },
+  downloadButton: { padding: 4 },
+  attachmentMeta: { marginTop: 4, gap: 2 },
+  attachmentMetaText: { fontSize: 12, color: COLORS.text.secondary },
+  transitionBadge: { alignSelf: 'flex-start', backgroundColor: `${COLORS.accent}15`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
+  transitionBadgeText: { fontSize: 11, color: COLORS.accent, fontWeight: '500' },
 
   audioPlayer: { backgroundColor: COLORS.background, borderRadius: 10, padding: 12, marginBottom: 8 },
   audioInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
