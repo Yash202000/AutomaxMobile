@@ -1,31 +1,46 @@
-import { getClassificationsTree } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
-import { createIncident, uploadMultipleAttachments } from '@/src/api/incidents';
-import { validateImage } from '@/src/api/images';
-import { getLocationsTree, createLocation } from '@/src/api/locations';
-import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
-import { getUsers } from '@/src/api/users';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { CustomAlert } from '@/src/components/CustomAlert';
-import { DynamicLookupField } from '@/src/components/DynamicLookupField';
-import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { WatermarkPreview } from '@/src/components/WatermarkPreview';
-import { WatermarkProcessor } from '@/src/components/WatermarkProcessor';
-import { useAuth } from '@/src/context/AuthContext';
-import { usePermissions } from '@/src/hooks/usePermissions';
-import i18n from '@/src/i18n';
-import { crashLogger } from '@/src/utils/crashLogger';
-import { compressImage } from '@/src/utils/imageCompression';
-import { generateWatermarkedFilename, WatermarkData } from '@/src/utils/watermarkUtils';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { t } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { getClassificationsTree } from "@/src/api/classifications";
+import { getDepartments } from "@/src/api/departments";
+import { validateImage } from "@/src/api/images";
+import { createIncident, uploadMultipleAttachments } from "@/src/api/incidents";
+import { createLocation, getLocationsTree } from "@/src/api/locations";
+import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
+import { getUsers } from "@/src/api/users";
+import {
+  getWorkflows,
+  matchWorkflow as matchWorkflowAPI,
+} from "@/src/api/workflow";
+import { AuthenticatedImageViewer } from "@/src/components/AuthenticatedImageViewer";
+import { CustomAlert } from "@/src/components/CustomAlert";
+import { DynamicLookupField } from "@/src/components/DynamicLookupField";
+import LocationPicker, {
+  LocationData,
+} from "@/src/components/LocationPickerOSM";
+import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
+import { WatermarkPreview } from "@/src/components/WatermarkPreview";
+import { WatermarkProcessor } from "@/src/components/WatermarkProcessor";
+import { useAuth } from "@/src/context/AuthContext";
+import { usePermissions } from "@/src/hooks/usePermissions";
+import i18n from "@/src/i18n";
+import { crashLogger } from "@/src/utils/crashLogger";
+import { compressImage } from "@/src/utils/imageCompression";
+import {
+  generateWatermarkedFilename,
+  WatermarkData,
+} from "@/src/utils/watermarkUtils";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { t } from "i18next";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -40,20 +55,19 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // When true, skip reverse geocoding + location-dropdown auto-matching after map taps/GPS.
 // Mirrors VITE_DISABLE_AUTO_LOCATION_RETRIEVAL from the web client.
 const DISABLE_AUTO_LOCATION_RETRIEVAL =
-  process.env.EXPO_PUBLIC_DISABLE_AUTO_LOCATION_RETRIEVAL === 'true';
+  process.env.EXPO_PUBLIC_DISABLE_AUTO_LOCATION_RETRIEVAL === "true";
 
 // When true, every image attachment must pass server-side validation
 // (POST /images/validate) before the incident can be created.
 const IMAGE_VALIDATION_REQUIRED =
-  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === 'true';
+  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
@@ -78,6 +92,7 @@ interface Workflow {
   is_active: boolean;
   is_default?: boolean;
   required_fields?: string[];
+  optional_fields?: string[];
   classifications?: { id: string; name: string }[];
   locations?: { id: string; name: string }[];
   sources?: string[];
@@ -107,7 +122,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   loading,
   required,
   error,
-  allowClear = true
+  allowClear = true,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
@@ -118,7 +133,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         style={[styles.dropdown, error && styles.dropdownError]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
+        <Text
+          style={[
+            styles.dropdownText,
+            !value && styles.placeholderText,
+            { textAlign: "left" },
+          ]}
+        >
           {value || label}
         </Text>
         {loading ? (
@@ -156,14 +177,16 @@ const Dropdown: React.FC<DropdownProps> = ({
                   setModalVisible(false);
                 }}
               >
-                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
+                <Text style={styles.clearOptionText}>
+                  {t("common.clearSelection")}
+                </Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
 
             {options.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>{t('common.noOptions')}</Text>
+                <Text style={styles.emptyText}>{t("common.noOptions")}</Text>
               </View>
             ) : (
               <FlatList
@@ -192,17 +215,17 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-const ENV_CONFIG_CATEGORY_CODE = 'ENV_CONFIGURATION';
+const ENV_CONFIG_CATEGORY_CODE = "ENV_CONFIGURATION";
 const ATTACHMENT_COUNT_CODE = {
-  internal: 'INTERNAL_ATTACHMENT_LIMIT',
-  citizen: 'CITIZEN_ATTACHMENT_LIMIT',
+  internal: "INTERNAL_ATTACHMENT_LIMIT",
+  citizen: "CITIZEN_ATTACHMENT_LIMIT",
 };
 const ATTACHMENT_SIZE_CODE = {
-  internal: 'INTERNAL_ATTACHMENT_SIZE_LIMIT',
-  citizen: 'CITIZEN_ATTACHMENT_SIZE_LIMIT',
+  internal: "INTERNAL_ATTACHMENT_SIZE_LIMIT",
+  citizen: "CITIZEN_ATTACHMENT_SIZE_LIMIT",
 };
 // Single shared value (no internal/citizen split) under the same category.
-const DESCRIPTION_LENGTH_CODE = 'MAX_DESCRIPTION_LENGTH';
+const DESCRIPTION_LENGTH_CODE = "MAX_DESCRIPTION_LENGTH";
 
 const AddIncidentScreen = () => {
   const router = useRouter();
@@ -212,38 +235,48 @@ const AddIncidentScreen = () => {
   const { canUploadAttachmentGallery } = usePermissions();
 
   const priorityOptions: DropdownOption[] = [
-    { id: '1', name: t('priorities.critical') },
-    { id: '2', name: t('priorities.high') },
-    { id: '3', name: t('priorities.medium') },
-    { id: '4', name: t('priorities.low') },
-    { id: '5', name: t('priorities.veryLow') },
+    { id: "1", name: t("priorities.critical") },
+    { id: "2", name: t("priorities.high") },
+    { id: "3", name: t("priorities.medium") },
+    { id: "4", name: t("priorities.low") },
+    { id: "5", name: t("priorities.veryLow") },
   ];
 
   const severityOptions: DropdownOption[] = [
-    { id: '1', name: t('severities.critical') },
-    { id: '2', name: t('severities.major') },
-    { id: '3', name: t('severities.moderate') },
-    { id: '4', name: t('severities.minor') },
-    { id: '5', name: t('severities.cosmetic') },
+    { id: "1", name: t("severities.critical") },
+    { id: "2", name: t("severities.major") },
+    { id: "3", name: t("severities.moderate") },
+    { id: "4", name: t("severities.minor") },
+    { id: "5", name: t("severities.cosmetic") },
   ];
 
   const sourceOptions: DropdownOption[] = [
-    { id: 'mobile', name: t('incidents.sources.mobile') },
+    { id: "mobile", name: t("incidents.sources.mobile") },
   ];
 
   // Form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [comment, setComment] = useState('');
-  const [reporterName, setReporterName] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
-  const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [comment, setComment] = useState("");
+  const [callerFirstName, setCallerFirstName] = useState("");
+  const [callerMiddleName, setCallerMiddleName] = useState("");
+  const [callerLastName, setCallerLastName] = useState("");
+  const [reporterEmail, setReporterEmail] = useState("");
+  const [selectedClassification, setSelectedClassification] =
+    useState<DropdownOption | null>(null);
+  const [selectedLocation, setSelectedLocation] =
+    useState<DropdownOption | null>(null);
   const [selectedSource] = useState<DropdownOption>(sourceOptions[0]); // Fixed to mobile, non-editable
-  const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
-  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]); // Medium
-  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]); // Moderate
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<DropdownOption | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DropdownOption | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(
+    priorityOptions[2],
+  ); // Medium
+  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(
+    severityOptions[2],
+  ); // Moderate
 
   // Attachments state
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -264,13 +297,17 @@ const AddIncidentScreen = () => {
     data: WatermarkData;
     originalName: string;
   }
-  const [pendingWatermarks, setPendingWatermarks] = useState<PendingWatermark[]>([]);
+  const [pendingWatermarks, setPendingWatermarks] = useState<
+    PendingWatermark[]
+  >([]);
 
   // Preview state
   const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewImageUri, setPreviewImageUri] = useState<string>('');
-  const [previewWatermarkData, setPreviewWatermarkData] = useState<WatermarkData>({});
-  const [previewPendingWatermark, setPreviewPendingWatermark] = useState<PendingWatermark | null>(null);
+  const [previewImageUri, setPreviewImageUri] = useState<string>("");
+  const [previewWatermarkData, setPreviewWatermarkData] =
+    useState<WatermarkData>({});
+  const [previewPendingWatermark, setPreviewPendingWatermark] =
+    useState<PendingWatermark | null>(null);
 
   // Monitor pending watermarks
   useEffect(() => {
@@ -279,34 +316,42 @@ const AddIncidentScreen = () => {
   }, [pendingWatermarks]);
 
   // Geolocation state
-  const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
+  const [locationData, setLocationData] = useState<LocationData | undefined>(
+    undefined,
+  );
   const locationDataRef = useRef<LocationData | undefined>(undefined);
   // GPS-only location ref — updated solely from real device GPS, never from map taps or search
   const gpsLocationRef = useRef<LocationData | undefined>(undefined);
   // Tracks the last geo coord pair we processed to avoid duplicate matching calls
   const lastProcessedGeoRef = useRef<string | null>(null);
   // Pending location to create on submit when no match found in master tree
-  const [pendingNewLocation, setPendingNewLocation] = useState<PendingNewLocation | null>(null);
+  const [pendingNewLocation, setPendingNewLocation] =
+    useState<PendingNewLocation | null>(null);
   // True while we are resolving a geo-coord against the location master
   const [isMatchingLocation, setIsMatchingLocation] = useState(false);
 
   // ── Inline toast ─────────────────────────────────────────────────────────────
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<'info' | 'error'>('info');
+  const [toastType, setToastType] = useState<"info" | "error">("info");
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = useCallback((message: string, type: 'info' | 'error' = 'info') => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToastMessage(message);
-    setToastType(type);
-    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true }).start();
-    toastTimerRef.current = setTimeout(() => {
-      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() =>
-        setToastMessage(null)
-      );
-    }, 4000);
-  }, [toastAnim]);
+  const showToast = useCallback(
+    (message: string, type: "info" | "error" = "info") => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToastMessage(message);
+      setToastType(type);
+      Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true }).start();
+      toastTimerRef.current = setTimeout(() => {
+        Animated.timing(toastAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setToastMessage(null));
+      }, 4000);
+    },
+    [toastAnim],
+  );
   // ─────────────────────────────────────────────────────────────────────────────
   const hasFetchedDataRef = useRef(false);
 
@@ -326,24 +371,34 @@ const AddIncidentScreen = () => {
   const [masterLocations, setMasterLocations] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
-  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
-  const [allLookupCategories, setAllLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>(
+    [],
+  );
+  const [allLookupCategories, setAllLookupCategories] = useState<
+    LookupCategory[]
+  >([]);
   const [lookupValues, setLookupValues] = useState<Record<string, any>>({});
 
-  const isCitizenUser = user?.roles?.some(role => role.code === 'citizen' && role.is_active) ?? false;
+  const isCitizenUser =
+    user?.roles?.some((role) => role.code === "citizen" && role.is_active) ??
+    false;
   const envConfigValues = allLookupCategories.find(
-    cat => cat.code === ENV_CONFIG_CATEGORY_CODE
+    (cat) => cat.code === ENV_CONFIG_CATEGORY_CODE,
   )?.values;
 
   const MAX_ATTACHMENTS_COUNT = useMemo(() => {
-    const code = isCitizenUser ? ATTACHMENT_COUNT_CODE.citizen : ATTACHMENT_COUNT_CODE.internal;
-    const raw = Number(envConfigValues?.find(v => v.code === code)?.name);
+    const code = isCitizenUser
+      ? ATTACHMENT_COUNT_CODE.citizen
+      : ATTACHMENT_COUNT_CODE.internal;
+    const raw = Number(envConfigValues?.find((v) => v.code === code)?.name);
     return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
   }, [envConfigValues, isCitizenUser]);
 
   const MAX_FILE_SIZE_MB = useMemo(() => {
-    const code = isCitizenUser ? ATTACHMENT_SIZE_CODE.citizen : ATTACHMENT_SIZE_CODE.internal;
-    const raw = Number(envConfigValues?.find(v => v.code === code)?.name);
+    const code = isCitizenUser
+      ? ATTACHMENT_SIZE_CODE.citizen
+      : ATTACHMENT_SIZE_CODE.internal;
+    const raw = Number(envConfigValues?.find((v) => v.code === code)?.name);
     return Number.isFinite(raw) && raw > 0 ? raw : Infinity;
   }, [envConfigValues, isCitizenUser]);
 
@@ -351,7 +406,9 @@ const AddIncidentScreen = () => {
 
   // Unset entirely (not just falsy) means no limit.
   const MAX_DESCRIPTION_LENGTH = useMemo(() => {
-    const raw = Number(envConfigValues?.find(v => v.code === DESCRIPTION_LENGTH_CODE)?.name);
+    const raw = Number(
+      envConfigValues?.find((v) => v.code === DESCRIPTION_LENGTH_CODE)?.name,
+    );
     return Number.isFinite(raw) && raw > 0 ? raw : undefined;
   }, [envConfigValues]);
 
@@ -375,84 +432,116 @@ const AddIncidentScreen = () => {
     try {
       // Get classifications filtered by mobile type
       const results = await Promise.all([
-        getClassificationsTree('mobile').catch(err => ({ success: false, error: err.message })),
-        getLocationsTree().catch(err => ({ success: false, error: err.message })),
-        getWorkflows(true, 'incident').catch(err => ({ success: false, error: err.message })),
-        getUsers().catch(err => ({ success: false, error: err.message })),
-        getDepartments().catch(err => ({ success: false, error: err.message })),
-        getLookupCategories().catch(err => ({ success: false, error: err.message })),
+        getClassificationsTree("mobile").catch((err) => ({
+          success: false,
+          error: err.message,
+        })),
+        getLocationsTree().catch((err) => ({
+          success: false,
+          error: err.message,
+        })),
+        getWorkflows(true, "incident").catch((err) => ({
+          success: false,
+          error: err.message,
+        })),
+        getUsers().catch((err) => ({ success: false, error: err.message })),
+        getDepartments().catch((err) => ({
+          success: false,
+          error: err.message,
+        })),
+        getLookupCategories().catch((err) => ({
+          success: false,
+          error: err.message,
+        })),
       ]);
 
-      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = results;
+      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] =
+        results;
 
       if (classRes.success && classRes?.data && Array.isArray(classRes.data)) {
         // Filter to only show classifications that can be used for incidents
         // Types: 'incident', 'all', or no type (legacy)
         const filterForIncidents = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => {
-            const nodeWithType = node as any;
-            const validType = !nodeWithType.type ||
-              nodeWithType.type === 'incident' ||
-              nodeWithType.type === 'both' ||
-              nodeWithType.type === 'all';
+          return nodes
+            .map((node) => {
+              const nodeWithType = node as any;
+              const validType =
+                !nodeWithType.type ||
+                nodeWithType.type === "incident" ||
+                nodeWithType.type === "both" ||
+                nodeWithType.type === "all";
 
-            if (!validType) return null;
+              if (!validType) return null;
 
-            // Ensure id is a string
-            const filteredNode: TreeNode = {
-              id: String(node.id),
-              name: node.name,
-              parent_id: node.parent_id ? String(node.parent_id) : null,
-              name_ar: node?.name_ar
-            };
-
-            if (node.children && node.children.length > 0) {
-              const filteredChildren = filterForIncidents(node.children).filter(Boolean) as TreeNode[];
-              if (filteredChildren.length > 0) {
-                filteredNode.children = filteredChildren;
-              }
-            }
-
-            return filteredNode;
-          }).filter(Boolean) as TreeNode[];
-        };
-
-        let filteredClassifications = filterForIncidents(classRes.data);
-
-        // Filter by user's assigned classifications (unless super admin)
-        if (user && !user.is_super_admin && user.classifications && user.classifications.length > 0) {
-          const userClassificationIds = new Set(user.classifications.map(c => c.id));
-
-          // Helper to check if node or any descendant is assigned to user
-          const hasUserAccess = (node: TreeNode): boolean => {
-            if (userClassificationIds.has(node.id)) return true;
-            if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
-            }
-            return false;
-          };
-
-          // Filter tree to only include nodes with user access
-          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
-
+              // Ensure id is a string
               const filteredNode: TreeNode = {
-                id: node.id,
+                id: String(node.id),
                 name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
+                parent_id: node.parent_id ? String(node.parent_id) : null,
+                name_ar: node?.name_ar,
               };
 
               if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
+                const filteredChildren = filterForIncidents(
+                  node.children,
+                ).filter(Boolean) as TreeNode[];
                 if (filteredChildren.length > 0) {
                   filteredNode.children = filteredChildren;
                 }
               }
 
               return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+            })
+            .filter(Boolean) as TreeNode[];
+        };
+
+        let filteredClassifications = filterForIncidents(classRes.data);
+
+        // Filter by user's assigned classifications (unless super admin)
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.classifications &&
+          user.classifications.length > 0
+        ) {
+          const userClassificationIds = new Set(
+            user.classifications.map((c) => c.id),
+          );
+
+          // Helper to check if node or any descendant is assigned to user
+          const hasUserAccess = (node: TreeNode): boolean => {
+            if (userClassificationIds.has(node.id)) return true;
+            if (node.children && node.children.length > 0) {
+              return node.children.some((child) => hasUserAccess(child));
+            }
+            return false;
+          };
+
+          // Filter tree to only include nodes with user access
+          const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
+
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
+
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
+                }
+
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
           filteredClassifications = filterByUserAccess(filteredClassifications);
@@ -466,11 +555,13 @@ const AddIncidentScreen = () => {
       if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
         // Ensure all IDs are strings
         const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => ({
+          return nodes.map((node) => ({
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            children: node.children ? normalizeLocations(node.children) : undefined,
+            children: node.children
+              ? normalizeLocations(node.children)
+              : undefined,
             name_ar: node?.name_ar,
           }));
         };
@@ -478,39 +569,48 @@ const AddIncidentScreen = () => {
         setMasterLocations(normalizedLocations);
 
         // Filter by user's assigned locations (unless super admin)
-        if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
-          const userLocationIds = new Set(user.locations.map(l => l.id));
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.locations &&
+          user.locations.length > 0
+        ) {
+          const userLocationIds = new Set(user.locations.map((l) => l.id));
 
           // Helper to check if node or any descendant is assigned to user
           const hasUserAccess = (node: TreeNode): boolean => {
             if (userLocationIds.has(node.id)) return true;
             if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
+              return node.children.some((child) => hasUserAccess(child));
             }
             return false;
           };
 
           // Filter tree to only include nodes with user access
           const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
 
-              const filteredNode: TreeNode = {
-                id: node.id,
-                name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
-              };
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
 
-              if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
-                if (filteredChildren.length > 0) {
-                  filteredNode.children = filteredChildren;
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
                 }
-              }
 
-              return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
           normalizedLocations = filterByUserAccess(normalizedLocations);
@@ -525,50 +625,62 @@ const AddIncidentScreen = () => {
         setAllWorkflows(workflowRes?.data);
       }
       if (userRes.success && userRes.data) {
-        setUsers(userRes.data.map((u: any) => ({
-          id: u.id,
-          name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || t('common.unknownUser')
-        })));
+        setUsers(
+          userRes.data.map((u: any) => ({
+            id: u.id,
+            name:
+              `${u.first_name || ""} ${u.last_name || ""}`.trim() ||
+              u.email ||
+              t("common.unknownUser"),
+          })),
+        );
       }
       if (deptRes.success && deptRes.data) {
-        setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+        setDepartments(
+          deptRes.data.map((d: any) => ({ id: d.id, name: d.name })),
+        );
       }
       if (lookupRes.success && lookupRes.data) {
         // Filter to only show categories that should be added to incident form
-        const incidentCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        const incidentCategories = lookupRes.data.filter(
+          (cat: LookupCategory) => cat.add_to_incident_form && cat.is_active,
+        );
         setLookupCategories(incidentCategories);
-        setAllLookupCategories(lookupRes.data)
+        setAllLookupCategories(lookupRes.data);
       }
 
       // Check if critical workflow data failed to load
-      if (!workflowRes.success || !workflowRes.data || workflowRes.data.length === 0) {
+      if (
+        !workflowRes.success ||
+        !workflowRes.data ||
+        workflowRes.data.length === 0
+      ) {
         CustomAlert.alert(
-          t('common.required'),
-          t('common.workflowLoadWarning'),
+          t("common.required"),
+          t("common.workflowLoadWarning"),
           [
-            { text: t('common.retry'), onPress: () => fetchAllData() },
-            { text: t('common.back'), onPress: () => router.back() }
-          ]
+            { text: t("common.retry"), onPress: () => fetchAllData() },
+            { text: t("common.back"), onPress: () => router.back() },
+          ],
         );
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
 
       // Log to crash logger with context
-      crashLogger.logError(error as Error, {
-        screen: 'AddIncidentScreen',
-        action: 'fetchAllData',
-        context: 'Failed to load classifications, locations, workflows, users, or departments',
-      }).catch(err => console.error('Failed to log error:', err));
+      crashLogger
+        .logError(error as Error, {
+          screen: "AddIncidentScreen",
+          action: "fetchAllData",
+          context:
+            "Failed to load classifications, locations, workflows, users, or departments",
+        })
+        .catch((err) => console.error("Failed to log error:", err));
 
-      CustomAlert.alert(
-        t('common.error'),
-        t('common.dataLoadError'),
-        [
-          { text: 'Retry', onPress: () => fetchAllData() },
-          { text: 'Go Back', onPress: () => router.back() }
-        ]
-      );
+      CustomAlert.alert(t("common.error"), t("common.dataLoadError"), [
+        { text: "Retry", onPress: () => fetchAllData() },
+        { text: "Go Back", onPress: () => router.back() },
+      ]);
     }
     setLoadingData(false);
   };
@@ -602,16 +714,23 @@ const AddIncidentScreen = () => {
       if (!parentId) return [...nodes, nodeToInsert];
       return nodes.map((node) => {
         if (node.id === parentId) {
-          return { ...node, children: [...(node.children || []), nodeToInsert] };
+          return {
+            ...node,
+            children: [...(node.children || []), nodeToInsert],
+          };
         }
         if (node.children && node.children.length > 0) {
-          return { ...node, children: insertNode(node.children, parentId, nodeToInsert) };
+          return {
+            ...node,
+            children: insertNode(node.children, parentId, nodeToInsert),
+          };
         }
         return node;
       });
     };
 
-    const { levels, startLevelIndex, parent_id, virtualId } = pendingNewLocation;
+    const { levels, startLevelIndex, parent_id, virtualId } =
+      pendingNewLocation;
     const unmatchedLevels = levels.slice(startLevelIndex ?? 0);
 
     if (unmatchedLevels.length === 0) return locations;
@@ -621,9 +740,10 @@ const AddIncidentScreen = () => {
     let chain: TreeNode | undefined;
     for (let i = unmatchedLevels.length - 1; i >= 0; i--) {
       const level = unmatchedLevels[i];
-      const nodeId = i === unmatchedLevels.length - 1
-        ? virtualId
-        : `virtual_level_${i}_${level.name.replace(/\s+/g, '_')}`;
+      const nodeId =
+        i === unmatchedLevels.length - 1
+          ? virtualId
+          : `virtual_level_${i}_${level.name.replace(/\s+/g, "_")}`;
       chain = {
         id: nodeId,
         name: level.name,
@@ -649,25 +769,47 @@ const AddIncidentScreen = () => {
     try {
       const result = await matchWorkflowAPI(criteria);
       if (result.success && result.data?.workflow_id) {
-        const matched = allWorkflows.find(w => w.id === result.data.workflow_id) || null;
-        setMatchedWorkflow(matched ?? allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        const matched =
+          allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
+        setMatchedWorkflow(
+          matched ??
+            allWorkflows.find((w) => w.is_default) ??
+            allWorkflows[0] ??
+            null,
+        );
       } else if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     } catch {
       if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     } finally {
       setIsMatchingWorkflow(false);
     }
-  }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
+  }, [
+    allWorkflows,
+    selectedClassification,
+    selectedLocation,
+    selectedSource,
+    selectedPriority,
+  ]);
 
   useEffect(() => {
     if (allWorkflows.length > 0) {
       matchWorkflow();
     }
-  }, [selectedClassification?.id, selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
+  }, [
+    selectedClassification?.id,
+    selectedLocation?.id,
+    selectedSource?.id,
+    selectedPriority.id,
+    allWorkflows.length,
+  ]);
 
   // Auto-generate title from classification, location, and geolocation
   useEffect(() => {
@@ -696,66 +838,78 @@ const AddIncidentScreen = () => {
 
     // Generate title from parts
     if (parts.length > 0) {
-      const generatedTitle = parts.join(' - ');
+      const generatedTitle = parts.join(" - ");
       setTitle(generatedTitle);
     }
   }, [selectedClassification, selectedLocation, locationData]);
 
-  // Get required fields from matched workflow
+  // Get required/optional fields from matched workflow
   const requiredFields = matchedWorkflow?.required_fields || [];
+  const optionalFields = matchedWorkflow?.optional_fields || [];
 
   const isFieldRequired = (fieldName: string): boolean => {
     return requiredFields.includes(fieldName);
   };
 
+  // A field should render if the workflow lists it as required OR optional
+  const isFieldVisible = (fieldName: string): boolean => {
+    return (
+      requiredFields.includes(fieldName) || optionalFields.includes(fieldName)
+    );
+  };
+
   const fieldLabels: Record<string, string> = {
-    description: t('incidents.description'),
-    comment: t('incidents.comment'),
-    classification_id: t('incidents.classification'),
-    priority: t('incidents.priority'),
-    severity: t('incidents.severity'),
-    source: t('incidents.source'),
-    assignee_id: t('incidents.assignee'),
-    department_id: t('incidents.department'),
-    location_id: t('incidents.location'),
-    geolocation: t('details.geolocation'),
-    reporter_name: t('addIncident.reporterName'),
-    reporter_email: t('addIncident.reporterEmail'),
-    attachments: t('incidents.attachments'),
+    description: t("incidents.description"),
+    comment: t("incidents.comment"),
+    classification_id: t("incidents.classification"),
+    priority: t("incidents.priority"),
+    severity: t("incidents.severity"),
+    source: t("incidents.source"),
+    assignee_id: t("incidents.assignee"),
+    department_id: t("incidents.department"),
+    location_id: t("incidents.location"),
+    geolocation: t("details.geolocation"),
+    reporter_name: t("addIncident.reporterName"),
+    reporter_email: t("addIncident.reporterEmail"),
+    attachments: t("incidents.attachments"),
   };
 
   const validate = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
-    if (process.env.EXPO_PUBLIC_ENABLE_GIS === "true" && (!locationData?.gis || !locationData?.gis?.isInsideBoundary)) {
+    if (
+      process.env.EXPO_PUBLIC_ENABLE_GIS === "true" &&
+      (!locationData?.gis || !locationData?.gis?.isInsideBoundary)
+    ) {
       newErrors.geolocation = t("addIncident.gisError");
     }
 
     if (attachments.length > MAX_ATTACHMENTS_COUNT) {
-      newErrors.attachments = t('addIncident.maxAttachmentsExceeded', {
+      newErrors.attachments = t("addIncident.maxAttachmentsExceeded", {
         max: MAX_ATTACHMENTS_COUNT,
         defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
       });
     }
 
     if (!title.trim()) {
-      newErrors.title = t('addIncident.titlePlaceholder');
+      newErrors.title = t("addIncident.titlePlaceholder");
     }
 
     if (!matchedWorkflow) {
-      newErrors.workflow = 'Please select classification, location, or source to match a workflow';
+      newErrors.workflow =
+        "Please select classification, location, or source to match a workflow";
     }
 
     // Always require classification, location, source, and priority on mobile
     if (!selectedClassification) {
-      newErrors.classification_id = `${t('incidents.classification')} ${t('common.isRequired')}`;
+      newErrors.classification_id = `${t("incidents.classification")} ${t("common.isRequired")}`;
     }
 
     if (!selectedLocation) {
-      newErrors.location_id = `${t('incidents.location')} ${t('common.isRequired')}`;
+      newErrors.location_id = `${t("incidents.location")} ${t("common.isRequired")}`;
     }
 
     if (!selectedSource) {
-      newErrors.source = `${t('incidents.source')} ${t('common.isRequired')}`;
+      newErrors.source = `${t("incidents.source")} ${t("common.isRequired")}`;
     }
 
     if (!selectedPriority) {
@@ -765,83 +919,109 @@ const AddIncidentScreen = () => {
     // Validate workflow-specific required fields
     for (const field of requiredFields) {
       // Skip classification, location, source, and priority since we already validated them above
-      if (field === 'classification_id' || field === 'location_id' || field === 'source' || field === 'priority') {
+      if (
+        field === "classification_id" ||
+        field === "location_id" ||
+        field === "source" ||
+        field === "priority"
+      ) {
         continue;
       }
 
       // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
-      if (field.startsWith('lookup:')) {
-        const categoryCode = field.replace('lookup:', '');
-        const category = lookupCategories.find(c => c.code === categoryCode);
+      if (field.startsWith("lookup:")) {
+        const categoryCode = field.replace("lookup:", "");
+        const category = lookupCategories.find((c) => c.code === categoryCode);
         if (category) {
           const value = lookupValues[category.id];
           // For multiselect, check if array is empty
-          if (category.field_type === 'multiselect') {
+          if (category.field_type === "multiselect") {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
+              newErrors[field] =
+                `${i18n.language === "en" ? category.name : category?.name_ar} ${t("common.isRequired")}`;
             }
           } else if (!value) {
-            newErrors[field] = `${i18n.language === 'en' ? category.name : category?.name_ar} ${t('common.isRequired')}`;
+            newErrors[field] =
+              `${i18n.language === "en" ? category.name : category?.name_ar} ${t("common.isRequired")}`;
           }
         }
         continue;
       }
 
-      if (field === 'attachments') {
+      if (field === "attachments") {
         // Check attachments separately
         if (attachments.length === 0) {
-          newErrors.attachments = t('addIncident.requiredFields');
+          newErrors.attachments = t("addIncident.requiredFields");
         }
         continue;
       }
 
-      if (field === 'geolocation') {
+      if (field === "geolocation") {
         // Check geolocation - locationData must be set
         if (!locationData) {
-          newErrors.geolocation = `${fieldLabels.geolocation} ${t('common.isRequired')}`;
+          newErrors.geolocation = `${fieldLabels.geolocation} ${t("common.isRequired")}`;
         }
+        continue;
+      }
+
+      if (field === "reporter_name") {
+        // Visibility (required or optional) of the caller info section is handled
+        // separately below, since once shown all three name parts are mandatory.
         continue;
       }
 
       let value: any;
       switch (field) {
-        case 'description':
+        case "description":
           value = description;
           break;
-        case 'comment':
+        case "comment":
           value = comment;
           break;
-        case 'classification_id':
+        case "classification_id":
           value = selectedClassification?.id;
           break;
-        case 'location_id':
+        case "location_id":
           value = selectedLocation?.id;
           break;
-        case 'source':
+        case "source":
           value = selectedSource?.id;
           break;
-        case 'priority':
+        case "priority":
           value = selectedPriority?.id;
           break;
-        case 'severity':
+        case "severity":
           value = selectedSeverity?.id;
           break;
-        case 'assignee_id':
+        case "assignee_id":
           value = selectedAssignee?.id;
           break;
-        case 'department_id':
+        case "department_id":
           value = selectedDepartment?.id;
           break;
-        case 'reporter_name':
-          value = reporterName;
-          break;
-        case 'reporter_email':
+        case "reporter_email":
           value = reporterEmail;
           break;
       }
 
-      if (!value || (typeof value === 'string' && !value.trim())) {
-        newErrors[field] = `${fieldLabels[field] || field} ${t('common.isRequired')}`;
+      if (!value || (typeof value === "string" && !value.trim())) {
+        newErrors[field] =
+          `${fieldLabels[field] || field} ${t("common.isRequired")}`;
+      }
+    }
+
+    // Caller information: shown whenever reporter_name is required or optional on the
+    // workflow, but first/middle/last name are only mandatory when reporter_name itself
+    // is a required field (optional leaves them visible but not enforced).
+    if (isFieldRequired("reporter_name")) {
+      if (!callerFirstName.trim()) {
+        newErrors.reporter_first_name = t("addIncident.firstNameRequired");
+      }
+      if (!callerMiddleName.trim()) {
+        newErrors.reporter_middle_name = t("addIncident.middleNameRequired");
+      }
+      if (!callerLastName.trim()) {
+        newErrors.reporter_last_name = t("addIncident.lastNameRequired");
       }
     }
 
@@ -857,8 +1037,8 @@ const AddIncidentScreen = () => {
       return;
     }
 
-    if (Platform.OS === 'ios') {
-      const options = ['Cancel', 'Take Photo', 'Choose from Gallery'];
+    if (Platform.OS === "ios") {
+      const options = ["Cancel", "Take Photo", "Choose from Gallery"];
       // Choose File is still disabled — not wired to the permission check below.
       // options.push('Choose File');
 
@@ -866,19 +1046,19 @@ const AddIncidentScreen = () => {
         {
           options,
           cancelButtonIndex: 0,
-          title: t('common.selectOption'),
-          anchor: 1
+          title: t("common.selectOption"),
+          anchor: 1,
         },
         (buttonIndex) => {
           const selected = options[buttonIndex];
-          if (selected === 'Take Photo') {
+          if (selected === "Take Photo") {
             handleTakePhoto();
-          } else if (selected === 'Choose from Gallery') {
+          } else if (selected === "Choose from Gallery") {
             handlePickFromGallery();
-          } else if (selected === 'Choose File') {
+          } else if (selected === "Choose File") {
             handlePickDocument();
           }
-        }
+        },
       );
     } else {
       setAttachmentPickerVisible(true);
@@ -886,44 +1066,50 @@ const AddIncidentScreen = () => {
   };
 
   const handleTakePhoto = async () => {
-
     // Check if geolocation is required
-    const isGeoRequired = isFieldRequired('geolocation');
+    const isGeoRequired = isFieldRequired("geolocation");
 
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
         CustomAlert.alert(
-          t('addIncident.addressUnavailable'),
-          t('addIncident.waitingForLocation'),
-          [{ text: t('common.ok') }]
+          t("addIncident.addressUnavailable"),
+          t("addIncident.waitingForLocation"),
+          [{ text: t("common.ok") }],
         );
         return;
       }
 
       // If we have coordinates but no address yet (still loading)
-      if (locationData?.latitude && !locationData?.address && !locationData?.city) {
-
+      if (
+        locationData?.latitude &&
+        !locationData?.address &&
+        !locationData?.city
+      ) {
         // Show loading alert
         CustomAlert.alert(
-          t('addIncident.gettingLocationDetails'),
-          t('addIncident.waitingForAddress'),
-          [{ text: t('common.ok') }]
+          t("addIncident.gettingLocationDetails"),
+          t("addIncident.waitingForAddress"),
+          [{ text: t("common.ok") }],
         );
 
         // Wait up to 3 seconds for address
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
 
         // Check again after waiting
         const finalLocation = locationDataRef.current;
-        if (finalLocation?.latitude && !finalLocation?.address && !finalLocation?.city) {
+        if (
+          finalLocation?.latitude &&
+          !finalLocation?.address &&
+          !finalLocation?.city
+        ) {
           CustomAlert.alert(
-            t('common.locationAddressUnavailableTitle'),
-            t('common.locationAddressUnavailableDesc'),
+            t("common.locationAddressUnavailableTitle"),
+            t("common.locationAddressUnavailableDesc"),
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Continue', onPress: () => proceedWithCamera() }
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Continue", onPress: () => proceedWithCamera() },
+            ],
           );
           return;
         }
@@ -934,44 +1120,49 @@ const AddIncidentScreen = () => {
   };
 
   const proceedWithCamera = async () => {
-
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         CustomAlert.alert(
-          t('common.permissionRequired', 'Permission Required'),
-          t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
+          t("common.permissionRequired", "Permission Required"),
+          t(
+            "common.cameraPermissionNeeded",
+            "Camera permission is required to take photos. Please enable it in your device settings.",
+          ),
           [
             {
-              text: t('common.cancel', 'Cancel'),
-              style: 'cancel'
+              text: t("common.cancel", "Cancel"),
+              style: "cancel",
             },
             {
-              text: t('common.openSettings', 'Open Settings'),
+              text: t("common.openSettings", "Open Settings"),
               onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
+                if (Platform.OS === "ios") {
+                  Linking.openURL("app-settings:");
                 } else {
                   Linking.openSettings();
                 }
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsEditing: false,
         quality: 0.8,
         exif: true,
       });
 
-
-      if (!result.canceled && result.assets && Array.isArray(result.assets) && result.assets.length > 0) {
-
+      if (
+        !result.canceled &&
+        result.assets &&
+        Array.isArray(result.assets) &&
+        result.assets.length > 0
+      ) {
         // Take first image
         const asset = result.assets[0];
 
@@ -989,23 +1180,31 @@ const AddIncidentScreen = () => {
           district: gpsLocation?.district,
           subregion: gpsLocation?.subregion,
           street_number: gpsLocation?.street_number,
-          ...(process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && gpsLocation?.gis
+          ...(process.env.EXPO_PUBLIC_ENABLE_GIS === "true" && gpsLocation?.gis
             ? { gis: gpsLocation.gis }
             : {}),
-          userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
+          userName: user
+            ? `${user.first_name} ${user.last_name}`.trim() || user.username
+            : undefined,
           timestamp: new Date(),
-          appName: 'Automax',
+          appName: "Automax",
         };
 
-
         const originalFileName = asset.fileName || `photo_${Date.now()}.jpg`;
-        const watermarkedFileName = generateWatermarkedFilename(originalFileName, {
-          appName: 'Automax',
-          userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
-          userId: user?.id,
-          timestamp: new Date(),
-          location: gpsLocation ? `${gpsLocation.city || ''} ${gpsLocation.state || ''}`.trim() : undefined,
-        });
+        const watermarkedFileName = generateWatermarkedFilename(
+          originalFileName,
+          {
+            appName: "Automax",
+            userName: user
+              ? `${user.first_name} ${user.last_name}`.trim() || user.username
+              : undefined,
+            userId: user?.id,
+            timestamp: new Date(),
+            location: gpsLocation
+              ? `${gpsLocation.city || ""} ${gpsLocation.state || ""}`.trim()
+              : undefined,
+          },
+        );
 
         const pendingWatermark: PendingWatermark = {
           id: `watermark_${Date.now()}`,
@@ -1013,7 +1212,6 @@ const AddIncidentScreen = () => {
           data: watermarkData,
           originalName: watermarkedFileName,
         };
-
 
         // Show preview modal
         setPreviewImageUri(asset.uri);
@@ -1023,23 +1221,25 @@ const AddIncidentScreen = () => {
       } else {
       }
     } catch (error) {
-      console.error('❌ [Camera] Error taking photo:', error);
-      crashLogger.logError(error as Error, {
-        screen: 'AddIncidentScreen',
-        action: 'takePhoto',
-        context: 'Failed to take photo with camera',
-      }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
+      console.error("❌ [Camera] Error taking photo:", error);
+      crashLogger
+        .logError(error as Error, {
+          screen: "AddIncidentScreen",
+          action: "takePhoto",
+          context: "Failed to take photo with camera",
+        })
+        .catch((err) => console.error("Failed to log error:", err));
+      CustomAlert.alert(t("common.error"), t("common.takePhotoFailed"));
     }
   };
 
   // Handle preview accept
   const handlePreviewAccept = useCallback(() => {
     if (previewPendingWatermark) {
-      setPendingWatermarks(prev => [...prev, previewPendingWatermark]);
+      setPendingWatermarks((prev) => [...prev, previewPendingWatermark]);
     }
     setPreviewVisible(false);
-    setPreviewImageUri('');
+    setPreviewImageUri("");
     setPreviewWatermarkData({});
     setPreviewPendingWatermark(null);
   }, [previewPendingWatermark]);
@@ -1047,7 +1247,7 @@ const AddIncidentScreen = () => {
   // Handle preview retry
   const handlePreviewRetry = useCallback(() => {
     setPreviewVisible(false);
-    setPreviewImageUri('');
+    setPreviewImageUri("");
     setPreviewWatermarkData({});
     setPreviewPendingWatermark(null);
     // Relaunch camera
@@ -1057,83 +1257,91 @@ const AddIncidentScreen = () => {
   }, []);
 
   // Handle watermark completion
-  const handleWatermarkComplete = useCallback(async (id: string, watermarkedUri: string, originalName: string) => {
-    // Compress watermarked image before adding to attachments
-    const compressionResult = await compressImage(watermarkedUri, {
-      quality: 0.75,        // ~50% reduction
-      format: 'jpeg',
-      skipSmallFiles: true,
-    });
-
-    // Use compressed URI or fallback to original on error
-    const finalUri = compressionResult.success && compressionResult.compressedUri
-      ? compressionResult.compressedUri
-      : watermarkedUri;
-
-    // Add watermarked image to attachments, unless the cap's already been hit
-    if (attachmentsCountRef.current >= MAX_ATTACHMENTS_COUNT) {
-      CustomAlert.alert(
-        t('common.error'),
-        t('addIncident.maxAttachmentsExceeded', {
-          max: MAX_ATTACHMENTS_COUNT,
-          defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
-        })
-      );
-    } else {
-      setAttachments(prev => {
-        if (prev.length >= MAX_ATTACHMENTS_COUNT) return prev;
-        return [
-          ...prev,
-          {
-            uri: finalUri,
-            name: originalName,
-            type: 'image/jpeg',
-          },
-        ];
+  const handleWatermarkComplete = useCallback(
+    async (id: string, watermarkedUri: string, originalName: string) => {
+      // Compress watermarked image before adding to attachments
+      const compressionResult = await compressImage(watermarkedUri, {
+        quality: 0.75, // ~50% reduction
+        format: "jpeg",
+        skipSmallFiles: true,
       });
-    }
 
-    // Remove from pending list
-    setPendingWatermarks(prev => {
-      const remaining = prev.filter(w => w.id !== id);
-      return remaining;
-    });
+      // Use compressed URI or fallback to original on error
+      const finalUri =
+        compressionResult.success && compressionResult.compressedUri
+          ? compressionResult.compressedUri
+          : watermarkedUri;
 
-    // Clear error if any
-    if (errors.attachments) {
-      setErrors(prev => ({ ...prev, attachments: '' }));
-    }
-  }, [errors.attachments, MAX_ATTACHMENTS_COUNT]);
+      // Add watermarked image to attachments, unless the cap's already been hit
+      if (attachmentsCountRef.current >= MAX_ATTACHMENTS_COUNT) {
+        CustomAlert.alert(
+          t("common.error"),
+          t("addIncident.maxAttachmentsExceeded", {
+            max: MAX_ATTACHMENTS_COUNT,
+            defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
+          }),
+        );
+      } else {
+        setAttachments((prev) => {
+          if (prev.length >= MAX_ATTACHMENTS_COUNT) return prev;
+          return [
+            ...prev,
+            {
+              uri: finalUri,
+              name: originalName,
+              type: "image/jpeg",
+            },
+          ];
+        });
+      }
+
+      // Remove from pending list
+      setPendingWatermarks((prev) => {
+        const remaining = prev.filter((w) => w.id !== id);
+        return remaining;
+      });
+
+      // Clear error if any
+      if (errors.attachments) {
+        setErrors((prev) => ({ ...prev, attachments: "" }));
+      }
+    },
+    [errors.attachments, MAX_ATTACHMENTS_COUNT],
+  );
 
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         CustomAlert.alert(
-          t('common.permissionRequired', 'Permission Required'),
-          t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
+          t("common.permissionRequired", "Permission Required"),
+          t(
+            "common.galleryPermissionNeeded",
+            "Gallery permission is required to select photos. Please enable it in your device settings.",
+          ),
           [
             {
-              text: t('common.cancel', 'Cancel'),
-              style: 'cancel'
+              text: t("common.cancel", "Cancel"),
+              style: "cancel",
             },
             {
-              text: t('common.openSettings', 'Open Settings'),
+              text: t("common.openSettings", "Open Settings"),
               onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
+                if (Platform.OS === "ios") {
+                  Linking.openURL("app-settings:");
                 } else {
                   Linking.openSettings();
                 }
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
+        mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
         quality: 0.8,
       });
@@ -1143,17 +1351,19 @@ const AddIncidentScreen = () => {
         const validFiles: any[] = [];
         const oversizedFiles: string[] = [];
 
-        result.assets.forEach(asset => {
+        result.assets.forEach((asset) => {
           const fileSize = asset.fileSize || 0;
           const fileName = asset.fileName || `image_${Date.now()}.jpg`;
 
           if (fileSize > MAX_FILE_SIZE_BYTES) {
-            oversizedFiles.push(`${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+            oversizedFiles.push(
+              `${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`,
+            );
           } else {
             validFiles.push({
               uri: asset.uri,
               name: fileName,
-              type: asset.mimeType || 'image/jpeg',
+              type: asset.mimeType || "image/jpeg",
               size: fileSize,
             });
           }
@@ -1161,24 +1371,27 @@ const AddIncidentScreen = () => {
 
         // Add valid files, capped to however many slots remain
         if (validFiles.length > 0) {
-          const remainingSlots = Math.max(0, MAX_ATTACHMENTS_COUNT - attachments.length);
+          const remainingSlots = Math.max(
+            0,
+            MAX_ATTACHMENTS_COUNT - attachments.length,
+          );
           const filesToAdd = validFiles.slice(0, remainingSlots);
           const excessCount = validFiles.length - filesToAdd.length;
 
           if (filesToAdd.length > 0) {
-            setAttachments(prev => [...prev, ...filesToAdd]);
+            setAttachments((prev) => [...prev, ...filesToAdd]);
             if (errors.attachments) {
-              setErrors(prev => ({ ...prev, attachments: '' }));
+              setErrors((prev) => ({ ...prev, attachments: "" }));
             }
           }
 
           if (excessCount > 0) {
             CustomAlert.alert(
-              t('common.error'),
-              t('addIncident.maxAttachmentsExceeded', {
+              t("common.error"),
+              t("addIncident.maxAttachmentsExceeded", {
                 max: MAX_ATTACHMENTS_COUNT,
                 defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
-              })
+              }),
             );
           }
         }
@@ -1186,20 +1399,28 @@ const AddIncidentScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            t('common.filesTooLargeTitle'),
-            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
-            [{ text: t('common.ok') }]
+            t("common.filesTooLargeTitle"),
+            t("common.filesTooLargeDesc", {
+              size: MAX_FILE_SIZE_MB,
+              files: oversizedFiles.join("\n"),
+            }),
+            [{ text: t("common.ok") }],
           );
         }
       }
     } catch (error) {
-      console.error('Error picking from gallery:', error);
-      crashLogger.logError(error as Error, {
-        screen: 'AddIncidentScreen',
-        action: 'pickFromGallery',
-        context: 'Failed to pick image from gallery',
-      }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
+      console.error("Error picking from gallery:", error);
+      crashLogger
+        .logError(error as Error, {
+          screen: "AddIncidentScreen",
+          action: "pickFromGallery",
+          context: "Failed to pick image from gallery",
+        })
+        .catch((err) => console.error("Failed to log error:", err));
+      CustomAlert.alert(
+        t("common.error"),
+        t("common.failedToPickFromGallery", "Failed to pick from gallery"),
+      );
     }
   };
 
@@ -1215,16 +1436,18 @@ const AddIncidentScreen = () => {
         const validFiles: any[] = [];
         const oversizedFiles: string[] = [];
 
-        result.assets.forEach(asset => {
+        result.assets.forEach((asset) => {
           const fileSize = asset.size || 0;
 
           if (fileSize > MAX_FILE_SIZE_BYTES) {
-            oversizedFiles.push(`${asset.name} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+            oversizedFiles.push(
+              `${asset.name} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`,
+            );
           } else {
             validFiles.push({
               uri: asset.uri,
               name: asset.name,
-              type: asset.mimeType || 'application/octet-stream',
+              type: asset.mimeType || "application/octet-stream",
               size: fileSize,
             });
           }
@@ -1232,24 +1455,27 @@ const AddIncidentScreen = () => {
 
         // Add valid files, capped to however many slots remain
         if (validFiles.length > 0) {
-          const remainingSlots = Math.max(0, MAX_ATTACHMENTS_COUNT - attachments.length);
+          const remainingSlots = Math.max(
+            0,
+            MAX_ATTACHMENTS_COUNT - attachments.length,
+          );
           const filesToAdd = validFiles.slice(0, remainingSlots);
           const excessCount = validFiles.length - filesToAdd.length;
 
           if (filesToAdd.length > 0) {
-            setAttachments(prev => [...prev, ...filesToAdd]);
+            setAttachments((prev) => [...prev, ...filesToAdd]);
             if (errors.attachments) {
-              setErrors(prev => ({ ...prev, attachments: '' }));
+              setErrors((prev) => ({ ...prev, attachments: "" }));
             }
           }
 
           if (excessCount > 0) {
             CustomAlert.alert(
-              t('common.error'),
-              t('addIncident.maxAttachmentsExceeded', {
+              t("common.error"),
+              t("addIncident.maxAttachmentsExceeded", {
                 max: MAX_ATTACHMENTS_COUNT,
                 defaultValue: `You can attach a maximum of ${MAX_ATTACHMENTS_COUNT} files`,
-              })
+              }),
             );
           }
         }
@@ -1257,20 +1483,28 @@ const AddIncidentScreen = () => {
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            t('common.filesTooLargeTitle'),
-            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
-            [{ text: t('common.ok') }]
+            t("common.filesTooLargeTitle"),
+            t("common.filesTooLargeDesc", {
+              size: MAX_FILE_SIZE_MB,
+              files: oversizedFiles.join("\n"),
+            }),
+            [{ text: t("common.ok") }],
           );
         }
       }
     } catch (error) {
-      console.error('Error picking document:', error);
-      crashLogger.logError(error as Error, {
-        screen: 'AddIncidentScreen',
-        action: 'pickDocument',
-        context: 'Failed to pick document',
-      }).catch(err => console.error('Failed to log error:', err));
-      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
+      console.error("Error picking document:", error);
+      crashLogger
+        .logError(error as Error, {
+          screen: "AddIncidentScreen",
+          action: "pickDocument",
+          context: "Failed to pick document",
+        })
+        .catch((err) => console.error("Failed to log error:", err));
+      CustomAlert.alert(
+        t("common.error"),
+        t("common.failedToPickDocument", "Failed to pick document"),
+      );
     }
   };
 
@@ -1278,251 +1512,315 @@ const AddIncidentScreen = () => {
     const file = attachments[index];
     // Delete the temp file from device cache when the user removes it
     if (file?.uri) {
-      FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+      FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
     }
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const openImagePreview = (index: number) => {
-    const imageAttachments = attachments.filter(f => f.type?.startsWith('image/'));
-    const imageIndex = attachments
-      .slice(0, index + 1)
-      .filter(f => f.type?.startsWith('image/')).length - 1;
+    const imageAttachments = attachments.filter((f) =>
+      f.type?.startsWith("image/"),
+    );
+    const imageIndex =
+      attachments
+        .slice(0, index + 1)
+        .filter((f) => f.type?.startsWith("image/")).length - 1;
     if (imageAttachments.length > 0 && imageIndex >= 0) {
       setImageViewerIndex(imageIndex);
       setImageViewerVisible(true);
     }
   };
 
-  const handleLocationChange = useCallback(async (location: LocationData | undefined) => {
-    if (!location) {
-      setLocationData(undefined);
-      lastProcessedGeoRef.current = null;
-      setPendingNewLocation(null);
-      return;
-    }
+  const handleLocationChange = useCallback(
+    async (location: LocationData | undefined) => {
+      if (!location) {
+        setLocationData(undefined);
+        lastProcessedGeoRef.current = null;
+        setPendingNewLocation(null);
+        return;
+      }
 
-    if (process.env.EXPO_PUBLIC_ENABLE_GIS === 'true' && !location.gis?.isInsideBoundary && location?.gis !== undefined) {
-      CustomAlert.alert('Error', 'You are not inside the permissible boundary');
-      return;
-    }
+      if (
+        process.env.EXPO_PUBLIC_ENABLE_GIS === "true" &&
+        !location.gis?.isInsideBoundary &&
+        location?.gis !== undefined
+      ) {
+        CustomAlert.alert(
+          "Error",
+          "You are not inside the permissible boundary",
+        );
+        return;
+      }
 
-    setLocationData(location);
-    if (errors.geolocation) {
-      setErrors(prev => ({ ...prev, geolocation: '' }));
-    }
+      setLocationData(location);
+      if (errors.geolocation) {
+        setErrors((prev) => ({ ...prev, geolocation: "" }));
+      }
 
-    // When auto location retrieval is disabled, stop here — do not attempt to
-    // match or create anything in the location dropdown.
-    if (DISABLE_AUTO_LOCATION_RETRIEVAL) {
-      return;
-    }
+      // When auto location retrieval is disabled, stop here — do not attempt to
+      // match or create anything in the location dropdown.
+      if (DISABLE_AUTO_LOCATION_RETRIEVAL) {
+        return;
+      }
 
-    // LocationPickerOSM fires onChange TWICE for the same coordinate pair:
-    //   1st call: raw coords only  ({latitude, longitude})
-    //   2nd call: enriched with address ({latitude, longitude, city/gis, state, ...})
-    // We must wait for the enriched call before running the matching logic.
-    const isGisMode = process.env.EXPO_PUBLIC_ENABLE_GIS === 'true';
-    const hasAddressData = isGisMode
-      ? !!location.gis  // GIS mode: wait for gis object
-      : !!(location.city || location.address || location.country); // OSM mode
-    if (!hasAddressData) {
-      // Raw coords only — skip matching, the enriched call will follow shortly
-      return;
-    }
+      // LocationPickerOSM fires onChange TWICE for the same coordinate pair:
+      //   1st call: raw coords only  ({latitude, longitude})
+      //   2nd call: enriched with address ({latitude, longitude, city/gis, state, ...})
+      // We must wait for the enriched call before running the matching logic.
+      const isGisMode = process.env.EXPO_PUBLIC_ENABLE_GIS === "true";
+      const hasAddressData = isGisMode
+        ? !!location.gis // GIS mode: wait for gis object
+        : !!(location.city || location.address || location.country); // OSM mode
+      if (!hasAddressData) {
+        // Raw coords only — skip matching, the enriched call will follow shortly
+        return;
+      }
 
-    // Deduplicate: only process each coordinate pair once (after address is resolved)
-    const geoKey = `${location.latitude},${location.longitude}`;
-    if (lastProcessedGeoRef.current === geoKey) {
-      return;
-    }
-    lastProcessedGeoRef.current = geoKey;
+      // Deduplicate: only process each coordinate pair once (after address is resolved)
+      const geoKey = `${location.latitude},${location.longitude}`;
+      if (lastProcessedGeoRef.current === geoKey) {
+        return;
+      }
+      lastProcessedGeoRef.current = geoKey;
 
-    // Try to match the geo-location against the Location master tree
-    setIsMatchingLocation(true);
-    try {
-      const allLocations = flattenLocations(masterLocations.length > 0 ? masterLocations : locations);
-
-      if (isGisMode && location.gis) {
-        // ── GIS mode: match using district_name → municipality_name → street_fullname ──
-        const gis = location.gis;
-
-        // Try to find a leaf node matching district or municipality name
-        const candidates = [
-          gis.district_name,
-          gis.municipality_name,
-          gis.street_fullname,
-        ].filter(Boolean).map(s => s.toLowerCase().trim());
-
-        const matched = allLocations.find(
-          loc =>
-            (!loc.children || loc.children.length === 0) &&
-            candidates.some(name => loc.name.toLowerCase().trim() === name),
+      // Try to match the geo-location against the Location master tree
+      setIsMatchingLocation(true);
+      try {
+        const allLocations = flattenLocations(
+          masterLocations.length > 0 ? masterLocations : locations,
         );
 
-        if (matched) {
-          setSelectedLocation({ id: matched.id, name: matched.name });
-          if (errors.location_id) {
-            setErrors(prev => ({ ...prev, location_id: '' }));
-          }
-          setPendingNewLocation(null);
-          showToast(
-            t('incidents.locationAutoMatched', {
-              name: matched.name,
-              defaultValue: `Location "${matched.name}" auto-selected from master`,
-            }),
-            'info'
-          );
-        } else {
-          // No match found — map to the root-level "Default" location.
-          // If it doesn't exist yet, create it first.
-          const DEFAULT_LOCATION_NAME = 'Default';
-          const existingDefault = allLocations.find(
-            loc =>
-              loc.name.toLowerCase().trim() === DEFAULT_LOCATION_NAME.toLowerCase() &&
-              !(loc as any).parent_id,
-          );
+        if (isGisMode && location.gis) {
+          // ── GIS mode: match using district_name → municipality_name → street_fullname ──
+          const gis = location.gis;
 
-          if (existingDefault) {
-            setPendingNewLocation(null);
-            setSelectedLocation({ id: existingDefault.id, name: existingDefault.name });
-            if (errors.location_id) {
-              setErrors(prev => ({ ...prev, location_id: '' }));
-            }
-            showToast(
-              t('incidents.locationDefaultMapped', {
-                defaultValue: 'No matching location found. Mapped to "Default" location.',
-              }),
-              'info'
-            );
-          } else {
-            // "Default" doesn't exist yet — create it at the root on the fly
-            try {
-              const res = await createLocation({ name: DEFAULT_LOCATION_NAME, type: 'default', link_default_department: true });
-              if (res.success && res.data) {
-                setPendingNewLocation(null);
-                setSelectedLocation({ id: res.data.id, name: DEFAULT_LOCATION_NAME });
-                if (errors.location_id) {
-                  setErrors(prev => ({ ...prev, location_id: '' }));
-                }
-                showToast(
-                  t('incidents.locationDefaultCreated', {
-                    defaultValue: 'No matching location found. Created and mapped to "Default" location.',
-                  }),
-                  'info'
-                );
-              } else {
-                showToast(
-                  t('incidents.locationMatchError', 'Failed to create Default location. Please select manually.'),
-                  'error'
-                );
-              }
-            } catch (createErr) {
-              console.error('[handleLocationChange] Failed to create Default location:', createErr);
-              showToast(
-                t('incidents.locationMatchError', 'Failed to create Default location. Please select manually.'),
-                'error'
-              );
-            }
-          }
-        }
-      } else {
-        // ── OSM mode: original logic using city / address / country ──
-        const searchName = (location.city || location.address || '')
-          .toLowerCase()
-          .trim();
+          // Try to find a leaf node matching district or municipality name
+          const candidates = [
+            gis.district_name,
+            gis.municipality_name,
+            gis.street_fullname,
+          ]
+            .filter(Boolean)
+            .map((s) => s.toLowerCase().trim());
 
-        const matched = searchName
-          ? allLocations.find(
+          const matched = allLocations.find(
             (loc) =>
               (!loc.children || loc.children.length === 0) &&
-              (loc.name.toLowerCase().trim() === searchName ||
-                (location.city &&
-                  loc.name.toLowerCase().trim() ===
-                  location.city.toLowerCase().trim())),
-          )
-          : undefined;
-
-        if (matched) {
-          setSelectedLocation({ id: matched.id, name: matched.name });
-          if (errors.location_id) {
-            setErrors(prev => ({ ...prev, location_id: '' }));
-          }
-          setPendingNewLocation(null);
-          showToast(
-            t('incidents.locationAutoMatched', {
-              name: matched.name,
-              defaultValue: `Location "${matched.name}" auto-selected from master`,
-            }),
-            'info'
-          );
-        } else {
-          // No match found — map to the root-level "Default" location.
-          // If it doesn't exist yet, create it first.
-          const DEFAULT_LOCATION_NAME = 'Default';
-          const existingDefault = allLocations.find(
-            (loc) =>
-              loc.name.toLowerCase().trim() === DEFAULT_LOCATION_NAME.toLowerCase() &&
-              !(loc as any).parent_id,
+              candidates.some((name) => loc.name.toLowerCase().trim() === name),
           );
 
-          if (existingDefault) {
-            setPendingNewLocation(null);
-            setSelectedLocation({ id: existingDefault.id, name: existingDefault.name });
+          if (matched) {
+            setSelectedLocation({ id: matched.id, name: matched.name });
             if (errors.location_id) {
-              setErrors(prev => ({ ...prev, location_id: '' }));
+              setErrors((prev) => ({ ...prev, location_id: "" }));
             }
+            setPendingNewLocation(null);
             showToast(
-              t('incidents.locationDefaultMapped', {
-                defaultValue: 'No matching location found. Mapped to "Default" location.',
+              t("incidents.locationAutoMatched", {
+                name: matched.name,
+                defaultValue: `Location "${matched.name}" auto-selected from master`,
               }),
-              'info'
+              "info",
             );
           } else {
-            // "Default" doesn't exist yet — create it at the root on the fly
-            try {
-              const res = await createLocation({ name: DEFAULT_LOCATION_NAME, type: 'default', link_default_department: true });
-              if (res.success && res.data) {
-                setPendingNewLocation(null);
-                setSelectedLocation({ id: res.data.id, name: DEFAULT_LOCATION_NAME });
-                if (errors.location_id) {
-                  setErrors(prev => ({ ...prev, location_id: '' }));
+            // No match found — map to the root-level "Default" location.
+            // If it doesn't exist yet, create it first.
+            const DEFAULT_LOCATION_NAME = "Default";
+            const existingDefault = allLocations.find(
+              (loc) =>
+                loc.name.toLowerCase().trim() ===
+                  DEFAULT_LOCATION_NAME.toLowerCase() &&
+                !(loc as any).parent_id,
+            );
+
+            if (existingDefault) {
+              setPendingNewLocation(null);
+              setSelectedLocation({
+                id: existingDefault.id,
+                name: existingDefault.name,
+              });
+              if (errors.location_id) {
+                setErrors((prev) => ({ ...prev, location_id: "" }));
+              }
+              showToast(
+                t("incidents.locationDefaultMapped", {
+                  defaultValue:
+                    'No matching location found. Mapped to "Default" location.',
+                }),
+                "info",
+              );
+            } else {
+              // "Default" doesn't exist yet — create it at the root on the fly
+              try {
+                const res = await createLocation({
+                  name: DEFAULT_LOCATION_NAME,
+                  type: "default",
+                  link_default_department: true,
+                });
+                if (res.success && res.data) {
+                  setPendingNewLocation(null);
+                  setSelectedLocation({
+                    id: res.data.id,
+                    name: DEFAULT_LOCATION_NAME,
+                  });
+                  if (errors.location_id) {
+                    setErrors((prev) => ({ ...prev, location_id: "" }));
+                  }
+                  showToast(
+                    t("incidents.locationDefaultCreated", {
+                      defaultValue:
+                        'No matching location found. Created and mapped to "Default" location.',
+                    }),
+                    "info",
+                  );
+                } else {
+                  showToast(
+                    t(
+                      "incidents.locationMatchError",
+                      "Failed to create Default location. Please select manually.",
+                    ),
+                    "error",
+                  );
                 }
-                showToast(
-                  t('incidents.locationDefaultCreated', {
-                    defaultValue: 'No matching location found. Created and mapped to "Default" location.',
-                  }),
-                  'info'
+              } catch (createErr) {
+                console.error(
+                  "[handleLocationChange] Failed to create Default location:",
+                  createErr,
                 );
-              } else {
                 showToast(
-                  t('incidents.locationMatchError', 'Failed to create Default location. Please select manually.'),
-                  'error'
+                  t(
+                    "incidents.locationMatchError",
+                    "Failed to create Default location. Please select manually.",
+                  ),
+                  "error",
                 );
               }
-            } catch (createErr) {
-              console.error('[handleLocationChange] Failed to create Default location:', createErr);
+            }
+          }
+        } else {
+          // ── OSM mode: original logic using city / address / country ──
+          const searchName = (location.city || location.address || "")
+            .toLowerCase()
+            .trim();
+
+          const matched = searchName
+            ? allLocations.find(
+                (loc) =>
+                  (!loc.children || loc.children.length === 0) &&
+                  (loc.name.toLowerCase().trim() === searchName ||
+                    (location.city &&
+                      loc.name.toLowerCase().trim() ===
+                        location.city.toLowerCase().trim())),
+              )
+            : undefined;
+
+          if (matched) {
+            setSelectedLocation({ id: matched.id, name: matched.name });
+            if (errors.location_id) {
+              setErrors((prev) => ({ ...prev, location_id: "" }));
+            }
+            setPendingNewLocation(null);
+            showToast(
+              t("incidents.locationAutoMatched", {
+                name: matched.name,
+                defaultValue: `Location "${matched.name}" auto-selected from master`,
+              }),
+              "info",
+            );
+          } else {
+            // No match found — map to the root-level "Default" location.
+            // If it doesn't exist yet, create it first.
+            const DEFAULT_LOCATION_NAME = "Default";
+            const existingDefault = allLocations.find(
+              (loc) =>
+                loc.name.toLowerCase().trim() ===
+                  DEFAULT_LOCATION_NAME.toLowerCase() &&
+                !(loc as any).parent_id,
+            );
+
+            if (existingDefault) {
+              setPendingNewLocation(null);
+              setSelectedLocation({
+                id: existingDefault.id,
+                name: existingDefault.name,
+              });
+              if (errors.location_id) {
+                setErrors((prev) => ({ ...prev, location_id: "" }));
+              }
               showToast(
-                t('incidents.locationMatchError', 'Failed to create Default location. Please select manually.'),
-                'error'
+                t("incidents.locationDefaultMapped", {
+                  defaultValue:
+                    'No matching location found. Mapped to "Default" location.',
+                }),
+                "info",
               );
+            } else {
+              // "Default" doesn't exist yet — create it at the root on the fly
+              try {
+                const res = await createLocation({
+                  name: DEFAULT_LOCATION_NAME,
+                  type: "default",
+                  link_default_department: true,
+                });
+                if (res.success && res.data) {
+                  setPendingNewLocation(null);
+                  setSelectedLocation({
+                    id: res.data.id,
+                    name: DEFAULT_LOCATION_NAME,
+                  });
+                  if (errors.location_id) {
+                    setErrors((prev) => ({ ...prev, location_id: "" }));
+                  }
+                  showToast(
+                    t("incidents.locationDefaultCreated", {
+                      defaultValue:
+                        'No matching location found. Created and mapped to "Default" location.',
+                    }),
+                    "info",
+                  );
+                } else {
+                  showToast(
+                    t(
+                      "incidents.locationMatchError",
+                      "Failed to create Default location. Please select manually.",
+                    ),
+                    "error",
+                  );
+                }
+              } catch (createErr) {
+                console.error(
+                  "[handleLocationChange] Failed to create Default location:",
+                  createErr,
+                );
+                showToast(
+                  t(
+                    "incidents.locationMatchError",
+                    "Failed to create Default location. Please select manually.",
+                  ),
+                  "error",
+                );
+              }
             }
           }
         }
+      } catch (err) {
+        console.error("[handleLocationChange] Location match error:", err);
+        showToast(
+          t(
+            "incidents.locationMatchError",
+            "Failed to match location. Please select manually.",
+          ),
+          "error",
+        );
+      } finally {
+        setIsMatchingLocation(false);
       }
-    } catch (err) {
-      console.error('[handleLocationChange] Location match error:', err);
-      showToast(
-        t('incidents.locationMatchError', 'Failed to match location. Please select manually.'),
-        'error'
-      );
-    } finally {
-      setIsMatchingLocation(false);
-    }
-  }, [locations, masterLocations, flattenLocations, errors]);
+    },
+    [locations, masterLocations, flattenLocations, errors],
+  );
 
   const handleLookupChange = (categoryId: string, value: any) => {
-    setLookupValues(prev => {
+    setLookupValues((prev) => {
       if (!value || (Array.isArray(value) && value.length === 0)) {
         const newValues = { ...prev };
         delete newValues[categoryId];
@@ -1532,11 +1830,11 @@ const AddIncidentScreen = () => {
     });
 
     // Clear error for this lookup field if it exists
-    const category = lookupCategories.find(c => c.id === categoryId);
+    const category = lookupCategories.find((c) => c.id === categoryId);
     if (category) {
       const errorKey = `lookup:${category.code}`;
       if (errors[errorKey]) {
-        setErrors(prev => {
+        setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[errorKey];
           return newErrors;
@@ -1549,7 +1847,7 @@ const AddIncidentScreen = () => {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       const firstError = Object.values(validationErrors)[0];
-      CustomAlert.alert(t('common.validationError'), firstError);
+      CustomAlert.alert(t("common.validationError"), firstError);
       return;
     }
 
@@ -1557,16 +1855,18 @@ const AddIncidentScreen = () => {
 
     try {
       if (IMAGE_VALIDATION_REQUIRED) {
-        const imageAttachments = attachments.filter(a => a.type?.startsWith('image/'));
+        const imageAttachments = attachments.filter((a) =>
+          a.type?.startsWith("image/"),
+        );
         for (const image of imageAttachments) {
           const result = await validateImage(image);
           if (!result.valid) {
             // Drop the invalid image so the user can add a replacement.
-            setAttachments(prev => prev.filter(a => a.uri !== image.uri));
+            setAttachments((prev) => prev.filter((a) => a.uri !== image.uri));
             setSubmitting(false);
             CustomAlert.alert(
-              t('addIncident.invalidImageTitle'),
-              result.message || t('addIncident.invalidImageMessage')
+              t("addIncident.invalidImageTitle"),
+              result.message || t("addIncident.invalidImageMessage"),
             );
             return;
           }
@@ -1576,7 +1876,7 @@ const AddIncidentScreen = () => {
       // Double-check matchedWorkflow exists with valid id
       if (!matchedWorkflow || !matchedWorkflow.id) {
         setSubmitting(false);
-        CustomAlert.alert(t('common.error'), t('common.workflowMatchedError'));
+        CustomAlert.alert(t("common.error"), t("common.workflowMatchedError"));
         return;
       }
 
@@ -1585,7 +1885,10 @@ const AddIncidentScreen = () => {
       const severityNum = parseInt(selectedSeverity.id);
       if (isNaN(priorityNum) || isNaN(severityNum)) {
         setSubmitting(false);
-        CustomAlert.alert(t('common.error'), t('common.invalidPrioritySeverity'));
+        CustomAlert.alert(
+          t("common.error"),
+          t("common.invalidPrioritySeverity"),
+        );
         return;
       }
 
@@ -1598,18 +1901,20 @@ const AddIncidentScreen = () => {
 
       if (description.trim()) incidentData.description = description.trim();
       if (comment.trim()) incidentData.comment = comment.trim();
-      if (selectedClassification) incidentData.classification_id = selectedClassification.id;
+      if (selectedClassification)
+        incidentData.classification_id = selectedClassification.id;
 
       // Use the already-resolved location id (Default location is now resolved in handleLocationChange).
       let finalLocationId = selectedLocation?.id;
-      if (finalLocationId && finalLocationId !== 'virtual_new_location') {
+      if (finalLocationId && finalLocationId !== "virtual_new_location") {
         incidentData.location_id = finalLocationId;
       }
 
       incidentData.source = "mobile";
       incidentData.channel = "mobile";
       if (selectedAssignee) incidentData.assignee_id = selectedAssignee.id;
-      if (selectedDepartment) incidentData.department_id = selectedDepartment.id;
+      if (selectedDepartment)
+        incidentData.department_id = selectedDepartment.id;
 
       if (locationData) {
         incidentData.latitude = locationData.latitude;
@@ -1618,22 +1923,32 @@ const AddIncidentScreen = () => {
         if (locationData.city) incidentData.city = locationData.city;
         if (locationData.state) incidentData.state = locationData.state;
         if (locationData.country) incidentData.country = locationData.country;
-        if (locationData.postal_code) incidentData.postal_code = locationData.postal_code;
+        if (locationData.postal_code)
+          incidentData.postal_code = locationData.postal_code;
       }
-      if (reporterName.trim()) incidentData.reporter_name = reporterName.trim();
-      if (reporterEmail.trim()) incidentData.reporter_email = reporterEmail.trim();
+      const fullReporterName = [
+        callerFirstName,
+        callerMiddleName,
+        callerLastName,
+      ]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(" ");
+      if (fullReporterName) incidentData.reporter_name = fullReporterName;
+      if (reporterEmail.trim())
+        incidentData.reporter_email = reporterEmail.trim();
 
       // Separate lookup values by field type
       const selectLookupIds: string[] = [];
       const customLookupFields: Record<string, any> = {};
 
       for (const [categoryId, value] of Object.entries(lookupValues)) {
-        const category = lookupCategories.find(c => c.id === categoryId);
+        const category = lookupCategories.find((c) => c.id === categoryId);
         if (!category) continue;
 
-        const fieldType = category.field_type || 'select';
+        const fieldType = category.field_type || "select";
 
-        if (fieldType === 'select' || fieldType === 'multiselect') {
+        if (fieldType === "select" || fieldType === "multiselect") {
           // Add to lookup_value_ids array
           if (Array.isArray(value)) {
             selectLookupIds.push(...value.filter(Boolean));
@@ -1664,33 +1979,38 @@ const AddIncidentScreen = () => {
         // Upload attachments if any
         if (attachments.length > 0) {
           try {
-            const uploadResult = await uploadMultipleAttachments(response.data.id, attachments);
+            const uploadResult = await uploadMultipleAttachments(
+              response.data.id,
+              attachments,
+            );
             if (!uploadResult.success && uploadResult.errors) {
-              const serverError = uploadResult.errors?.[0]?.error
+              const serverError = uploadResult.errors?.[0]?.error;
               CustomAlert.alert(
-                t('common.partialSuccess'),
-                `${t('addIncident.createdAttErr')}. ${serverError}`,
-                [{ text: 'OK', onPress: () => router.back() }]
+                t("common.partialSuccess"),
+                `${t("addIncident.createdAttErr")}. ${serverError}`,
+                [{ text: "OK", onPress: () => router.back() }],
               );
               setSubmitting(false);
               return;
             }
           } catch (uploadError) {
-            console.error('Attachment upload error:', uploadError);
+            console.error("Attachment upload error:", uploadError);
 
             // Log attachment upload error with context
-            crashLogger.logError(uploadError as Error, {
-              screen: 'AddIncidentScreen',
-              action: 'uploadAttachments',
-              incidentId: response.data.id,
-              attachmentCount: attachments.length,
-              context: 'Incident created but attachment upload failed',
-            }).catch(err => console.error('Failed to log error:', err));
+            crashLogger
+              .logError(uploadError as Error, {
+                screen: "AddIncidentScreen",
+                action: "uploadAttachments",
+                incidentId: response.data.id,
+                attachmentCount: attachments.length,
+                context: "Incident created but attachment upload failed",
+              })
+              .catch((err) => console.error("Failed to log error:", err));
 
             CustomAlert.alert(
-              t('common.partialSuccess'),
-              t('addIncident.createdAttErr'),
-              [{ text: 'OK', onPress: () => router.back() }]
+              t("common.partialSuccess"),
+              t("addIncident.createdAttErr"),
+              [{ text: "OK", onPress: () => router.back() }],
             );
             setSubmitting(false);
             return;
@@ -1698,43 +2018,52 @@ const AddIncidentScreen = () => {
         }
 
         // Clean up all temp files that were uploaded — prevents cache bloat
-        attachments.forEach(file => {
+        attachments.forEach((file) => {
           if (file?.uri) {
-            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(
+              () => {},
+            );
           }
         });
 
         setSubmitting(false);
-        CustomAlert.alert(t('common.success'), t('addIncident.created'), [
-          { text: 'OK', onPress: () => router.back() },
+        CustomAlert.alert(t("common.success"), t("addIncident.created"), [
+          { text: "OK", onPress: () => router.back() },
         ]);
       } else {
         setSubmitting(false);
-        const errorMsg = response.error || 'Unknown error occurred';
-        CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${errorMsg}`);
+        const errorMsg = response.error || "Unknown error occurred";
+        CustomAlert.alert(
+          t("common.error"),
+          `${t("common.failed")}: ${errorMsg}`,
+        );
       }
     } catch (error) {
-      console.error('Unexpected error during incident creation:', error);
+      console.error("Unexpected error during incident creation:", error);
 
       // Log incident creation error with full context
-      crashLogger.logError(error as Error, {
-        screen: 'AddIncidentScreen',
-        action: 'createIncident',
-        title: title,
-        workflowId: matchedWorkflow?.id,
-        priority: selectedPriority?.id,
-        severity: selectedSeverity?.id,
-        classificationId: selectedClassification?.id,
-        locationId: selectedLocation?.id,
-        sourceId: selectedSource?.id,
-        hasAttachments: attachments.length > 0,
-        context: 'Failed to create incident',
-      }).catch(err => console.error('Failed to log error:', err));
+      crashLogger
+        .logError(error as Error, {
+          screen: "AddIncidentScreen",
+          action: "createIncident",
+          title: title,
+          workflowId: matchedWorkflow?.id,
+          priority: selectedPriority?.id,
+          severity: selectedSeverity?.id,
+          classificationId: selectedClassification?.id,
+          locationId: selectedLocation?.id,
+          sourceId: selectedSource?.id,
+          hasAttachments: attachments.length > 0,
+          context: "Failed to create incident",
+        })
+        .catch((err) => console.error("Failed to log error:", err));
 
       setSubmitting(false);
       CustomAlert.alert(
-        t('common.error'),
-        t('common.unexpectedError', { error: error instanceof Error ? error.message : 'Unknown error' })
+        t("common.error"),
+        t("common.unexpectedError", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
       );
     }
   };
@@ -1742,10 +2071,10 @@ const AddIncidentScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('addIncident.title')}</Text>
+        <Text style={styles.headerTitle}>{t("addIncident.title")}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -1756,107 +2085,156 @@ const AddIncidentScreen = () => {
         <Animated.View
           style={[
             styles.toastBanner,
-            toastType === 'error' && styles.toastBannerError,
+            toastType === "error" && styles.toastBannerError,
             {
               opacity: toastAnim,
-              transform: [{
-                translateY: toastAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-20, 0],
-                }),
-              }],
+              transform: [
+                {
+                  translateY: toastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-20, 0],
+                  }),
+                },
+              ],
             },
           ]}
           pointerEvents="none"
         >
           <Ionicons
-            name={toastType === 'error' ? 'alert-circle' : 'information-circle'}
+            name={toastType === "error" ? "alert-circle" : "information-circle"}
             size={18}
             color="white"
             style={{ marginRight: 8 }}
           />
-          <Text style={styles.toastText} numberOfLines={3}>{toastMessage}</Text>
+          <Text style={styles.toastText} numberOfLines={3}>
+            {toastMessage}
+          </Text>
         </Animated.View>
       )}
 
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2EC4B6" />
-          <Text style={styles.loadingText}>{t('common.loading', 'Loading...')}</Text>
+          <Text style={styles.loadingText}>
+            {t("common.loading", "Loading...")}
+          </Text>
         </View>
       ) : (
         <>
-          <ScrollView style={[styles.formContainer]} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={[styles.formContainer]}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Auto-matched Workflow Display */}
             <View style={{ padding: 20 }}>
               <View style={[styles.workflowCard]}>
                 <View style={styles.workflowHeader}>
                   <Ionicons name="git-branch" size={20} color="#2EC4B6" />
-                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
+                  <Text style={styles.workflowLabel}>
+                    {t("common.workflow", "Workflow")}
+                  </Text>
                 </View>
                 {matchedWorkflow ? (
                   <View style={styles.workflowMatched}>
-                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                    <Text style={styles.workflowName}>{
-                      i18n.language === 'ar' && matchedWorkflow.name_ar ? matchedWorkflow.name_ar :
-                        matchedWorkflow.name
-                    }</Text>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color="#27AE60"
+                    />
+                    <Text style={styles.workflowName}>
+                      {i18n.language === "ar" && matchedWorkflow.name_ar
+                        ? matchedWorkflow.name_ar
+                        : matchedWorkflow.name}
+                    </Text>
                   </View>
                 ) : isMatchingWorkflow ? (
                   <View style={styles.workflowMatched}>
                     <ActivityIndicator size="small" color="#2EC4B6" />
                     <Text style={styles.workflowHint}>
-                      {t('addIncident.matchingWorkflow', 'Matching workflow...')}
+                      {t(
+                        "addIncident.matchingWorkflow",
+                        "Matching workflow...",
+                      )}
                     </Text>
                   </View>
                 ) : (
                   <Text style={styles.workflowHint}>
-                    {t('addIncident.workflowHint', 'Select classification, location, or source to auto-match a workflow')}
+                    {t(
+                      "addIncident.workflowHint",
+                      "Select classification, location, or source to auto-match a workflow",
+                    )}
                   </Text>
                 )}
-                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
+                {errors.workflow && (
+                  <Text style={styles.errorText}>{errors.workflow}</Text>
+                )}
               </View>
 
               {/* Title - Auto-generated */}
               <Text style={styles.sectionTitle}>
-                {t('addIncident.incidentTitle')} <Text style={styles.required}>*</Text>
+                {t("addIncident.incidentTitle")}{" "}
+                <Text style={styles.required}>*</Text>
               </Text>
-              <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
-                <Text style={[styles.autoGeneratedText, !title && styles.placeholderText, { textAlign: 'left' }]}>
-                  {title || t('incidents.titlePlaceholder')}
+              <View
+                style={[
+                  styles.input,
+                  styles.autoGeneratedField,
+                  errors.title && styles.inputError,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.autoGeneratedText,
+                    !title && styles.placeholderText,
+                    { textAlign: "left" },
+                  ]}
+                >
+                  {title || t("incidents.titlePlaceholder")}
                 </Text>
-                <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
+                <Ionicons
+                  name="lock-closed"
+                  size={16}
+                  color="#999"
+                  style={styles.lockIcon}
+                />
               </View>
-              <Text style={styles.helperText}>
-                {t('incidents.autoTitle')}
-              </Text>
-              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+              <Text style={styles.helperText}>{t("incidents.autoTitle")}</Text>
+              {errors.title && (
+                <Text style={styles.errorText}>{errors.title}</Text>
+              )}
 
               {/* Classification - Always required on mobile */}
               <Text style={styles.sectionTitle}>
-                {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                {t("incidents.classification")}{" "}
+                <Text style={styles.required}>*</Text>
               </Text>
               <TreeSelect
-                label={t('addIncident.selectClassification')}
-                value={selectedClassification?.name || ''}
+                label={t("addIncident.selectClassification")}
+                value={selectedClassification?.name || ""}
                 valueId={selectedClassification?.id}
                 data={classifications}
-                onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                onSelect={(node) =>
+                  setSelectedClassification(node as DropdownOption | null)
+                }
                 required={true}
                 error={errors.classification_id}
                 leafOnly={true}
-                placeholder={t('addIncident.selectClassification')}
+                placeholder={t("addIncident.selectClassification")}
                 iconType="classification"
               />
 
               {/* Location - Always required on mobile */}
               <Text style={styles.sectionTitle}>
-                {t('incidents.location')} <Text style={styles.required}>*</Text>
+                {t("incidents.location")} <Text style={styles.required}>*</Text>
               </Text>
               <TreeSelect
-                label={t('addIncident.selectLocation')}
-                value={selectedLocation?.name || ''}
-                valueId={selectedLocation?.id !== 'virtual_new_location' ? selectedLocation?.id : undefined}
+                label={t("addIncident.selectLocation")}
+                value={selectedLocation?.name || ""}
+                valueId={
+                  selectedLocation?.id !== "virtual_new_location"
+                    ? selectedLocation?.id
+                    : undefined
+                }
                 data={locationsWithVirtual}
                 onSelect={(node) => {
                   setSelectedLocation(node as DropdownOption | null);
@@ -1867,27 +2245,27 @@ const AddIncidentScreen = () => {
                 required={true}
                 error={errors.location_id}
                 leafOnly={true}
-                placeholder={t('addIncident.selectLocation')}
+                placeholder={t("addIncident.selectLocation")}
                 iconType="location"
                 disabled={!DISABLE_AUTO_LOCATION_RETRIEVAL}
               />
 
               {/* Source - Always mobile for mobile app, non-editable, Always required */}
               <Text style={styles.sectionTitle}>
-                {t('addIncident.source')} <Text style={styles.required}>*</Text>
+                {t("addIncident.source")} <Text style={styles.required}>*</Text>
               </Text>
               <Dropdown
-                label={t('addIncident.selectSource')}
-                value={selectedSource?.name || ''}
+                label={t("addIncident.selectSource")}
+                value={selectedSource?.name || ""}
                 options={sourceOptions}
-                onSelect={() => { }} // No-op, field is not editable on mobile
+                onSelect={() => {}} // No-op, field is not editable on mobile
                 required={true}
                 error={errors.source}
                 allowClear={false}
               />
 
               {/* Lookup Fields - Dynamic master data fields */}
-              {lookupCategories.map(category => {
+              {lookupCategories.map((category) => {
                 const lookupFieldKey = `lookup:${category.code}`;
                 const isRequired = requiredFields.includes(lookupFieldKey);
                 // Only show if required by workflow
@@ -1906,13 +2284,14 @@ const AddIncidentScreen = () => {
               })}
 
               {/* Severity - Only show if required by workflow */}
-              {isFieldRequired('severity') && (
+              {isFieldRequired("severity") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.severity')} <Text style={styles.required}>*</Text>
+                    {t("incidents.severity")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addIncident.selectSeverity')}
+                    label={t("addIncident.selectSeverity")}
                     value={selectedSeverity.name}
                     options={severityOptions}
                     onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -1923,14 +2302,15 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Assignee - only show if required */}
-              {isFieldRequired('assignee_id') && (
+              {isFieldRequired("assignee_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.assignee')} <Text style={styles.required}>*</Text>
+                    {t("incidents.assignee")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addIncident.selectAssignee')}
-                    value={selectedAssignee?.name || ''}
+                    label={t("addIncident.selectAssignee")}
+                    value={selectedAssignee?.name || ""}
                     options={users}
                     onSelect={setSelectedAssignee}
                     required={true}
@@ -1940,14 +2320,15 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Department - only show if required */}
-              {isFieldRequired('department_id') && (
+              {isFieldRequired("department_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.department')} <Text style={styles.required}>*</Text>
+                    {t("incidents.department")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addIncident.selectDepartment')}
-                    value={selectedDepartment?.name || ''}
+                    label={t("addIncident.selectDepartment")}
+                    value={selectedDepartment?.name || ""}
                     options={departments}
                     onSelect={setSelectedDepartment}
                     required={true}
@@ -1957,19 +2338,25 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Description - only show if required */}
-              {isFieldRequired('description') && (
+              {isFieldRequired("description") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.description')} <Text style={styles.required}>*</Text>
+                    {t("incidents.description")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addIncident.descriptionPlaceholder')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.description && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.descriptionPlaceholder")}
                     multiline
                     value={description}
                     onChangeText={(text) => {
                       setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH));
-                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                      if (errors.description)
+                        setErrors((prev) => ({ ...prev, description: "" }));
                     }}
                     maxLength={MAX_DESCRIPTION_LENGTH}
                     placeholderTextColor="#999"
@@ -1980,107 +2367,238 @@ const AddIncidentScreen = () => {
                       {description.length}/{MAX_DESCRIPTION_LENGTH}
                     </Text>
                   )}
-                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                  {errors.description && (
+                    <Text style={styles.errorText}>{errors.description}</Text>
+                  )}
                 </>
               )}
 
               {/* Comment - only show if required */}
-              {isFieldRequired('comment') && (
+              {isFieldRequired("comment") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                    {t("incidents.comment")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.comment && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t(
+                      "incidents.addCommentPlaceholder",
+                      "Add a comment...",
+                    )}
                     multiline
                     value={comment}
                     onChangeText={(text) => {
                       setComment(text);
-                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                      if (errors.comment)
+                        setErrors((prev) => ({ ...prev, comment: "" }));
                     }}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
-                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                  {errors.comment && (
+                    <Text style={styles.errorText}>{errors.comment}</Text>
+                  )}
                 </>
               )}
 
-              {/* Reporter Name - only show if required */}
-              {isFieldRequired('reporter_name') && (
+              {/* Caller Information (first/middle/last name) - show if required or optional */}
+              {isFieldVisible("reporter_name") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addIncident.reporterName')} <Text style={styles.required}>*</Text>
+                    {t("addIncident.callerInformation")}
+                  </Text>
+
+                  <Text style={styles.sectionTitle}>
+                    {t("addIncident.firstName")}{" "}
+                    {isFieldRequired("reporter_name") && (
+                      <Text style={styles.required}>*</Text>
+                    )}
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addIncident.reporterNamePlaceholder')}
-                    value={reporterName}
+                    style={[
+                      styles.input,
+                      errors.reporter_first_name && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.firstNamePlaceholder")}
+                    value={callerFirstName}
                     onChangeText={(text) => {
-                      setReporterName(text);
-                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                      setCallerFirstName(text.replace(/[^a-zA-ZÀ-ɏ؀-ۿ]/g, ""));
+                      if (errors.reporter_first_name)
+                        setErrors((prev) => ({
+                          ...prev,
+                          reporter_first_name: "",
+                        }));
                     }}
                     placeholderTextColor="#999"
                   />
-                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                  {errors.reporter_first_name && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_first_name}
+                    </Text>
+                  )}
+
+                  <Text style={styles.sectionTitle}>
+                    {t("addIncident.middleName")}{" "}
+                    {isFieldRequired("reporter_name") && (
+                      <Text style={styles.required}>*</Text>
+                    )}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors.reporter_middle_name && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.middleNamePlaceholder")}
+                    value={callerMiddleName}
+                    onChangeText={(text) => {
+                      setCallerMiddleName(text.replace(/[^a-zA-ZÀ-ɏ؀-ۿ]/g, ""));
+                      if (errors.reporter_middle_name)
+                        setErrors((prev) => ({
+                          ...prev,
+                          reporter_middle_name: "",
+                        }));
+                    }}
+                    placeholderTextColor="#999"
+                  />
+                  {errors.reporter_middle_name && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_middle_name}
+                    </Text>
+                  )}
+
+                  <Text style={styles.sectionTitle}>
+                    {t("addIncident.lastName")}{" "}
+                    {isFieldRequired("reporter_name") && (
+                      <Text style={styles.required}>*</Text>
+                    )}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors.reporter_last_name && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.lastNamePlaceholder")}
+                    value={callerLastName}
+                    onChangeText={(text) => {
+                      setCallerLastName(text.replace(/[^a-zA-ZÀ-ɏ؀-ۿ]/g, ""));
+                      if (errors.reporter_last_name)
+                        setErrors((prev) => ({
+                          ...prev,
+                          reporter_last_name: "",
+                        }));
+                    }}
+                    placeholderTextColor="#999"
+                  />
+                  {errors.reporter_last_name && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_last_name}
+                    </Text>
+                  )}
                 </>
               )}
 
-              {/* Reporter Email - only show if required */}
-              {isFieldRequired('reporter_email') && (
+              {/* Reporter Email - show if required or optional */}
+              {isFieldVisible("reporter_email") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addIncident.reporterEmail')} <Text style={styles.required}>*</Text>
+                    {t("addIncident.reporterEmail")}{" "}
+                    {isFieldRequired("reporter_email") && (
+                      <Text style={styles.required}>*</Text>
+                    )}
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addIncident.reporterEmailPlaceholder')}
+                    style={[
+                      styles.input,
+                      errors.reporter_email && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.reporterEmailPlaceholder")}
                     value={reporterEmail}
                     onChangeText={(text) => {
                       setReporterEmail(text);
-                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                      if (errors.reporter_email)
+                        setErrors((prev) => ({ ...prev, reporter_email: "" }));
                     }}
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
-                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                  {errors.reporter_email && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_email}
+                    </Text>
+                  )}
                 </>
               )}
 
               {/* Geolocation - only show if required */}
-              {isFieldRequired('geolocation') && (
+              {isFieldRequired("geolocation") && (
                 <>
                   <LocationPicker
-                    label={t('details.geolocation')}
+                    label={t("details.geolocation")}
                     value={locationData}
                     onChange={handleLocationChange}
-                    onGpsLocation={(loc) => { gpsLocationRef.current = loc; }}
+                    onGpsLocation={(loc) => {
+                      gpsLocationRef.current = loc;
+                    }}
                     required
                     autoFetch={true}
                     error={errors.geolocation}
                   />
                   {/* Show address loading status */}
-                  {locationData?.latitude && !locationData?.address && !locationData?.city && (
-                    <Text style={{ fontSize: 12, color: '#FF9800', textAlign: "left", marginBottom: 10 }}>
-                      {t('common.gettingAddress')}
-                    </Text>
-                  )}
+                  {locationData?.latitude &&
+                    !locationData?.address &&
+                    !locationData?.city && (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#FF9800",
+                          textAlign: "left",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {t("common.gettingAddress")}
+                      </Text>
+                    )}
                   {(locationData?.address || locationData?.city) && (
-                    <Text style={{ fontSize: 12, color: '#4CAF50', textAlign: "left", marginBottom: 10 }}>
-                      {t('common.locationLabel', { address: locationData.city || locationData.address })}
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#4CAF50",
+                        textAlign: "left",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {t("common.locationLabel", {
+                        address: locationData.city || locationData.address,
+                      })}
                     </Text>
                   )}
                 </>
               )}
 
               {/* Attachments - only show if required */}
-              {isFieldRequired('attachments') && (
+              {isFieldRequired("attachments") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.attachments')} <Text style={styles.required}>*</Text>
+                    {t("incidents.attachments")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
-                  <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError, { marginBottom: insets.bottom }]}>
+                  <View
+                    style={[
+                      styles.attachmentsContainer,
+                      errors.attachments && styles.attachmentsContainerError,
+                      { marginBottom: insets.bottom },
+                    ]}
+                  >
                     {attachments.length > 0 && (
                       <View style={styles.attachmentsList}>
                         {attachments.map((file, index) => (
@@ -2088,48 +2606,85 @@ const AddIncidentScreen = () => {
                             <TouchableOpacity
                               style={styles.attachmentInfo}
                               onPress={() => openImagePreview(index)}
-                              activeOpacity={file.type?.startsWith('image/') ? 0.6 : 1}
+                              activeOpacity={
+                                file.type?.startsWith("image/") ? 0.6 : 1
+                              }
                             >
                               <Ionicons
-                                name={file.type?.startsWith('image/') ? 'image-outline' : 'document-attach'}
+                                name={
+                                  file.type?.startsWith("image/")
+                                    ? "image-outline"
+                                    : "document-attach"
+                                }
                                 size={20}
                                 color="#2EC4B6"
                               />
-                              <Text style={styles.attachmentName} numberOfLines={1}>
+                              <Text
+                                style={styles.attachmentName}
+                                numberOfLines={1}
+                              >
                                 {file.name}
                               </Text>
                               <Text style={styles.attachmentSize}>
-                                ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
+                                (
+                                {file.size
+                                  ? (file.size / 1024).toFixed(1) + " KB"
+                                  : "N/A"}
+                                )
                               </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => removeAttachment(index)}>
-                              <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                            <TouchableOpacity
+                              onPress={() => removeAttachment(index)}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={22}
+                                color="#E74C3C"
+                              />
                             </TouchableOpacity>
                           </View>
                         ))}
                       </View>
                     )}
                     <TouchableOpacity
-                      style={[styles.attachmentButton, attachments.length >= MAX_ATTACHMENTS_COUNT && styles.attachmentButtonDisabled]}
+                      style={[
+                        styles.attachmentButton,
+                        attachments.length >= MAX_ATTACHMENTS_COUNT &&
+                          styles.attachmentButtonDisabled,
+                      ]}
                       onPress={showAttachmentOptions}
                       disabled={attachments.length >= MAX_ATTACHMENTS_COUNT}
                     >
                       <Ionicons
                         name="cloud-upload-outline"
                         size={24}
-                        color={attachments.length >= MAX_ATTACHMENTS_COUNT ? '#999999' : '#2EC4B6'}
+                        color={
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? "#999999"
+                            : "#2EC4B6"
+                        }
                       />
-                      <Text style={[styles.attachmentButtonText, attachments.length >= MAX_ATTACHMENTS_COUNT && styles.attachmentButtonTextDisabled]}>
+                      <Text
+                        style={[
+                          styles.attachmentButtonText,
+                          attachments.length >= MAX_ATTACHMENTS_COUNT &&
+                            styles.attachmentButtonTextDisabled,
+                        ]}
+                      >
                         {attachments.length >= MAX_ATTACHMENTS_COUNT
-                          ? t('addIncident.maxAttachmentsReached', {
-                            max: MAX_ATTACHMENTS_COUNT,
-                            defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
-                          })
-                          : attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+                          ? t("addIncident.maxAttachmentsReached", {
+                              max: MAX_ATTACHMENTS_COUNT,
+                              defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                            })
+                          : attachments.length > 0
+                            ? t("addIncident.addMoreFiles")
+                            : t("addIncident.tapToUpload")}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
+                  {errors.attachments && (
+                    <Text style={styles.errorText}>{errors.attachments}</Text>
+                  )}
                 </>
               )}
 
@@ -2150,7 +2705,9 @@ const AddIncidentScreen = () => {
               onPress={() => setAttachmentPickerVisible(false)}
             >
               <View style={styles.pickerModalContent}>
-                <Text style={styles.pickerModalTitle}>{t('incidents.addAttachment', 'Add Attachment')}</Text>
+                <Text style={styles.pickerModalTitle}>
+                  {t("incidents.addAttachment", "Add Attachment")}
+                </Text>
 
                 <TouchableOpacity
                   style={styles.pickerOption}
@@ -2160,7 +2717,9 @@ const AddIncidentScreen = () => {
                   }}
                 >
                   <Ionicons name="camera" size={24} color="#2EC4B6" />
-                  <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
+                  <Text style={styles.pickerOptionText}>
+                    {t("incidents.takePhoto", "Take Photo")}
+                  </Text>
                 </TouchableOpacity>
 
                 {canUploadAttachmentGallery() && (
@@ -2172,7 +2731,9 @@ const AddIncidentScreen = () => {
                     }}
                   >
                     <Ionicons name="images" size={24} color="#2EC4B6" />
-                    <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                    <Text style={styles.pickerOptionText}>
+                      {t("common.chooseFromGallery", "Choose from Gallery")}
+                    </Text>
                   </TouchableOpacity>
                 )}
 
@@ -2191,13 +2752,20 @@ const AddIncidentScreen = () => {
                   style={styles.pickerCancelButton}
                   onPress={() => setAttachmentPickerVisible(false)}
                 >
-                  <Text style={styles.pickerCancelText}>{t('common.cancel', 'Cancel')}</Text>
+                  <Text style={styles.pickerCancelText}>
+                    {t("common.cancel", "Cancel")}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
           </Modal>
 
-          <View style={[styles.submitContainer, { paddingBottom: 20 + insets.bottom }]}>
+          <View
+            style={[
+              styles.submitContainer,
+              { paddingBottom: 20 + insets.bottom },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.submitButton, submitting && styles.disabledButton]}
               onPress={handleSubmit}
@@ -2206,14 +2774,16 @@ const AddIncidentScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>{t('addIncident.createButton')}</Text>
+                <Text style={styles.submitButtonText}>
+                  {t("addIncident.createButton")}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
           <AuthenticatedImageViewer
             images={attachments
-              .filter(f => f.type?.startsWith('image/'))
+              .filter((f) => f.type?.startsWith("image/"))
               .map((f, i) => ({
                 id: String(i),
                 uri: f.uri,
@@ -2233,7 +2803,11 @@ const AddIncidentScreen = () => {
           imageUri={pending.imageUri}
           data={pending.data}
           onComplete={(watermarkedUri) =>
-            handleWatermarkComplete(pending.id, watermarkedUri, pending.originalName)
+            handleWatermarkComplete(
+              pending.id,
+              watermarkedUri,
+              pending.originalName,
+            )
           }
         />
       ))}
@@ -2253,56 +2827,56 @@ const AddIncidentScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     paddingTop: 50,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   toastBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2EC4B6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2EC4B6",
     marginHorizontal: 16,
     marginBottom: 4,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     zIndex: 100,
   },
   toastBannerError: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: "#E74C3C",
   },
   toastText: {
-    color: 'white',
+    color: "white",
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
   formContainer: {
@@ -2310,333 +2884,333 @@ const styles = StyleSheet.create({
     // padding: 20,
   },
   workflowCard: {
-    backgroundColor: '#E8F8F7',
+    backgroundColor: "#E8F8F7",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#2EC4B6',
+    borderColor: "#2EC4B6",
   },
   workflowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   workflowLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#2EC4B6',
+    fontWeight: "600",
+    color: "#2EC4B6",
     marginLeft: 8,
   },
   workflowMatched: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   workflowName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginLeft: 8,
   },
   workflowHint: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
-    color: '#333',
-    textAlign: 'left'
+    color: "#333",
+    textAlign: "left",
   },
   required: {
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   inputError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   autoGeneratedField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
-    borderColor: '#D0D0D0',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8F9FA",
+    borderColor: "#D0D0D0",
     paddingRight: 10,
   },
   autoGeneratedText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   lockIcon: {
     marginLeft: 8,
   },
   helperText: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
     marginTop: -15,
     marginBottom: 15,
-    textAlign: 'left'
+    textAlign: "left",
   },
   placeholderText: {
-    color: '#999',
+    color: "#999",
   },
   dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   dropdownError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   dropdownText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   halfWidth: {
-    width: '48%',
+    width: "48%",
   },
   fullWidth: {
-    width: '100%',
+    width: "100%",
   },
   descriptionInput: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     height: 120,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   bottomPadding: {
     height: 120,
   },
   submitContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: "#EEE",
   },
   submitButton: {
-    backgroundColor: '#2EC4B6',
+    backgroundColor: "#2EC4B6",
     padding: 16,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   disabledButton: {
-    backgroundColor: '#A0A0A0',
+    backgroundColor: "#A0A0A0",
   },
   submitButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   errorText: {
-    color: '#E74C3C',
+    color: "#E74C3C",
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
-    textAlign: "left"
+    textAlign: "left",
   },
   charCounter: {
     fontSize: 11,
-    color: '#999',
-    textAlign: 'right',
+    color: "#999",
+    textAlign: "right",
     marginTop: -14,
     marginBottom: 8,
   },
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   clearOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFF5F5',
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF5F5",
   },
   clearOptionText: {
     fontSize: 16,
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   emptyList: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
-    color: '#999',
+    color: "#999",
     fontSize: 16,
   },
   // Attachment styles
   attachmentsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   attachmentsContainerError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   attachmentsList: {
     marginBottom: 12,
   },
   attachmentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
     padding: 10,
     borderRadius: 8,
     marginBottom: 8,
   },
   attachmentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   attachmentName: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     marginLeft: 8,
     flex: 1,
   },
   attachmentSize: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
     marginLeft: 4,
   },
   attachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 16,
     borderWidth: 2,
-    borderColor: '#2EC4B6',
-    borderStyle: 'dashed',
+    borderColor: "#2EC4B6",
+    borderStyle: "dashed",
     borderRadius: 10,
   },
   attachmentButtonDisabled: {
-    borderColor: '#B0B0B0',
+    borderColor: "#B0B0B0",
   },
   attachmentButtonText: {
     marginLeft: 8,
-    color: '#2EC4B6',
+    color: "#2EC4B6",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   attachmentButtonTextDisabled: {
-    color: '#999999',
+    color: "#999999",
   },
   // Attachment picker modal styles
   pickerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   pickerModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 20,
-    width: '85%',
+    width: "85%",
     maxWidth: 340,
   },
   pickerModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
     marginBottom: 20,
   },
   pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 10,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     marginBottom: 10,
   },
   pickerOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginLeft: 12,
   },
   pickerCancelButton: {
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   pickerCancelText: {
     fontSize: 16,
-    color: '#E74C3C',
-    fontWeight: '500',
+    color: "#E74C3C",
+    fontWeight: "500",
   },
 });
 
