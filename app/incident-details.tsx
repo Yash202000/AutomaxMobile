@@ -71,13 +71,6 @@ const priorityConfig: Record<number, { key: string; color: string }> = {
   5: { key: "veryLow", color: COLORS.priority.veryLow },
 };
 
-const formatFileSize = (bytes?: number) => {
-  if (!bytes) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
 interface AttachmentData {
   id: string;
   file_name: string;
@@ -285,7 +278,6 @@ const AttachmentMeta = ({
     : uploader?.username;
 
   const metaParts = [
-    formatFileSize(attachment.file_size),
     attachment.created_at
       ? new Date(attachment.created_at).toLocaleString("en-GB")
       : "",
