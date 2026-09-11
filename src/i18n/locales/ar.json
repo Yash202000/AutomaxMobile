@@ -37,6 +37,7 @@
     "recording": "تسجيل",
     "error": "خطأ",
     "retry": "إعادة المحاولة",
+    "failedToLoad": "فشل التحميل",
     "cancel": "إلغاء",
     "partialSuccess": "نجاح جزئي",
     "save": "حفظ",
@@ -141,7 +142,8 @@
     "authRequired": "المصادقة مطلوبة",
     "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز",
     "downloadError": "خطأ في التحميل",
-    "failedToDownload": "فشل في تحميل المرفق"
+    "failedToDownload": "فشل في تحميل المرفق",
+    "savedToPhotos": "تم حفظ الصورة في معرض الصور"
   },
   "map": {
     "incidents": "خريطة الحوادث",
@@ -383,7 +385,7 @@
     "autoRevertHint": "إذا لم يُغلق خلال هذه المدة، سيعود الحادث تلقائياً للحالة السابقة.",
     "attachFiles": "ارفاق ملف",
     "addMoreFiles": "إضافة المزيد من الملفات",
-    "maxFileSize": "الحد الأقصى لحجم الملف: 5 ميجابايت",
+    "maxFileSize": "الحد الأقصى لحجم الملف: {{size}} ميجابايت",
     "addAttachment": "إضافة مرفق",
     "takePhoto": "التقاط صورة",
     "takePhotoSubtitle": "استخدم الكاميرا لالتقاط صورة",
