@@ -262,6 +262,7 @@ const AddIncidentScreen = () => {
   const [callerMiddleName, setCallerMiddleName] = useState("");
   const [callerLastName, setCallerLastName] = useState("");
   const [reporterEmail, setReporterEmail] = useState("");
+  const [reporterPhone, setReporterPhone] = useState("");
   const [selectedClassification, setSelectedClassification] =
     useState<DropdownOption | null>(null);
   const [selectedLocation, setSelectedLocation] =
@@ -871,6 +872,7 @@ const AddIncidentScreen = () => {
     geolocation: t("details.geolocation"),
     reporter_name: t("addIncident.reporterName"),
     reporter_email: t("addIncident.reporterEmail"),
+    reporter_phone: t("addIncident.phone"),
     attachments: t("incidents.attachments"),
   };
 
@@ -1001,6 +1003,9 @@ const AddIncidentScreen = () => {
           break;
         case "reporter_email":
           value = reporterEmail;
+          break;
+        case "reporter_phone":
+          value = reporterPhone;
           break;
       }
 
@@ -1937,6 +1942,8 @@ const AddIncidentScreen = () => {
       if (fullReporterName) incidentData.reporter_name = fullReporterName;
       if (reporterEmail.trim())
         incidentData.reporter_email = reporterEmail.trim();
+      if (reporterPhone.trim())
+        incidentData.reporter_phone = reporterPhone.trim();
 
       // Separate lookup values by field type
       const selectLookupIds: string[] = [];
@@ -2534,6 +2541,39 @@ const AddIncidentScreen = () => {
                   {errors.reporter_email && (
                     <Text style={styles.errorText}>
                       {errors.reporter_email}
+                    </Text>
+                  )}
+                </>
+              )}
+
+              {/* Reporter Phone - show if required or optional */}
+              {isFieldVisible("reporter_phone") && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t("addIncident.phone")}{" "}
+                    {isFieldRequired("reporter_phone") && (
+                      <Text style={styles.required}>*</Text>
+                    )}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors.reporter_phone && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addIncident.phonePlaceholder")}
+                    value={reporterPhone}
+                    onChangeText={(text) => {
+                      setReporterPhone(text.replace(/[^0-9+\s-]/g, ""));
+                      if (errors.reporter_phone)
+                        setErrors((prev) => ({ ...prev, reporter_phone: "" }));
+                    }}
+                    placeholderTextColor="#999"
+                    keyboardType="phone-pad"
+                  />
+                  {errors.reporter_phone && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_phone}
                     </Text>
                   )}
                 </>
