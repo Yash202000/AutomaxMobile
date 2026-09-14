@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * Builds the JSON body for POST /incidents/search from the same params shape
@@ -14,34 +14,54 @@ function buildSearchBody(params: Record<string, any>): Record<string, any> {
   };
 
   const scalarFields = [
-    'record_type', 'search', 'source', 'channel', 'my_record', 'sort_by',
-    'reporter_phone', 'reporter_phone_search', 'caller_identity', 'momra_ref',
-    'task_id', 'source_incident_id', 'transition_id', 'from_state_id', 'to_state_id',
+    "record_type",
+    "search",
+    "source",
+    "channel",
+    "my_record",
+    "sort_by",
+    "reporter_phone",
+    "reporter_phone_search",
+    "caller_identity",
+    "momra_ref",
+    "task_id",
+    "source_incident_id",
+    "transition_id",
+    "from_state_id",
+    "to_state_id",
   ];
   for (const key of scalarFields) {
     if (params[key]) body[key] = params[key];
   }
 
-  if (params.sla_breached !== undefined) body.sla_breached = params.sla_breached;
-  if (params.converted_to_request !== undefined) body.converted_to_request = params.converted_to_request;
+  if (params.sla_breached !== undefined)
+    body.sla_breached = params.sla_breached;
+  if (params.converted_to_request !== undefined)
+    body.converted_to_request = params.converted_to_request;
 
-  if (params.priority !== undefined && params.priority !== null && params.priority !== '') {
-    body.priority = Array.isArray(params.priority) ? params.priority[0] : params.priority;
+  if (
+    params.priority !== undefined &&
+    params.priority !== null &&
+    params.priority !== ""
+  ) {
+    body.priority = Array.isArray(params.priority)
+      ? params.priority[0]
+      : params.priority;
   }
 
   // ID-list filters — backend requires arrays even when a screen passes one id as a string.
   const arrayFields: Record<string, string> = {
-    workflow_id: 'workflow_id',
-    current_state_id: 'current_state_id',
-    current_state_code: 'current_state_code',
-    classification_id: 'classification_id',
-    classification_ids: 'classification_id', // alias used by some screens
-    department_id: 'department_id',
-    department_ids: 'department_id', // alias
-    location_id: 'location_id',
-    location_ids: 'location_id', // alias
-    assignee_id: 'assignee_id',
-    reporter_id: 'reporter_id',
+    workflow_id: "workflow_id",
+    current_state_id: "current_state_id",
+    current_state_code: "current_state_code",
+    classification_id: "classification_id",
+    classification_ids: "classification_id", // alias used by some screens
+    department_id: "department_id",
+    department_ids: "department_id", // alias
+    location_id: "location_id",
+    location_ids: "location_id", // alias
+    assignee_id: "assignee_id",
+    reporter_id: "reporter_id",
   };
   for (const [paramKey, bodyKey] of Object.entries(arrayFields)) {
     if (params[paramKey]) {
@@ -92,10 +112,12 @@ interface IncidentMarkersResponse {
 // per-row fields only) instead of paginating — for plotting on the map view.
 // Fetch full details for a specific incident via getIncidentById when its
 // marker is tapped.
-export const getIncidentMarkers = async (params: Record<string, any> = {}): Promise<IncidentMarkersResponse> => {
+export const getIncidentMarkers = async (
+  params: Record<string, any> = {},
+): Promise<IncidentMarkersResponse> => {
   try {
     const body = buildSearchBody(params);
-    const response = await apiClient.post('/incidents/search/markers', body);
+    const response = await apiClient.post("/incidents/search/markers", body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -105,17 +127,33 @@ export const getIncidentMarkers = async (params: Record<string, any> = {}): Prom
         capped: !!response.data.capped,
       };
     }
-    return { success: false, data: [], totalMatching: 0, returnedCount: 0, capped: false, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      totalMatching: 0,
+      returnedCount: 0,
+      capped: false,
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], totalMatching: 0, returnedCount: 0, capped: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      totalMatching: 0,
+      returnedCount: 0,
+      capped: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
-export const getIncidents = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+export const getIncidents = async (
+  params: Record<string, any> = {},
+): Promise<IncidentListResponse> => {
   try {
-    const body = buildSearchBody({ record_type: 'incident', ...params });
+    const body = buildSearchBody({ record_type: "incident", ...params });
 
-    const response = await apiClient.post('/incidents/search', body);
+    const response = await apiClient.post("/incidents/search", body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -128,9 +166,19 @@ export const getIncidents = async (params: Record<string, any> = {}): Promise<In
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
@@ -140,9 +188,12 @@ export const getIncidentById = async (id: string) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
@@ -152,63 +203,88 @@ export const getIncidentHistory = async (id: string) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const createIncident = async (incidentData: any) => {
   try {
-    const response = await apiClient.post('/incidents', incidentData);
+    const response = await apiClient.post("/incidents", incidentData);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: response.data?.error || 'Invalid response from server' };
+    return {
+      success: false,
+      error: response.data?.error || "Invalid response from server",
+    };
   } catch (error: any) {
     const errorData = error.response?.data;
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.details
+      details: errorData?.details,
     };
   }
 };
 
 export const getAvailableTransitions = async (id: string) => {
   try {
-    const response = await apiClient.get(`/incidents/${id}/available-transitions`);
+    const response = await apiClient.get(
+      `/incidents/${id}/available-transitions`,
+    );
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const executeTransition = async (id: string, transitionData: any) => {
   try {
-    const response = await apiClient.post(`/incidents/${id}/transition`, transitionData);
+    const response = await apiClient.post(
+      `/incidents/${id}/transition`,
+      transitionData,
+    );
 
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.error || error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error:
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message,
+    };
   }
 };
 
 export const getAttachments = async (incidentId: string) => {
   try {
-    const response = await apiClient.get(`/incidents/${incidentId}/attachments`);
+    const response = await apiClient.get(
+      `/incidents/${incidentId}/attachments`,
+    );
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
@@ -218,81 +294,122 @@ export const getComments = async (incidentId: string) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
-export const addComment = async (incidentId: string, content: string, isInternal = false) => {
+export const addComment = async (
+  incidentId: string,
+  content: string,
+  isInternal = false,
+) => {
   try {
-    const response = await apiClient.post(`/incidents/${incidentId}/comments`, { content, is_internal: isInternal });
+    const response = await apiClient.post(`/incidents/${incidentId}/comments`, {
+      content,
+      is_internal: isInternal,
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const getIncidentStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'incident' } });
+    const response = await apiClient.get("/incidents/stats/v2", {
+      params: { ...params, record_type: "incident" },
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server', status: 500 };
+    return {
+      success: false,
+      error: "Invalid response from server",
+      status: 500,
+    };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message, status: error.response?.status };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+      status: error.response?.status,
+    };
   }
 };
 
 // Get matching users for a transition based on criteria
 export const getMatchingUsers = async (matchCriteria: any) => {
   try {
-    const response = await apiClient.post('/admin/users/match', matchCriteria);
+    const response = await apiClient.post("/admin/users/match", matchCriteria);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 // Upload attachment to an incident
-export const uploadAttachment = async (incidentId: string, file: any) => {
+export const uploadAttachment = async (
+  incidentId: string,
+  file: any,
+  current_state_id: string | undefined,
+) => {
   try {
     const formData = new FormData();
-    formData.append('file', {
+    formData.append("file", {
       uri: file.uri,
       name: file.name,
       type: file.type,
     } as any);
 
-    const response = await apiClient.post(`/incidents/${incidentId}/attachments`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await apiClient.post(
+      `/incidents/${incidentId}/attachments?current_state=${current_state_id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       },
-    });
+    );
 
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 // Upload multiple attachments to an incident
-export const uploadMultipleAttachments = async (incidentId: string, files: any[]) => {
+export const uploadMultipleAttachments = async (
+  incidentId: string,
+  files: any[],
+  current_state_id: string | undefined,
+) => {
   const results: any[] = [];
   const errors: any[] = [];
 
   for (const file of files) {
-    const result = await uploadAttachment(incidentId, file);
+    const result = await uploadAttachment(incidentId, file, current_state_id);
     if (result.success) {
       results.push(result.data);
     } else {
@@ -309,10 +426,15 @@ export const uploadMultipleAttachments = async (incidentId: string, files: any[]
 };
 
 // Get incidents assigned to current user
-export const getMyAssignedIncidents = async (page = 1, limit = 20): Promise<IncidentListResponse> => {
+export const getMyAssignedIncidents = async (
+  page = 1,
+  limit = 20,
+): Promise<IncidentListResponse> => {
   try {
     // Get ALL assigned tickets (incidents, requests, complaints, queries)
-    const response = await apiClient.get(`/incidents/my-assigned?page=${page}&limit=${limit}`);
+    const response = await apiClient.get(
+      `/incidents/my-assigned?page=${page}&limit=${limit}`,
+    );
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -325,17 +447,32 @@ export const getMyAssignedIncidents = async (page = 1, limit = 20): Promise<Inci
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 // Get tickets created/reported by current user (all types)
-export const getMyReportedIncidents = async (page = 1, limit = 20): Promise<IncidentListResponse> => {
+export const getMyReportedIncidents = async (
+  page = 1,
+  limit = 20,
+): Promise<IncidentListResponse> => {
   try {
     // Get ALL created tickets (incidents, requests, complaints, queries)
-    const response = await apiClient.get(`/incidents/my-reported?page=${page}&limit=${limit}`);
+    const response = await apiClient.get(
+      `/incidents/my-reported?page=${page}&limit=${limit}`,
+    );
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -348,19 +485,31 @@ export const getMyReportedIncidents = async (page = 1, limit = 20): Promise<Inci
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 // ==================== REQUESTS ====================
 
-export const getRequests = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+export const getRequests = async (
+  params: Record<string, any> = {},
+): Promise<IncidentListResponse> => {
   try {
-    const body = buildSearchBody({ record_type: 'request', ...params });
+    const body = buildSearchBody({ record_type: "request", ...params });
 
-    const response = await apiClient.post('/incidents/search', body);
+    const response = await apiClient.post("/incidents/search", body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -373,48 +522,76 @@ export const getRequests = async (params: Record<string, any> = {}): Promise<Inc
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const getRequestStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'request' } });
+    const response = await apiClient.get("/incidents/stats/v2", {
+      params: { ...params, record_type: "request" },
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server', status: 500 };
+    return {
+      success: false,
+      error: "Invalid response from server",
+      status: 500,
+    };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message, status: error.response?.status };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+      status: error.response?.status,
+    };
   }
 };
 
 export const createRequest = async (requestData: any) => {
   try {
-    const response = await apiClient.post('/incidents', { ...requestData, record_type: 'request' });
+    const response = await apiClient.post("/incidents", {
+      ...requestData,
+      record_type: "request",
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: response.data?.error || 'Invalid response from server' };
+    return {
+      success: false,
+      error: response.data?.error || "Invalid response from server",
+    };
   } catch (error: any) {
     const errorData = error.response?.data;
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.details // validation error details
+      details: errorData?.details, // validation error details
     };
   }
 };
 
 // ==================== COMPLAINTS ====================
 
-export const getComplaints = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+export const getComplaints = async (
+  params: Record<string, any> = {},
+): Promise<IncidentListResponse> => {
   try {
-    const body = buildSearchBody({ record_type: 'complaint', ...params });
+    const body = buildSearchBody({ record_type: "complaint", ...params });
 
-    const response = await apiClient.post('/incidents/search', body);
+    const response = await apiClient.post("/incidents/search", body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -427,21 +604,41 @@ export const getComplaints = async (params: Record<string, any> = {}): Promise<I
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const getComplaintStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'complaint' } });
+    const response = await apiClient.get("/incidents/stats/v2", {
+      params: { ...params, record_type: "complaint" },
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server', status: 500 };
+    return {
+      success: false,
+      error: "Invalid response from server",
+      status: 500,
+    };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message, status: error.response?.status };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+      status: error.response?.status,
+    };
   }
 };
 
@@ -451,56 +648,75 @@ export const getComplaintHistory = async (id: string) => {
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const createComplaint = async (complaintData: any) => {
   try {
-    const response = await apiClient.post('/complaints', complaintData);
+    const response = await apiClient.post("/complaints", complaintData);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: response.data?.error || 'Invalid response from server' };
+    return {
+      success: false,
+      error: response.data?.error || "Invalid response from server",
+    };
   } catch (error: any) {
     const errorData = error.response?.data;
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.details
+      details: errorData?.details,
     };
   }
 };
 
 // Upload attachment to a complaint
-export const uploadComplaintAttachment = async (complaintId: string, file: any) => {
+export const uploadComplaintAttachment = async (
+  complaintId: string,
+  file: any,
+) => {
   try {
     const formData = new FormData();
-    formData.append('file', {
+    formData.append("file", {
       uri: file.uri,
       name: file.name,
       type: file.type,
     } as any);
 
-    const response = await apiClient.post(`/complaints/${complaintId}/attachments`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await apiClient.post(
+      `/complaints/${complaintId}/attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       },
-    });
+    );
 
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 // Upload multiple attachments to a complaint
-export const uploadMultipleComplaintAttachments = async (complaintId: string, files: any[]) => {
+export const uploadMultipleComplaintAttachments = async (
+  complaintId: string,
+  files: any[],
+) => {
   const results: any[] = [];
   const errors: any[] = [];
 
@@ -522,11 +738,13 @@ export const uploadMultipleComplaintAttachments = async (complaintId: string, fi
 
 // ==================== QUERIES ====================
 
-export const getQueries = async (params: Record<string, any> = {}): Promise<IncidentListResponse> => {
+export const getQueries = async (
+  params: Record<string, any> = {},
+): Promise<IncidentListResponse> => {
   try {
-    const body = buildSearchBody({ record_type: 'query', ...params });
+    const body = buildSearchBody({ record_type: "query", ...params });
 
-    const response = await apiClient.post('/incidents/search', body);
+    const response = await apiClient.post("/incidents/search", body);
     if (response.data && response.data.success) {
       return {
         success: true,
@@ -539,86 +757,135 @@ export const getQueries = async (params: Record<string, any> = {}): Promise<Inci
         },
       };
     }
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: 'Invalid response from server' };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: "Invalid response from server",
+    };
   } catch (error: any) {
-    return { success: false, data: [], pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 }, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit: 20, total_items: 0, total_pages: 0 },
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const getQueryStats = async (params = {}) => {
   try {
-    const response = await apiClient.get('/incidents/stats/v2', { params: { ...params, record_type: 'query' } });
+    const response = await apiClient.get("/incidents/stats/v2", {
+      params: { ...params, record_type: "query" },
+    });
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server', status: 500 };
+    return {
+      success: false,
+      error: "Invalid response from server",
+      status: 500,
+    };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message, status: error.response?.status };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+      status: error.response?.status,
+    };
   }
 };
 
 export const createQuery = async (queryData: any) => {
   try {
-    const response = await apiClient.post('/queries', queryData);
+    const response = await apiClient.post("/queries", queryData);
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: response.data?.error || 'Invalid response from server' };
+    return {
+      success: false,
+      error: response.data?.error || "Invalid response from server",
+    };
   } catch (error: any) {
     const errorData = error.response?.data;
     return {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
-      details: errorData?.errors
+      details: errorData?.errors,
     };
   }
 };
 
-export const downloadIncidentReport = async (id: string, format: 'pdf' | 'json' | 'txt' = 'pdf') => {
+export const downloadIncidentReport = async (
+  id: string,
+  format: "pdf" | "json" | "txt" = "pdf",
+) => {
   try {
     const response = await apiClient.get(`/incidents/${id}/report`, {
       params: { format },
-      responseType: 'blob',
+      responseType: "blob",
     });
     return { success: true, data: response.data };
   } catch (error: any) {
-    return { success: false, data: null, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
-export const getFeedbackTemplatesByTransition = async (workflowTransitionId: string) => {
+export const getFeedbackTemplatesByTransition = async (
+  workflowTransitionId: string,
+) => {
   try {
-    const response = await apiClient.get(`/admin/feedback-templates/workflow-transition/${workflowTransitionId}`);
+    const response = await apiClient.get(
+      `/admin/feedback-templates/workflow-transition/${workflowTransitionId}`,
+    );
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
-export const getCommentTemplatesByTransition = async (workflowTransitionId: string) => {
+export const getCommentTemplatesByTransition = async (
+  workflowTransitionId: string,
+) => {
   try {
-    const response = await apiClient.get(`/admin/comment-templates/workflow-transition/${workflowTransitionId}`);
+    const response = await apiClient.get(
+      `/admin/comment-templates/workflow-transition/${workflowTransitionId}`,
+    );
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
 export const getReadyToCloseDurationOptions = async () => {
   try {
-    const response = await apiClient.get('/incidents/ready-to-close/duration-options');
+    const response = await apiClient.get(
+      "/incidents/ready-to-close/duration-options",
+    );
     if (response.data && response.data.success) {
       return { success: true, data: response.data.data };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };
 
@@ -649,13 +916,22 @@ export interface CanConvertToRequestResponse {
   reason?: string;
 }
 
-export const convertToRequest = async (id: string, data: ConvertToRequestRequest) => {
+export const convertToRequest = async (
+  id: string,
+  data: ConvertToRequestRequest,
+) => {
   try {
-    const response = await apiClient.post(`/incidents/${id}/convert-to-request`, data);
+    const response = await apiClient.post(
+      `/incidents/${id}/convert-to-request`,
+      data,
+    );
     if (response.data && response.data.success) {
-      return { success: true, data: response.data.data as ConvertToRequestResponse };
+      return {
+        success: true,
+        data: response.data.data as ConvertToRequestResponse,
+      };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
     const errData = error.response?.data;
     let errMsg = errData?.message || error.message;
@@ -670,10 +946,16 @@ export const canConvertToRequest = async (id: string) => {
   try {
     const response = await apiClient.get(`/incidents/${id}/can-convert`);
     if (response.data && response.data.success) {
-      return { success: true, data: response.data.data as CanConvertToRequestResponse };
+      return {
+        success: true,
+        data: response.data.data as CanConvertToRequestResponse,
+      };
     }
-    return { success: false, error: 'Invalid response from server' };
+    return { success: false, error: "Invalid response from server" };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
   }
 };

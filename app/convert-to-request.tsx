@@ -1,5 +1,4 @@
 import { getClassificationsTree } from "@/src/api/classifications";
-import { validateImage } from "@/src/api/images";
 import {
   convertToRequest,
   executeTransition,
@@ -7,6 +6,7 @@ import {
   uploadAttachment,
 } from "@/src/api/incidents";
 import { getWorkflows } from "@/src/api/workflow";
+import { filterInvalidImages } from "@/src/utils/imageValidation";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
 import i18n from "@/src/i18n";
@@ -28,12 +28,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// When true, an image attachment must pass server-side validation
-// (POST /images/validate) before a transition can be executed. Mirrors the
-// same gate in add-incident.tsx / update-status.tsx.
-const IMAGE_VALIDATION_REQUIRED =
-  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 const COLORS = {
   primary: "#1A237E",
@@ -67,6 +61,9 @@ export default function ConvertToRequestScreen() {
   }, [incident]);
 
   const [loading, setLoading] = useState(false);
+  // True while a just-picked image attachment is being validated against the
+  // server — surfaced on the upload button so the UI doesn't look stuck.
+  const [validatingAttachment, setValidatingAttachment] = useState(false);
 
   // Data
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
@@ -188,9 +185,32 @@ export default function ConvertToRequestScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+
+        // Validate image content up front, at selection time, instead of
+        // waiting until submit.
+        setValidatingAttachment(true);
+        const { invalidFiles } = await filterInvalidImages([
+          {
+            uri: file.uri,
+            name: file.name,
+            type: file.mimeType || "application/octet-stream",
+          },
+        ]);
+        setValidatingAttachment(false);
+
+        if (invalidFiles.length > 0) {
+          CustomAlert.alert(
+            t("addIncident.invalidImageTitle"),
+            invalidFiles.join("\n"),
+          );
+          return;
+        }
+
         setTransitionAttachment(result);
       }
     } catch (err) {
+      setValidatingAttachment(false);
       console.error("Failed to pick document", err);
     }
   };
@@ -318,22 +338,9 @@ export default function ConvertToRequestScreen() {
             name: file.name,
           };
 
-          if (
-            IMAGE_VALIDATION_REQUIRED &&
-            fileToUpload.type?.startsWith("image/")
-          ) {
-            const result = await validateImage(fileToUpload);
-            if (!result.valid) {
-              setTransitionAttachment(null);
-              setLoading(false);
-              CustomAlert.alert(
-                t("addIncident.invalidImageTitle"),
-                result.message || t("addIncident.invalidImageMessage"),
-              );
-              return;
-            }
-          }
-
+          // Image attachments are validated at selection time (see
+          // handlePickDocument/filterInvalidImages), so by submit time
+          // they're already known-good.
           const uploadRes = await uploadAttachment(incidentId, fileToUpload);
           if (!uploadRes.success) {
             CustomAlert.alert(t("common.error"), t("incidents.uploadFailed"));
@@ -725,14 +732,27 @@ export default function ConvertToRequestScreen() {
                       <TouchableOpacity
                         style={styles.uploadButton}
                         onPress={handlePickDocument}
+                        disabled={validatingAttachment}
                       >
-                        <Ionicons
-                          name="cloud-upload-outline"
-                          size={24}
-                          color={COLORS.text.secondary}
-                        />
+                        {validatingAttachment ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={COLORS.text.secondary}
+                          />
+                        ) : (
+                          <Ionicons
+                            name="cloud-upload-outline"
+                            size={24}
+                            color={COLORS.text.secondary}
+                          />
+                        )}
                         <Text style={styles.uploadButtonText}>
-                          {t("incidents.clickToUpload")}
+                          {validatingAttachment
+                            ? t(
+                                "addIncident.validatingImage",
+                                "Validating image...",
+                              )
+                            : t("incidents.clickToUpload")}
                         </Text>
                       </TouchableOpacity>
                     )}

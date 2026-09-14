@@ -22,6 +22,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { compressImage } from "@/src/utils/imageCompression";
+import { filterInvalidImages } from "@/src/utils/imageValidation";
 import { getLocationDetails } from "@/src/utils/location";
 import {
   generateWatermarkedFilename,
@@ -55,12 +56,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// When true, every image attachment must pass server-side validation
-// (POST /images/validate) before a transition can be executed. Mirrors the
-// same gate in add-incident.tsx.
-const IMAGE_VALIDATION_REQUIRED =
-  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 // Attachment count/size limits, sourced from the ENV_CONFIGURATION lookup
 // category (server-configured, split by citizen vs internal user). Mirrors
@@ -155,6 +150,9 @@ const UpdateStatusModal = () => {
     size?: number;
   }
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  // True while a just-picked/captured image is being validated against the
+  // server — surfaced in the attach box so the UI doesn't look stuck.
+  const [validatingAttachment, setValidatingAttachment] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -892,13 +890,20 @@ const UpdateStatusModal = () => {
         }
       });
 
-      if (validFiles.length > 0) {
+      // Validate image content up front, at selection time, instead of
+      // waiting until the transition is executed.
+      setValidatingAttachment(true);
+      const { filesToKeep: validatedFiles, invalidFiles } =
+        await filterInvalidImages(validFiles);
+      setValidatingAttachment(false);
+
+      if (validatedFiles.length > 0) {
         const remainingSlots = Math.max(
           0,
           MAX_ATTACHMENTS_COUNT - attachments.length,
         );
-        const filesToAdd = validFiles.slice(0, remainingSlots);
-        const excessCount = validFiles.length - filesToAdd.length;
+        const filesToAdd = validatedFiles.slice(0, remainingSlots);
+        const excessCount = validatedFiles.length - filesToAdd.length;
 
         if (filesToAdd.length > 0) {
           setAttachments((prev) => [...prev, ...filesToAdd]);
@@ -922,6 +927,13 @@ const UpdateStatusModal = () => {
             size: MAX_FILE_SIZE_MB,
             files: oversizedFiles.join("\n"),
           }),
+        );
+      }
+
+      if (invalidFiles.length > 0) {
+        CustomAlert.alert(
+          t("addIncident.invalidImageTitle"),
+          invalidFiles.join("\n"),
         );
       }
     }
@@ -1023,6 +1035,14 @@ const UpdateStatusModal = () => {
       const finalSize =
         compressionResult.compressedSize ?? compressionResult.originalSize;
 
+      // Validate the photo's content up front, at capture time, instead of
+      // waiting until the transition is executed.
+      setValidatingAttachment(true);
+      const { invalidFiles } = await filterInvalidImages([
+        { uri: finalUri, name: originalName, type: "image/jpeg" },
+      ]);
+      setValidatingAttachment(false);
+
       if (finalSize !== undefined && finalSize > MAX_FILE_SIZE_BYTES) {
         FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
         CustomAlert.alert(
@@ -1031,6 +1051,12 @@ const UpdateStatusModal = () => {
             size: MAX_FILE_SIZE_MB,
             files: `${originalName} (${(finalSize / (1024 * 1024)).toFixed(1)}MB)`,
           }),
+        );
+      } else if (invalidFiles.length > 0) {
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
+        CustomAlert.alert(
+          t("addIncident.invalidImageTitle"),
+          invalidFiles.join("\n"),
         );
       } else if (attachments.length >= MAX_ATTACHMENTS_COUNT) {
         FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
@@ -1094,6 +1120,20 @@ const UpdateStatusModal = () => {
       takePhotoWithCamera();
     }, 300);
   }, []);
+
+  const showConflictAlert = () => {
+    CustomAlert.alert(
+      t("common.conflictDetected") || "Conflict Detected",
+      t("common.incidentModifiedByAnother") ||
+        "This incident was modified by another user. Please review and try again.",
+      [
+        {
+          text: t("common.refresh") || "Refresh",
+          onPress: () => router.back(),
+        },
+      ],
+    );
+  };
 
   const handleUpdate = async () => {
     if (!selectedTransition) {
@@ -1173,26 +1213,9 @@ const UpdateStatusModal = () => {
       return;
     }
 
-    // Validate every image attachment before executing the transition — a
-    // transition must never go through with an unclear/invalid photo attached.
-    // Non-image attachments (documents, etc.) are left untouched.
-    if (IMAGE_VALIDATION_REQUIRED) {
-      const imageAttachments = attachments.filter((a) =>
-        a.type?.startsWith("image/"),
-      );
-      for (const image of imageAttachments) {
-        const result = await validateImage(image);
-        if (!result.valid) {
-          // Drop the invalid image so the user can add a replacement.
-          setAttachments((prev) => prev.filter((a) => a.uri !== image.uri));
-          CustomAlert.alert(
-            t("addIncident.invalidImageTitle"),
-            result.message || t("addIncident.invalidImageMessage"),
-          );
-          return;
-        }
-      }
-    }
+    // Image attachments are validated at selection/capture time (see
+    // filterInvalidImages), so by the time we get here they're already
+    // known-good.
 
     // Validate required field changes
     const fieldChanges = selectedTransition?.transition?.field_changes || [];
@@ -1216,7 +1239,6 @@ const UpdateStatusModal = () => {
 
     setLoading(true);
     let uploadedAttachmentIds = [];
-
     // Upload attachments first if there are any
     if (attachments.length > 0) {
       setIsUploading(true);
@@ -1229,9 +1251,8 @@ const UpdateStatusModal = () => {
       const uploadResult = await uploadMultipleAttachments(
         incidentId,
         attachments,
+        selectedTransition?.transition?.from_state_id,
       );
-
-      console.log(uploadResult);
 
       if (uploadResult.success) {
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
@@ -1240,6 +1261,18 @@ const UpdateStatusModal = () => {
         // Some files uploaded successfully
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
         const failedCount = uploadResult.errors?.length || 0;
+        const hasConflict = uploadResult.errors?.some(
+          (e: any) =>
+            e?.error?.includes("conflict") ||
+            e?.error?.includes("modified by another user"),
+        );
+        if (hasConflict) {
+          setLoading(false);
+          setIsUploading(false);
+          setUploadProgress("");
+          showConflictAlert();
+          return;
+        }
         CustomAlert.alert(
           t("common.partialUpload", "Partial Upload"),
           t(
@@ -1256,13 +1289,22 @@ const UpdateStatusModal = () => {
         setLoading(false);
         setIsUploading(false);
         setUploadProgress("");
-        CustomAlert.alert(
-          t("common.error", "Error"),
-          t(
-            "common.uploadFailed",
-            "Failed to upload attachments. Please try again.",
-          ),
+        const hasConflict = uploadResult.errors?.some(
+          (e: any) =>
+            e?.error?.includes("conflict") ||
+            e?.error?.includes("modified by another user"),
         );
+        if (hasConflict) {
+          showConflictAlert();
+        } else {
+          CustomAlert.alert(
+            t("common.error", "Error"),
+            t(
+              "common.uploadFailed",
+              "Failed to upload attachments. Please try again.",
+            ),
+          );
+        }
         return;
       }
 
@@ -1369,17 +1411,7 @@ const UpdateStatusModal = () => {
         errorMessage.includes("conflict") ||
         errorMessage.includes("modified by another user")
       ) {
-        CustomAlert.alert(
-          t("common.conflictDetected") || "Conflict Detected",
-          t("common.incidentModifiedByAnother") ||
-            "This incident was modified by another user. Please review and try again.",
-          [
-            {
-              text: t("common.refresh") || "Refresh",
-              onPress: () => router.back(),
-            },
-          ],
-        );
+        showConflictAlert();
       } else {
         CustomAlert.alert(
           t("common.error"),
@@ -2249,29 +2281,60 @@ const UpdateStatusModal = () => {
                   <TouchableOpacity
                     style={[
                       styles.attachmentBox,
-                      { opacity: locationLoading ? 0.5 : 1 },
+                      {
+                        opacity:
+                          locationLoading ||
+                          validatingAttachment ||
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? 0.5
+                            : 1,
+                      },
                     ]}
                     onPress={handleAttachPress}
-                    disabled={locationLoading}
+                    disabled={
+                      locationLoading ||
+                      validatingAttachment ||
+                      attachments.length >= MAX_ATTACHMENTS_COUNT
+                    }
                   >
-                    <Ionicons
-                      name="cloud-upload-outline"
-                      size={32}
-                      color="#2EC4B6"
-                    />
-                    <Text style={styles.attachmentText}>
-                      {attachments.length > 0
-                        ? t("incidents.addMoreFiles", "Add more files")
-                        : t("incidents.attachFiles", "Attach files")}
-                    </Text>
-                    {Number.isFinite(MAX_FILE_SIZE_MB) && (
-                      <Text style={styles.attachmentSubText}>
-                        {t("incidents.maxFileSize", {
-                          size: MAX_FILE_SIZE_MB,
-                          defaultValue: `Max file size: ${MAX_FILE_SIZE_MB} MB`,
-                        })}
-                      </Text>
+                    {validatingAttachment ? (
+                      <ActivityIndicator size="small" color="#999999" />
+                    ) : (
+                      <Ionicons
+                        name="cloud-upload-outline"
+                        size={32}
+                        color={
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? "#999999"
+                            : "#2EC4B6"
+                        }
+                      />
                     )}
+                    <Text style={styles.attachmentText}>
+                      {validatingAttachment
+                        ? t(
+                            "addIncident.validatingImage",
+                            "Validating image...",
+                          )
+                        : attachments.length >= MAX_ATTACHMENTS_COUNT
+                          ? t("addIncident.maxAttachmentsReached", {
+                              max: MAX_ATTACHMENTS_COUNT,
+                              defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                            })
+                          : attachments.length > 0
+                            ? t("incidents.addMoreFiles", "Add more files")
+                            : t("incidents.attachFiles", "Attach files")}
+                    </Text>
+                    {Number.isFinite(MAX_FILE_SIZE_MB) &&
+                      !validatingAttachment &&
+                      attachments.length < MAX_ATTACHMENTS_COUNT && (
+                        <Text style={styles.attachmentSubText}>
+                          {t("incidents.maxFileSize", {
+                            size: MAX_FILE_SIZE_MB,
+                            defaultValue: `Max file size: ${MAX_FILE_SIZE_MB} MB`,
+                          })}
+                        </Text>
+                      )}
                   </TouchableOpacity>
                 </>
               )}
