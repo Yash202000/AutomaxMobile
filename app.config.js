@@ -1,89 +1,97 @@
-const appName = process.env.APP_NAME || 'Automax';
-const appIcon = './assets/images/start-logo.png';
+const appName = process.env.APP_NAME || "Automax";
+const appIcon = "./assets/images/start-logo.png";
 
 module.exports = {
   expo: {
     name: appName,
-    slug: 'AutomaxMobile',
-    version: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
-    orientation: 'portrait',
+    slug: "AutomaxMobile",
+    version: process.env.EXPO_PUBLIC_APP_VERSION || "1.0.0",
+    orientation: "portrait",
     icon: appIcon,
-    scheme: 'automaxmobile',
-    userInterfaceStyle: 'automatic',
+    scheme: "automaxmobile",
+    userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.automax.mobile',
+      bundleIdentifier: process.env.IOS_BUNDLE_ID || "com.automax.mobile",
       buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
       googleServicesFile: "./GoogleService-Info.plist",
       infoPlist: {
         // Required for Linking.canOpenURL('comgooglemaps://...') to detect
         // whether the Google Maps app is installed (iOS 9+ query whitelist).
-        LSApplicationQueriesSchemes: ['comgooglemaps'],
+        LSApplicationQueriesSchemes: ["comgooglemaps"],
       },
     },
     android: {
-      package: process.env.ANDROID_PACKAGE || 'com.automax.mobile',
-      versionCode: parseInt(process.env.EXPO_PUBLIC_APP_VERSION_CODE || '1', 10),
+      package: process.env.ANDROID_PACKAGE || "com.automax.mobile",
+      versionCode: parseInt(
+        process.env.EXPO_PUBLIC_APP_VERSION_CODE || "1",
+        10,
+      ),
       supportsRTL: true,
       adaptiveIcon: {
         foregroundImage: appIcon,
-        backgroundColor: process.env.APP_ICON_BG_COLOR || '#ffffff',
-        monochromeImage: './assets/images/android-icon-monochrome.png',
+        backgroundColor: process.env.APP_ICON_BG_COLOR || "#ffffff",
+        monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
-      googleServicesFile: './google-services.json',
+      googleServicesFile: "./google-services.json",
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: [
-        'ACCESS_FINE_LOCATION',
-        'ACCESS_COARSE_LOCATION',
-        'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
-        'RECORD_AUDIO',
-        'android.permission.ACCESS_COARSE_LOCATION',
-        'android.permission.ACCESS_FINE_LOCATION',
-        'android.permission.USE_BIOMETRIC',
-        'android.permission.USE_FINGERPRINT',
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
       ],
     },
     web: {
-      output: 'static',
-      favicon: './assets/images/favicon.png',
+      output: "static",
+      favicon: "./assets/images/favicon.png",
     },
     plugins: [
-      './plugins/withAndroidGoogleServices',
-      '@react-native-firebase/app',
-      'expo-router',
-      'expo-font',
+      "./plugins/withAndroidGoogleServices",
+      "@react-native-firebase/app",
+      "expo-router",
+      "expo-font",
       [
-        'expo-location',
+        "expo-location",
         {
-          locationAlwaysAndWhenInUsePermission: 'Allow $(PRODUCT_NAME) to use your location.',
-          locationAlwaysPermission: 'Allow $(PRODUCT_NAME) to use your location.',
-          locationWhenInUsePermission: 'Allow $(PRODUCT_NAME) to use your location.',
+          locationAlwaysAndWhenInUsePermission:
+            "Allow $(PRODUCT_NAME) to use your location.",
+          locationAlwaysPermission:
+            "Allow $(PRODUCT_NAME) to use your location.",
+          locationWhenInUsePermission:
+            "Allow $(PRODUCT_NAME) to use your location.",
           isAndroidBackgroundLocationEnabled: false,
           isAndroidForegroundServiceEnabled: false,
         },
       ],
       [
-        'expo-splash-screen',
+        "expo-splash-screen",
         {
-          image: './assets/images/start-logo.png',
+          image: "./assets/images/start-logo.png",
           imageWidth: 200,
-          resizeMode: 'contain',
-          backgroundColor: '#ffffff',
+          resizeMode: "contain",
+          backgroundColor: "#ffffff",
           dark: {
-            backgroundColor: '#000000',
+            backgroundColor: "#000000",
           },
         },
       ],
-      '@react-native-community/datetimepicker',
+      "@react-native-community/datetimepicker",
       [
-        'expo-media-library',
+        "expo-media-library",
         {
-          photosPermission: 'Allow $(PRODUCT_NAME) to save downloaded images to your Photos.',
-          savePhotosPermission: 'Allow $(PRODUCT_NAME) to save downloaded images to your Photos.',
+          photosPermission:
+            "Allow $(PRODUCT_NAME) to save downloaded images to your Photos.",
+          savePhotosPermission:
+            "Allow $(PRODUCT_NAME) to save downloaded images to your Photos.",
           isAccessMediaLocationEnabled: false,
         },
       ],

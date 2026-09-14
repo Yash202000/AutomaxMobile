@@ -1,5 +1,6 @@
 import { getClassificationsTree } from "@/src/api/classifications";
 import { getDepartmentsTree, matchDepartments } from "@/src/api/departments";
+import { validateImage } from "@/src/api/images";
 import {
   executeTransition,
   getCommentTemplatesByTransition,
@@ -9,7 +10,6 @@ import {
   uploadMultipleAttachments,
 } from "@/src/api/incidents";
 import { getLocationsTree } from "@/src/api/locations";
-import { validateImage } from "@/src/api/images";
 import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DynamicLookupField } from "@/src/components/DynamicLookupField";
@@ -28,8 +28,8 @@ import {
   WatermarkData,
 } from "@/src/utils/watermarkUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -507,7 +507,8 @@ const UpdateStatusModal = () => {
     if (
       (trans.assign_user_id ||
         ((trans.auto_match_user || trans.manual_select_user) &&
-          trans.assignment_roles?.length > 0)) && showUserAssignment
+          trans.assignment_roles?.length > 0)) &&
+      showUserAssignment
     )
       steps.push("user");
     if (trans.field_changes?.length > 0) steps.push("field_changes");
@@ -1062,7 +1063,13 @@ const UpdateStatusModal = () => {
         return remaining;
       });
     },
-    [attachments.length, MAX_ATTACHMENTS_COUNT, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, t],
+    [
+      attachments.length,
+      MAX_ATTACHMENTS_COUNT,
+      MAX_FILE_SIZE_BYTES,
+      MAX_FILE_SIZE_MB,
+      t,
+    ],
   );
 
   // Handle preview accept
@@ -1224,7 +1231,7 @@ const UpdateStatusModal = () => {
         attachments,
       );
 
-      console.log(uploadResult)
+      console.log(uploadResult);
 
       if (uploadResult.success) {
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
@@ -1321,9 +1328,9 @@ const UpdateStatusModal = () => {
       feedback:
         feedbackComment.trim() || feedbackRating > 0
           ? {
-            rating: feedbackRating,
-            comment: feedbackComment.trim() || undefined,
-          }
+              rating: feedbackRating,
+              comment: feedbackComment.trim() || undefined,
+            }
           : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
@@ -1365,7 +1372,7 @@ const UpdateStatusModal = () => {
         CustomAlert.alert(
           t("common.conflictDetected") || "Conflict Detected",
           t("common.incidentModifiedByAnother") ||
-          "This incident was modified by another user. Please review and try again.",
+            "This incident was modified by another user. Please review and try again.",
           [
             {
               text: t("common.refresh") || "Refresh",
@@ -1517,7 +1524,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.from_state?.name_ar
+                  selectedTransition.transition.from_state?.name_ar
                     ? selectedTransition.transition.from_state?.name_ar
                     : selectedTransition.transition.from_state?.name) ||
                     t("incidents.currentStateFallback", "Current")}
@@ -1550,7 +1557,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.to_state?.name_ar
+                  selectedTransition.transition.to_state?.name_ar
                     ? selectedTransition.transition.to_state?.name_ar
                     : selectedTransition.transition.to_state?.name) ||
                     t("incidents.nextStateFallback", "Next")}
@@ -1571,13 +1578,23 @@ const UpdateStatusModal = () => {
                   ]}
                 />
               ))}
-              {
-                transitionSteps.length === 0 && (
-                  <View style={{ paddingVertical: 10, paddingHorizontal: 5, backgroundColor: '#E6E7E8', width: '100%', alignItems: 'center', borderRadius: 10, marginTop: 10 }}>
-                    <Text style={{ color: '#888' }}>{t("common.noStepsConfigured")}</Text>
-                  </View>
-                )
-              }
+              {transitionSteps.length === 0 && (
+                <View
+                  style={{
+                    paddingVertical: 10,
+                    paddingHorizontal: 5,
+                    backgroundColor: "#E6E7E8",
+                    width: "100%",
+                    alignItems: "center",
+                    borderRadius: 10,
+                    marginTop: 10,
+                  }}
+                >
+                  <Text style={{ color: "#888" }}>
+                    {t("common.noStepsConfigured")}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1637,7 +1654,7 @@ const UpdateStatusModal = () => {
                             ]}
                           >
                             {(i18n.language === "ar" &&
-                              trans.transition.to_state.name_ar
+                            trans.transition.to_state.name_ar
                               ? trans.transition.to_state.name_ar
                               : trans.transition.to_state.name) ||
                               t("incidents.nextStateFallback", "Next")}
@@ -1765,7 +1782,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRow,
                           selectedDepartmentId === dept.id &&
-                          styles.selectionRowSelected,
+                            styles.selectionRowSelected,
                         ]}
                         onPress={() => setSelectedDepartmentId(dept.id)}
                       >
@@ -1774,7 +1791,7 @@ const UpdateStatusModal = () => {
                             style={[
                               styles.selectionRowTitle,
                               selectedDepartmentId === dept.id &&
-                              styles.selectionRowTitleSelected,
+                                styles.selectionRowTitleSelected,
                             ]}
                           >
                             {dept.name}
@@ -1931,7 +1948,7 @@ const UpdateStatusModal = () => {
                                       paddingHorizontal: 4,
                                     },
                                     fieldChangeValues["priority"] === opt.id &&
-                                    styles.priorityBtnSelected,
+                                      styles.priorityBtnSelected,
                                   ]}
                                   onPress={() =>
                                     handleFieldChange("priority", opt.id)
@@ -1942,8 +1959,8 @@ const UpdateStatusModal = () => {
                                       styles.priorityBtnText,
                                       { fontSize: 11 },
                                       fieldChangeValues["priority"] ===
-                                      opt.id &&
-                                      styles.priorityBtnTextSelected,
+                                        opt.id &&
+                                        styles.priorityBtnTextSelected,
                                     ]}
                                     numberOfLines={1}
                                   >
@@ -1971,9 +1988,9 @@ const UpdateStatusModal = () => {
                             data={
                               fc.department_type_filter
                                 ? filterDeptTree(
-                                  departmentsTree,
-                                  fc.department_type_filter,
-                                )
+                                    departmentsTree,
+                                    fc.department_type_filter,
+                                  )
                                 : departmentsTree
                             }
                             onSelect={(node) => {
@@ -2165,7 +2182,7 @@ const UpdateStatusModal = () => {
                       style={[
                         styles.selectionRow,
                         readyToCloseDuration === opt &&
-                        styles.selectionRowSelected,
+                          styles.selectionRowSelected,
                       ]}
                       onPress={() => setReadyToCloseDuration(opt)}
                     >
@@ -2173,7 +2190,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRowTitle,
                           readyToCloseDuration === opt &&
-                          styles.selectionRowTitleSelected,
+                            styles.selectionRowTitleSelected,
                         ]}
                       >
                         {formatDurationLabel(opt)}
@@ -2265,71 +2282,71 @@ const UpdateStatusModal = () => {
                   {selectedTransition.requirements?.find(
                     (x: any) => x.requirement_type === "rating",
                   ) && (
-                      <View>
-                        <Text style={styles.stepHint}>
-                          {t(
-                            "incidents.rateYourExperience",
-                            "Rate your experience with this resolution",
-                          )}
-                          {selectedTransition.requirements?.find(
-                            (x: any) => x.requirement_type === "rating",
-                          )?.is_mandatory && (
-                              <Text style={{ color: "red" }}> *</Text>
-                            )}
-                        </Text>
-                        <View
-                          style={{
-                            justifyContent: "center",
-                            alignItems: "center",
-                            backgroundColor: "#F8F9FA",
-                            borderRadius: 10,
-                            padding: 15,
-                            borderWidth: 1,
-                            borderColor: "#E0E0E0",
-                          }}
-                        >
-                          <View style={styles.starRatingContainer}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <TouchableOpacity
-                                key={star}
-                                onPress={() => setFeedbackRating(star)}
-                              >
-                                <Ionicons
-                                  fill={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                  name={
-                                    star <= feedbackRating
-                                      ? "star"
-                                      : "star-outline"
-                                  }
-                                  size={40}
-                                  color={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                />
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                          {feedbackRating > 0 && (
-                            <Text
-                              style={[
-                                styles.ratingText,
-                                { textAlign: "center", marginTop: 12 },
-                              ]}
+                    <View>
+                      <Text style={styles.stepHint}>
+                        {t(
+                          "incidents.rateYourExperience",
+                          "Rate your experience with this resolution",
+                        )}
+                        {selectedTransition.requirements?.find(
+                          (x: any) => x.requirement_type === "rating",
+                        )?.is_mandatory && (
+                          <Text style={{ color: "red" }}> *</Text>
+                        )}
+                      </Text>
+                      <View
+                        style={{
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#F8F9FA",
+                          borderRadius: 10,
+                          padding: 15,
+                          borderWidth: 1,
+                          borderColor: "#E0E0E0",
+                        }}
+                      >
+                        <View style={styles.starRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                              key={star}
+                              onPress={() => setFeedbackRating(star)}
                             >
-                              {feedbackRating === 1 && t("incidents.ratingPoor")}
-                              {feedbackRating === 2 && t("incidents.ratingFair")}
-                              {feedbackRating === 3 && t("incidents.ratingGood")}
-                              {feedbackRating === 4 &&
-                                t("incidents.ratingVeryGood")}
-                              {feedbackRating === 5 &&
-                                t("incidents.ratingExcellent")}
-                            </Text>
-                          )}
+                              <Ionicons
+                                fill={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                                name={
+                                  star <= feedbackRating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={40}
+                                color={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                              />
+                            </TouchableOpacity>
+                          ))}
                         </View>
+                        {feedbackRating > 0 && (
+                          <Text
+                            style={[
+                              styles.ratingText,
+                              { textAlign: "center", marginTop: 12 },
+                            ]}
+                          >
+                            {feedbackRating === 1 && t("incidents.ratingPoor")}
+                            {feedbackRating === 2 && t("incidents.ratingFair")}
+                            {feedbackRating === 3 && t("incidents.ratingGood")}
+                            {feedbackRating === 4 &&
+                              t("incidents.ratingVeryGood")}
+                            {feedbackRating === 5 &&
+                              t("incidents.ratingExcellent")}
+                          </Text>
+                        )}
                       </View>
-                    )}
+                    </View>
+                  )}
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -2513,13 +2530,28 @@ const UpdateStatusModal = () => {
             </TouchableOpacity>
 
             {canUploadAttachmentGallery() && (
-              <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
-                <View style={[styles.optionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+              <TouchableOpacity
+                style={styles.bottomSheetOption}
+                onPress={pickImageFromGallery}
+              >
+                <View
+                  style={[
+                    styles.optionIconContainer,
+                    { backgroundColor: "#E3F2FD" },
+                  ]}
+                >
                   <Ionicons name="images" size={28} color="#2196F3" />
                 </View>
                 <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionTitle}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
-                  <Text style={styles.optionSubtitle}>{t('common.selectImagesFromLibrary', 'Select images from your photo library')}</Text>
+                  <Text style={styles.optionTitle}>
+                    {t("common.chooseFromGallery", "Choose from Gallery")}
+                  </Text>
+                  <Text style={styles.optionSubtitle}>
+                    {t(
+                      "common.selectImagesFromLibrary",
+                      "Select images from your photo library",
+                    )}
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -3112,7 +3144,7 @@ const styles = StyleSheet.create({
   transitionCardStateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5
+    gap: 5,
   },
   transitionCardStateLabel: {
     fontSize: 12,
