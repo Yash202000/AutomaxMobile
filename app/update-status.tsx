@@ -9,7 +9,6 @@ import {
   uploadMultipleAttachments,
 } from "@/src/api/incidents";
 import { getLocationsTree } from "@/src/api/locations";
-import { validateImage } from "@/src/api/images";
 import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DynamicLookupField } from "@/src/components/DynamicLookupField";
@@ -22,14 +21,15 @@ import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { compressImage } from "@/src/utils/imageCompression";
+import { filterInvalidImages } from "@/src/utils/imageValidation";
 import { getLocationDetails } from "@/src/utils/location";
 import {
   generateWatermarkedFilename,
   WatermarkData,
 } from "@/src/utils/watermarkUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -55,12 +55,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// When true, every image attachment must pass server-side validation
-// (POST /images/validate) before a transition can be executed. Mirrors the
-// same gate in add-incident.tsx.
-const IMAGE_VALIDATION_REQUIRED =
-  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 // Attachment count/size limits, sourced from the ENV_CONFIGURATION lookup
 // category (server-configured, split by citizen vs internal user). Mirrors
@@ -155,6 +149,9 @@ const UpdateStatusModal = () => {
     size?: number;
   }
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  // True while a just-picked/captured image is being validated against the
+  // server — surfaced in the attach box so the UI doesn't look stuck.
+  const [validatingAttachment, setValidatingAttachment] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -507,7 +504,8 @@ const UpdateStatusModal = () => {
     if (
       (trans.assign_user_id ||
         ((trans.auto_match_user || trans.manual_select_user) &&
-          trans.assignment_roles?.length > 0)) && showUserAssignment
+          trans.assignment_roles?.length > 0)) &&
+      showUserAssignment
     )
       steps.push("user");
     if (trans.field_changes?.length > 0) steps.push("field_changes");
@@ -891,13 +889,20 @@ const UpdateStatusModal = () => {
         }
       });
 
-      if (validFiles.length > 0) {
+      // Validate image content up front, at selection time, instead of
+      // waiting until the transition is executed.
+      setValidatingAttachment(true);
+      const { filesToKeep: validatedFiles, invalidFiles } =
+        await filterInvalidImages(validFiles);
+      setValidatingAttachment(false);
+
+      if (validatedFiles.length > 0) {
         const remainingSlots = Math.max(
           0,
           MAX_ATTACHMENTS_COUNT - attachments.length,
         );
-        const filesToAdd = validFiles.slice(0, remainingSlots);
-        const excessCount = validFiles.length - filesToAdd.length;
+        const filesToAdd = validatedFiles.slice(0, remainingSlots);
+        const excessCount = validatedFiles.length - filesToAdd.length;
 
         if (filesToAdd.length > 0) {
           setAttachments((prev) => [...prev, ...filesToAdd]);
@@ -921,6 +926,13 @@ const UpdateStatusModal = () => {
             size: MAX_FILE_SIZE_MB,
             files: oversizedFiles.join("\n"),
           }),
+        );
+      }
+
+      if (invalidFiles.length > 0) {
+        CustomAlert.alert(
+          t("addIncident.invalidImageTitle"),
+          invalidFiles.join("\n"),
         );
       }
     }
@@ -1022,6 +1034,14 @@ const UpdateStatusModal = () => {
       const finalSize =
         compressionResult.compressedSize ?? compressionResult.originalSize;
 
+      // Validate the photo's content up front, at capture time, instead of
+      // waiting until the transition is executed.
+      setValidatingAttachment(true);
+      const { invalidFiles } = await filterInvalidImages([
+        { uri: finalUri, name: originalName, type: "image/jpeg" },
+      ]);
+      setValidatingAttachment(false);
+
       if (finalSize !== undefined && finalSize > MAX_FILE_SIZE_BYTES) {
         FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
         CustomAlert.alert(
@@ -1030,6 +1050,12 @@ const UpdateStatusModal = () => {
             size: MAX_FILE_SIZE_MB,
             files: `${originalName} (${(finalSize / (1024 * 1024)).toFixed(1)}MB)`,
           }),
+        );
+      } else if (invalidFiles.length > 0) {
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
+        CustomAlert.alert(
+          t("addIncident.invalidImageTitle"),
+          invalidFiles.join("\n"),
         );
       } else if (attachments.length >= MAX_ATTACHMENTS_COUNT) {
         FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
@@ -1062,7 +1088,13 @@ const UpdateStatusModal = () => {
         return remaining;
       });
     },
-    [attachments.length, MAX_ATTACHMENTS_COUNT, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, t],
+    [
+      attachments.length,
+      MAX_ATTACHMENTS_COUNT,
+      MAX_FILE_SIZE_BYTES,
+      MAX_FILE_SIZE_MB,
+      t,
+    ],
   );
 
   // Handle preview accept
@@ -1087,6 +1119,20 @@ const UpdateStatusModal = () => {
       takePhotoWithCamera();
     }, 300);
   }, []);
+
+  const showConflictAlert = () => {
+    CustomAlert.alert(
+      t("common.conflictDetected") || "Conflict Detected",
+      t("common.incidentModifiedByAnother") ||
+        "This incident was modified by another user. Please review and try again.",
+      [
+        {
+          text: t("common.refresh") || "Refresh",
+          onPress: () => router.back(),
+        },
+      ],
+    );
+  };
 
   const handleUpdate = async () => {
     if (!selectedTransition) {
@@ -1166,26 +1212,9 @@ const UpdateStatusModal = () => {
       return;
     }
 
-    // Validate every image attachment before executing the transition — a
-    // transition must never go through with an unclear/invalid photo attached.
-    // Non-image attachments (documents, etc.) are left untouched.
-    if (IMAGE_VALIDATION_REQUIRED) {
-      const imageAttachments = attachments.filter((a) =>
-        a.type?.startsWith("image/"),
-      );
-      for (const image of imageAttachments) {
-        const result = await validateImage(image);
-        if (!result.valid) {
-          // Drop the invalid image so the user can add a replacement.
-          setAttachments((prev) => prev.filter((a) => a.uri !== image.uri));
-          CustomAlert.alert(
-            t("addIncident.invalidImageTitle"),
-            result.message || t("addIncident.invalidImageMessage"),
-          );
-          return;
-        }
-      }
-    }
+    // Image attachments are validated at selection/capture time (see
+    // filterInvalidImages), so by the time we get here they're already
+    // known-good.
 
     // Validate required field changes
     const fieldChanges = selectedTransition?.transition?.field_changes || [];
@@ -1209,7 +1238,6 @@ const UpdateStatusModal = () => {
 
     setLoading(true);
     let uploadedAttachmentIds = [];
-
     // Upload attachments first if there are any
     if (attachments.length > 0) {
       setIsUploading(true);
@@ -1222,9 +1250,8 @@ const UpdateStatusModal = () => {
       const uploadResult = await uploadMultipleAttachments(
         incidentId,
         attachments,
+        incident?.version,
       );
-
-      console.log(uploadResult)
 
       if (uploadResult.success) {
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
@@ -1233,6 +1260,18 @@ const UpdateStatusModal = () => {
         // Some files uploaded successfully
         uploadedAttachmentIds = uploadResult.data.map((att) => att.id);
         const failedCount = uploadResult.errors?.length || 0;
+        const hasConflict = uploadResult.errors?.some(
+          (e: any) =>
+            e?.error?.includes("conflict") ||
+            e?.error?.includes("modified by another user"),
+        );
+        if (hasConflict) {
+          setLoading(false);
+          setIsUploading(false);
+          setUploadProgress("");
+          showConflictAlert();
+          return;
+        }
         CustomAlert.alert(
           t("common.partialUpload", "Partial Upload"),
           t(
@@ -1249,13 +1288,22 @@ const UpdateStatusModal = () => {
         setLoading(false);
         setIsUploading(false);
         setUploadProgress("");
-        CustomAlert.alert(
-          t("common.error", "Error"),
-          t(
-            "common.uploadFailed",
-            "Failed to upload attachments. Please try again.",
-          ),
+        const hasConflict = uploadResult.errors?.some(
+          (e: any) =>
+            e?.error?.includes("conflict") ||
+            e?.error?.includes("modified by another user"),
         );
+        if (hasConflict) {
+          showConflictAlert();
+        } else {
+          CustomAlert.alert(
+            t("common.error", "Error"),
+            t(
+              "common.uploadFailed",
+              "Failed to upload attachments. Please try again.",
+            ),
+          );
+        }
         return;
       }
 
@@ -1321,9 +1369,9 @@ const UpdateStatusModal = () => {
       feedback:
         feedbackComment.trim() || feedbackRating > 0
           ? {
-            rating: feedbackRating,
-            comment: feedbackComment.trim() || undefined,
-          }
+              rating: feedbackRating,
+              comment: feedbackComment.trim() || undefined,
+            }
           : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
@@ -1362,17 +1410,7 @@ const UpdateStatusModal = () => {
         errorMessage.includes("conflict") ||
         errorMessage.includes("modified by another user")
       ) {
-        CustomAlert.alert(
-          t("common.conflictDetected") || "Conflict Detected",
-          t("common.incidentModifiedByAnother") ||
-          "This incident was modified by another user. Please review and try again.",
-          [
-            {
-              text: t("common.refresh") || "Refresh",
-              onPress: () => router.back(),
-            },
-          ],
-        );
+        showConflictAlert();
       } else {
         CustomAlert.alert(
           t("common.error"),
@@ -1517,7 +1555,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.from_state?.name_ar
+                  selectedTransition.transition.from_state?.name_ar
                     ? selectedTransition.transition.from_state?.name_ar
                     : selectedTransition.transition.from_state?.name) ||
                     t("incidents.currentStateFallback", "Current")}
@@ -1550,7 +1588,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.to_state?.name_ar
+                  selectedTransition.transition.to_state?.name_ar
                     ? selectedTransition.transition.to_state?.name_ar
                     : selectedTransition.transition.to_state?.name) ||
                     t("incidents.nextStateFallback", "Next")}
@@ -1571,13 +1609,23 @@ const UpdateStatusModal = () => {
                   ]}
                 />
               ))}
-              {
-                transitionSteps.length === 0 && (
-                  <View style={{ paddingVertical: 10, paddingHorizontal: 5, backgroundColor: '#E6E7E8', width: '100%', alignItems: 'center', borderRadius: 10, marginTop: 10 }}>
-                    <Text style={{ color: '#888' }}>{t("common.noStepsConfigured")}</Text>
-                  </View>
-                )
-              }
+              {transitionSteps.length === 0 && (
+                <View
+                  style={{
+                    paddingVertical: 10,
+                    paddingHorizontal: 5,
+                    backgroundColor: "#E6E7E8",
+                    width: "100%",
+                    alignItems: "center",
+                    borderRadius: 10,
+                    marginTop: 10,
+                  }}
+                >
+                  <Text style={{ color: "#888" }}>
+                    {t("common.noStepsConfigured")}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1637,7 +1685,7 @@ const UpdateStatusModal = () => {
                             ]}
                           >
                             {(i18n.language === "ar" &&
-                              trans.transition.to_state.name_ar
+                            trans.transition.to_state.name_ar
                               ? trans.transition.to_state.name_ar
                               : trans.transition.to_state.name) ||
                               t("incidents.nextStateFallback", "Next")}
@@ -1765,7 +1813,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRow,
                           selectedDepartmentId === dept.id &&
-                          styles.selectionRowSelected,
+                            styles.selectionRowSelected,
                         ]}
                         onPress={() => setSelectedDepartmentId(dept.id)}
                       >
@@ -1774,7 +1822,7 @@ const UpdateStatusModal = () => {
                             style={[
                               styles.selectionRowTitle,
                               selectedDepartmentId === dept.id &&
-                              styles.selectionRowTitleSelected,
+                                styles.selectionRowTitleSelected,
                             ]}
                           >
                             {dept.name}
@@ -1931,7 +1979,7 @@ const UpdateStatusModal = () => {
                                       paddingHorizontal: 4,
                                     },
                                     fieldChangeValues["priority"] === opt.id &&
-                                    styles.priorityBtnSelected,
+                                      styles.priorityBtnSelected,
                                   ]}
                                   onPress={() =>
                                     handleFieldChange("priority", opt.id)
@@ -1942,8 +1990,8 @@ const UpdateStatusModal = () => {
                                       styles.priorityBtnText,
                                       { fontSize: 11 },
                                       fieldChangeValues["priority"] ===
-                                      opt.id &&
-                                      styles.priorityBtnTextSelected,
+                                        opt.id &&
+                                        styles.priorityBtnTextSelected,
                                     ]}
                                     numberOfLines={1}
                                   >
@@ -1971,9 +2019,9 @@ const UpdateStatusModal = () => {
                             data={
                               fc.department_type_filter
                                 ? filterDeptTree(
-                                  departmentsTree,
-                                  fc.department_type_filter,
-                                )
+                                    departmentsTree,
+                                    fc.department_type_filter,
+                                  )
                                 : departmentsTree
                             }
                             onSelect={(node) => {
@@ -2165,7 +2213,7 @@ const UpdateStatusModal = () => {
                       style={[
                         styles.selectionRow,
                         readyToCloseDuration === opt &&
-                        styles.selectionRowSelected,
+                          styles.selectionRowSelected,
                       ]}
                       onPress={() => setReadyToCloseDuration(opt)}
                     >
@@ -2173,7 +2221,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRowTitle,
                           readyToCloseDuration === opt &&
-                          styles.selectionRowTitleSelected,
+                            styles.selectionRowTitleSelected,
                         ]}
                       >
                         {formatDurationLabel(opt)}
@@ -2232,29 +2280,60 @@ const UpdateStatusModal = () => {
                   <TouchableOpacity
                     style={[
                       styles.attachmentBox,
-                      { opacity: locationLoading ? 0.5 : 1 },
+                      {
+                        opacity:
+                          locationLoading ||
+                          validatingAttachment ||
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? 0.5
+                            : 1,
+                      },
                     ]}
                     onPress={handleAttachPress}
-                    disabled={locationLoading}
+                    disabled={
+                      locationLoading ||
+                      validatingAttachment ||
+                      attachments.length >= MAX_ATTACHMENTS_COUNT
+                    }
                   >
-                    <Ionicons
-                      name="cloud-upload-outline"
-                      size={32}
-                      color="#2EC4B6"
-                    />
-                    <Text style={styles.attachmentText}>
-                      {attachments.length > 0
-                        ? t("incidents.addMoreFiles", "Add more files")
-                        : t("incidents.attachFiles", "Attach files")}
-                    </Text>
-                    {Number.isFinite(MAX_FILE_SIZE_MB) && (
-                      <Text style={styles.attachmentSubText}>
-                        {t("incidents.maxFileSize", {
-                          size: MAX_FILE_SIZE_MB,
-                          defaultValue: `Max file size: ${MAX_FILE_SIZE_MB} MB`,
-                        })}
-                      </Text>
+                    {validatingAttachment ? (
+                      <ActivityIndicator size="small" color="#999999" />
+                    ) : (
+                      <Ionicons
+                        name="cloud-upload-outline"
+                        size={32}
+                        color={
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? "#999999"
+                            : "#2EC4B6"
+                        }
+                      />
                     )}
+                    <Text style={styles.attachmentText}>
+                      {validatingAttachment
+                        ? t(
+                            "addIncident.validatingImage",
+                            "Validating image...",
+                          )
+                        : attachments.length >= MAX_ATTACHMENTS_COUNT
+                          ? t("addIncident.maxAttachmentsReached", {
+                              max: MAX_ATTACHMENTS_COUNT,
+                              defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                            })
+                          : attachments.length > 0
+                            ? t("incidents.addMoreFiles", "Add more files")
+                            : t("incidents.attachFiles", "Attach files")}
+                    </Text>
+                    {Number.isFinite(MAX_FILE_SIZE_MB) &&
+                      !validatingAttachment &&
+                      attachments.length < MAX_ATTACHMENTS_COUNT && (
+                        <Text style={styles.attachmentSubText}>
+                          {t("incidents.maxFileSize", {
+                            size: MAX_FILE_SIZE_MB,
+                            defaultValue: `Max file size: ${MAX_FILE_SIZE_MB} MB`,
+                          })}
+                        </Text>
+                      )}
                   </TouchableOpacity>
                 </>
               )}
@@ -2265,71 +2344,71 @@ const UpdateStatusModal = () => {
                   {selectedTransition.requirements?.find(
                     (x: any) => x.requirement_type === "rating",
                   ) && (
-                      <View>
-                        <Text style={styles.stepHint}>
-                          {t(
-                            "incidents.rateYourExperience",
-                            "Rate your experience with this resolution",
-                          )}
-                          {selectedTransition.requirements?.find(
-                            (x: any) => x.requirement_type === "rating",
-                          )?.is_mandatory && (
-                              <Text style={{ color: "red" }}> *</Text>
-                            )}
-                        </Text>
-                        <View
-                          style={{
-                            justifyContent: "center",
-                            alignItems: "center",
-                            backgroundColor: "#F8F9FA",
-                            borderRadius: 10,
-                            padding: 15,
-                            borderWidth: 1,
-                            borderColor: "#E0E0E0",
-                          }}
-                        >
-                          <View style={styles.starRatingContainer}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <TouchableOpacity
-                                key={star}
-                                onPress={() => setFeedbackRating(star)}
-                              >
-                                <Ionicons
-                                  fill={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                  name={
-                                    star <= feedbackRating
-                                      ? "star"
-                                      : "star-outline"
-                                  }
-                                  size={40}
-                                  color={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                />
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                          {feedbackRating > 0 && (
-                            <Text
-                              style={[
-                                styles.ratingText,
-                                { textAlign: "center", marginTop: 12 },
-                              ]}
+                    <View>
+                      <Text style={styles.stepHint}>
+                        {t(
+                          "incidents.rateYourExperience",
+                          "Rate your experience with this resolution",
+                        )}
+                        {selectedTransition.requirements?.find(
+                          (x: any) => x.requirement_type === "rating",
+                        )?.is_mandatory && (
+                          <Text style={{ color: "red" }}> *</Text>
+                        )}
+                      </Text>
+                      <View
+                        style={{
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#F8F9FA",
+                          borderRadius: 10,
+                          padding: 15,
+                          borderWidth: 1,
+                          borderColor: "#E0E0E0",
+                        }}
+                      >
+                        <View style={styles.starRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                              key={star}
+                              onPress={() => setFeedbackRating(star)}
                             >
-                              {feedbackRating === 1 && t("incidents.ratingPoor")}
-                              {feedbackRating === 2 && t("incidents.ratingFair")}
-                              {feedbackRating === 3 && t("incidents.ratingGood")}
-                              {feedbackRating === 4 &&
-                                t("incidents.ratingVeryGood")}
-                              {feedbackRating === 5 &&
-                                t("incidents.ratingExcellent")}
-                            </Text>
-                          )}
+                              <Ionicons
+                                fill={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                                name={
+                                  star <= feedbackRating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={40}
+                                color={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                              />
+                            </TouchableOpacity>
+                          ))}
                         </View>
+                        {feedbackRating > 0 && (
+                          <Text
+                            style={[
+                              styles.ratingText,
+                              { textAlign: "center", marginTop: 12 },
+                            ]}
+                          >
+                            {feedbackRating === 1 && t("incidents.ratingPoor")}
+                            {feedbackRating === 2 && t("incidents.ratingFair")}
+                            {feedbackRating === 3 && t("incidents.ratingGood")}
+                            {feedbackRating === 4 &&
+                              t("incidents.ratingVeryGood")}
+                            {feedbackRating === 5 &&
+                              t("incidents.ratingExcellent")}
+                          </Text>
+                        )}
                       </View>
-                    )}
+                    </View>
+                  )}
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -2513,13 +2592,28 @@ const UpdateStatusModal = () => {
             </TouchableOpacity>
 
             {canUploadAttachmentGallery() && (
-              <TouchableOpacity style={styles.bottomSheetOption} onPress={pickImageFromGallery}>
-                <View style={[styles.optionIconContainer, { backgroundColor: '#E3F2FD' }]}>
+              <TouchableOpacity
+                style={styles.bottomSheetOption}
+                onPress={pickImageFromGallery}
+              >
+                <View
+                  style={[
+                    styles.optionIconContainer,
+                    { backgroundColor: "#E3F2FD" },
+                  ]}
+                >
                   <Ionicons name="images" size={28} color="#2196F3" />
                 </View>
                 <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionTitle}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
-                  <Text style={styles.optionSubtitle}>{t('common.selectImagesFromLibrary', 'Select images from your photo library')}</Text>
+                  <Text style={styles.optionTitle}>
+                    {t("common.chooseFromGallery", "Choose from Gallery")}
+                  </Text>
+                  <Text style={styles.optionSubtitle}>
+                    {t(
+                      "common.selectImagesFromLibrary",
+                      "Select images from your photo library",
+                    )}
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -3112,7 +3206,7 @@ const styles = StyleSheet.create({
   transitionCardStateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5
+    gap: 5,
   },
   transitionCardStateLabel: {
     fontSize: 12,
