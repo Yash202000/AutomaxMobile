@@ -1,6 +1,5 @@
 import { getClassificationsTree } from "@/src/api/classifications";
 import { getDepartments } from "@/src/api/departments";
-import { validateImage } from "@/src/api/images";
 import { createIncident, uploadMultipleAttachments } from "@/src/api/incidents";
 import { createLocation, getLocationsTree } from "@/src/api/locations";
 import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
@@ -23,6 +22,7 @@ import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { crashLogger } from "@/src/utils/crashLogger";
 import { compressImage } from "@/src/utils/imageCompression";
+import { filterInvalidImages } from "@/src/utils/imageValidation";
 import {
   generateWatermarkedFilename,
   WatermarkData,
@@ -63,11 +63,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Mirrors VITE_DISABLE_AUTO_LOCATION_RETRIEVAL from the web client.
 const DISABLE_AUTO_LOCATION_RETRIEVAL =
   process.env.EXPO_PUBLIC_DISABLE_AUTO_LOCATION_RETRIEVAL === "true";
-
-// When true, every image attachment must pass server-side validation
-// (POST /images/validate) before the incident can be created.
-const IMAGE_VALIDATION_REQUIRED =
-  process.env.EXPO_PUBLIC_IMAGE_VALIDATION_REQUIRED === "true";
 
 // Shape for a pending (not-yet-persisted) location created from a map selection
 interface PendingNewLocation {
@@ -281,6 +276,9 @@ const AddIncidentScreen = () => {
 
   // Attachments state
   const [attachments, setAttachments] = useState<any[]>([]);
+  // True while a just-picked/captured image is being validated against the
+  // server — surfaced in the attach button so the UI doesn't look stuck.
+  const [validatingAttachment, setValidatingAttachment] = useState(false);
   // Kept in sync so callbacks with stale closures (e.g. handleWatermarkComplete,
   // memoized on unrelated deps) can still read the current count reliably.
   const attachmentsCountRef = useRef(0);
@@ -497,7 +495,6 @@ const AddIncidentScreen = () => {
         };
 
         let filteredClassifications = filterForIncidents(classRes.data);
-
         // Filter by user's assigned classifications (unless super admin)
         if (
           user &&
@@ -505,6 +502,7 @@ const AddIncidentScreen = () => {
           user.classifications &&
           user.classifications.length > 0
         ) {
+          console.log("Filtered classifications:", user.classifications);
           const userClassificationIds = new Set(
             user.classifications.map((c) => c.id),
           );
@@ -1277,8 +1275,21 @@ const AddIncidentScreen = () => {
           ? compressionResult.compressedUri
           : watermarkedUri;
 
-      // Add watermarked image to attachments, unless the cap's already been hit
-      if (attachmentsCountRef.current >= MAX_ATTACHMENTS_COUNT) {
+      // Validate the photo's content up front, at capture time, instead of
+      // waiting until submit.
+      setValidatingAttachment(true);
+      const { invalidFiles } = await filterInvalidImages([
+        { uri: finalUri, name: originalName, type: "image/jpeg" },
+      ]);
+      setValidatingAttachment(false);
+
+      if (invalidFiles.length > 0) {
+        CustomAlert.alert(
+          t("addIncident.invalidImageTitle"),
+          invalidFiles.join("\n"),
+        );
+      } else if (attachmentsCountRef.current >= MAX_ATTACHMENTS_COUNT) {
+        // Add watermarked image to attachments, unless the cap's already been hit
         CustomAlert.alert(
           t("common.error"),
           t("addIncident.maxAttachmentsExceeded", {
@@ -1374,14 +1385,22 @@ const AddIncidentScreen = () => {
           }
         });
 
+        // Validate image content up front, at selection time, instead of
+        // waiting until submit — invalid images are dropped before they
+        // ever reach the attachments list.
+        setValidatingAttachment(true);
+        const { filesToKeep: validatedFiles, invalidFiles } =
+          await filterInvalidImages(validFiles);
+        setValidatingAttachment(false);
+
         // Add valid files, capped to however many slots remain
-        if (validFiles.length > 0) {
+        if (validatedFiles.length > 0) {
           const remainingSlots = Math.max(
             0,
             MAX_ATTACHMENTS_COUNT - attachments.length,
           );
-          const filesToAdd = validFiles.slice(0, remainingSlots);
-          const excessCount = validFiles.length - filesToAdd.length;
+          const filesToAdd = validatedFiles.slice(0, remainingSlots);
+          const excessCount = validatedFiles.length - filesToAdd.length;
 
           if (filesToAdd.length > 0) {
             setAttachments((prev) => [...prev, ...filesToAdd]);
@@ -1412,8 +1431,17 @@ const AddIncidentScreen = () => {
             [{ text: t("common.ok") }],
           );
         }
+
+        // Show warning for images that failed content validation
+        if (invalidFiles.length > 0) {
+          CustomAlert.alert(
+            t("addIncident.invalidImageTitle"),
+            invalidFiles.join("\n"),
+          );
+        }
       }
     } catch (error) {
+      setValidatingAttachment(false);
       console.error("Error picking from gallery:", error);
       crashLogger
         .logError(error as Error, {
@@ -1458,14 +1486,21 @@ const AddIncidentScreen = () => {
           }
         });
 
+        // Validate any image files' content up front, at selection time,
+        // instead of waiting until submit.
+        setValidatingAttachment(true);
+        const { filesToKeep: validatedFiles, invalidFiles } =
+          await filterInvalidImages(validFiles);
+        setValidatingAttachment(false);
+
         // Add valid files, capped to however many slots remain
-        if (validFiles.length > 0) {
+        if (validatedFiles.length > 0) {
           const remainingSlots = Math.max(
             0,
             MAX_ATTACHMENTS_COUNT - attachments.length,
           );
-          const filesToAdd = validFiles.slice(0, remainingSlots);
-          const excessCount = validFiles.length - filesToAdd.length;
+          const filesToAdd = validatedFiles.slice(0, remainingSlots);
+          const excessCount = validatedFiles.length - filesToAdd.length;
 
           if (filesToAdd.length > 0) {
             setAttachments((prev) => [...prev, ...filesToAdd]);
@@ -1496,8 +1531,17 @@ const AddIncidentScreen = () => {
             [{ text: t("common.ok") }],
           );
         }
+
+        // Show warning for images that failed content validation
+        if (invalidFiles.length > 0) {
+          CustomAlert.alert(
+            t("addIncident.invalidImageTitle"),
+            invalidFiles.join("\n"),
+          );
+        }
       }
     } catch (error) {
+      setValidatingAttachment(false);
       console.error("Error picking document:", error);
       crashLogger
         .logError(error as Error, {
@@ -1859,24 +1903,8 @@ const AddIncidentScreen = () => {
     setSubmitting(true);
 
     try {
-      if (IMAGE_VALIDATION_REQUIRED) {
-        const imageAttachments = attachments.filter((a) =>
-          a.type?.startsWith("image/"),
-        );
-        for (const image of imageAttachments) {
-          const result = await validateImage(image);
-          if (!result.valid) {
-            // Drop the invalid image so the user can add a replacement.
-            setAttachments((prev) => prev.filter((a) => a.uri !== image.uri));
-            setSubmitting(false);
-            CustomAlert.alert(
-              t("addIncident.invalidImageTitle"),
-              result.message || t("addIncident.invalidImageMessage"),
-            );
-            return;
-          }
-        }
-      }
+      // Image attachments are validated at selection time (see
+      // filterInvalidImages), so by submit time they're already known-good.
 
       // Double-check matchedWorkflow exists with valid id
       if (!matchedWorkflow || !matchedWorkflow.id) {
@@ -2689,36 +2717,50 @@ const AddIncidentScreen = () => {
                     <TouchableOpacity
                       style={[
                         styles.attachmentButton,
-                        attachments.length >= MAX_ATTACHMENTS_COUNT &&
+                        (attachments.length >= MAX_ATTACHMENTS_COUNT ||
+                          validatingAttachment) &&
                           styles.attachmentButtonDisabled,
                       ]}
                       onPress={showAttachmentOptions}
-                      disabled={attachments.length >= MAX_ATTACHMENTS_COUNT}
+                      disabled={
+                        attachments.length >= MAX_ATTACHMENTS_COUNT ||
+                        validatingAttachment
+                      }
                     >
-                      <Ionicons
-                        name="cloud-upload-outline"
-                        size={24}
-                        color={
-                          attachments.length >= MAX_ATTACHMENTS_COUNT
-                            ? "#999999"
-                            : "#2EC4B6"
-                        }
-                      />
+                      {validatingAttachment ? (
+                        <ActivityIndicator size="small" color="#999999" />
+                      ) : (
+                        <Ionicons
+                          name="cloud-upload-outline"
+                          size={24}
+                          color={
+                            attachments.length >= MAX_ATTACHMENTS_COUNT
+                              ? "#999999"
+                              : "#2EC4B6"
+                          }
+                        />
+                      )}
                       <Text
                         style={[
                           styles.attachmentButtonText,
-                          attachments.length >= MAX_ATTACHMENTS_COUNT &&
+                          (attachments.length >= MAX_ATTACHMENTS_COUNT ||
+                            validatingAttachment) &&
                             styles.attachmentButtonTextDisabled,
                         ]}
                       >
-                        {attachments.length >= MAX_ATTACHMENTS_COUNT
-                          ? t("addIncident.maxAttachmentsReached", {
-                              max: MAX_ATTACHMENTS_COUNT,
-                              defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
-                            })
-                          : attachments.length > 0
-                            ? t("addIncident.addMoreFiles")
-                            : t("addIncident.tapToUpload")}
+                        {validatingAttachment
+                          ? t(
+                              "addIncident.validatingImage",
+                              "Validating image...",
+                            )
+                          : attachments.length >= MAX_ATTACHMENTS_COUNT
+                            ? t("addIncident.maxAttachmentsReached", {
+                                max: MAX_ATTACHMENTS_COUNT,
+                                defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                              })
+                            : attachments.length > 0
+                              ? t("addIncident.addMoreFiles")
+                              : t("addIncident.tapToUpload")}
                       </Text>
                     </TouchableOpacity>
                   </View>
