@@ -367,7 +367,7 @@ export const getMatchingUsers = async (matchCriteria: any) => {
 export const uploadAttachment = async (
   incidentId: string,
   file: any,
-  current_state_id: string | undefined,
+  version: any,
 ) => {
   try {
     const formData = new FormData();
@@ -378,7 +378,7 @@ export const uploadAttachment = async (
     } as any);
 
     const response = await apiClient.post(
-      `/incidents/${incidentId}/attachments?current_state=${current_state_id}`,
+      `/incidents/${incidentId}/attachments?version=${version}`,
       formData,
       {
         headers: {
@@ -403,13 +403,13 @@ export const uploadAttachment = async (
 export const uploadMultipleAttachments = async (
   incidentId: string,
   files: any[],
-  current_state_id: string | undefined,
+  version: any,
 ) => {
   const results: any[] = [];
   const errors: any[] = [];
 
   for (const file of files) {
-    const result = await uploadAttachment(incidentId, file, current_state_id);
+    const result = await uploadAttachment(incidentId, file, version);
     if (result.success) {
       results.push(result.data);
     } else {

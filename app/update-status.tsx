@@ -1,6 +1,5 @@
 import { getClassificationsTree } from "@/src/api/classifications";
 import { getDepartmentsTree, matchDepartments } from "@/src/api/departments";
-import { validateImage } from "@/src/api/images";
 import {
   executeTransition,
   getCommentTemplatesByTransition,
@@ -1251,7 +1250,7 @@ const UpdateStatusModal = () => {
       const uploadResult = await uploadMultipleAttachments(
         incidentId,
         attachments,
-        selectedTransition?.transition?.from_state_id,
+        incident?.version,
       );
 
       if (uploadResult.success) {
