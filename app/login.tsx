@@ -242,7 +242,7 @@ const LoginScreen = () => {
           phone: phoneNumber,
           channel: otpChannel,
           name: trimmedCitizenName,
-          type: 'citizen'
+          type: "citizen",
         });
 
         if (response.data && response.data.session_id) {
@@ -260,7 +260,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -284,7 +284,10 @@ const LoginScreen = () => {
         if (result.success && result.token) {
           await SecureStore.setItemAsync("loginMethod", "ad");
           const loggedInUser = await login(result.token, result.refresh_token);
-          await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
+          await navigateAfterLogin(loggedInUser, router, {
+            enforcePhoneVerification: false,
+            otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+          });
         } else {
           setError(result.error || t("auth.loginError"));
         }
@@ -316,13 +319,16 @@ const LoginScreen = () => {
           if (validation_url) {
             await Linking.openURL(validation_url);
           } else {
-            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
+            await navigateAfterLogin(loggedInUser, router, {
+              enforcePhoneVerification: false,
+              otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+            });
           }
         } else {
           setError(
             response.data?.error ||
-            response.data?.message ||
-            t("auth.loginError"),
+              response.data?.message ||
+              t("auth.loginError"),
           );
         }
       } catch (err: any) {
@@ -356,7 +362,7 @@ const LoginScreen = () => {
         const response = await apiClient.post("/auth/login", {
           email: trimmedEmail,
           password,
-          type: 'employee'
+          type: "employee",
         });
 
         if (response.data && response.data.success) {
@@ -365,7 +371,10 @@ const LoginScreen = () => {
           if (token) {
             // Full login already completed (super admin, or totp_enabled is off).
             const loggedInUser = await login(token, refresh_token);
-            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: true, otpChannel: otpViaWhatsapp ? "whatsapp" : "sms" });
+            await navigateAfterLogin(loggedInUser, router, {
+              enforcePhoneVerification: true,
+              otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+            });
           } else {
             // Not super admin & totp_enabled is on — the backend withholds the
             // token until 2FA is completed, so only `user` comes back here.
@@ -377,7 +386,7 @@ const LoginScreen = () => {
               return;
             }
             const channel = otpViaWhatsapp ? "whatsapp" : "sms";
-            const otpRes = await sendOtp(loginUser.phone, channel, 'employee');
+            const otpRes = await sendOtp(loginUser.phone, channel, "employee");
             if (otpRes.success) {
               const otpParams: Record<string, string> = {
                 phoneNumber: loginUser.phone,
@@ -392,7 +401,9 @@ const LoginScreen = () => {
               }
               router.push({ pathname: "/otp", params: otpParams });
             } else {
-              setError(otpRes.error || t("auth.otpSentFailed", "Failed to send OTP"));
+              setError(
+                otpRes.error || t("auth.otpSentFailed", "Failed to send OTP"),
+              );
             }
           }
         } else {
@@ -451,7 +462,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -606,10 +617,7 @@ const LoginScreen = () => {
       style={styles.keyboardView}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#fff"
-      />
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <LinearGradient
         colors={["#F8FFFE", "#FFFFFF"]}
         style={styles.container}
@@ -640,8 +648,7 @@ const LoginScreen = () => {
             ]}
           >
             {/* Header Logo */}
-            {
-              !isKeyboardActive &&
+            {!isKeyboardActive && (
               <Animated.View
                 style={[
                   styles.logoContainer,
@@ -657,25 +664,15 @@ const LoginScreen = () => {
                   />
                 </View>
               </Animated.View>
-            }
+            )}
 
             {/* Welcome Text */}
             {!isKeyboardActive && (
               <View style={styles.welcomeContainer}>
-                <Text
-                  style={[
-                    styles.welcomeText,
-                    { textAlign: "left" },
-                  ]}
-                >
+                <Text style={[styles.welcomeText, { textAlign: "left" }]}>
                   {t("auth.welcomeBack")}
                 </Text>
-                <Text
-                  style={[
-                    styles.subtitleText,
-                    { textAlign: "left" },
-                  ]}
-                >
+                <Text style={[styles.subtitleText, { textAlign: "left" }]}>
                   {t("auth.loginSubtitle")}
                 </Text>
               </View>
@@ -766,12 +763,7 @@ const LoginScreen = () => {
               {loginType === "citizen" ? (
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.name", "Name")}
                     </Text>
                     <Animated.View
@@ -819,12 +811,7 @@ const LoginScreen = () => {
                   </View>
 
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.mobileNumber", "Mobile Number")}
                     </Text>
                     <Animated.View
@@ -872,12 +859,7 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.otpChannel")}
                     </Text>
                     <View style={styles.channelContainer}>
@@ -918,7 +900,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -932,12 +914,7 @@ const LoginScreen = () => {
                 <>
                   {/* Username Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.adUsername", "Username")}
                     </Text>
                     <Animated.View
@@ -986,12 +963,7 @@ const LoginScreen = () => {
 
                   {/* AD Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.password")}
                     </Text>
                     <View
@@ -1060,12 +1032,7 @@ const LoginScreen = () => {
                 </>
               ) : loginMethod === "sso" ? (
                 <View style={styles.inputWrapper}>
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { textAlign: "left" },
-                    ]}
-                  >
+                  <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                     {t("auth.nationalId", "National ID")}
                   </Text>
                   <Animated.View
@@ -1120,12 +1087,7 @@ const LoginScreen = () => {
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.email")}
                     </Text>
                     <Animated.View
@@ -1168,12 +1130,7 @@ const LoginScreen = () => {
 
                   {/* Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.password")}
                     </Text>
                     <View
@@ -1229,12 +1186,7 @@ const LoginScreen = () => {
                 /* Phone Number Input */
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.phone")}
                     </Text>
                     <Animated.View
@@ -1272,11 +1224,7 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel]}>
                       {t("auth.otpChannel")}
                     </Text>
                     <View style={styles.channelContainer}>
@@ -1317,7 +1265,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -1331,38 +1279,40 @@ const LoginScreen = () => {
               {/* 2FA channel preference — only relevant when the server has
                   totp_enabled on, and only for methods that don't already
                   have their own OTP channel picker (phone login has one). */}
-              {loginType === "employee" && loginMethod !== "phone" && totpEnabled && (
-                <View style={styles.inputWrapper}>
-                  <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                    {t("auth.twoFactorAuth", "2FA")}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.checkboxRow}
-                    onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.checkbox,
-                        otpViaWhatsapp && styles.checkboxChecked,
-                      ]}
-                    >
-                      {otpViaWhatsapp && (
-                        <Ionicons name="checkmark" size={14} color="#fff" />
-                      )}
-                    </View>
-                    <Ionicons
-                      name="logo-whatsapp"
-                      size={18}
-                      color="#666"
-                      style={{ marginLeft: 8, marginRight: 6 }}
-                    />
-                    <Text style={styles.checkboxLabel}>
-                      {t("auth.sendOtpViaWhatsapp", "Send OTP via WhatsApp")}
+              {loginType === "employee" &&
+                loginMethod !== "phone" &&
+                totpEnabled && (
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.twoFactorAuth", "2FA")}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          otpViaWhatsapp && styles.checkboxChecked,
+                        ]}
+                      >
+                        {otpViaWhatsapp && (
+                          <Ionicons name="checkmark" size={14} color="#fff" />
+                        )}
+                      </View>
+                      <Ionicons
+                        name="logo-whatsapp"
+                        size={18}
+                        color="#666"
+                        style={{ marginLeft: 8, marginRight: 6 }}
+                      />
+                      <Text style={styles.checkboxLabel}>
+                        {t("auth.sendOtpViaWhatsapp", "Send OTP via WhatsApp")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
               {/* Forgot Password - Only for email login */}
               {loginType === "employee" && loginMethod === "email" && (
@@ -1429,7 +1379,6 @@ const LoginScreen = () => {
                 </Text>
               </Animated.View>
             ) : null}
-
           </Animated.View>
         </ScrollView>
 
@@ -1625,7 +1574,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    direction: I18nManager.isRTL ? 'rtl' : 'ltr',
+    direction: I18nManager.isRTL ? "rtl" : "ltr",
   },
   inputIcon: {
     marginEnd: 12,
@@ -1713,14 +1662,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     flex: 1,
-    textAlign: "left"
+    textAlign: "left",
   },
   fieldErrorText: {
     color: "#E74C3C",
     fontSize: 13,
     marginTop: 6,
     fontWeight: "500",
-    textAlign: "left"
+    textAlign: "left",
   },
   loginButton: {
     borderRadius: 14,

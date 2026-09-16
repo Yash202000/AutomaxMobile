@@ -1,3 +1,4 @@
+import { getLookupCategories } from "@/src/api/lookups";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +12,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { getLookupCategories } from "@/src/api/lookups";
 
 const CHATBOT_BASE_URL =
   "https://livechat.discretal.com/preview/010b1801-226f-4d97-85a6-d988c6ae1ccd?workflow_id=49";
@@ -54,7 +54,10 @@ export const ChatbotWidget: React.FC = () => {
         }
       })
       .catch((err) =>
-        console.warn("[ChatbotWidget] Failed to fetch CITIZEN_ATTACHMENT_LIMIT:", err),
+        console.warn(
+          "[ChatbotWidget] Failed to fetch CITIZEN_ATTACHMENT_LIMIT:",
+          err,
+        ),
       );
   }, []);
 
@@ -82,19 +85,32 @@ export const ChatbotWidget: React.FC = () => {
       <Modal
         visible={visible}
         animationType="slide"
-        presentationStyle={Platform.OS === "ios" ? "pageSheet" : "overFullScreen"}
+        presentationStyle={
+          Platform.OS === "ios" ? "pageSheet" : "overFullScreen"
+        }
         onRequestClose={() => setVisible(false)}
         statusBarTranslucent={Platform.OS === "android"}
       >
         {/* Use insets measured outside the Modal — reliable on Android edge-to-edge */}
-        <View style={[styles.modalRoot, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View
+          style={[
+            styles.modalRoot,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.headerIcon}>
-                <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={18}
+                  color="#FFFFFF"
+                />
               </View>
-              <Text style={styles.headerTitle}>{t('common.aiAssistant', 'AI Assistant')}</Text>
+              <Text style={styles.headerTitle}>
+                {t("common.aiAssistant", "AI Assistant")}
+              </Text>
             </View>
             <TouchableOpacity
               style={styles.closeBtn}
@@ -170,13 +186,23 @@ export const ChatbotWidget: React.FC = () => {
                   javaScriptEnabled
                   onError={(e) => {
                     const { description, code } = e.nativeEvent;
-                    console.warn("[ChatbotWidget] chat WebView error:", e.nativeEvent);
-                    setChatError(`${description || "Failed to load"} (code ${code})`);
+                    console.warn(
+                      "[ChatbotWidget] chat WebView error:",
+                      e.nativeEvent,
+                    );
+                    setChatError(
+                      `${description || "Failed to load"} (code ${code})`,
+                    );
                   }}
                   onHttpError={(e) => {
                     const { statusCode, url } = e.nativeEvent;
-                    console.warn("[ChatbotWidget] chat WebView HTTP error:", e.nativeEvent);
-                    setChatError(`Server responded with ${statusCode} for ${url}`);
+                    console.warn(
+                      "[ChatbotWidget] chat WebView HTTP error:",
+                      e.nativeEvent,
+                    );
+                    setChatError(
+                      `Server responded with ${statusCode} for ${url}`,
+                    );
                   }}
                 />
               )}
@@ -205,13 +231,23 @@ export const ChatbotWidget: React.FC = () => {
                   javaScriptEnabled
                   onError={(e) => {
                     const { description, code } = e.nativeEvent;
-                    console.warn("[ChatbotWidget] voice WebView error:", e.nativeEvent);
-                    setVoiceError(`${description || "Failed to load"} (code ${code})`);
+                    console.warn(
+                      "[ChatbotWidget] voice WebView error:",
+                      e.nativeEvent,
+                    );
+                    setVoiceError(
+                      `${description || "Failed to load"} (code ${code})`,
+                    );
                   }}
                   onHttpError={(e) => {
                     const { statusCode, url } = e.nativeEvent;
-                    console.warn("[ChatbotWidget] voice WebView HTTP error:", e.nativeEvent);
-                    setVoiceError(`Server responded with ${statusCode} for ${url}`);
+                    console.warn(
+                      "[ChatbotWidget] voice WebView HTTP error:",
+                      e.nativeEvent,
+                    );
+                    setVoiceError(
+                      `Server responded with ${statusCode} for ${url}`,
+                    );
                   }}
                 />
               )}
