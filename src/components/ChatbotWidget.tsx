@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { useAuth } from "../context/AuthContext";
 
 const CHATBOT_BASE_URL =
   "https://livechat.discretal.com/preview/010b1801-226f-4d97-85a6-d988c6ae1ccd?workflow_id=49";
@@ -36,6 +37,7 @@ export const ChatbotWidget: React.FC = () => {
   const [chatReloadKey, setChatReloadKey] = useState(0);
   const [voiceReloadKey, setVoiceReloadKey] = useState(0);
   const [maxAttachments, setMaxAttachments] = useState(DEFAULT_MAX_ATTACHMENTS);
+  const { user } = useAuth();
 
   useEffect(() => {
     getLookupCategories()
@@ -62,8 +64,9 @@ export const ChatbotWidget: React.FC = () => {
   }, []);
 
   const chatbotUrl = useMemo(
-    () => `${CHATBOT_BASE_URL}&max_attachments=${maxAttachments}`,
-    [maxAttachments],
+    () =>
+      `${CHATBOT_BASE_URL}&max_attachments=${maxAttachments}&reporter_phone=${user?.phone}`,
+    [maxAttachments, user?.phone],
   );
 
   // Position FAB above the floating tab bar

@@ -38,6 +38,9 @@ const isSmallScreen = screenHeight < 700;
 const MOBILE_PHONE_MIN_DIGITS = 8;
 const INTERNATIONAL_PHONE_MAX_DIGITS = 15;
 const MOBILE_PHONE_REGEX = /^\+?\d{8,15}$/;
+// Matches anything that is NOT an English or Arabic letter — used to strip
+// spaces, digits, and special characters as the user types.
+const NON_CITIZEN_NAME_CHAR_REGEX = /[^A-Za-z؀-ۿ]/g;
 
 // Feature flag: show citizen login tab only when EXPO_PUBLIC_ENABLE_CITIZEN_LOGIN=true
 const enableCitizenLogin =
@@ -50,7 +53,9 @@ const LoginScreen = () => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [citizenName, setCitizenName] = useState("");
+  const [citizenFirstName, setCitizenFirstName] = useState("");
+  const [citizenMiddleName, setCitizenMiddleName] = useState("");
+  const [citizenLastName, setCitizenLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loginType, setLoginType] = useState<"employee" | "citizen">(
     enableCitizenLogin ? "citizen" : "employee",
@@ -67,7 +72,9 @@ const LoginScreen = () => {
   const [isEmailPasswordFocused, setIsEmailPasswordFocused] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
-    name?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
     phone?: string;
   }>({});
   const [loading, setLoading] = useState(false);
@@ -87,17 +94,24 @@ const LoginScreen = () => {
   const adPasswordFocusAnim = useRef(new Animated.Value(0)).current;
   const nationalIdFocusAnim = useRef(new Animated.Value(0)).current;
   const phoneFocusAnim = useRef(new Animated.Value(0)).current;
-  const nameFocusAnim = useRef(new Animated.Value(0)).current;
+  const firstNameFocusAnim = useRef(new Animated.Value(0)).current;
+  const middleNameFocusAnim = useRef(new Animated.Value(0)).current;
+  const lastNameFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
 
-  const trimmedCitizenName = citizenName.trim();
+  const trimmedCitizenFirstName = citizenFirstName.trim();
+  const trimmedCitizenMiddleName = citizenMiddleName.trim();
+  const trimmedCitizenLastName = citizenLastName.trim();
   const trimmedNationalId = nationalId.trim();
   const citizenPhoneDigits = phoneNumber.replace(/\D/g, "");
   const hasCitizenPhoneMinDigits =
     citizenPhoneDigits.length >= MOBILE_PHONE_MIN_DIGITS;
   const hasCitizenRequiredFields =
-    Boolean(trimmedCitizenName) && hasCitizenPhoneMinDigits;
+    Boolean(trimmedCitizenFirstName) &&
+    Boolean(trimmedCitizenMiddleName) &&
+    Boolean(trimmedCitizenLastName) &&
+    hasCitizenPhoneMinDigits;
   const isCitizenPhoneValid = MOBILE_PHONE_REGEX.test(phoneNumber);
   const isLoginDisabled =
     loading ||
@@ -213,10 +227,32 @@ const LoginScreen = () => {
     setFieldErrors({});
 
     if (loginType === "citizen") {
-      const nextFieldErrors: { name?: string; phone?: string } = {};
+      const nextFieldErrors: {
+        firstName?: string;
+        middleName?: string;
+        lastName?: string;
+        phone?: string;
+      } = {};
 
-      if (!trimmedCitizenName) {
-        nextFieldErrors.name = t("auth.nameRequired", "Please enter your name");
+      if (!trimmedCitizenFirstName) {
+        nextFieldErrors.firstName = t(
+          "auth.firstNameRequired",
+          "Please enter your first name",
+        );
+      }
+
+      if (!trimmedCitizenMiddleName) {
+        nextFieldErrors.middleName = t(
+          "auth.middleNameRequired",
+          "Please enter your middle name",
+        );
+      }
+
+      if (!trimmedCitizenLastName) {
+        nextFieldErrors.lastName = t(
+          "auth.lastNameRequired",
+          "Please enter your last name",
+        );
       }
 
       if (!phoneNumber) {
@@ -241,7 +277,9 @@ const LoginScreen = () => {
         const response = await apiClient.post("/otp/send", {
           phone: phoneNumber,
           channel: otpChannel,
-          name: trimmedCitizenName,
+          first_name: trimmedCitizenFirstName,
+          middle_name: trimmedCitizenMiddleName,
+          last_name: trimmedCitizenLastName,
           type: "citizen",
         });
 
@@ -470,10 +508,29 @@ const LoginScreen = () => {
     }
   };
 
-  const handleCitizenNameChange = (value: string) => {
-    setCitizenName(value);
-    if (fieldErrors.name) {
-      setFieldErrors((prev) => ({ ...prev, name: undefined }));
+  // Strips anything that isn't an English or Arabic letter as the user types,
+  // so spaces, digits, and special characters can never be entered.
+  const sanitizeCitizenNamePart = (value: string) =>
+    value.replace(NON_CITIZEN_NAME_CHAR_REGEX, "");
+
+  const handleCitizenFirstNameChange = (value: string) => {
+    setCitizenFirstName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.firstName) {
+      setFieldErrors((prev) => ({ ...prev, firstName: undefined }));
+    }
+  };
+
+  const handleCitizenMiddleNameChange = (value: string) => {
+    setCitizenMiddleName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.middleName) {
+      setFieldErrors((prev) => ({ ...prev, middleName: undefined }));
+    }
+  };
+
+  const handleCitizenLastNameChange = (value: string) => {
+    setCitizenLastName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.lastName) {
+      setFieldErrors((prev) => ({ ...prev, lastName: undefined }));
     }
   };
 
@@ -483,7 +540,9 @@ const LoginScreen = () => {
     setAdUsername("");
     setAdPassword("");
     setNationalId("");
-    setCitizenName("");
+    setCitizenFirstName("");
+    setCitizenMiddleName("");
+    setCitizenLastName("");
     setPhoneNumber("");
     setShowPassword(false);
     setShowAdPassword(false);
@@ -505,15 +564,43 @@ const LoginScreen = () => {
     }
   };
 
-  const handleNameFocus = () => {
-    Animated.spring(nameFocusAnim, {
+  const handleFirstNameFocus = () => {
+    Animated.spring(firstNameFocusAnim, {
       toValue: 1,
       useNativeDriver: false,
     }).start();
   };
 
-  const handleNameBlur = () => {
-    Animated.spring(nameFocusAnim, {
+  const handleFirstNameBlur = () => {
+    Animated.spring(firstNameFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleMiddleNameFocus = () => {
+    Animated.spring(middleNameFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleMiddleNameBlur = () => {
+    Animated.spring(middleNameFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleLastNameFocus = () => {
+    Animated.spring(lastNameFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleLastNameBlur = () => {
+    Animated.spring(lastNameFocusAnim, {
       toValue: 0,
       useNativeDriver: false,
     }).start();
@@ -591,7 +678,17 @@ const LoginScreen = () => {
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
-  const nameBorderColor = nameFocusAnim.interpolate({
+  const firstNameBorderColor = firstNameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const middleNameBorderColor = middleNameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const lastNameBorderColor = lastNameFocusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
@@ -764,15 +861,15 @@ const LoginScreen = () => {
                 <>
                   <View style={styles.inputWrapper}>
                     <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.name", "Name")}
+                      {t("auth.firstName", "First Name")}
                     </Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
                         {
-                          borderColor: fieldErrors.name
+                          borderColor: fieldErrors.firstName
                             ? "#E74C3C"
-                            : nameBorderColor,
+                            : firstNameBorderColor,
                           borderWidth: 2,
                         },
                       ]}
@@ -791,21 +888,117 @@ const LoginScreen = () => {
                           },
                         ]}
                         placeholder={t(
-                          "auth.namePlaceholder",
-                          "Enter your name",
+                          "auth.firstNamePlaceholder",
+                          "Enter your first name",
                         )}
                         placeholderTextColor="#999"
-                        value={citizenName}
-                        onChangeText={handleCitizenNameChange}
-                        onFocus={handleNameFocus}
-                        onBlur={handleNameBlur}
+                        value={citizenFirstName}
+                        onChangeText={handleCitizenFirstNameChange}
+                        onFocus={handleFirstNameFocus}
+                        onBlur={handleFirstNameBlur}
                         autoCapitalize="words"
                         autoCorrect={false}
                       />
                     </Animated.View>
-                    {fieldErrors.name ? (
+                    {fieldErrors.firstName ? (
                       <Text style={styles.fieldErrorText}>
-                        {fieldErrors.name}
+                        {fieldErrors.firstName}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.middleName", "Middle Name")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.middleName
+                            ? "#E74C3C"
+                            : middleNameBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.middleNamePlaceholder",
+                          "Enter your middle name",
+                        )}
+                        placeholderTextColor="#999"
+                        value={citizenMiddleName}
+                        onChangeText={handleCitizenMiddleNameChange}
+                        onFocus={handleMiddleNameFocus}
+                        onBlur={handleMiddleNameBlur}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                    {fieldErrors.middleName ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.middleName}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.lastName", "Last Name")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.lastName
+                            ? "#E74C3C"
+                            : lastNameBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.lastNamePlaceholder",
+                          "Enter your last name",
+                        )}
+                        placeholderTextColor="#999"
+                        value={citizenLastName}
+                        onChangeText={handleCitizenLastNameChange}
+                        onFocus={handleLastNameFocus}
+                        onBlur={handleLastNameBlur}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                    {fieldErrors.lastName ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.lastName}
                       </Text>
                     ) : null}
                   </View>
