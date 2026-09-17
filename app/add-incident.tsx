@@ -1015,8 +1015,9 @@ const AddIncidentScreen = () => {
 
     // Caller information: shown whenever reporter_name is required or optional on the
     // workflow, but first/middle/last name are only mandatory when reporter_name itself
-    // is a required field (optional leaves them visible but not enforced).
-    if (isFieldRequired("reporter_name")) {
+    // is a required field (optional leaves them visible but not enforced). Citizen users
+    // never see this section, so they must not be blocked by its validation.
+    if (!isCitizenUser && isFieldRequired("reporter_name")) {
       if (!callerFirstName.trim()) {
         newErrors.reporter_first_name = t("addIncident.firstNameRequired");
       }
@@ -2442,7 +2443,7 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Caller Information (first/middle/last name) - show if required or optional */}
-              {isFieldVisible("reporter_name") && (
+              {!isCitizenUser && isFieldVisible("reporter_name") && (
                 <>
                   <Text style={styles.sectionTitle}>
                     {t("addIncident.callerInformation")}
@@ -2541,7 +2542,7 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Reporter Email - show if required or optional */}
-              {isFieldVisible("reporter_email") && (
+              {!isCitizenUser && isFieldVisible("reporter_email") && (
                 <>
                   <Text style={styles.sectionTitle}>
                     {t("addIncident.reporterEmail")}{" "}
@@ -2575,7 +2576,7 @@ const AddIncidentScreen = () => {
               )}
 
               {/* Reporter Phone - show if required or optional */}
-              {isFieldVisible("reporter_phone") && (
+              {!isCitizenUser && isFieldVisible("reporter_phone") && (
                 <>
                   <Text style={styles.sectionTitle}>
                     {t("addIncident.phone")}{" "}
