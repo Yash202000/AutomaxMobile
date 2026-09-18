@@ -778,13 +778,13 @@ const IncidentDetailsScreen = () => {
                   >
                     {incident.converted_request?.incident_number
                       ? t("incidents.tapToViewRequest", {
-                          number: incident.converted_request.incident_number,
-                          defaultValue: `Tap to view ${incident.converted_request.incident_number}`,
-                        })
+                        number: incident.converted_request.incident_number,
+                        defaultValue: `Tap to view ${incident.converted_request.incident_number}`,
+                      })
                       : t(
-                          "incidents.tapToViewConverted",
-                          "Tap to view converted request",
-                        )}
+                        "incidents.tapToViewConverted",
+                        "Tap to view converted request",
+                      )}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
@@ -846,13 +846,13 @@ const IncidentDetailsScreen = () => {
                   >
                     {incident.source_incident?.incident_number
                       ? t("incidents.tapToViewSource", {
-                          number: incident.source_incident.incident_number,
-                          defaultValue: `Tap to view source ${incident.source_incident.incident_number}`,
-                        })
+                        number: incident.source_incident.incident_number,
+                        defaultValue: `Tap to view source ${incident.source_incident.incident_number}`,
+                      })
                       : t(
-                          "incidents.tapToViewSourceIncident",
-                          "Tap to view source incident",
-                        )}
+                        "incidents.tapToViewSourceIncident",
+                        "Tap to view source incident",
+                      )}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#22C55E" />
@@ -930,10 +930,10 @@ const IncidentDetailsScreen = () => {
                       <Text style={styles.infoValue}>
                         {visibleAssignees.length
                           ? visibleAssignees
-                              .map((a) =>
-                                `${a.first_name || ""} ${a.last_name || ""}`.trim(),
-                              )
-                              .join(", ")
+                            .map((a) =>
+                              `${a.first_name || ""} ${a.last_name || ""}`.trim(),
+                            )
+                            .join(", ")
                           : t("common.na")}
                       </Text>
                     </View>
@@ -1258,7 +1258,7 @@ const IncidentDetailsScreen = () => {
     const lng = ${incident.longitude};
     const map = L.map('map').setView([lat, lng], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
@@ -1397,8 +1397,8 @@ const IncidentDetailsScreen = () => {
                   {incident.reporter?.first_name
                     ? `${incident.reporter.first_name} ${incident.reporter.last_name || ""}`
                     : incident.reporter?.username ||
-                      incident.reporter_name ||
-                      t("common.unknown", "Unknown")}
+                    incident.reporter_name ||
+                    t("common.unknown", "Unknown")}
                 </Text>
                 {(incident.reporter_email || incident.reporter?.email) && (
                   <Text style={styles.reporterEmail}>
@@ -1554,7 +1554,7 @@ const IncidentDetailsScreen = () => {
                           <View style={styles.fromBadge}>
                             <Text style={styles.fromBadgeText}>
                               {i18n.language === "ar" &&
-                              item.from_state?.name_ar
+                                item.from_state?.name_ar
                                 ? item.from_state?.name_ar
                                 : item.from_state.name}
                             </Text>
