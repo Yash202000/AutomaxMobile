@@ -14,14 +14,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { useAuth } from "../context/AuthContext";
 
-const CHATBOT_BASE_URL =
-  "https://livechat.discretal.com/preview/010b1801-226f-4d97-85a6-d988c6ae1ccd?workflow_id=49";
 const VOICE_AGENT_URL = "https://livechat.discretal.com/va/epm-940-livechat";
 
-// Fallback used until the real value loads (or if it's missing server-side).
+// Fallbacks used until the real values load (or if they're missing server-side).
 const DEFAULT_MAX_ATTACHMENTS = 10;
+const DEFAULT_CHATBOT_BASE_URL =
+  "https://livechat.discretal.com/preview/010b1801-226f-4d97-85a6-d988c6ae1ccd?workflow_id=49";
 const ENV_CONFIG_CATEGORY_CODE = "ENV_CONFIGURATION";
 const CITIZEN_ATTACHMENT_LIMIT_CODE = "CITIZEN_ATTACHMENT_LIMIT";
+const CHATBOT_URL_CODE = "CHATBOT_URL";
 
 const TAB_BAR_HEIGHT = 70;
 
@@ -37,6 +38,9 @@ export const ChatbotWidget: React.FC = () => {
   const [chatReloadKey, setChatReloadKey] = useState(0);
   const [voiceReloadKey, setVoiceReloadKey] = useState(0);
   const [maxAttachments, setMaxAttachments] = useState(DEFAULT_MAX_ATTACHMENTS);
+  const [chatbotBaseUrl, setChatbotBaseUrl] = useState(
+    DEFAULT_CHATBOT_BASE_URL,
+  );
   const { user } = useAuth();
 
   useEffect(() => {
@@ -54,10 +58,16 @@ export const ChatbotWidget: React.FC = () => {
         if (Number.isFinite(raw) && raw > 0) {
           setMaxAttachments(raw);
         }
+        const rawChatbotUrl = envConfig?.values?.find(
+          (v: any) => v.code === CHATBOT_URL_CODE,
+        )?.name;
+        if (typeof rawChatbotUrl === "string" && rawChatbotUrl.trim()) {
+          setChatbotBaseUrl(rawChatbotUrl.trim());
+        }
       })
       .catch((err) =>
         console.warn(
-          "[ChatbotWidget] Failed to fetch CITIZEN_ATTACHMENT_LIMIT:",
+          "[ChatbotWidget] Failed to fetch ENV_CONFIGURATION lookups:",
           err,
         ),
       );
@@ -65,9 +75,11 @@ export const ChatbotWidget: React.FC = () => {
 
   const chatbotUrl = useMemo(
     () =>
-      `${CHATBOT_BASE_URL}&max_attachments=${maxAttachments}&reporter_phone=${user?.phone}`,
-    [maxAttachments, user?.phone],
+      `${chatbotBaseUrl}&max_attachments=${maxAttachments}&reporter_phone=${encodeURIComponent(user?.phone ?? "")}`,
+    [chatbotBaseUrl, maxAttachments, user?.phone],
   );
+
+  console.log("chatbotUrl", chatbotUrl);
 
   // Position FAB above the floating tab bar
   const fabBottom =
