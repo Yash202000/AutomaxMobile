@@ -72,10 +72,11 @@ const isSmallScreen = screenHeight < 700;
 const RequestFilterScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -276,6 +277,11 @@ const RequestFilterScreen = () => {
     if (filters.state_ids.length > 0) {
       queryParams.state_id = filters.state_ids.join(',');
       queryParams.state_name = filters.state_names.join(',');
+      // Carry the Arabic name alongside so the destination screen's filter
+      // badge can localize it instead of always showing the English name.
+      queryParams.state_name_ar = filters.state_ids
+        .map(id => states.find(s => s.id === id)?.name_ar || '')
+        .join(',');
     }
     if (filters.priorities.length > 0) queryParams.priority = filters.priorities.join(',');
     if (filters.severities.length > 0) queryParams.severity = filters.severities.join(',');
@@ -358,13 +364,13 @@ const RequestFilterScreen = () => {
       <ScrollView style={styles.optionsContainer}>
         <View style={{ padding: 20 }}>
           {renderFilterSection('status', t('filter.status', 'Status'), 'flag-outline',
-            filters.state_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.state_ids.length === 1 ? filters.state_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.state_ids.length })),
+            filters.state_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.state_ids.length === 1 ? ((states.find(s => s.id === filters.state_ids[0])?.[(i18n.language === 'en' ? 'name' : 'name_ar')]) || (i18n.language !== 'en' && params.state_name_ar) || filters.state_names[0]) : t('filter.nSelected', '{{count}} selected', { count: filters.state_ids.length })),
             loadingStates,
             [{ id: null, name: t('filter.allStatuses', 'All Statuses') }, ...states],
             (state) => (
               <TouchableOpacity key={state.id || 'all'} style={[styles.filterOption, (state.id ? filters.state_ids.includes(state.id) : filters.state_ids.length === 0) && styles.filterOptionSelected]}
                 onPress={() => state.id ? selectState(state) : setFilters({ ...filters, state_ids: [], state_names: [] })}>
-                <Text style={styles.filterOptionText}>{state.name}</Text>
+                <Text style={styles.filterOptionText}>{(i18n.language === 'en' || !state?.name_ar) ? state.name : state.name_ar}</Text>
                 {(state.id ? filters.state_ids.includes(state.id) : filters.state_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#9B59B6" />}
               </TouchableOpacity>
             )

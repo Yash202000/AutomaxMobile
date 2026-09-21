@@ -65,8 +65,8 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const webViewRef = useRef<WebView>(null);
-  const geocodingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const suggestionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const geocodingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -287,6 +287,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const handleSearchQueryChange = useCallback((text: string) => {
     setSearchQuery(text);
     setShowSuggestions(false);
+    setSearchError(null);
     if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
     if (text.trim().length >= 3) {
       suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), 800);
@@ -403,7 +404,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     const map = L.map('map').setView([${value?.latitude || DEFAULT_LAT}, ${value?.longitude || DEFAULT_LNG}], ${value ? 15 : 11});
 
     // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
@@ -498,7 +499,12 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         </TouchableOpacity>
       </View>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown — deliberately NOT its own ScrollView. Nesting
+          a second vertical scroller inside the page's outer ScrollView made
+          both scroll together on touch. Nominatim is capped to 5 results
+          (see fetchSuggestions below), so it renders as a plain, unclipped
+          list and lets the outer page ScrollView scroll it like everything
+          else on the form. */}
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
           {suggestions.map((item, i) => (
@@ -718,7 +724,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginTop: -8,
     marginBottom: 8,
-    maxHeight: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

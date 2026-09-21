@@ -15,6 +15,7 @@ import { registerToken } from '@/src/api/notifications';
 import { CustomAlertComponent } from '@/src/components/CustomAlert';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { useGlobalWebSocket } from '@/src/hooks/useGlobalWebSocket';
 import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
@@ -151,6 +152,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   useFCM(router);
+  useGlobalWebSocket();
 
   useEffect(() => {
     if (isLoading || isLoggingOut) return;

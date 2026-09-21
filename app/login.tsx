@@ -1,8 +1,10 @@
-import { ldapLogin } from "@/src/api/auth";
+import { ldapLogin, sendOtp } from "@/src/api/auth";
 import apiClient from "@/src/api/client";
+import { getSettings } from "@/src/api/common";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
+import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
@@ -36,6 +38,9 @@ const isSmallScreen = screenHeight < 700;
 const MOBILE_PHONE_MIN_DIGITS = 8;
 const INTERNATIONAL_PHONE_MAX_DIGITS = 15;
 const MOBILE_PHONE_REGEX = /^\+?\d{8,15}$/;
+// Matches anything that is NOT an English or Arabic letter — used to strip
+// spaces, digits, and special characters as the user types.
+const NON_CITIZEN_NAME_CHAR_REGEX = /[^A-Za-z؀-ۿ]/g;
 
 // Feature flag: show citizen login tab only when EXPO_PUBLIC_ENABLE_CITIZEN_LOGIN=true
 const enableCitizenLogin =
@@ -48,7 +53,9 @@ const LoginScreen = () => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [citizenName, setCitizenName] = useState("");
+  const [citizenFirstName, setCitizenFirstName] = useState("");
+  const [citizenMiddleName, setCitizenMiddleName] = useState("");
+  const [citizenLastName, setCitizenLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loginType, setLoginType] = useState<"employee" | "citizen">(
     enableCitizenLogin ? "citizen" : "employee",
@@ -65,12 +72,16 @@ const LoginScreen = () => {
   const [isEmailPasswordFocused, setIsEmailPasswordFocused] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
-    name?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
     phone?: string;
   }>({});
   const [loading, setLoading] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [otpChannel, setOtpChannel] = useState<"sms" | "whatsapp">("sms");
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [otpViaWhatsapp, setOtpViaWhatsapp] = useState(false);
   const version = Constants.expoConfig?.version;
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
@@ -83,17 +94,24 @@ const LoginScreen = () => {
   const adPasswordFocusAnim = useRef(new Animated.Value(0)).current;
   const nationalIdFocusAnim = useRef(new Animated.Value(0)).current;
   const phoneFocusAnim = useRef(new Animated.Value(0)).current;
-  const nameFocusAnim = useRef(new Animated.Value(0)).current;
+  const firstNameFocusAnim = useRef(new Animated.Value(0)).current;
+  const middleNameFocusAnim = useRef(new Animated.Value(0)).current;
+  const lastNameFocusAnim = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
 
-  const trimmedCitizenName = citizenName.trim();
+  const trimmedCitizenFirstName = citizenFirstName.trim();
+  const trimmedCitizenMiddleName = citizenMiddleName.trim();
+  const trimmedCitizenLastName = citizenLastName.trim();
   const trimmedNationalId = nationalId.trim();
   const citizenPhoneDigits = phoneNumber.replace(/\D/g, "");
   const hasCitizenPhoneMinDigits =
     citizenPhoneDigits.length >= MOBILE_PHONE_MIN_DIGITS;
   const hasCitizenRequiredFields =
-    Boolean(trimmedCitizenName) && hasCitizenPhoneMinDigits;
+    Boolean(trimmedCitizenFirstName) &&
+    Boolean(trimmedCitizenMiddleName) &&
+    Boolean(trimmedCitizenLastName) &&
+    hasCitizenPhoneMinDigits;
   const isCitizenPhoneValid = MOBILE_PHONE_REGEX.test(phoneNumber);
   const isLoginDisabled =
     loading ||
@@ -117,6 +135,17 @@ const LoginScreen = () => {
           : loginMethod === "sso"
             ? !trimmedNationalId
             : !phoneNumber);
+
+  useEffect(() => {
+    // Drives the "2FA" / "Send OTP via WhatsApp" checkbox shown below —
+    // see src/utils/postLoginNavigation.ts for where totp_enabled is
+    // actually enforced after login.
+    getSettings().then((res) => {
+      if (res.success && res.data?.auth_setting?.totp_enabled) {
+        setTotpEnabled(true);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     // Entrance animations
@@ -198,10 +227,32 @@ const LoginScreen = () => {
     setFieldErrors({});
 
     if (loginType === "citizen") {
-      const nextFieldErrors: { name?: string; phone?: string } = {};
+      const nextFieldErrors: {
+        firstName?: string;
+        middleName?: string;
+        lastName?: string;
+        phone?: string;
+      } = {};
 
-      if (!trimmedCitizenName) {
-        nextFieldErrors.name = t("auth.nameRequired", "Please enter your name");
+      if (!trimmedCitizenFirstName) {
+        nextFieldErrors.firstName = t(
+          "auth.firstNameRequired",
+          "Please enter your first name",
+        );
+      }
+
+      if (!trimmedCitizenMiddleName) {
+        nextFieldErrors.middleName = t(
+          "auth.middleNameRequired",
+          "Please enter your middle name",
+        );
+      }
+
+      if (!trimmedCitizenLastName) {
+        nextFieldErrors.lastName = t(
+          "auth.lastNameRequired",
+          "Please enter your last name",
+        );
       }
 
       if (!phoneNumber) {
@@ -226,7 +277,10 @@ const LoginScreen = () => {
         const response = await apiClient.post("/otp/send", {
           phone: phoneNumber,
           channel: otpChannel,
-          name: trimmedCitizenName,
+          first_name: trimmedCitizenFirstName,
+          middle_name: trimmedCitizenMiddleName,
+          last_name: trimmedCitizenLastName,
+          type: "citizen",
         });
 
         if (response.data && response.data.session_id) {
@@ -244,7 +298,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -268,16 +322,10 @@ const LoginScreen = () => {
         if (result.success && result.token) {
           await SecureStore.setItemAsync("loginMethod", "ad");
           const loggedInUser = await login(result.token, result.refresh_token);
-          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-          const isViewerMode = isViewerApp && isViewerRole;
-
-          if (isViewerMode) {
-            router.replace("/(tabs)/incident");
-          } else {
-            router.replace("/(tabs)/explore");
-          }
+          await navigateAfterLogin(loggedInUser, router, {
+            enforcePhoneVerification: false,
+            otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+          });
         } else {
           setError(result.error || t("auth.loginError"));
         }
@@ -309,22 +357,16 @@ const LoginScreen = () => {
           if (validation_url) {
             await Linking.openURL(validation_url);
           } else {
-            const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-            const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-            const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-            const isViewerMode = isViewerApp && isViewerRole;
-
-            if (isViewerMode) {
-              router.replace("/(tabs)/incident");
-            } else {
-              router.replace("/(tabs)/explore");
-            }
+            await navigateAfterLogin(loggedInUser, router, {
+              enforcePhoneVerification: false,
+              otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+            });
           }
         } else {
           setError(
             response.data?.error ||
-            response.data?.message ||
-            t("auth.loginError"),
+              response.data?.message ||
+              t("auth.loginError"),
           );
         }
       } catch (err: any) {
@@ -358,20 +400,49 @@ const LoginScreen = () => {
         const response = await apiClient.post("/auth/login", {
           email: trimmedEmail,
           password,
+          type: "employee",
         });
 
         if (response.data && response.data.success) {
-          const { token, refresh_token } = response.data.data;
-          const loggedInUser = await login(token, refresh_token);
-          const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-          const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
-          const isViewerRole = loggedInUser?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
-          const isViewerMode = isViewerApp && isViewerRole;
+          const { token, refresh_token, user: loginUser } = response.data.data;
 
-          if (isViewerMode) {
-            router.replace("/(tabs)/incident");
+          if (token) {
+            // Full login already completed (super admin, or totp_enabled is off).
+            const loggedInUser = await login(token, refresh_token);
+            await navigateAfterLogin(loggedInUser, router, {
+              enforcePhoneVerification: true,
+              otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
+            });
           } else {
-            router.replace("/(tabs)/explore");
+            // Not super admin & totp_enabled is on — the backend withholds the
+            // token until 2FA is completed, so only `user` comes back here.
+            // Send the 2FA OTP and go straight to the entry screen; whether
+            // that verify also needs to mark the phone verified depends on
+            // this same user's mobile_verified value (see app/otp.tsx).
+            if (!loginUser?.phone) {
+              setError(t("auth.otpSentFailed", "Failed to send OTP"));
+              return;
+            }
+            const channel = otpViaWhatsapp ? "whatsapp" : "sms";
+            const otpRes = await sendOtp(loginUser.phone, channel, "employee");
+            if (otpRes.success) {
+              const otpParams: Record<string, string> = {
+                phoneNumber: loginUser.phone,
+                sessionId: otpRes.session_id,
+                channel,
+                pendingLogin: "true",
+                firstName: loginUser.first_name || "",
+                lastName: loginUser.last_name || "",
+              };
+              if (!loginUser.mobile_verified) {
+                otpParams.markMobileVerified = "true";
+              }
+              router.push({ pathname: "/otp", params: otpParams });
+            } else {
+              setError(
+                otpRes.error || t("auth.otpSentFailed", "Failed to send OTP"),
+              );
+            }
           }
         } else {
           setError(t("auth.loginError"));
@@ -429,7 +500,7 @@ const LoginScreen = () => {
       } catch (err: any) {
         setError(
           err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+            t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -437,10 +508,29 @@ const LoginScreen = () => {
     }
   };
 
-  const handleCitizenNameChange = (value: string) => {
-    setCitizenName(value);
-    if (fieldErrors.name) {
-      setFieldErrors((prev) => ({ ...prev, name: undefined }));
+  // Strips anything that isn't an English or Arabic letter as the user types,
+  // so spaces, digits, and special characters can never be entered.
+  const sanitizeCitizenNamePart = (value: string) =>
+    value.replace(NON_CITIZEN_NAME_CHAR_REGEX, "");
+
+  const handleCitizenFirstNameChange = (value: string) => {
+    setCitizenFirstName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.firstName) {
+      setFieldErrors((prev) => ({ ...prev, firstName: undefined }));
+    }
+  };
+
+  const handleCitizenMiddleNameChange = (value: string) => {
+    setCitizenMiddleName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.middleName) {
+      setFieldErrors((prev) => ({ ...prev, middleName: undefined }));
+    }
+  };
+
+  const handleCitizenLastNameChange = (value: string) => {
+    setCitizenLastName(sanitizeCitizenNamePart(value));
+    if (fieldErrors.lastName) {
+      setFieldErrors((prev) => ({ ...prev, lastName: undefined }));
     }
   };
 
@@ -450,7 +540,9 @@ const LoginScreen = () => {
     setAdUsername("");
     setAdPassword("");
     setNationalId("");
-    setCitizenName("");
+    setCitizenFirstName("");
+    setCitizenMiddleName("");
+    setCitizenLastName("");
     setPhoneNumber("");
     setShowPassword(false);
     setShowAdPassword(false);
@@ -472,15 +564,43 @@ const LoginScreen = () => {
     }
   };
 
-  const handleNameFocus = () => {
-    Animated.spring(nameFocusAnim, {
+  const handleFirstNameFocus = () => {
+    Animated.spring(firstNameFocusAnim, {
       toValue: 1,
       useNativeDriver: false,
     }).start();
   };
 
-  const handleNameBlur = () => {
-    Animated.spring(nameFocusAnim, {
+  const handleFirstNameBlur = () => {
+    Animated.spring(firstNameFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleMiddleNameFocus = () => {
+    Animated.spring(middleNameFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleMiddleNameBlur = () => {
+    Animated.spring(middleNameFocusAnim, {
+      toValue: 0,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleLastNameFocus = () => {
+    Animated.spring(lastNameFocusAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleLastNameBlur = () => {
+    Animated.spring(lastNameFocusAnim, {
       toValue: 0,
       useNativeDriver: false,
     }).start();
@@ -558,7 +678,17 @@ const LoginScreen = () => {
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
 
-  const nameBorderColor = nameFocusAnim.interpolate({
+  const firstNameBorderColor = firstNameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const middleNameBorderColor = middleNameFocusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#E5E5E5", "#2EC4B6"],
+  });
+
+  const lastNameBorderColor = lastNameFocusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["#E5E5E5", "#2EC4B6"],
   });
@@ -584,10 +714,7 @@ const LoginScreen = () => {
       style={styles.keyboardView}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#fff"
-      />
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <LinearGradient
         colors={["#F8FFFE", "#FFFFFF"]}
         style={styles.container}
@@ -618,8 +745,7 @@ const LoginScreen = () => {
             ]}
           >
             {/* Header Logo */}
-            {
-              !isKeyboardActive &&
+            {!isKeyboardActive && (
               <Animated.View
                 style={[
                   styles.logoContainer,
@@ -635,25 +761,15 @@ const LoginScreen = () => {
                   />
                 </View>
               </Animated.View>
-            }
+            )}
 
             {/* Welcome Text */}
             {!isKeyboardActive && (
               <View style={styles.welcomeContainer}>
-                <Text
-                  style={[
-                    styles.welcomeText,
-                    { textAlign: "left" },
-                  ]}
-                >
+                <Text style={[styles.welcomeText, { textAlign: "left" }]}>
                   {t("auth.welcomeBack")}
                 </Text>
-                <Text
-                  style={[
-                    styles.subtitleText,
-                    { textAlign: "left" },
-                  ]}
-                >
+                <Text style={[styles.subtitleText, { textAlign: "left" }]}>
                   {t("auth.loginSubtitle")}
                 </Text>
               </View>
@@ -708,7 +824,7 @@ const LoginScreen = () => {
             {/* Employee method pill — Email / AD / Phone, only when citizen login is also enabled */}
             {loginType === "employee" && enableCitizenLogin && (
               <View style={styles.methodPillContainer}>
-                {(["email", "ad", "phone", "sso"] as const).map((method) => (
+                {(["email", "ad", "sso"] as const).map((method) => (
                   <TouchableOpacity
                     key={method}
                     style={[
@@ -744,21 +860,16 @@ const LoginScreen = () => {
               {loginType === "citizen" ? (
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
-                      {t("auth.name", "Name")}
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.firstName", "First Name")}
                     </Text>
                     <Animated.View
                       style={[
                         styles.inputContainer,
                         {
-                          borderColor: fieldErrors.name
+                          borderColor: fieldErrors.firstName
                             ? "#E74C3C"
-                            : nameBorderColor,
+                            : firstNameBorderColor,
                           borderWidth: 2,
                         },
                       ]}
@@ -777,32 +888,123 @@ const LoginScreen = () => {
                           },
                         ]}
                         placeholder={t(
-                          "auth.namePlaceholder",
-                          "Enter your name",
+                          "auth.firstNamePlaceholder",
+                          "Enter your first name",
                         )}
                         placeholderTextColor="#999"
-                        value={citizenName}
-                        onChangeText={handleCitizenNameChange}
-                        onFocus={handleNameFocus}
-                        onBlur={handleNameBlur}
+                        value={citizenFirstName}
+                        onChangeText={handleCitizenFirstNameChange}
+                        onFocus={handleFirstNameFocus}
+                        onBlur={handleFirstNameBlur}
                         autoCapitalize="words"
                         autoCorrect={false}
                       />
                     </Animated.View>
-                    {fieldErrors.name ? (
+                    {fieldErrors.firstName ? (
                       <Text style={styles.fieldErrorText}>
-                        {fieldErrors.name}
+                        {fieldErrors.firstName}
                       </Text>
                     ) : null}
                   </View>
 
                   <View style={styles.inputWrapper}>
-                    <Text
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.middleName", "Middle Name")}
+                    </Text>
+                    <Animated.View
                       style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.middleName
+                            ? "#E74C3C"
+                            : middleNameBorderColor,
+                          borderWidth: 2,
+                        },
                       ]}
                     >
+                      <Ionicons
+                        name="person-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.middleNamePlaceholder",
+                          "Enter your middle name",
+                        )}
+                        placeholderTextColor="#999"
+                        value={citizenMiddleName}
+                        onChangeText={handleCitizenMiddleNameChange}
+                        onFocus={handleMiddleNameFocus}
+                        onBlur={handleMiddleNameBlur}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                    {fieldErrors.middleName ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.middleName}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.lastName", "Last Name")}
+                    </Text>
+                    <Animated.View
+                      style={[
+                        styles.inputContainer,
+                        {
+                          borderColor: fieldErrors.lastName
+                            ? "#E74C3C"
+                            : lastNameBorderColor,
+                          borderWidth: 2,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={20}
+                        color="#666"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          {
+                            textAlign: currentLang === "ar" ? "right" : "left",
+                          },
+                        ]}
+                        placeholder={t(
+                          "auth.lastNamePlaceholder",
+                          "Enter your last name",
+                        )}
+                        placeholderTextColor="#999"
+                        value={citizenLastName}
+                        onChangeText={handleCitizenLastNameChange}
+                        onFocus={handleLastNameFocus}
+                        onBlur={handleLastNameBlur}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </Animated.View>
+                    {fieldErrors.lastName ? (
+                      <Text style={styles.fieldErrorText}>
+                        {fieldErrors.lastName}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.mobileNumber", "Mobile Number")}
                     </Text>
                     <Animated.View
@@ -850,12 +1052,7 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.otpChannel")}
                     </Text>
                     <View style={styles.channelContainer}>
@@ -896,7 +1093,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -910,12 +1107,7 @@ const LoginScreen = () => {
                 <>
                   {/* Username Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.adUsername", "Username")}
                     </Text>
                     <Animated.View
@@ -964,12 +1156,7 @@ const LoginScreen = () => {
 
                   {/* AD Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.password")}
                     </Text>
                     <View
@@ -1038,12 +1225,7 @@ const LoginScreen = () => {
                 </>
               ) : loginMethod === "sso" ? (
                 <View style={styles.inputWrapper}>
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { textAlign: "left" },
-                    ]}
-                  >
+                  <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                     {t("auth.nationalId", "National ID")}
                   </Text>
                   <Animated.View
@@ -1098,12 +1280,7 @@ const LoginScreen = () => {
                 <>
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.email")}
                     </Text>
                     <Animated.View
@@ -1146,12 +1323,7 @@ const LoginScreen = () => {
 
                   {/* Password Input */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.password")}
                     </Text>
                     <View
@@ -1207,12 +1379,7 @@ const LoginScreen = () => {
                 /* Phone Number Input */
                 <>
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { textAlign: "left" },
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
                       {t("auth.phone")}
                     </Text>
                     <Animated.View
@@ -1250,11 +1417,7 @@ const LoginScreen = () => {
 
                   {/* OTP Channel Selection */}
                   <View style={styles.inputWrapper}>
-                    <Text
-                      style={[
-                        styles.inputLabel
-                      ]}
-                    >
+                    <Text style={[styles.inputLabel]}>
                       {t("auth.otpChannel")}
                     </Text>
                     <View style={styles.channelContainer}>
@@ -1295,7 +1458,7 @@ const LoginScreen = () => {
                           style={[
                             styles.channelText,
                             otpChannel === "whatsapp" &&
-                            styles.activeChannelText,
+                              styles.activeChannelText,
                           ]}
                         >
                           {t("auth.whatsapp")}
@@ -1305,6 +1468,44 @@ const LoginScreen = () => {
                   </View>
                 </>
               )}
+
+              {/* 2FA channel preference — only relevant when the server has
+                  totp_enabled on, and only for methods that don't already
+                  have their own OTP channel picker (phone login has one). */}
+              {loginType === "employee" &&
+                loginMethod !== "phone" &&
+                totpEnabled && (
+                  <View style={styles.inputWrapper}>
+                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                      {t("auth.twoFactorAuth", "2FA")}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          otpViaWhatsapp && styles.checkboxChecked,
+                        ]}
+                      >
+                        {otpViaWhatsapp && (
+                          <Ionicons name="checkmark" size={14} color="#fff" />
+                        )}
+                      </View>
+                      <Ionicons
+                        name="logo-whatsapp"
+                        size={18}
+                        color="#666"
+                        style={{ marginLeft: 8, marginRight: 6 }}
+                      />
+                      <Text style={styles.checkboxLabel}>
+                        {t("auth.sendOtpViaWhatsapp", "Send OTP via WhatsApp")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
               {/* Forgot Password - Only for email login */}
               {loginType === "employee" && loginMethod === "email" && (
@@ -1324,16 +1525,6 @@ const LoginScreen = () => {
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Error Message */}
-            {error ? (
-              <Animated.View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
-                <Text style={styles.errorText}>
-                  {error.charAt(0).toUpperCase() + error.slice(1)}
-                </Text>
-              </Animated.View>
-            ) : null}
 
             {/* Login Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
@@ -1371,6 +1562,16 @@ const LoginScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* Error Message */}
+            {error ? (
+              <Animated.View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={18} color="#E74C3C" />
+                <Text style={styles.errorText}>
+                  {error.charAt(0).toUpperCase() + error.slice(1)}
+                </Text>
+              </Animated.View>
+            ) : null}
           </Animated.View>
         </ScrollView>
 
@@ -1566,7 +1767,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    direction: I18nManager.isRTL ? 'rtl' : 'ltr',
+    direction: I18nManager.isRTL ? "rtl" : "ltr",
   },
   inputIcon: {
     marginEnd: 12,
@@ -1587,6 +1788,28 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontWeight: "600",
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#CCC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#2EC4B6",
+    borderColor: "#2EC4B6",
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: "#333",
   },
   channelContainer: {
     flexDirection: "row",
@@ -1623,7 +1846,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    marginTop: 20,
     borderLeftWidth: 4,
     borderLeftColor: "#E74C3C",
   },
@@ -1632,14 +1855,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     flex: 1,
-    textAlign: "left"
+    textAlign: "left",
   },
   fieldErrorText: {
     color: "#E74C3C",
     fontSize: 13,
     marginTop: 6,
     fontWeight: "500",
-    textAlign: "left"
+    textAlign: "left",
   },
   loginButton: {
     borderRadius: 14,
