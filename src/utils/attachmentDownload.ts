@@ -1,21 +1,33 @@
 import { File, Paths } from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { baseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import i18n from '@/src/i18n';
 
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'bmp'];
+
+const isImageFile = (fileName: string, mimeType?: string): boolean => {
+  if (mimeType) return mimeType.startsWith('image/');
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  return IMAGE_EXTENSIONS.includes(extension || '');
+};
 
 /**
- * Downloads an authenticated attachment and opens/shares it
+ * Downloads an authenticated attachment. Images are saved straight to the
+ * device's Photos app; every other file type is handed to the OS share
+ * sheet, since there's no direct-save destination for arbitrary files.
  * @param attachmentId The ID of the attachment to download
  * @param fileName The name of the file
+ * @param mimeType Optional known mime type, to avoid guessing from the file extension
  * @returns Promise that resolves when download completes
  */
 export const downloadAndOpenAttachment = async (
   attachmentId: string,
-  fileName: string
+  fileName: string,
+  mimeType?: string
 ): Promise<void> => {
   try {
     // Get auth token
@@ -25,9 +37,6 @@ export const downloadAndOpenAttachment = async (
       CustomAlert.alert(i18n.t('common.error'), i18n.t('common.authRequired'));
       return;
     }
-
-    // Show loading alert
-    CustomAlert.alert(i18n.t('common.downloading'), i18n.t('common.pleaseWait'));
 
     // Download the file with authentication
     const downloadUrl = `${baseURL}/attachments/${attachmentId}`;
@@ -40,8 +49,22 @@ export const downloadAndOpenAttachment = async (
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Re-downloading the same attachment should overwrite the previous
+        // copy rather than throwing "destination already exists".
+        idempotent: true,
       }
     );
+
+    if (isImageFile(fileName, mimeType)) {
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status === 'granted') {
+        await MediaLibrary.saveToLibraryAsync(downloadedFile.uri);
+        CustomAlert.alert(i18n.t('common.success'), i18n.t('common.savedToPhotos'));
+        return;
+      }
+      // Permission denied — fall through to the share sheet so the user can
+      // still get the file out some other way instead of hitting a dead end.
+    }
 
     // Check if sharing is available
     const isAvailable = await Sharing.isAvailableAsync();
@@ -53,7 +76,7 @@ export const downloadAndOpenAttachment = async (
 
     // Share/open the file
     await Sharing.shareAsync(downloadedFile.uri, {
-      mimeType: getMimeType(fileName),
+      mimeType: mimeType || getMimeType(fileName),
       dialogTitle: 'Open with',
       UTI: getUTI(fileName),
     });

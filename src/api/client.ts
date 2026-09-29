@@ -1,19 +1,19 @@
-import { crashLogger } from '@/src/utils/crashLogger';
-import axios from 'axios';
-import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { notifySessionExpired } from '../utils/authEvents';
-import i18n from '../i18n';
+import { crashLogger } from "@/src/utils/crashLogger";
+import axios from "axios";
+import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import i18n from "../i18n";
+import { notifySessionExpired } from "../utils/authEvents";
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
-  throw new Error('EXPO_PUBLIC_API_URL is not set');
+  throw new Error("EXPO_PUBLIC_API_URL is not set");
 }
 export const baseURL = process.env.EXPO_PUBLIC_API_URL;
 
 const apiClient = axios.create({
   baseURL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -43,35 +43,49 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 const redirectToLogin = async () => {
-  await SecureStore.deleteItemAsync('authToken');
-  await SecureStore.deleteItemAsync('refreshToken');
-  await SecureStore.deleteItemAsync('user');
-  router.replace('/login');
+  await SecureStore.deleteItemAsync("authToken");
+  await SecureStore.deleteItemAsync("refreshToken");
+  await SecureStore.deleteItemAsync("user");
+  router.replace("/login");
 };
 
 // Interceptor to add the token to requests
 apiClient.interceptors.request.use(
   async (config) => {
     // If logging out, reject all requests except the logout request itself
-    if (isLoggingOut && !config.url?.includes('/auth/logout')) {
-      const error = new Error('Request cancelled - logging out');
+    if (isLoggingOut && !config.url?.includes("/auth/logout")) {
+      const error = new Error("Request cancelled - logging out");
       (error as any).isLogoutCancel = true;
       return Promise.reject(error);
     }
 
-    const token = await SecureStore.getItemAsync('authToken');
+    const token = await SecureStore.getItemAsync("authToken");
 
     // If no token and not a public endpoint, reject the request
-    const publicEndpoints = ['/auth/login', '/auth/sso/login', '/auth/register', '/auth/forgot-password', '/auth/verify-reset-otp', '/auth/reset-password', '/auth/logout', '/otp/send', '/otp/verify', '/ldap/login', '/settings'];
-    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
+    const publicEndpoints = [
+      "/auth/login",
+      "/auth/sso/login",
+      "/auth/register",
+      "/auth/forgot-password",
+      "/auth/verify-reset-otp",
+      "/auth/reset-password",
+      "/auth/logout",
+      "/otp/send",
+      "/otp/verify",
+      "/ldap/login",
+      "/settings",
+    ];
+    const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+      config.url?.includes(endpoint),
+    );
 
     if (!token && !isPublicEndpoint) {
-      const error = new Error('No auth token available');
+      const error = new Error("No auth token available");
       (error as any).isNoToken = true;
       return Promise.reject(error);
     }
     //accept language
-    config.headers['Accept-Language'] = i18n.language || 'en';
+    config.headers["Accept-Language"] = i18n.language || "en";
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -80,18 +94,21 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     // Log request interceptor errors (except expected ones)
-    if (!isLoggingOut && !(error as any).isLogoutCancel && !(error as any).isNoToken) {
-      crashLogger.logError(
-        error,
-        {
-          type: 'RequestInterceptorError',
-          context: 'Error in API request interceptor',
+    if (
+      !isLoggingOut &&
+      !(error as any).isLogoutCancel &&
+      !(error as any).isNoToken
+    ) {
+      crashLogger
+        .logError(error, {
+          type: "RequestInterceptorError",
+          context: "Error in API request interceptor",
           errorMessage: error.message,
-        }
-      ).catch(() => { });
+        })
+        .catch(() => {});
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Interceptor to handle 401 unauthorized responses with token refresh
@@ -119,66 +136,77 @@ apiClient.interceptors.response.use(
 
       // Add response data if available
       if (error.response?.data) {
-        errorDetails.responseData = typeof error.response.data === 'string'
-          ? error.response.data
-          : JSON.stringify(error.response.data).substring(0, 500); // Limit size
+        errorDetails.responseData =
+          typeof error.response.data === "string"
+            ? error.response.data
+            : JSON.stringify(error.response.data).substring(0, 500); // Limit size
       }
 
       // Add request data if available (limit size to avoid huge logs)
       if (originalRequest?.data) {
         try {
-          const dataStr = typeof originalRequest.data === 'string'
-            ? originalRequest.data
-            : JSON.stringify(originalRequest.data);
+          const dataStr =
+            typeof originalRequest.data === "string"
+              ? originalRequest.data
+              : JSON.stringify(originalRequest.data);
           errorDetails.requestData = dataStr.substring(0, 500); // Limit to 500 chars
         } catch (e) {
-          errorDetails.requestData = 'Unable to stringify request data';
+          errorDetails.requestData = "Unable to stringify request data";
         }
       }
 
       // Log based on error type
       if (!error.response) {
         // Network error (no response from server)
-        crashLogger.logError(
-          new Error(`Network Error: ${error.message}`),
-          {
-            type: 'NetworkError',
+        crashLogger
+          .logError(new Error(`Network Error: ${error.message}`), {
+            type: "NetworkError",
             ...errorDetails,
-            context: 'Failed to reach server - check internet connection',
-          }
-        ).catch(() => { });
+            context: "Failed to reach server - check internet connection",
+          })
+          .catch(() => {});
       } else if (error.response.status >= 500) {
         // Server error (5xx)
-        crashLogger.logError(
-          new Error(`Server Error: ${error.response.status} - ${error.response.statusText}`),
-          {
-            type: 'ServerError',
-            ...errorDetails,
-            context: 'Server returned 5xx error',
-          }
-        ).catch(() => { });
+        crashLogger
+          .logError(
+            new Error(
+              `Server Error: ${error.response.status} - ${error.response.statusText}`,
+            ),
+            {
+              type: "ServerError",
+              ...errorDetails,
+              context: "Server returned 5xx error",
+            },
+          )
+          .catch(() => {});
       } else if (error.response.status >= 400 && error.response.status < 500) {
         // Client error (4xx) - log as warning since these are often expected
-        crashLogger.logWarning(
-          `Client Error: ${error.response.status} - ${error.response.statusText}`,
-          {
-            type: 'ClientError',
-            ...errorDetails,
-            context: 'Client request error (4xx)',
-          }
-        ).catch(() => { });
+        crashLogger
+          .logWarning(
+            `Client Error: ${error.response.status} - ${error.response.statusText}`,
+            {
+              type: "ClientError",
+              ...errorDetails,
+              context: "Client request error (4xx)",
+            },
+          )
+          .catch(() => {});
       }
     }
 
     // If no config or error is not 401 or request already retried, reject
-    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+    if (
+      !originalRequest ||
+      error.response?.status !== 401 ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 
     if (
-      originalRequest.url?.includes('/auth/login') ||
-      originalRequest.url?.includes('/auth/sso/login') ||
-      originalRequest.url?.includes('/ldap/login')
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/sso/login") ||
+      originalRequest.url?.includes("/ldap/login")
     ) {
       return Promise.reject(error);
     }
@@ -189,12 +217,12 @@ apiClient.interceptors.response.use(
     }
 
     // If this is the logout request failing, don't try to refresh
-    if (originalRequest.url?.includes('/auth/logout')) {
+    if (originalRequest.url?.includes("/auth/logout")) {
       return Promise.reject(error);
     }
 
     // If this is the refresh token request itself failing, redirect to login
-    if (originalRequest.url?.includes('/auth/refresh')) {
+    if (originalRequest.url?.includes("/auth/refresh")) {
       await redirectToLogin();
       return Promise.reject(error);
     }
@@ -216,19 +244,18 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    const refreshToken = await SecureStore.getItemAsync("refreshToken");
 
     if (!refreshToken) {
       isRefreshing = false;
 
       // Log missing refresh token
-      crashLogger.logWarning(
-        'No refresh token available - redirecting to login',
-        {
-          type: 'MissingRefreshToken',
-          context: 'User session expired or refresh token was deleted',
-        }
-      ).catch(() => { });
+      crashLogger
+        .logWarning("No refresh token available - redirecting to login", {
+          type: "MissingRefreshToken",
+          context: "User session expired or refresh token was deleted",
+        })
+        .catch(() => {});
 
       await redirectToLogin();
       return Promise.reject(error);
@@ -240,9 +267,9 @@ apiClient.interceptors.response.use(
       });
       const { token, refresh_token } = response.data.data;
 
-      await SecureStore.setItemAsync('authToken', token);
+      await SecureStore.setItemAsync("authToken", token);
       if (refresh_token) {
-        await SecureStore.setItemAsync('refreshToken', refresh_token);
+        await SecureStore.setItemAsync("refreshToken", refresh_token);
       }
 
       originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -252,15 +279,14 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError: any) {
       // Log token refresh failure
-      crashLogger.logWarning(
-        'Token refresh failed - user will be redirected to login',
-        {
-          type: 'TokenRefreshError',
+      crashLogger
+        .logWarning("Token refresh failed - user will be redirected to login", {
+          type: "TokenRefreshError",
           errorMessage: refreshError?.message,
           status: refreshError?.response?.status,
-          context: 'Refresh token expired or invalid',
-        }
-      ).catch(() => { });
+          context: "Refresh token expired or invalid",
+        })
+        .catch(() => {});
 
       processQueue(refreshError, null);
       // await redirectToLogin();
@@ -269,7 +295,27 @@ apiClient.interceptors.response.use(
     } finally {
       isRefreshing = false;
     }
-  }
+  },
+);
+
+axios.interceptors.request.use((config) => {
+  console.log("➡️ REQUEST:", config.method?.toUpperCase(), config.url);
+  console.log("➡️ DATA:", config.data);
+  return config;
+});
+
+axios.interceptors.response.use(
+  (response) => {
+    console.log("✅ RESPONSE:", response.status, response.config.url);
+    console.log("📦 DATA:", response.data);
+    return response;
+  },
+  (error) => {
+    console.log("❌ ERROR:", error.config?.url);
+    console.log("❌ STATUS:", error.response?.status);
+    console.log("❌ DATA:", error.response?.data);
+    return Promise.reject(error);
+  },
 );
 
 export default apiClient;

@@ -109,7 +109,7 @@ const MapViewScreen = () => {
   <script>
     const map = L.map('map', { preferCanvas: true }).setView([24.7136, 46.6753], 6);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);

@@ -404,7 +404,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     const map = L.map('map').setView([${value?.latitude || DEFAULT_LAT}, ${value?.longitude || DEFAULT_LNG}], ${value ? 15 : 11});
 
     // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);

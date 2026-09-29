@@ -415,7 +415,7 @@ const IncidentsScreen = () => {
 
     const translationHelper = (a: any) => {
       const isArabic = i18n.language === 'ar' && a.name_ar;
-      return isArabic ? a.name_ar : a.name;
+      return isArabic ? a?.name_ar : a?.name;
     }
 
     const doShare = async (incidentsToShare: typeof selectedIncidents) => {
