@@ -92,10 +92,12 @@ interface LookupValue {
   name: string;
   name_ar?: string;
   color?: string;
+  created_at?: string;
   category?: {
     id: string;
     name: string;
     name_ar?: string;
+    validation_rules?: string;
   };
 }
 
@@ -338,6 +340,76 @@ const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
     <Text style={styles.sectionTitle}>{title}</Text>
   </View>
 );
+
+const parseAllowMultiple = (validationRules?: string): boolean => {
+  if (!validationRules) return false;
+  try {
+    const rules = JSON.parse(validationRules);
+    return !!rules.allowMultiple;
+  } catch {
+    return false;
+  }
+};
+
+// "Allow multiple values" lookup categories (e.g. Visit Number) render
+// compactly: only the most recently recorded value shown by default, with
+// everything else collapsed behind a single "+N more" toggle instead of a
+// wall of tags wrapping across several lines.
+const VisitNumberInfoRow: React.FC<{
+  categoryLabel: string;
+  values: LookupValue[];
+}> = ({ categoryLabel, values }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const sorted = [...values].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+  const [latest, ...rest] = sorted;
+
+  const displayName = (value: LookupValue) =>
+    i18n.language === "en" ? value.name : value.name_ar || value.name;
+
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoRowLeft}>
+        <Ionicons name="pricetag" size={18} color="#10B981" />
+        <Text style={styles.infoLabel}>
+          {categoryLabel} ({values.length})
+        </Text>
+      </View>
+      <View style={styles.lookupValuesList}>
+        <View style={[styles.lookupValueTag, styles.lookupValueTagLatest]}>
+          <Text
+            style={[styles.lookupValueTagText, styles.lookupValueTagTextLatest]}
+          >
+            {displayName(latest)}
+          </Text>
+        </View>
+        {rest.length > 0 &&
+          (expanded ? (
+            <>
+              <Text style={styles.lookupValuesRestText}>
+                {rest.map(displayName).join(", ")}
+              </Text>
+              <TouchableOpacity onPress={() => setExpanded(false)}>
+                <Text style={styles.lookupValuesMoreText}>
+                  {t("common.showLess", "Show Less")}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity onPress={() => setExpanded(true)}>
+              <Text style={styles.lookupValuesMoreText}>
+                +{rest.length} {t("common.more", "more")}
+              </Text>
+            </TouchableOpacity>
+          ))}
+      </View>
+    </View>
+  );
+};
 
 const IncidentDetailsScreen = () => {
   const { t } = useTranslation();
@@ -999,39 +1071,51 @@ const IncidentDetailsScreen = () => {
                     grouped[categoryName].push(value);
                   });
 
-                  return Object.entries(grouped).map(([category, values]) => (
-                    <View key={category} style={styles.infoRow}>
-                      <View style={styles.infoRowLeft}>
-                        <Ionicons name="pricetag" size={18} color="#10B981" />
-                        <Text style={styles.infoLabel}>{category}</Text>
+                  return Object.entries(grouped).map(([category, values]) => {
+                    if (parseAllowMultiple(values[0]?.category?.validation_rules)) {
+                      return (
+                        <VisitNumberInfoRow
+                          key={category}
+                          categoryLabel={category}
+                          values={values}
+                        />
+                      );
+                    }
+
+                    return (
+                      <View key={category} style={styles.infoRow}>
+                        <View style={styles.infoRowLeft}>
+                          <Ionicons name="pricetag" size={18} color="#10B981" />
+                          <Text style={styles.infoLabel}>{category}</Text>
+                        </View>
+                        <View style={styles.lookupValuesList}>
+                          {values.map((value) => (
+                            <View
+                              key={value.id}
+                              style={[
+                                styles.lookupValueTag,
+                                {
+                                  backgroundColor: value.color
+                                    ? `${value.color}20`
+                                    : "#E2E8F0",
+                                  borderColor: value.color || "#CBD5E1",
+                                },
+                              ]}
+                            >
+                              <RenderWithIncidentMentions
+                                text={
+                                  i18n.language === "en"
+                                    ? value.name || ""
+                                    : value?.name_ar || ""
+                                }
+                                style={styles.descriptionText}
+                              />
+                            </View>
+                          ))}
+                        </View>
                       </View>
-                      <View style={styles.lookupValuesList}>
-                        {values.map((value) => (
-                          <View
-                            key={value.id}
-                            style={[
-                              styles.lookupValueTag,
-                              {
-                                backgroundColor: value.color
-                                  ? `${value.color}20`
-                                  : "#E2E8F0",
-                                borderColor: value.color || "#CBD5E1",
-                              },
-                            ]}
-                          >
-                            <RenderWithIncidentMentions
-                              text={
-                                i18n.language === "en"
-                                  ? value.name || ""
-                                  : value?.name_ar || ""
-                              }
-                              style={styles.descriptionText}
-                            />
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  ));
+                    );
+                  });
                 })()}
 
               {/* Custom Fields as InfoRows */}
@@ -2166,6 +2250,7 @@ const styles = StyleSheet.create({
     maxWidth: "50%",
     gap: 4,
     justifyContent: "flex-end",
+    alignItems: 'center'
   },
   lookupValueTag: {
     paddingHorizontal: 8,
@@ -2176,6 +2261,23 @@ const styles = StyleSheet.create({
   lookupValueTagText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  lookupValueTagLatest: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
+  },
+  lookupValueTagTextLatest: {
+    color: "#15803D",
+  },
+  lookupValuesRestText: {
+    fontSize: 12,
+    color: COLORS.text.secondary,
+    maxWidth: 140,
+  },
+  lookupValuesMoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.accent,
   },
   checkboxContainer: {
     flexDirection: "row",

@@ -147,7 +147,9 @@
     "sharingNotAvailable": "Sharing is not available on this device",
     "downloadError": "Download Error",
     "failedToDownload": "Failed to download attachment",
-    "savedToPhotos": "Image saved to Photos"
+    "savedToPhotos": "Image saved to Photos",
+    "add": "Add",
+    "more": "more"
   },
   "map": {
     "incidents": "Incidents Map",
@@ -939,5 +941,8 @@
   },
   "sort": {
     "updated": "Latest Updated"
+  },
+  "lookups": {
+    "multipleValuesHint": "Tap Add or Done — previously added values are kept."
   }
 }
