@@ -2178,6 +2178,7 @@ const UpdateStatusModal = () => {
                                 }
                                 required={fc.is_required}
                                 error={errors[fc.field_name]}
+                                singleValueOnly
                                 mentionFilters={{
                                   classification_ids:
                                     incident?.classification_id

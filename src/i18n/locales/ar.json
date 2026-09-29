@@ -143,7 +143,9 @@
     "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز",
     "downloadError": "خطأ في التحميل",
     "failedToDownload": "فشل في تحميل المرفق",
-    "savedToPhotos": "تم حفظ الصورة في معرض الصور"
+    "savedToPhotos": "تم حفظ الصورة في معرض الصور",
+    "add": "إضافة",
+    "more": "أكثر"
   },
   "map": {
     "incidents": "خريطة الحوادث",
@@ -938,5 +940,8 @@
   },
   "sort": {
     "updated": "الأحدث تحديثًا"
+  },
+  "lookups": {
+    "multipleValuesHint": "اضغط إضافة أو تم — يتم الاحتفاظ بالقيم المضافة سابقاً."
   }
 }
