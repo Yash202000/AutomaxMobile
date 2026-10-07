@@ -1,6 +1,13 @@
 import { IncidentMapMarker } from "@/src/api/incidents";
 import { useMapProvider } from "@/src/utils/mapProvider";
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import Supercluster from "supercluster";
@@ -151,7 +158,10 @@ interface ClusterProps {
 const regionToZoom = (region: Region) =>
   Math.min(
     20,
-    Math.max(0, Math.round(Math.log2(360 / Math.max(region.longitudeDelta, 1e-6)))),
+    Math.max(
+      0,
+      Math.round(Math.log2(360 / Math.max(region.longitudeDelta, 1e-6))),
+    ),
   );
 
 const regionToBbox = (region: Region): [number, number, number, number] => [
@@ -161,55 +171,85 @@ const regionToBbox = (region: Region): [number, number, number, number] => [
   Math.min(90, region.latitude + region.latitudeDelta / 2),
 ];
 
-// Custom-view markers are rasterised once; tracking view changes forever makes
-// the map janky with many markers, so stop after the first frames.
-const PinMarker = memo(function PinMarker({
-  id,
-  latitude,
-  longitude,
-  color,
-  count,
-  onPress,
-}: {
-  id: string;
+// ── Marker pool ──────────────────────────────────────────────────────────────
+// iOS + new architecture: when a marker is ADDED to a map that is already on
+// screen, React Native's legacy-view interop inserts its native view before it
+// exists, so Google's map receives nil and the app crashes
+// ("-[AIRGoogleMap insertReactSubview:atIndex:] object cannot be nil").
+// Clusters change on every zoom/pan, so instead of mounting/unmounting markers
+// the map gets a FIXED set of marker slots, all mounted together with the map;
+// each zoom only updates their props (position, colour, count).
+const POOL_SIZE = 200;
+const HIDDEN_COORDINATE = { latitude: 0, longitude: 0 };
+
+interface Slot {
   latitude: number;
   longitude: number;
   color: string;
-  count?: number;
+  count: number;
   onPress: () => void;
+}
+
+// Custom-view markers are rasterised, so the view is only tracked for a moment
+// after its look changes (tracking forever makes the map janky).
+const PoolMarker = memo(function PoolMarker({
+  index,
+  slot,
+  fallbackColor,
+}: {
+  index: number;
+  slot: Slot | null;
+  fallbackColor: string;
 }) {
+  const color = slot?.color ?? fallbackColor;
+  const count = slot?.count ?? 0;
   const [tracks, setTracks] = useState(true);
+
   useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 600);
+    setTracks(true);
+    const timer = setTimeout(() => setTracks(false), 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [color, count]);
 
   return (
     <Marker
-      identifier={id}
-      coordinate={{ latitude, longitude }}
-      onPress={onPress}
+      identifier={`slot-${index}`}
+      coordinate={
+        slot
+          ? { latitude: slot.latitude, longitude: slot.longitude }
+          : HIDDEN_COORDINATE
+      }
+      opacity={slot ? 1 : 0}
+      onPress={slot?.onPress}
       tracksViewChanges={tracks}
       anchor={{ x: 0.5, y: 0.5 }}
     >
-      {count ? (
-        <View style={styles.cluster}>
-          <Text style={styles.clusterText}>{count}</Text>
-        </View>
-      ) : (
-        <View style={[styles.pin, { backgroundColor: color }]} />
-      )}
+      {/* Same structure for pins and clusters: only styles/text change. */}
+      <View
+        style={
+          count ? styles.cluster : [styles.pin, { backgroundColor: color }]
+        }
+      >
+        <Text style={styles.clusterText}>{count || ""}</Text>
+      </View>
     </Marker>
   );
 });
 
-function GoogleMarkersMap({ markers, defaultColor, onMarkerPress, onReady }: MarkersMapProps) {
+function GoogleMarkersMap({
+  markers,
+  defaultColor,
+  onMarkerPress,
+  onReady,
+}: MarkersMapProps) {
   const mapRef = useRef<MapView>(null);
-  const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  // The map's real zoom level. Deriving it from the region's longitudeDelta
-  // ignores the screen width and is ~0.6 of a level off, which made clusters
-  // look like they were already expanded.
-  const [zoom, setZoom] = useState<number | null>(null);
+  // Region and the map's real zoom level together, so each camera change
+  // re-clusters once. (The zoom derived from the region's longitudeDelta
+  // ignores the screen width and is ~0.6 of a level off.)
+  const [view, setView] = useState<{ region: Region; zoom: number | null }>({
+    region: DEFAULT_REGION,
+    zoom: null,
+  });
   const fittedRef = useRef(false);
 
   const index = useMemo(() => {
@@ -228,8 +268,12 @@ function GoogleMarkersMap({ markers, defaultColor, onMarkerPress, onReady }: Mar
   }, [markers, defaultColor]);
 
   const clusters = useMemo(
-    () => index.getClusters(regionToBbox(region), zoom ?? regionToZoom(region)),
-    [index, region, zoom],
+    () =>
+      index.getClusters(
+        regionToBbox(view.region),
+        view.zoom ?? regionToZoom(view.region),
+      ),
+    [index, view],
   );
 
   // Show everything once the markers arrive (same as the OSM map's fitBounds).
@@ -237,7 +281,10 @@ function GoogleMarkersMap({ markers, defaultColor, onMarkerPress, onReady }: Mar
     if (markers.length === 0) return;
     mapRef.current?.fitToCoordinates(
       markers.map((m) => ({ latitude: m.latitude, longitude: m.longitude })),
-      { edgePadding: { top: 60, right: 60, bottom: 60, left: 60 }, animated: false },
+      {
+        edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+        animated: false,
+      },
     );
   }, [markers]);
 
@@ -262,26 +309,33 @@ function GoogleMarkersMap({ markers, defaultColor, onMarkerPress, onReady }: Mar
   }, [markers, fitAll]);
 
   const handleRegionChangeComplete = useCallback(async (next: Region) => {
-    setRegion(next);
+    let zoom: number | null = null;
     try {
       const camera = await mapRef.current?.getCamera();
-      if (camera?.zoom != null) setZoom(Math.floor(camera.zoom));
+      if (camera?.zoom != null) zoom = Math.floor(camera.zoom);
     } catch {
       // keep the estimate derived from the region
     }
+    setView({ region: next, zoom });
   }, []);
 
   // Zoom to fit everything inside the tapped cluster (like Leaflet's
   // zoomToBoundsOnClick). A cluster whose points share one location can't be
   // fitted, so just zoom in close on it.
-  const handleClusterPress = (clusterId: number, latitude: number, longitude: number) => {
+  const handleClusterPress = (
+    clusterId: number,
+    latitude: number,
+    longitude: number,
+  ) => {
     const leaves = index.getLeaves(clusterId, Infinity);
     const coordinates = leaves.map((leaf) => ({
       latitude: leaf.geometry.coordinates[1],
       longitude: leaf.geometry.coordinates[0],
     }));
     const spread = coordinates.some(
-      (c) => Math.abs(c.latitude - latitude) > 1e-5 || Math.abs(c.longitude - longitude) > 1e-5,
+      (c) =>
+        Math.abs(c.latitude - latitude) > 1e-5 ||
+        Math.abs(c.longitude - longitude) > 1e-5,
     );
     if (spread) {
       mapRef.current?.fitToCoordinates(coordinates, {
@@ -289,51 +343,62 @@ function GoogleMarkersMap({ markers, defaultColor, onMarkerPress, onReady }: Mar
         animated: true,
       });
     } else {
-      mapRef.current?.animateCamera({ center: { latitude, longitude }, zoom: 18 }, { duration: 300 });
+      mapRef.current?.animateCamera(
+        { center: { latitude, longitude }, zoom: 18 },
+        { duration: 300 },
+      );
     }
   };
 
+  const slots = useMemo<(Slot | null)[]>(() => {
+    const visible = clusters.slice(0, POOL_SIZE).map((feature): Slot => {
+      const [longitude, latitude] = feature.geometry.coordinates;
+      const props = feature.properties as PointProps | ClusterProps;
+      if ("cluster" in props && props.cluster) {
+        return {
+          latitude,
+          longitude,
+          color: defaultColor,
+          count: props.point_count,
+          onPress: () =>
+            handleClusterPress(props.cluster_id, latitude, longitude),
+        };
+      }
+      const point = props as PointProps;
+      return {
+        latitude,
+        longitude,
+        color: point.color,
+        count: 0,
+        onPress: () => onMarkerPress(point.id),
+      };
+    });
+    return Array.from({ length: POOL_SIZE }, (_, i) => visible[i] ?? null);
+    // handleClusterPress only closes over `index` and the stable map ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clusters, defaultColor, onMarkerPress, index]);
+
   return (
     <View style={styles.map}>
-    <NativeGoogleMap
-      ref={mapRef}
-      style={styles.map}
-      initialRegion={DEFAULT_REGION}
-      onMapLoaded={handleMapLoaded}
-      onRegionChangeComplete={handleRegionChangeComplete}
-      toolbarEnabled={false}
-      zoomControlEnabled={false}
-    >
-      {clusters.map((feature) => {
-        const [longitude, latitude] = feature.geometry.coordinates;
-        const props = feature.properties as PointProps | ClusterProps;
-        if ("cluster" in props && props.cluster) {
-          return (
-            <PinMarker
-              key={`c-${props.cluster_id}-${props.point_count}`}
-              id={`c-${props.cluster_id}`}
-              latitude={latitude}
-              longitude={longitude}
-              color={defaultColor}
-              count={props.point_count}
-              onPress={() => handleClusterPress(props.cluster_id, latitude, longitude)}
-            />
-          );
-        }
-        const point = props as PointProps;
-        return (
-          <PinMarker
-            key={point.id}
-            id={point.id}
-            latitude={latitude}
-            longitude={longitude}
-            color={point.color}
-            onPress={() => onMarkerPress(point.id)}
+      <NativeGoogleMap
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={DEFAULT_REGION}
+        onMapLoaded={handleMapLoaded}
+        onRegionChangeComplete={handleRegionChangeComplete}
+        toolbarEnabled={false}
+        zoomControlEnabled={false}
+      >
+        {slots.map((slot, i) => (
+          <PoolMarker
+            key={i}
+            index={i}
+            slot={slot}
+            fallbackColor={defaultColor}
           />
-        );
-      })}
-    </NativeGoogleMap>
-    <MapZoomControls mapRef={mapRef} />
+        ))}
+      </NativeGoogleMap>
+      <MapZoomControls mapRef={mapRef} />
     </View>
   );
 }
@@ -349,7 +414,10 @@ function OsmMarkersMap({
 }: MarkersMapProps & { googleError: string | null }) {
   const webViewRef = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
-  const source = useMemo(() => ({ html: OSM_HTML, baseUrl: "https://localhost/" }), []);
+  const source = useMemo(
+    () => ({ html: OSM_HTML, baseUrl: "https://localhost/" }),
+    [],
+  );
 
   useEffect(() => {
     if (!mapReady) return;
