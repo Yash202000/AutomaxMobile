@@ -39,7 +39,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import { SingleLocationMap, SingleLocationMapHandle } from "@/src/components/maps/SingleLocationMap";
 
 const COLORS = {
   primary: "#1A237E",
@@ -428,12 +428,11 @@ const IncidentDetailsScreen = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [mapZoom, setMapZoom] = useState<number>(15);
   const [showAllComments, setShowAllComments] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showAllAssignees, setShowAllAssignees] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const mapRef = useRef<WebView>(null);
+  const mapRef = useRef<SingleLocationMapHandle>(null);
   const insets = useSafeAreaInsets();
 
   const imageAttachments = attachments.filter((att) =>
@@ -565,23 +564,9 @@ const IncidentDetailsScreen = () => {
     fetchCategories();
   }, []);
 
-  const handleZoomIn = () => {
-    const newZoom = Math.min(mapZoom + 1, 19);
-    setMapZoom(newZoom);
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(${newZoom});
-      true;
-    `);
-  };
+  const handleZoomIn = () => mapRef.current?.zoomIn();
 
-  const handleZoomOut = () => {
-    const newZoom = Math.max(mapZoom - 1, 1);
-    setMapZoom(newZoom);
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(${newZoom});
-      true;
-    `);
-  };
+  const handleZoomOut = () => mapRef.current?.zoomOut();
 
   const handleOpenDirections = () => {
     if (incident?.latitude && incident?.longitude) {
@@ -1300,101 +1285,13 @@ const IncidentDetailsScreen = () => {
                   icon="navigate"
                 />
                 <View style={styles.mapContainer}>
-                  <WebView
+                  <SingleLocationMap
                     ref={mapRef}
-                    source={{
-                      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; }
-    .custom-marker {
-      width: 30px;
-      height: 30px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      background-color: ${COLORS.error};
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .custom-marker::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>
-    const lat = ${incident.latitude};
-    const lng = ${incident.longitude};
-    const map = L.map('map').setView([lat, lng], 15);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    const markerHtml = '<div class="custom-marker"></div>';
-    const customIcon = L.divIcon({
-      html: markerHtml,
-      className: 'custom-div-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -30]
-    });
-
-    const marker = L.marker([lat, lng], { icon: customIcon })
-      .addTo(map)
-      .bindPopup(\`
-        <div style="min-width: 150px;">
-          <strong style="font-size: 13px;">${incident.title.replace(/'/g, "\\'")}</strong><br/>
-          <span style="font-size: 11px; color: #64748B;">${(incident.address || "Incident Location").replace(/'/g, "\\'")}</span>
-        </div>
-      \`);
-
-    map.whenReady(function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'mapReady'
-      }));
-    });
-  </script>
-</body>
-</html>
-                `,
-                      baseUrl: "https://localhost/",
-                    }}
-                    style={styles.map}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                    startInLoadingState={false}
-                    originWhitelist={["*"]}
-                    mixedContentMode="compatibility"
-                    onMessage={(event) => {
-                      try {
-                        const data = JSON.parse(event.nativeEvent.data);
-                        if (data.type === "mapReady") {
-                          // Map is ready
-                        }
-                      } catch (error) {
-                        console.error(
-                          "❌ [IncidentDetails OSM] Error handling message:",
-                          error,
-                        );
-                      }
-                    }}
+                    latitude={incident.latitude}
+                    longitude={incident.longitude}
+                    title={incident.title}
+                    address={incident.address || "Incident Location"}
+                    markerColor={COLORS.error}
                   />
                   {/* Zoom Controls */}
                   <View style={styles.mapControls}>

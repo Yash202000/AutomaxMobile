@@ -40,6 +40,12 @@
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>GMSApiKey</key>
+    <string>xxxxxxxxxxxxxxxxxxxxxxxxx</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>comgooglemaps</string>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
@@ -63,9 +69,9 @@
     <string>Allow $(PRODUCT_NAME) to use your location.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to save downloaded images to your Photos.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to save downloaded images to your Photos.</string>
     <key>NSUserActivityTypes</key>
     <array>
