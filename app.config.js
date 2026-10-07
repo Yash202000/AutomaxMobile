@@ -1,6 +1,13 @@
 const appName = process.env.APP_NAME || "Automax";
 const appIcon = "./assets/images/start-logo.png";
 
+// Maps: with a key every map screen uses native Google Maps; without one the
+// app keeps its OpenStreetMap (Leaflet) maps and no Google SDK key is injected.
+// The key is baked into the native projects at prebuild time (Info.plist /
+// AppDelegate on iOS, AndroidManifest on Android), so changing it needs a new
+// build — it is also exposed to JS as EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
 module.exports = {
   expo: {
     name: appName,
@@ -16,6 +23,7 @@ module.exports = {
       bundleIdentifier: process.env.IOS_BUNDLE_ID || "com.automax.mobile",
       buildNumber: process.env.EXPO_PUBLIC_APP_VERSION_CODE,
       googleServicesFile: "./GoogleService-Info.plist",
+      ...(googleMapsApiKey && { config: { googleMapsApiKey } }),
       infoPlist: {
         // Required for Linking.canOpenURL('comgooglemaps://...') to detect
         // whether the Google Maps app is installed (iOS 9+ query whitelist).
@@ -35,6 +43,7 @@ module.exports = {
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
       googleServicesFile: "./google-services.json",
+      ...(googleMapsApiKey && { config: { googleMaps: { apiKey: googleMapsApiKey } } }),
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: [

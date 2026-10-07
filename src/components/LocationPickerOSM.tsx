@@ -12,8 +12,14 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { WebView } from 'react-native-webview';
 import i18n from '../i18n';
+import { autocompletePlaces, getPlaceLocation, newPlacesSessionToken, searchTopPlace } from '../utils/googlePlaces';
+import { useMapProvider } from '../utils/mapProvider';
+import { MapFallbackNotice } from './maps/MapFallbackNotice';
+import { MapZoomControls } from './maps/MapZoomControls';
+import { NativeGoogleMap } from './maps/NativeGoogleMap';
 
 
 export interface LocationData {
@@ -54,6 +60,15 @@ const DEFAULT_LNG = 55.296249;
 let lastSearchTime = 0;
 const MIN_SEARCH_INTERVAL = 1000; // 1 second
 
+// A suggestion is either a Nominatim hit (already has coordinates) or a Google
+// Places prediction (placeId, resolved to coordinates when picked).
+interface Suggestion {
+  display_name: string;
+  lat?: string;
+  lon?: string;
+  placeId?: string;
+}
+
 export function LocationPickerOSM({ value, onChange, onGpsLocation, required, error, label, autoFetch }: LocationPickerProps) {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -62,9 +77,17 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [autoFetched, setAutoFetched] = useState(false);
-  const [suggestions, setSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const webViewRef = useRef<WebView>(null);
+  const googleMapRef = useRef<MapView>(null);
+  const placesSessionRef = useRef(newPlacesSessionToken());
+  const { provider, googleError } = useMapProvider();
+  const useGoogle = provider === 'google';
+  // Marker on the Google map: follows the controlled value, with a local copy so
+  // it moves immediately on tap/search before the parent re-renders.
+  const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
+  const markerCoordinate = value ? { latitude: value.latitude, longitude: value.longitude } : pin;
   const geocodingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
@@ -150,6 +173,28 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     }
   };
 
+  // Moves the marker (and the camera) on whichever map is active.
+  const placeMarker = useCallback((latitude: number, longitude: number) => {
+    if (useGoogle) {
+      setPin({ latitude, longitude });
+      googleMapRef.current?.animateCamera({ center: { latitude, longitude }, zoom: 15 }, { duration: 300 });
+    } else {
+      webViewRef.current?.injectJavaScript(`setMarker(${latitude}, ${longitude}); true;`);
+    }
+  }, [useGoogle]);
+
+  const removeMarker = useCallback(() => {
+    if (useGoogle) {
+      setPin(null);
+      googleMapRef.current?.animateCamera(
+        { center: { latitude: DEFAULT_LAT, longitude: DEFAULT_LNG }, zoom: 11 },
+        { duration: 300 },
+      );
+    } else {
+      webViewRef.current?.injectJavaScript(`clearMarker(); true;`);
+    }
+  }, [useGoogle]);
+
   const handleGetCurrentLocation = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -173,10 +218,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       onGpsLocation?.(locationData); // Notify with raw GPS coords immediately
 
       // Move map to location
-      webViewRef.current?.injectJavaScript(`
-        setMarker(${latitude}, ${longitude});
-        true;
-      `);
+      placeMarker(latitude, longitude);
 
       setIsLoading(false);
 
@@ -196,7 +238,29 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       CustomAlert.alert(t('common.error'), t('common.failedToGetLocation'));
       setIsLoading(false);
     }
-  }, [onChange, onGpsLocation]);
+  }, [onChange, onGpsLocation, placeMarker]);
+
+  // A tap on the map (either provider): report the point, then enrich it with
+  // an address once the user stops tapping.
+  const handleLocationSelected = useCallback((lat: number, lng: number) => {
+    onChange({ latitude: lat, longitude: lng });
+
+    // Clear any pending geocoding request
+    if (geocodingTimerRef.current) {
+      clearTimeout(geocodingTimerRef.current);
+    }
+
+    // Debounce geocoding to prevent multiple rapid requests (wait 500ms)
+    geocodingTimerRef.current = setTimeout(async () => {
+      try {
+        const addressData = await reverseGeocode(lat, lng);
+        if (isMountedRef.current && Object.keys(addressData).length > 0) {
+          onChange({ latitude: lat, longitude: lng, ...addressData });
+        }
+      } catch (error) {
+      }
+    }, 500);
+  }, [onChange]);
 
   const handleMessage = useCallback(async (event: any) => {
     try {
@@ -213,47 +277,35 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
           `);
         }
       } else if (data.type === 'locationSelected') {
-        const locationData: LocationData = {
-          latitude: data.lat,
-          longitude: data.lng,
-        };
-
-        onChange(locationData);
-
-        // Clear any pending geocoding request
-        if (geocodingTimerRef.current) {
-          clearTimeout(geocodingTimerRef.current);
-        }
-
-        // Debounce geocoding to prevent multiple rapid requests (wait 500ms)
-        geocodingTimerRef.current = setTimeout(async () => {
-          try {
-            const addressData = await reverseGeocode(data.lat, data.lng);
-            if (isMountedRef.current && Object.keys(addressData).length > 0) {
-              const fullLocationData = { latitude: data.lat, longitude: data.lng, ...addressData };
-              onChange(fullLocationData);
-            }
-          } catch (error) {
-          }
-        }, 500);
+        handleLocationSelected(data.lat, data.lng);
       }
     } catch (error) {
       console.error('❌ [LocationPicker OSM] Error handling message:', error);
     }
-  }, [onChange, value]);
+  }, [handleLocationSelected, value]);
 
   const handleClear = useCallback(() => {
     onChange(undefined);
-    webViewRef.current?.injectJavaScript(`
-      clearMarker();
-      true;
-    `);
-  }, [onChange]);
+    removeMarker();
+  }, [onChange, removeMarker]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.trim().length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
+      return;
+    }
+
+    if (useGoogle) {
+      try {
+        const results = await autocompletePlaces(query, placesSessionRef.current);
+        if (isMountedRef.current) {
+          setSuggestions(results.map((r) => ({ display_name: r.label, placeId: r.placeId })));
+          setShowSuggestions(results.length > 0);
+        }
+      } catch (error) {
+        console.warn('Google Places autocomplete failed:', error);
+      }
       return;
     }
 
@@ -282,7 +334,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     } catch {
       // silent — suggestions are best-effort
     }
-  }, []);
+  }, [useGoogle]);
 
   const handleSearchQueryChange = useCallback((text: string) => {
     setSearchQuery(text);
@@ -290,20 +342,39 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     setSearchError(null);
     if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
     if (text.trim().length >= 3) {
-      suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), 800);
+      suggestionTimerRef.current = setTimeout(() => fetchSuggestions(text), useGoogle ? 400 : 800);
     } else {
       setSuggestions([]);
     }
-  }, [fetchSuggestions]);
+  }, [fetchSuggestions, useGoogle]);
 
-  const handleSelectSuggestion = useCallback(async (item: { display_name: string; lat: string; lon: string }) => {
-    const latitude = parseFloat(item.lat);
-    const longitude = parseFloat(item.lon);
+  const handleSelectSuggestion = useCallback(async (item: Suggestion) => {
+    let latitude: number;
+    let longitude: number;
     setSearchQuery(item.display_name);
     setShowSuggestions(false);
     setSuggestions([]);
 
-    webViewRef.current?.injectJavaScript(`setMarker(${latitude}, ${longitude}); true;`);
+    if (item.placeId) {
+      try {
+        const place = await getPlaceLocation(item.placeId, placesSessionRef.current);
+        // The Places session ends with the pick; the next search starts a new one.
+        placesSessionRef.current = newPlacesSessionToken();
+        if (!place) throw new Error('Place has no location');
+        latitude = place.latitude;
+        longitude = place.longitude;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error occurred';
+        setSearchError(message);
+        CustomAlert.alert(t('common.searchFailed'), message);
+        return;
+      }
+    } else {
+      latitude = parseFloat(item.lat as string);
+      longitude = parseFloat(item.lon as string);
+    }
+
+    placeMarker(latitude, longitude);
     const locationData: LocationData = { latitude, longitude };
     onChange(locationData);
 
@@ -313,7 +384,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
         onChange({ ...locationData, ...addressData });
       }
     } catch { }
-  }, [onChange]);
+  }, [onChange, placeMarker, t]);
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
@@ -323,7 +394,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
 
     const now = Date.now();
     const timeSinceLastSearch = now - lastSearchTime;
-    if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
+    if (!useGoogle && timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
       const waitTime = MIN_SEARCH_INTERVAL - timeSinceLastSearch;
       CustomAlert.alert(t('common.pleaseWait'), `${t('common.pleaseWait')} ${Math.ceil(waitTime / 1000)} ${t('common.seconds')}`);
       return;
@@ -335,6 +406,28 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
     setShowSuggestions(false);
 
     try {
+      if (useGoogle) {
+        const place = await searchTopPlace(searchQuery);
+        if (!place) {
+          setSearchError(t('locationPicker.noResults'));
+          CustomAlert.alert(t('common.noResults'), t('common.noLocationFound'));
+          setIsSearching(false);
+          return;
+        }
+        placeMarker(place.latitude, place.longitude);
+        const locationData: LocationData = { latitude: place.latitude, longitude: place.longitude };
+        onChange(locationData);
+        setIsSearching(false);
+        setSearchError(null);
+        try {
+          const addressData = await reverseGeocode(place.latitude, place.longitude);
+          if (isMountedRef.current && Object.keys(addressData).length > 0) {
+            onChange({ ...locationData, ...addressData });
+          }
+        } catch { }
+        return;
+      }
+
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`,
         {
@@ -365,7 +458,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lon);
 
-      webViewRef.current?.injectJavaScript(`setMarker(${latitude}, ${longitude}); true;`);
+      placeMarker(latitude, longitude);
       const locationData: LocationData = { latitude, longitude };
       onChange(locationData);
       setIsSearching(false);
@@ -383,7 +476,7 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
       CustomAlert.alert(t('common.searchFailed'), errorMessage);
       setIsSearching(false);
     }
-  }, [searchQuery, onChange]);
+  }, [searchQuery, onChange, useGoogle, placeMarker, t]);
 
   const mapHtml = `
 <!DOCTYPE html>
@@ -552,23 +645,55 @@ export function LocationPickerOSM({ value, onChange, onGpsLocation, required, er
 
       {/* Map */}
       <View style={[styles.mapContainer, error && styles.mapContainerError]}>
-        <WebView
-          ref={webViewRef}
-          source={{ html: mapHtml, baseUrl: 'https://localhost/' }}
-          style={styles.map}
-          onMessage={handleMessage}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-          originWhitelist={['*']}
-          mixedContentMode="compatibility"
-          renderLoading={() => (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#2EC4B6" />
-              <Text style={styles.loadingText}>{t('locationPicker.loadingMap', 'Loading map...')}</Text>
-            </View>
-          )}
-        />
+        {useGoogle ? (
+          <>
+          <NativeGoogleMap
+            ref={googleMapRef}
+            style={styles.map}
+            initialCamera={{
+              center: {
+                latitude: value?.latitude || DEFAULT_LAT,
+                longitude: value?.longitude || DEFAULT_LNG,
+              },
+              zoom: value ? 15 : 11,
+              heading: 0,
+              pitch: 0,
+            }}
+            toolbarEnabled={false}
+            zoomControlEnabled={false}
+            onMapReady={() => setMapLoaded(true)}
+            onPress={(e) => {
+              const { latitude, longitude } = e.nativeEvent.coordinate;
+              setPin({ latitude, longitude });
+              handleLocationSelected(latitude, longitude);
+            }}
+          >
+            {markerCoordinate && <Marker coordinate={markerCoordinate} />}
+          </NativeGoogleMap>
+          <MapZoomControls mapRef={googleMapRef} />
+          </>
+        ) : (
+          <>
+            <WebView
+              ref={webViewRef}
+              source={{ html: mapHtml, baseUrl: 'https://localhost/' }}
+              style={styles.map}
+              onMessage={handleMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              originWhitelist={['*']}
+              mixedContentMode="compatibility"
+              renderLoading={() => (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color="#2EC4B6" />
+                  <Text style={styles.loadingText}>{t('locationPicker.loadingMap', 'Loading map...')}</Text>
+                </View>
+              )}
+            />
+            <MapFallbackNotice reason={googleError} />
+          </>
+        )}
       </View>
 
       <Text style={styles.hint}>

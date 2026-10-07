@@ -157,7 +157,8 @@
     "queries": "خريطة الاستفسارات",
     "queriesOnMap": "استفسار على الخريطة",
     "tapToLoad": "انقر على العلامة للتحميل",
-    "cappedNotice": "عرض أول {{shown}} من {{total}} — قم بتضييق نطاق التصفية لعرض الباقي"
+    "cappedNotice": "عرض أول {{shown}} من {{total}} — قم بتضييق نطاق التصفية لعرض الباقي",
+    "googleUnavailable": "خرائط Google غير متاحة — يتم عرض OpenStreetMap"
   },
   "tabs": {
     "dashboard": "لوحة التحكم",
