@@ -202,7 +202,7 @@
     "lastNameRequired": "Please enter your last name",
     "phone": "Phone Number",
     "mobileNumber": "Mobile Number",
-    "mobilePlaceholder": "+1234567890",
+    "mobilePlaceholder": "05xxxxxxxx",
     "mobileRequired": "Please enter your mobile number",
     "invalidMobileNumber": "Please enter a valid mobile number",
     "forgotPassword": "Forgot Password?",

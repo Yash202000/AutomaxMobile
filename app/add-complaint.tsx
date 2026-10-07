@@ -1,22 +1,29 @@
-import { getClassificationsTree } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
-import { createComplaint, getIncidents, uploadMultipleComplaintAttachments } from '@/src/api/incidents';
-import { getLocations, getLocationsTree } from '@/src/api/locations';
-import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
-import { getUsers } from '@/src/api/users';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import { CustomAlert } from '@/src/components/CustomAlert';
-import IncidentPicker from '@/src/components/IncidentPicker';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { useAuth } from '@/src/context/AuthContext';
-import i18n from '@/src/i18n';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';
-import { useRouter } from 'expo-router';
-import { t } from 'i18next';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { getClassificationsTree } from "@/src/api/classifications";
+import { getDepartments } from "@/src/api/departments";
+import {
+  createComplaint,
+  getIncidents,
+  uploadMultipleComplaintAttachments,
+} from "@/src/api/incidents";
+import { getLocationsTree } from "@/src/api/locations";
+import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
+import { getUsers } from "@/src/api/users";
+import {
+  getWorkflows,
+  matchWorkflow as matchWorkflowAPI,
+} from "@/src/api/workflow";
+import { CustomAlert } from "@/src/components/CustomAlert";
+import IncidentPicker from "@/src/components/IncidentPicker";
+import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
+import { useAuth } from "@/src/context/AuthContext";
+import i18n from "@/src/i18n";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
+import { useRouter } from "expo-router";
+import { t } from "i18next";
+import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -28,10 +35,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface DropdownOption {
   id: string;
@@ -74,7 +80,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   required,
   disabled,
   error,
-  allowClear = true
+  allowClear = true,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
@@ -86,7 +92,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         onPress={() => setModalVisible(true)}
         disabled={disabled}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
+        <Text
+          style={[
+            styles.dropdownText,
+            !value && styles.placeholderText,
+            { textAlign: "left" },
+          ]}
+        >
           {value || label}
         </Text>
         {loading ? (
@@ -124,14 +136,16 @@ const Dropdown: React.FC<DropdownProps> = ({
                   setModalVisible(false);
                 }}
               >
-                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
+                <Text style={styles.clearOptionText}>
+                  {t("common.clearSelection")}
+                </Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
 
             {options.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>{t('common.noOptions')}</Text>
+                <Text style={styles.emptyText}>{t("common.noOptions")}</Text>
               </View>
             ) : (
               <FlatList
@@ -160,9 +174,6 @@ const Dropdown: React.FC<DropdownProps> = ({
   );
 };
 
-
-
-
 const AddComplaintScreen = () => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -170,56 +181,69 @@ const AddComplaintScreen = () => {
   const insets = useSafeAreaInsets();
 
   const priorityOptions: DropdownOption[] = [
-    { id: '1', name: t('priorities.critical') },
-    { id: '2', name: t('priorities.high') },
-    { id: '3', name: t('priorities.medium') },
-    { id: '4', name: t('priorities.low') },
-    { id: '5', name: t('priorities.veryLow') },
+    { id: "1", name: t("priorities.critical") },
+    { id: "2", name: t("priorities.high") },
+    { id: "3", name: t("priorities.medium") },
+    { id: "4", name: t("priorities.low") },
+    { id: "5", name: t("priorities.veryLow") },
   ];
 
   const severityOptions: DropdownOption[] = [
-    { id: '1', name: t('severities.critical') },
-    { id: '2', name: t('severities.major') },
-    { id: '3', name: t('severities.moderate') },
-    { id: '4', name: t('severities.minor') },
-    { id: '5', name: t('severities.cosmetic') },
+    { id: "1", name: t("severities.critical") },
+    { id: "2", name: t("severities.major") },
+    { id: "3", name: t("severities.moderate") },
+    { id: "4", name: t("severities.minor") },
+    { id: "5", name: t("severities.cosmetic") },
   ];
 
   const sourceOptions: DropdownOption[] = [
-    { id: 'mobile', name: t('incidents.sources.mobile') },
+    { id: "mobile", name: t("incidents.sources.mobile") },
   ];
 
   const channelOptions: DropdownOption[] = [
-    { id: 'phone', name: t('incidents.channels.phone') },
-    { id: 'email', name: t('incidents.channels.email') },
-    { id: 'web', name: t('incidents.channels.web') },
-    { id: 'mobile', name: t('incidents.channels.mobile') },
-    { id: 'social_media', name: t('incidents.channels.socialMedia') },
-    { id: 'in_person', name: t('incidents.channels.inPerson') },
-    { id: 'viusional', name: t('incidents.channels.visual') },
-    { id: 'other', name: t('incidents.channels.other') },
+    { id: "phone", name: t("incidents.channels.phone") },
+    { id: "email", name: t("incidents.channels.email") },
+    { id: "web", name: t("incidents.channels.web") },
+    { id: "mobile", name: t("incidents.channels.mobile") },
+    { id: "social_media", name: t("incidents.channels.socialMedia") },
+    { id: "in_person", name: t("incidents.channels.inPerson") },
+    { id: "viusional", name: t("incidents.channels.visual") },
+    { id: "other", name: t("incidents.channels.other") },
   ];
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [comment, setComment] = useState('');
-  const [reporterName, setReporterName] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [comment, setComment] = useState("");
+  const [reporterName, setReporterName] = useState("");
+  const [reporterEmail, setReporterEmail] = useState("");
   // const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
-  const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
+  const [selectedLocation, setSelectedLocation] =
+    useState<DropdownOption | null>(null);
+  const [selectedClassification, setSelectedClassification] =
+    useState<DropdownOption | null>(null);
   const [selectedSource] = useState<DropdownOption>(sourceOptions[0]); // Fixed to mobile, non-editable
-  const [selectedChannel, setSelectedChannel] = useState<DropdownOption | null>(null);
-  const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
-  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
-  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
-  const [selectedSourceIncident, setSelectedSourceIncident] = useState<DropdownOption | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<DropdownOption | null>(
+    null,
+  );
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<DropdownOption | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DropdownOption | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(
+    priorityOptions[2],
+  );
+  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(
+    severityOptions[2],
+  );
+  const [selectedSourceIncident, setSelectedSourceIncident] =
+    useState<DropdownOption | null>(null);
   const [userIncidents, setUserIncidents] = useState<DropdownOption[]>([]);
-  const [incidentSearch, setIncidentSearch] = useState('');
+  const [incidentSearch, setIncidentSearch] = useState("");
   const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
-  const [closedStateId, setClosedStateId] = useState<undefined | string>(undefined);
+  const [closedStateId, setClosedStateId] = useState<undefined | string>(
+    undefined,
+  );
 
   const [matchedWorkflow, setMatchedWorkflow] = useState<Workflow | null>(null);
   const [allWorkflows, setAllWorkflows] = useState<Workflow[]>([]);
@@ -228,7 +252,9 @@ const AddComplaintScreen = () => {
   const [locations, setLocations] = useState<DropdownOption[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
-  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>(
+    [],
+  );
   const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
 
   const [loadingData, setLoadingData] = useState(true);
@@ -239,7 +265,9 @@ const AddComplaintScreen = () => {
   // Voice recording state
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [audioFiles, setAudioFiles] = useState<{ uri: string; duration: number }[]>([]);
+  const [audioFiles, setAudioFiles] = useState<
+    { uri: string; duration: number }[]
+  >([]);
 
   const hasFetchedDataRef = React.useRef(false);
 
@@ -258,7 +286,7 @@ const AddComplaintScreen = () => {
         if ((recording as any)._interval) {
           clearInterval((recording as any)._interval);
         }
-        recording.stopAndUnloadAsync().catch(() => { });
+        recording.stopAndUnloadAsync().catch(() => {});
       }
     };
   }, [recording]);
@@ -266,20 +294,40 @@ const AddComplaintScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      const [classRes, locRes, workflowRes, incWorkflowRes, userRes, deptRes, lookupRes, incidentRes] = await Promise.all([
-        getClassificationsTree('complaint'),
+      const [
+        classRes,
+        locRes,
+        workflowRes,
+        incWorkflowRes,
+        userRes,
+        deptRes,
+        lookupRes,
+        incidentRes,
+      ] = await Promise.all([
+        getClassificationsTree("complaint"),
         getLocationsTree(),
-        getWorkflows(true, 'complaint'),
-        getWorkflows(true, 'incident'),
+        getWorkflows(true, "complaint"),
+        getWorkflows(true, "incident"),
         getUsers(),
         getDepartments(),
-        getLookupCategories().catch(err => ({ success: false, error: err.message, data: [] })),
-        getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({ success: false, data: [] })),
+        getLookupCategories().catch((err) => ({
+          success: false,
+          error: err.message,
+          data: [],
+        })),
+        getIncidents({ created_by_me: true, limit: 100 }).catch(() => ({
+          success: false,
+          data: [],
+        })),
       ]);
 
-      if (incWorkflowRes.success && incWorkflowRes.data && incWorkflowRes.data.length > 0) {
+      if (
+        incWorkflowRes.success &&
+        incWorkflowRes.data &&
+        incWorkflowRes.data.length > 0
+      ) {
         const closedWorkflow = incWorkflowRes.data[0].states.find(
-          (w: any) => w.code === 'closed'
+          (w: any) => w.code === "closed",
         );
         if (closedWorkflow) {
           setClosedStateId(closedWorkflow?.id);
@@ -289,56 +337,74 @@ const AddComplaintScreen = () => {
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
         // Normalize classification tree data
         const normalizeClassifications = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => ({
+          return nodes.map((node) => ({
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             name_ar: node?.name_ar,
-            children: node.children ? normalizeClassifications(node.children) : undefined,
+            children: node.children
+              ? normalizeClassifications(node.children)
+              : undefined,
           }));
         };
         let normalizedClassifications = normalizeClassifications(classRes.data);
 
         // Filter by user's assigned classifications (unless super admin)
-        if (user && !user.is_super_admin && user.classifications && user.classifications.length > 0) {
-          const userClassificationIds = new Set(user.classifications.map(c => c.id));
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.classifications &&
+          user.classifications.length > 0
+        ) {
+          const userClassificationIds = new Set(
+            user.classifications.map((c) => c.id),
+          );
 
           // Helper to check if node or any descendant is assigned to user
           const hasUserAccess = (node: TreeNode): boolean => {
             if (userClassificationIds.has(node.id)) return true;
             if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
+              return node.children.some((child) => hasUserAccess(child));
             }
             return false;
           };
 
           // Filter tree to only include nodes with user access
           const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
 
-              const filteredNode: TreeNode = {
-                id: node.id,
-                name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
-              };
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
 
-              if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
-                if (filteredChildren.length > 0) {
-                  filteredNode.children = filteredChildren;
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
                 }
-              }
 
-              return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
-          normalizedClassifications = filterByUserAccess(normalizedClassifications);
+          normalizedClassifications = filterByUserAccess(
+            normalizedClassifications,
+          );
         }
         if (normalizedClassifications.length) {
-          setSelectedClassification({ id: normalizedClassifications?.[0]?.children?.[0]?.id || '', name: normalizedClassifications?.[0]?.children?.[0]?.name || '' })
+          setSelectedClassification({
+            id: normalizedClassifications?.[0]?.children?.[0]?.id || "",
+            name: normalizedClassifications?.[0]?.children?.[0]?.name || "",
+          });
         }
 
         setClassifications(normalizedClassifications);
@@ -349,50 +415,61 @@ const AddComplaintScreen = () => {
       if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
         // Normalize classification tree data
         const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => ({
+          return nodes.map((node) => ({
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             name_ar: node?.name_ar,
-            children: node.children ? normalizeLocations(node.children) : undefined,
+            children: node.children
+              ? normalizeLocations(node.children)
+              : undefined,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
 
         // Filter by user's assigned classifications (unless super admin)
-        if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
-          const userLocationIds = new Set(user.locations.map(c => c.id));
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.locations &&
+          user.locations.length > 0
+        ) {
+          const userLocationIds = new Set(user.locations.map((c) => c.id));
 
           // Helper to check if node or any descendant is assigned to user
           const hasUserAccess = (node: TreeNode): boolean => {
             if (userLocationIds.has(node.id)) return true;
             if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
+              return node.children.some((child) => hasUserAccess(child));
             }
             return false;
           };
 
           // Filter tree to only include nodes with user access
           const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
 
-              const filteredNode: TreeNode = {
-                id: node.id,
-                name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
-              };
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
 
-              if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
-                if (filteredChildren.length > 0) {
-                  filteredNode.children = filteredChildren;
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
                 }
-              }
 
-              return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
           normalizedLocations = filterByUserAccess(normalizedLocations);
@@ -410,37 +487,49 @@ const AddComplaintScreen = () => {
         setAllWorkflows(workflowRes.data);
       }
       if (userRes.success && userRes.data) {
-        setUsers(userRes.data.map((u: any) => ({
-          id: u.id,
-          name: `${u.first_name} ${u.last_name}`.trim() || u.email || t('common.unknownUser')
-        })));
+        setUsers(
+          userRes.data.map((u: any) => ({
+            id: u.id,
+            name:
+              `${u.first_name} ${u.last_name}`.trim() ||
+              u.email ||
+              t("common.unknownUser"),
+          })),
+        );
       }
       if (deptRes.success && deptRes.data) {
-        setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+        setDepartments(
+          deptRes.data.map((d: any) => ({ id: d.id, name: d.name })),
+        );
       }
       if (lookupRes.success && lookupRes.data) {
         // Filter to only show categories that should be added to complaint form
-        const complaintCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        const complaintCategories = lookupRes.data.filter(
+          (cat: LookupCategory) => cat.add_to_incident_form && cat.is_active,
+        );
         setLookupCategories(complaintCategories);
       }
       if (incidentRes.success && incidentRes.data) {
-        setUserIncidents(incidentRes.data.map((i: any) => ({
-          id: i.id,
-          name: `${i.incident_number} - ${i.title}`,
-        })));
+        setUserIncidents(
+          incidentRes.data.map((i: any) => ({
+            id: i.id,
+            name: `${i.incident_number} - ${i.title}`,
+          })),
+        );
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     }
     setLoadingData(false);
   };
 
   // Filter user's pre-loaded incidents by search query (client-side, instant)
-  const filteredIncidents = incidentSearch.trim().length === 0
-    ? userIncidents
-    : userIncidents.filter(i =>
-      i.name.toLowerCase().includes(incidentSearch.toLowerCase())
-    );
+  const filteredIncidents =
+    incidentSearch.trim().length === 0
+      ? userIncidents
+      : userIncidents.filter((i) =>
+          i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
+        );
 
   // Auto-match workflow via backend API when criteria change
   const matchWorkflow = useCallback(async () => {
@@ -453,14 +542,24 @@ const AddComplaintScreen = () => {
     try {
       const result = await matchWorkflowAPI(criteria);
       if (result.success && result.data?.workflow_id) {
-        const matched = allWorkflows.find(w => w.id === result.data.workflow_id) || null;
-        setMatchedWorkflow(matched ?? allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        const matched =
+          allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
+        setMatchedWorkflow(
+          matched ??
+            allWorkflows.find((w) => w.is_default) ??
+            allWorkflows[0] ??
+            null,
+        );
       } else if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     } catch {
       if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     }
   }, [allWorkflows, selectedLocation, selectedSource, selectedPriority]);
@@ -469,7 +568,12 @@ const AddComplaintScreen = () => {
     if (allWorkflows.length > 0) {
       matchWorkflow();
     }
-  }, [selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
+  }, [
+    selectedLocation?.id,
+    selectedSource?.id,
+    selectedPriority.id,
+    allWorkflows.length,
+  ]);
 
   const requiredFields = matchedWorkflow?.required_fields || [];
 
@@ -478,39 +582,39 @@ const AddComplaintScreen = () => {
   };
 
   const fieldLabels: Record<string, string> = {
-    description: 'Description',
-    comment: 'Comment',
-    classification_id: 'Classification',
-    priority: 'Priority',
-    severity: 'Severity',
-    source: 'Source',
-    source_incident_id: 'Source Incident Reference',
-    channel: 'Channel',
-    assignee_id: 'Assignee',
-    department_id: 'Department',
-    location_id: 'Location',
-    reporter_name: 'Reporter Name',
-    reporter_email: 'Reporter Email',
-    attachments: 'Voice Recording',
-    attachment: 'Voice Recording',
+    description: "Description",
+    comment: "Comment",
+    classification_id: "Classification",
+    priority: "Priority",
+    severity: "Severity",
+    source: "Source",
+    source_incident_id: "Source Incident Reference",
+    channel: "Channel",
+    assignee_id: "Assignee",
+    department_id: "Department",
+    location_id: "Location",
+    reporter_name: "Reporter Name",
+    reporter_email: "Reporter Email",
+    attachments: "Voice Recording",
+    attachment: "Voice Recording",
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = t('addComplaint.titlePlaceholder');
+      newErrors.title = t("addComplaint.titlePlaceholder");
     }
 
     if (!matchedWorkflow) {
-      newErrors.workflow = t('addComplaint.workflowHint');
+      newErrors.workflow = t("addComplaint.workflowHint");
     }
 
     for (const field of requiredFields) {
       // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
-      if (field.startsWith('lookup:')) {
-        const categoryCode = field.replace('lookup:', '');
-        const category = lookupCategories.find(c => c.code === categoryCode);
+      if (field.startsWith("lookup:")) {
+        const categoryCode = field.replace("lookup:", "");
+        const category = lookupCategories.find((c) => c.code === categoryCode);
         if (category && !lookupValues[category.id]) {
           newErrors[field] = `${category.name} is required`;
         }
@@ -519,49 +623,51 @@ const AddComplaintScreen = () => {
 
       let value: any;
       switch (field) {
-        case 'description':
+        case "description":
           value = description;
           break;
-        case 'comment':
+        case "comment":
           value = comment;
           break;
-        case 'classification_id':
+        case "classification_id":
           value = selectedClassification?.id;
           break;
-        case 'location_id':
+        case "location_id":
           value = selectedLocation?.id;
           break;
-        case 'source':
+        case "source":
           value = selectedSource?.id;
           break;
-        case 'channel':
+        case "channel":
           value = selectedChannel?.id;
           break;
-        case 'assignee_id':
+        case "assignee_id":
           value = selectedAssignee?.id;
           break;
-        case 'department_id':
+        case "department_id":
           value = selectedDepartment?.id;
           break;
-        case 'source_incident_id':
+        case "source_incident_id":
           value = selectedSourceIncident?.id;
           break;
-        case 'reporter_name':
+        case "reporter_name":
           value = reporterName;
           break;
-        case 'reporter_email':
+        case "reporter_email":
           value = reporterEmail;
           break;
-        case 'attachments':
-        case 'attachment':
+        case "attachments":
+        case "attachment":
           value = audioFiles.length > 0;
           break;
       }
 
-      if (!value || (typeof value === 'string' && !value.trim())) {
+      if (!value || (typeof value === "string" && !value.trim())) {
         newErrors[field] = `${fieldLabels[field] || field} is required`;
-      } else if (field === 'classification_id' && !value) {
-        alert('Please contact administrator to configure the query classification');
+      } else if (field === "classification_id" && !value) {
+        alert(
+          "Please contact administrator to configure the query classification",
+        );
       }
     }
 
@@ -574,7 +680,10 @@ const AddComplaintScreen = () => {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        CustomAlert.alert(t('common.permissionRequired'), t('addComplaint.micPermissionRequired'));
+        CustomAlert.alert(
+          t("common.permissionRequired"),
+          t("addComplaint.micPermissionRequired"),
+        );
         return;
       }
 
@@ -584,7 +693,7 @@ const AddComplaintScreen = () => {
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
       );
 
       setRecording(newRecording);
@@ -592,14 +701,14 @@ const AddComplaintScreen = () => {
 
       // Update duration every second
       const interval = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
+        setRecordingDuration((prev) => prev + 1);
       }, 1000);
 
       // Store interval ID in recording object for cleanup
       (newRecording as any)._interval = interval;
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      CustomAlert.alert(t('common.error'), t('common.recordingStartError'));
+      console.error("Failed to start recording:", error);
+      CustomAlert.alert(t("common.error"), t("common.recordingStartError"));
     }
   };
 
@@ -616,22 +725,25 @@ const AddComplaintScreen = () => {
       const uri = recording.getURI();
 
       if (uri) {
-        setAudioFiles(prev => [...prev, { uri, duration: recordingDuration }]);
+        setAudioFiles((prev) => [
+          ...prev,
+          { uri, duration: recordingDuration },
+        ]);
       }
 
       setRecording(null);
       setRecordingDuration(0);
     } catch (error) {
-      console.error('Failed to stop recording:', error);
-      CustomAlert.alert(t('common.error'), t('common.failedToStopRecording'));
+      console.error("Failed to stop recording:", error);
+      CustomAlert.alert(t("common.error"), t("common.failedToStopRecording"));
     }
   };
 
   const removeAudio = (index: number) => {
-    setAudioFiles(prev => {
+    setAudioFiles((prev) => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -640,11 +752,11 @@ const AddComplaintScreen = () => {
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleLookupChange = (categoryId: string, valueId: string) => {
-    setLookupValues(prev => {
+    setLookupValues((prev) => {
       if (!valueId) {
         const newValues = { ...prev };
         delete newValues[categoryId];
@@ -654,11 +766,11 @@ const AddComplaintScreen = () => {
     });
 
     // Clear error for this lookup field if it exists
-    const category = lookupCategories.find(c => c.id === categoryId);
+    const category = lookupCategories.find((c) => c.id === categoryId);
     if (category) {
       const errorKey = `lookup:${category.code}`;
       if (errors[errorKey]) {
-        setErrors(prev => {
+        setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[errorKey];
           return newErrors;
@@ -671,7 +783,7 @@ const AddComplaintScreen = () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
       if (firstError) {
-        CustomAlert.alert(t('common.error'), firstError);
+        CustomAlert.alert(t("common.error"), firstError);
       }
       return;
     }
@@ -684,10 +796,10 @@ const AddComplaintScreen = () => {
     };
 
     // Only include priority and severity if they're required
-    if (isFieldRequired('priority')) {
+    if (isFieldRequired("priority")) {
       complaintData.priority = parseInt(selectedPriority.id);
     }
-    if (isFieldRequired('severity')) {
+    if (isFieldRequired("severity")) {
       complaintData.severity = parseInt(selectedSeverity.id);
     }
 
@@ -697,11 +809,14 @@ const AddComplaintScreen = () => {
     if (selectedSource) complaintData.source = selectedSource.id;
     complaintData.channel = selectedChannel ? selectedChannel.id : "mobile";
     if (selectedAssignee) complaintData.assignee_id = selectedAssignee.id;
-    if (selectedClassification) complaintData.classification_id = selectedClassification.id;
+    if (selectedClassification)
+      complaintData.classification_id = selectedClassification.id;
     if (selectedDepartment) complaintData.department_id = selectedDepartment.id;
-    if (selectedSourceIncident) complaintData.source_incident_id = selectedSourceIncident.id;
+    if (selectedSourceIncident)
+      complaintData.source_incident_id = selectedSourceIncident.id;
     if (reporterName.trim()) complaintData.reporter_name = reporterName.trim();
-    if (reporterEmail.trim()) complaintData.reporter_email = reporterEmail.trim();
+    if (reporterEmail.trim())
+      complaintData.reporter_email = reporterEmail.trim();
 
     const userPhone = user?.phone;
     if (userPhone) complaintData.reporter_phone = userPhone;
@@ -713,7 +828,7 @@ const AddComplaintScreen = () => {
     }
 
     const response = await createComplaint(complaintData);
-    console.log('Complaint created:', response.error);
+    console.log("Complaint created:", response.error);
     if (response.success) {
       // Upload audio files if any
       if (audioFiles.length > 0) {
@@ -721,41 +836,52 @@ const AddComplaintScreen = () => {
         const filesToUpload = audioFiles.map((audio, index) => ({
           uri: audio.uri,
           name: `voice-recording-${Date.now()}-${index}.m4a`,
-          type: 'audio/m4a',
+          type: "audio/m4a",
         }));
 
-        const uploadResult = await uploadMultipleComplaintAttachments(complaintId, filesToUpload);
+        const uploadResult = await uploadMultipleComplaintAttachments(
+          complaintId,
+          filesToUpload,
+        );
 
         if (!uploadResult.success) {
-          console.error('Failed to upload some audio files:', uploadResult.errors);
+          console.error(
+            "Failed to upload some audio files:",
+            uploadResult.errors,
+          );
           // Continue anyway since complaint was created
         }
 
         // Delete audio temp files from device cache after upload
-        audioFiles.forEach(audio => {
+        audioFiles.forEach((audio) => {
           if (audio?.uri) {
-            FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(() => { });
+            FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(
+              () => {},
+            );
           }
         });
       }
 
       setSubmitting(false);
-      CustomAlert.alert(t('common.success'), t('addComplaint.created'), [
-        { text: t('common.ok'), onPress: () => router.back() },
+      CustomAlert.alert(t("common.success"), t("addComplaint.created"), [
+        { text: t("common.ok"), onPress: () => router.back() },
       ]);
     } else {
       setSubmitting(false);
-      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
+      CustomAlert.alert(
+        t("common.error"),
+        `${t("common.failed")}: ${response.error}`,
+      );
     }
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('addComplaint.title')}</Text>
+        <Text style={styles.headerTitle}>{t("addComplaint.title")}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -764,115 +890,99 @@ const AddComplaintScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E74C3C" />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <>
-          <ScrollView style={[styles.formContainer, { marginBottom: insets.bottom }]} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={[styles.formContainer, { marginBottom: insets.bottom }]}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ padding: 20 }}>
-              <View style={styles.workflowCard}>
-                <View style={styles.workflowHeader}>
-                  <Ionicons name="git-branch" size={20} color="#E74C3C" />
-                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
-                </View>
-                {matchedWorkflow ? (
-                  <View style={styles.workflowMatched}>
-                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.workflowHint}>
-                    {t('addComplaint.workflowHint')}
-                  </Text>
-                )}
-                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
-              </View>
-
               <Text style={styles.sectionTitle}>
-                {t('addComplaint.title')} <Text style={styles.required}>*</Text>
+                {t("addComplaint.title")} <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                style={[styles.input, errors.title && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                placeholder={t('addComplaint.titlePlaceholder')}
+                style={[
+                  styles.input,
+                  errors.title && styles.inputError,
+                  { textAlign: i18n.language === "ar" ? "right" : "left" },
+                ]}
+                placeholder={t("addComplaint.titlePlaceholder")}
                 value={title}
                 onChangeText={(text) => {
                   setTitle(text);
-                  if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                  if (errors.title)
+                    setErrors((prev) => ({ ...prev, title: "" }));
                 }}
                 placeholderTextColor="#999"
               />
-              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
-
-              {isFieldRequired('channel') && (
-                <>
-                  <Text style={styles.sectionTitle}>
-                    {t('addComplaint.channel')} <Text style={styles.required}>*</Text>
-                  </Text>
-                  <Dropdown
-                    label={t('addComplaint.selectChannel')}
-                    value={selectedChannel?.name || ''}
-                    options={channelOptions}
-                    onSelect={setSelectedChannel}
-                    required={true}
-                    error={errors.channel}
-                  />
-                </>
+              {errors.title && (
+                <Text style={styles.errorText}>{errors.title}</Text>
               )}
 
-              {isFieldRequired('location_id') && (
+              {isFieldRequired("location_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.location')} <Text style={styles.required}>*</Text>
+                    {t("incidents.location")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TreeSelect
-                    label={t('addIncident.selectLocation')}
-                    value={selectedLocation?.name || ''}
+                    label={t("addIncident.selectLocation")}
+                    value={selectedLocation?.name || ""}
                     data={locations}
-                    onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
+                    onSelect={(node) =>
+                      setSelectedLocation(node as DropdownOption | null)
+                    }
                     required={true}
                     error={errors.location_id}
                     leafOnly={true}
-                    placeholder={t('addIncident.selectLocation')}
+                    placeholder={t("addIncident.selectLocation")}
                     iconType="location"
                   />
                 </>
               )}
-              {
-                isFieldRequired('classification_id') &&
-                (<>
+              {isFieldRequired("classification_id") && (
+                <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                    {t("incidents.classification")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TreeSelect
-                    label={t('addIncident.selectClassification')}
-                    value={selectedClassification?.name || ''}
+                    label={t("addIncident.selectClassification")}
+                    value={selectedClassification?.name || ""}
                     data={classifications}
-                    onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                    onSelect={(node) =>
+                      setSelectedClassification(node as DropdownOption | null)
+                    }
                     required={true}
                     error={errors.classification_id}
                     leafOnly={true}
-                    placeholder={t('addIncident.selectClassification')}
+                    placeholder={t("addIncident.selectClassification")}
                     iconType="classification"
                   />
-                </>)
-              }
+                </>
+              )}
 
               {/* Source field - always mobile for mobile app, non-editable */}
               <Text style={styles.sectionTitle}>
-                {t('addComplaint.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
+                {t("addComplaint.source")}{" "}
+                {isFieldRequired("source") && (
+                  <Text style={styles.required}>*</Text>
+                )}
               </Text>
               <Dropdown
-                label={t('addComplaint.selectSource')}
-                value={selectedSource?.name || ''}
+                label={t("addComplaint.selectSource")}
+                value={selectedSource?.name || ""}
                 options={sourceOptions}
-                onSelect={() => { }} // No-op, field is not editable
-                required={isFieldRequired('source')}
+                onSelect={() => {}} // No-op, field is not editable
+                required={isFieldRequired("source")}
                 error={errors.source}
                 disabled={true}
               />
 
               {/* Lookup Fields - Dynamic master data fields */}
-              {lookupCategories.map(category => {
+              {lookupCategories.map((category) => {
                 const lookupFieldKey = `lookup:${category.code}`;
                 const isRequired = requiredFields.includes(lookupFieldKey);
 
@@ -880,10 +990,10 @@ const AddComplaintScreen = () => {
                 if (!isRequired) return null;
 
                 const options = (category.values || [])
-                  .filter(v => v.is_active)
-                  .map(v => ({
+                  .filter((v) => v.is_active)
+                  .map((v) => ({
                     id: v.id,
-                    name: v.name
+                    name: v.name,
                   }));
 
                 return (
@@ -893,9 +1003,15 @@ const AddComplaintScreen = () => {
                     </Text>
                     <Dropdown
                       label={`Select ${category.name.toLowerCase()}`}
-                      value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                      value={
+                        options.find(
+                          (opt) => opt.id === lookupValues[category.id],
+                        )?.name || ""
+                      }
                       options={options}
-                      onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                      onSelect={(opt) =>
+                        handleLookupChange(category.id, opt?.id || "")
+                      }
                       required={isRequired}
                       error={errors[lookupFieldKey]}
                     />
@@ -903,15 +1019,22 @@ const AddComplaintScreen = () => {
                 );
               })}
 
-              {(isFieldRequired('priority') || isFieldRequired('severity')) && (
+              {(isFieldRequired("priority") || isFieldRequired("severity")) && (
                 <View style={styles.row}>
-                  {isFieldRequired('priority') && (
-                    <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                  {isFieldRequired("priority") && (
+                    <View
+                      style={
+                        isFieldRequired("severity")
+                          ? styles.halfWidth
+                          : styles.fullWidth
+                      }
+                    >
                       <Text style={styles.sectionTitle}>
-                        {t('addComplaint.priority')} <Text style={styles.required}>*</Text>
+                        {t("addComplaint.priority")}{" "}
+                        <Text style={styles.required}>*</Text>
                       </Text>
                       <Dropdown
-                        label={t('addComplaint.selectPriority')}
+                        label={t("addComplaint.selectPriority")}
                         value={selectedPriority.name}
                         options={priorityOptions}
                         onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -919,13 +1042,20 @@ const AddComplaintScreen = () => {
                       />
                     </View>
                   )}
-                  {isFieldRequired('severity') && (
-                    <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                  {isFieldRequired("severity") && (
+                    <View
+                      style={
+                        isFieldRequired("priority")
+                          ? styles.halfWidth
+                          : styles.fullWidth
+                      }
+                    >
                       <Text style={styles.sectionTitle}>
-                        {t('addComplaint.severity')} <Text style={styles.required}>*</Text>
+                        {t("addComplaint.severity")}{" "}
+                        <Text style={styles.required}>*</Text>
                       </Text>
                       <Dropdown
-                        label={t('addComplaint.selectSeverity')}
+                        label={t("addComplaint.selectSeverity")}
                         value={selectedSeverity.name}
                         options={severityOptions}
                         onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -936,14 +1066,15 @@ const AddComplaintScreen = () => {
                 </View>
               )}
 
-              {isFieldRequired('assignee_id') && (
+              {isFieldRequired("assignee_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.assignee')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.assignee")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addComplaint.selectAssignee')}
-                    value={selectedAssignee?.name || ''}
+                    label={t("addComplaint.selectAssignee")}
+                    value={selectedAssignee?.name || ""}
                     options={users}
                     onSelect={setSelectedAssignee}
                     required={true}
@@ -952,14 +1083,15 @@ const AddComplaintScreen = () => {
                 </>
               )}
 
-              {isFieldRequired('department_id') && (
+              {isFieldRequired("department_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.department')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.department")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addComplaint.selectDepartment')}
-                    value={selectedDepartment?.name || ''}
+                    label={t("addComplaint.selectDepartment")}
+                    value={selectedDepartment?.name || ""}
                     options={departments}
                     onSelect={setSelectedDepartment}
                     required={true}
@@ -968,42 +1100,71 @@ const AddComplaintScreen = () => {
                 </>
               )}
 
-              {isFieldRequired('source_incident_id') && (
+              {isFieldRequired("source_incident_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addQuery.sourceIncident')} <Text style={styles.required}>*</Text>
+                    {t("addQuery.sourceIncident")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
 
                   {/* Dropdown trigger */}
                   <TouchableOpacity
-                    style={[styles.dropdown, errors.source_incident_id ? styles.dropdownError : null]}
+                    style={[
+                      styles.dropdown,
+                      errors.source_incident_id ? styles.dropdownError : null,
+                    ]}
                     onPress={() => {
-                      setIncidentSearch('');
+                      setIncidentSearch("");
                       setIncidentDropdownOpen(true);
                     }}
                   >
-                    <Text style={[styles.dropdownText, !selectedSourceIncident && styles.placeholderText, { textAlign: "left" }]}>
-                      {selectedSourceIncident ? selectedSourceIncident.name : t('common.selectIncident')}
+                    <Text
+                      style={[
+                        styles.dropdownText,
+                        !selectedSourceIncident && styles.placeholderText,
+                        { textAlign: "left" },
+                      ]}
+                    >
+                      {selectedSourceIncident
+                        ? selectedSourceIncident.name
+                        : t("common.selectIncident")}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
                       {selectedSourceIncident && (
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
                             setSelectedSourceIncident(null);
                             if (errors.source_incident_id) {
-                              setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                              setErrors((prev) => ({
+                                ...prev,
+                                source_incident_id: "",
+                              }));
                             }
                           }}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <Ionicons name="close-circle" size={18} color="#999" />
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color="#999"
+                          />
                         </TouchableOpacity>
                       )}
                       {loadingData ? (
                         <ActivityIndicator size="small" color="#666" />
                       ) : (
-                        <FontAwesome name="chevron-down" size={16} color="#666" />
+                        <FontAwesome
+                          name="chevron-down"
+                          size={16}
+                          color="#666"
+                        />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -1016,105 +1177,149 @@ const AddComplaintScreen = () => {
                     onSelect={(value) => {
                       setSelectedSourceIncident(value);
                       if (errors.source_incident_id) {
-                        setErrors(prev => ({ ...prev, source_incident_id: '' }));
+                        setErrors((prev) => ({
+                          ...prev,
+                          source_incident_id: "",
+                        }));
                       }
                     }}
                   />
 
                   {errors.source_incident_id && (
-                    <Text style={styles.errorText}>{errors.source_incident_id}</Text>
+                    <Text style={styles.errorText}>
+                      {errors.source_incident_id}
+                    </Text>
                   )}
                 </>
               )}
 
-              {isFieldRequired('description') && (
+              {isFieldRequired("description") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.description')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.description")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addComplaint.descriptionPlaceholder')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.description && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addComplaint.descriptionPlaceholder")}
                     multiline
                     value={description}
                     onChangeText={(text) => {
                       setDescription(text);
-                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                      if (errors.description)
+                        setErrors((prev) => ({ ...prev, description: "" }));
                     }}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
-                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                  {errors.description && (
+                    <Text style={styles.errorText}>{errors.description}</Text>
+                  )}
                 </>
               )}
 
               {/* Comment - only show if required */}
-              {isFieldRequired('comment') && (
+              {isFieldRequired("comment") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                    {t("incidents.comment")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('incidents.addCommentPlaceholder', 'Add a comment...')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.comment && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t(
+                      "incidents.addCommentPlaceholder",
+                      "Add a comment...",
+                    )}
                     multiline
                     value={comment}
                     onChangeText={(text) => {
                       setComment(text);
-                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                      if (errors.comment)
+                        setErrors((prev) => ({ ...prev, comment: "" }));
                     }}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
-                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                  {errors.comment && (
+                    <Text style={styles.errorText}>{errors.comment}</Text>
+                  )}
                 </>
               )}
 
-              {isFieldRequired('reporter_name') && (
+              {isFieldRequired("reporter_name") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.reporterName')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.reporterName")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addComplaint.reporterNamePlaceholder')}
+                    style={[
+                      styles.input,
+                      errors.reporter_name && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addComplaint.reporterNamePlaceholder")}
                     value={reporterName}
                     onChangeText={(text) => {
                       setReporterName(text);
-                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                      if (errors.reporter_name)
+                        setErrors((prev) => ({ ...prev, reporter_name: "" }));
                     }}
                     placeholderTextColor="#999"
                   />
-                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                  {errors.reporter_name && (
+                    <Text style={styles.errorText}>{errors.reporter_name}</Text>
+                  )}
                 </>
               )}
 
-              {isFieldRequired('reporter_email') && (
+              {isFieldRequired("reporter_email") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.reporterEmail')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.reporterEmail")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addComplaint.reporterEmailPlaceholder')}
+                    style={[
+                      styles.input,
+                      errors.reporter_email && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addComplaint.reporterEmailPlaceholder")}
                     value={reporterEmail}
                     onChangeText={(text) => {
                       setReporterEmail(text);
-                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                      if (errors.reporter_email)
+                        setErrors((prev) => ({ ...prev, reporter_email: "" }));
                     }}
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
-                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                  {errors.reporter_email && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_email}
+                    </Text>
+                  )}
                 </>
               )}
 
               {/* Voice Recording Section */}
-              {(isFieldRequired('attachments') || isFieldRequired('attachment')) && (
+              {(isFieldRequired("attachments") ||
+                isFieldRequired("attachment")) && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addComplaint.voiceRecording')} <Text style={styles.required}>*</Text>
+                    {t("addComplaint.voiceRecording")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
 
                   {/* Recorded Audio Files */}
@@ -1125,11 +1330,16 @@ const AddComplaintScreen = () => {
                           <View style={styles.audioInfo}>
                             <Ionicons name="mic" size={20} color="#3B82F6" />
                             <Text style={styles.audioText}>
-                              {t('common.recording')} {index + 1} ({formatDuration(audio.duration)})
+                              {t("common.recording")} {index + 1} (
+                              {formatDuration(audio.duration)})
                             </Text>
                           </View>
                           <TouchableOpacity onPress={() => removeAudio(index)}>
-                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                            <Ionicons
+                              name="trash-outline"
+                              size={20}
+                              color="#EF4444"
+                            />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -1140,7 +1350,7 @@ const AddComplaintScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.recordButton,
-                      recording && styles.recordingButton
+                      recording && styles.recordingButton,
                     ]}
                     onPress={recording ? stopRecording : startRecording}
                   >
@@ -1148,13 +1358,16 @@ const AddComplaintScreen = () => {
                       <>
                         <Ionicons name="stop" size={24} color="#fff" />
                         <Text style={styles.recordButtonText}>
-                          {t('addComplaint.stopRecording')} ({formatDuration(recordingDuration)})
+                          {t("addComplaint.stopRecording")} (
+                          {formatDuration(recordingDuration)})
                         </Text>
                       </>
                     ) : (
                       <>
                         <Ionicons name="mic" size={24} color="#fff" />
-                        <Text style={styles.recordButtonText}>{t('addComplaint.startRecording')}</Text>
+                        <Text style={styles.recordButtonText}>
+                          {t("addComplaint.startRecording")}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1165,7 +1378,12 @@ const AddComplaintScreen = () => {
             </View>
           </ScrollView>
 
-          <View style={[styles.submitContainer, { paddingBottom: insets.bottom + 10 }]}>
+          <View
+            style={[
+              styles.submitContainer,
+              { paddingBottom: insets.bottom + 10 },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.submitButton, submitting && styles.disabledButton]}
               onPress={handleSubmit}
@@ -1174,7 +1392,9 @@ const AddComplaintScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>{t('addComplaint.createButton')}</Text>
+                <Text style={styles.submitButtonText}>
+                  {t("addComplaint.createButton")}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1187,31 +1407,31 @@ const AddComplaintScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     paddingTop: 50,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
   formContainer: {
@@ -1219,288 +1439,288 @@ const styles = StyleSheet.create({
     // padding: 20,
   },
   workflowCard: {
-    backgroundColor: '#FDEAEA',
+    backgroundColor: "#FDEAEA",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   workflowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   workflowLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#E74C3C',
+    fontWeight: "600",
+    color: "#E74C3C",
     marginLeft: 8,
   },
   workflowMatched: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   workflowName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginLeft: 8,
   },
   workflowHint: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
-    color: '#333',
-    textAlign: "left"
+    color: "#333",
+    textAlign: "left",
   },
   required: {
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   inputError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   dropdownError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   dropdownText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   placeholderText: {
-    color: '#999'
+    color: "#999",
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   halfWidth: {
-    width: '48%',
+    width: "48%",
   },
   fullWidth: {
-    width: '100%',
+    width: "100%",
   },
   descriptionInput: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     height: 120,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   bottomPadding: {
     height: 100,
   },
   submitContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: "#EEE",
   },
   submitButton: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: "#E74C3C",
     padding: 16,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   disabledButton: {
-    backgroundColor: '#A0A0A0',
+    backgroundColor: "#A0A0A0",
   },
   submitButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   errorText: {
-    color: '#E74C3C',
+    color: "#E74C3C",
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   clearOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFF5F5',
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF5F5",
   },
   clearOptionText: {
     fontSize: 16,
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   emptyList: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
-    color: '#999',
+    color: "#999",
     fontSize: 16,
   },
   audioList: {
     marginBottom: 16,
   },
   audioItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     borderRadius: 8,
     marginBottom: 8,
   },
   audioInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   audioText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   recordButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
     padding: 16,
     borderRadius: 10,
     marginBottom: 16,
   },
   recordingButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
   },
   recordButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   selectedIncidentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: "#4CAF50",
   },
   selectedIncidentText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     marginBottom: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
 
     padding: 8,
   },
   searchResults: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     marginBottom: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   searchResultItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   searchResultText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   noResultsText: {
     fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
     paddingVertical: 12,
   },
 });

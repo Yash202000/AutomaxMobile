@@ -1404,7 +1404,7 @@ const LoginScreen = () => {
                             textAlign: currentLang === "ar" ? "right" : "left",
                           },
                         ]}
-                        placeholder={t("auth.phonePlaceholder", "+1234567890")}
+                        placeholder={t("auth.phonePlaceholder", "05xxxxxxxx")}
                         placeholderTextColor="#999"
                         value={phoneNumber}
                         onChangeText={setPhoneNumber}
