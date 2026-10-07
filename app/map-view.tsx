@@ -1,9 +1,10 @@
 import { getComplaintStats, getIncidentById, getIncidentMarkers, getIncidentStats, getQueryStats, getRequestStats, IncidentMapMarker } from "@/src/api/incidents";
 import { useAuth } from "@/src/context/AuthContext";
+import { MarkersMap } from "@/src/components/maps/MarkersMap";
 import usePermissions from "@/src/hooks/usePermissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -15,7 +16,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 
 const COLORS = {
   primary: "#1A237E",
@@ -43,7 +43,6 @@ const MapViewScreen = () => {
     search?: string;
   }>();
   const recordType = type || "incident";
-  const webViewRef = useRef<WebView>(null);
   const insets = useSafeAreaInsets();
 
   const [markers, setMarkers] = useState<IncidentMapMarker[]>([]);
@@ -62,126 +61,9 @@ const MapViewScreen = () => {
   const { canViewAllIncidents, canViewAllRequests, canViewAllComplaints, canViewAllQueries } = usePermissions();
   const { user } = useAuth();
 
-  const mapHTML = useMemo(() => `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; }
-    .custom-marker {
-      width: 26px;
-      height: 26px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .custom-marker::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 8px;
-      height: 8px;
-      background: white;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-    .marker-cluster-small { background-color: rgba(46, 196, 182, 0.6); }
-    .marker-cluster-small div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
-    .marker-cluster-medium { background-color: rgba(46, 196, 182, 0.6); }
-    .marker-cluster-medium div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
-    .marker-cluster-large { background-color: rgba(46, 196, 182, 0.6); }
-    .marker-cluster-large div { background-color: rgba(46, 196, 182, 0.9); color: white; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>
-    const map = L.map('map', { preferCanvas: true }).setView([24.7136, 46.6753], 6);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    // chunkedLoading spreads adding thousands of markers across animation
-    // frames instead of blocking the JS thread in one long synchronous call.
-    const markerClusterGroup = L.markerClusterGroup({
-      maxClusterRadius: 60,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      chunkedLoading: true,
-      chunkProgress: function (processed, total, elapsed) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'markersProgress',
-          processed: processed,
-          total: total,
-        }));
-      }
-    });
-    map.addLayer(markerClusterGroup);
-
-    window.updateMarkers = function(markerData) {
-      markerClusterGroup.clearLayers();
-
-      if (!markerData || markerData.length === 0) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markersRendered' }));
-        return;
-      }
-
-      const newMarkers = markerData.map(function (m) {
-        const markerHtml = '<div class="custom-marker" style="background-color: ' + (m.color || '#2EC4B6') + ';"></div>';
-        const icon = L.divIcon({
-          html: markerHtml,
-          className: 'custom-div-icon',
-          iconSize: [26, 26],
-          iconAnchor: [13, 26],
-        });
-        const marker = L.marker([m.lat, m.lng], { icon: icon });
-        marker.on('click', function () {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerClicked', id: m.id }));
-        });
-        return marker;
-      });
-
-      markerClusterGroup.on('chunkend', function onChunkEnd() {
-        markerClusterGroup.off('chunkend', onChunkEnd);
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markersRendered' }));
-        map.fitBounds(markerClusterGroup.getBounds().pad(0.1));
-      });
-
-      markerClusterGroup.addLayers(newMarkers);
-    };
-
-    map.whenReady(function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
-    });
-  </script>
-</body>
-</html>
-`
-    , []);
-
   useEffect(() => {
     fetchMarkers();
   }, []);
-
-  useEffect(() => {
-    if (mapReady) {
-      updateMapMarkers(markers);
-    }
-  }, [mapReady, markers]);
 
   const buildFilterParams = () => {
     const params: Record<string, any> = {};
@@ -249,23 +131,6 @@ const MapViewScreen = () => {
     }
   };
 
-  const updateMapMarkers = (markerList: IncidentMapMarker[]) => {
-    const markersData = markerList.map((m) => ({
-      id: m.id,
-      lat: m.latitude,
-      lng: m.longitude,
-      color: m.state_color || COLORS.accent,
-    }));
-
-    const markersJson = JSON.stringify(markersData);
-    webViewRef.current?.injectJavaScript(`
-      updateMarkers(${markersJson});
-      true;
-    `);
-  };
-
-  const mapSource = useMemo(() => ({ html: mapHTML, baseUrl: 'https://localhost/' }), [mapHTML]);
-
   const openMarkerDetail = async (id: string) => {
     setDetailVisible(true);
     setDetailLoading(true);
@@ -299,22 +164,6 @@ const MapViewScreen = () => {
           recordType === "query" ? "/query-details" : "/incident-details";
     closeDetail();
     router.push(`${detailsPage}?id=${selectedIncident.id}`);
-  };
-
-  const handleMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-
-      if (data.type === "mapReady") {
-        setMapReady(true);
-      } else if (data.type === "markerClicked") {
-        openMarkerDetail(data.id);
-      }
-      // 'markersProgress' / 'markersRendered' are informational only — the
-      // WebView already shows its own render state, nothing to mirror here.
-    } catch (error) {
-      console.error("❌ [MapView OSM] Error handling message:", error);
-    }
   };
 
   const selectedPriorityName = selectedIncident?.lookup_values?.find(
@@ -358,16 +207,11 @@ const MapViewScreen = () => {
         </View>
       ) : (
         <>
-          <WebView
-            ref={webViewRef}
-            source={mapSource}
-            style={styles.map}
-            onMessage={handleMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={false}
-            originWhitelist={['*']}
-            mixedContentMode="compatibility"
+          <MarkersMap
+            markers={markers}
+            defaultColor={COLORS.accent}
+            onMarkerPress={openMarkerDetail}
+            onReady={() => setMapReady(true)}
           />
 
           {/* Info Badge */}

@@ -22,7 +22,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import { SingleLocationMap, SingleLocationMapHandle } from "@/src/components/maps/SingleLocationMap";
 
 
 const COLORS = {
@@ -150,27 +150,16 @@ const QueryDetailsScreen = () => {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioPosition, setAudioPosition] = useState<Record<string, number>>({});
   const [audioDuration, setAudioDuration] = useState<Record<string, number>>({});
-  const mapRef = useRef<WebView>(null);
-  const [zoom, setZoom] = useState(15);
+  const mapRef = useRef<SingleLocationMapHandle>(null);
   const [categories, setCategories] = useState<any[]>([]);
 
   const imageAttachments = attachments.filter(att => att.mime_type?.startsWith('image/'));
   const audioAttachments = attachments.filter(att => att.mime_type?.startsWith('audio/') || att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
   const otherAttachments = attachments.filter(att => !att.mime_type?.startsWith('image/') && !att.mime_type?.startsWith('audio/') && !att.file_name?.match(/\.(mp3|wav|m4a|aac|ogg|webm)$/i));
 
-  const handleZoomIn = () => {
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(map.getZoom() + 1);
-      true;
-    `);
-  };
+  const handleZoomIn = () => mapRef.current?.zoomIn();
 
-  const handleZoomOut = () => {
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(map.getZoom() - 1);
-      true;
-    `);
-  };
+  const handleZoomOut = () => mapRef.current?.zoomOut();
 
   const handleOpenDirections = () => {
     if (query?.latitude !== undefined && query?.longitude !== undefined) {
@@ -582,94 +571,13 @@ const QueryDetailsScreen = () => {
             <View style={styles.card}>
               <SectionHeader title={t('details.geolocation')} icon="navigate" />
               <View style={styles.mapContainer}>
-                <WebView
+                <SingleLocationMap
                   ref={mapRef}
-                  source={{
-                    html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; }
-    .custom-marker {
-      width: 30px;
-      height: 30px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      background-color: ${COLORS.error};
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .custom-marker::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>
-    const lat = ${query.latitude};
-    const lng = ${query.longitude};
-    const map = L.map('map').setView([lat, lng], 15);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    const markerHtml = '<div class="custom-marker"></div>';
-    const customIcon = L.divIcon({
-      html: markerHtml,
-      className: 'custom-div-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -30]
-    });
-
-    const marker = L.marker([lat, lng], { icon: customIcon })
-      .addTo(map)
-      .bindPopup(\`
-        <div style="min-width: 150px;">
-          <strong style="font-size: 13px;">${query.title ? query.title.replace(/'/g, "\\'") : 'Query Location'}</strong><br/>
-          <span style="font-size: 11px; color: #64748B;">${(query.address || 'Query Location').replace(/'/g, "\\'")}</span>
-        </div>
-      \`);
-
-    map.whenReady(function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'mapReady'
-      }));
-    });
-  </script>
-</body>
-</html>
-                ` }}
-                  style={styles.map}
-                  javaScriptEnabled={true}
-                  domStorageEnabled={true}
-                  startInLoadingState={false}
-                  onMessage={(event) => {
-                    try {
-                      const data = JSON.parse(event.nativeEvent.data);
-                      if (data.type === 'mapReady') {
-                        // Map is ready
-                      }
-                    } catch (error) {
-                      console.error('❌ [QueryDetails OSM] Error handling message:', error);
-                    }
-                  }}
+                  latitude={query.latitude}
+                  longitude={query.longitude}
+                  title={query.title || "Query Location"}
+                  address={query.address || "Query Location"}
+                  markerColor={COLORS.error}
                 />
                 {/* Zoom Controls */}
                 <View style={styles.mapControls}>
