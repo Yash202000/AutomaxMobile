@@ -2,7 +2,7 @@ import { changePassword } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -54,7 +54,7 @@ const ValidationItem = ({ label, isValid }: { label: string; isValid: boolean })
     </View>
 );
 
-const ChangePasswordScreen = () => {
+const ChangePasswordScreenContent = () => {
     const { t } = useTranslation();
     const router = useRouter();
     const { logout } = useAuth();
@@ -235,5 +235,12 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 });
+
+// Citizens log in with phone + OTP (no email/password), so they must not reach this screen.
+const ChangePasswordScreen = () => {
+  const { isCitizen } = useAuth();
+  if (isCitizen) return <Redirect href="/(tabs)/setting" />;
+  return <ChangePasswordScreenContent />;
+};
 
 export default ChangePasswordScreen;

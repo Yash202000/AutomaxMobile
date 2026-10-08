@@ -1,8 +1,9 @@
 import apiClient from '@/src/api/client';
 import { getProfile, updateProfile } from '@/src/api/user';
+import { useAuth } from '@/src/context/AuthContext';
 import i18n from '@/src/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { t } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +61,7 @@ const CustomInput = ({ label, value, onChangeText, editable = true, actionButton
 };
 
 
-const EditProfileScreen = () => {
+const EditProfileScreenContent = () => {
     const router = useRouter();
     const { t } = useTranslation();
     const [firstName, setFirstName] = useState('');
@@ -509,5 +510,12 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
 });
+
+// Citizens log in with phone + OTP (no email/password), so they must not reach this screen.
+const EditProfileScreen = () => {
+  const { isCitizen } = useAuth();
+  if (isCitizen) return <Redirect href="/(tabs)/setting" />;
+  return <EditProfileScreenContent />;
+};
 
 export default EditProfileScreen;
