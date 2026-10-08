@@ -77,7 +77,7 @@ const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
 const SettingsScreen = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { logout, isAdLogin } = useAuth();
+  const { logout, isAdLogin, isCitizen } = useAuth();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -282,7 +282,7 @@ const SettingsScreen = () => {
         {loading ? (
           <ActivityIndicator style={styles.profileCard} />
         ) : (
-          <TouchableOpacity style={styles.profileCard} onPress={() => router.push('/edit-profile')}>
+          <TouchableOpacity style={styles.profileCard} activeOpacity={isCitizen ? 1 : 0.2} onPress={isCitizen ? undefined : () => router.push('/edit-profile')}>
             <View style={styles.profileInfo}>
               <View style={styles.avatarContainer}>
                 <Text style={styles.avatarText}>
@@ -293,14 +293,15 @@ const SettingsScreen = () => {
                 <Text style={[styles.profileName, { textAlign: "left" }]}>
                   {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : t('common.user', 'User')}
                 </Text>
-                <Text style={styles.profileEmail}>{user?.email || t('profile.noEmail')}</Text>
+                <Text style={styles.profileEmail}>{isCitizen ? (user?.phone || '') : (user?.email || t('profile.noEmail'))}</Text>
               </View>
             </View>
-            <Ionicons name={t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />
+            {!isCitizen && <Ionicons name={t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />}
           </TouchableOpacity>
         )}
 
-        {/* Options Section */}
+        {/* Options Section (email/password users only) */}
+        {!isCitizen && (<>
         <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
         <View style={styles.optionsContainer}>
           <SettingsOption
@@ -316,6 +317,7 @@ const SettingsScreen = () => {
             />
           )}
         </View>
+        </>)}
 
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
         <View style={styles.optionsContainer}>
