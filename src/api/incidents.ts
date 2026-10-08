@@ -367,7 +367,7 @@ export const getMatchingUsers = async (matchCriteria: any) => {
 export const uploadAttachment = async (
   incidentId: string,
   file: any,
-  version: any,
+  version?: any,
 ) => {
   try {
     const formData = new FormData();
@@ -377,8 +377,12 @@ export const uploadAttachment = async (
       type: file.type,
     } as any);
 
+    const versionParam =
+      version !== undefined && version !== null && version !== ""
+        ? `?version=${version}`
+        : "";
     const response = await apiClient.post(
-      `/incidents/${incidentId}/attachments?version=${version}`,
+      `/incidents/${incidentId}/attachments${versionParam}`,
       formData,
       {
         headers: {
@@ -403,7 +407,7 @@ export const uploadAttachment = async (
 export const uploadMultipleAttachments = async (
   incidentId: string,
   files: any[],
-  version: any,
+  version?: any,
 ) => {
   const results: any[] = [];
   const errors: any[] = [];

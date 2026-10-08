@@ -1,29 +1,37 @@
-import { getClassificationsTree } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
-import { createRequest, uploadMultipleAttachments } from '@/src/api/incidents';
-import { getLocationsTree } from '@/src/api/locations';
-import { getLookupCategories, LookupCategory } from '@/src/api/lookups';
-import { getUsers } from '@/src/api/users';
-import { getWorkflows, matchWorkflow as matchWorkflowAPI } from '@/src/api/workflow';
-import LocationPicker, { LocationData } from '@/src/components/LocationPickerOSM';
-import TreeSelect, { TreeNode } from '@/src/components/TreeSelect';
-import { WatermarkData, WatermarkProcessor } from '@/src/components/WatermarkProcessor';
-import { useAuth } from '@/src/context/AuthContext';
-import i18n from '@/src/i18n';
-import { compressImage } from '@/src/utils/imageCompression';
-import { generateWatermarkedFilename } from '@/src/utils/watermarkUtils';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { t } from 'i18next';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { getClassificationsTree } from "@/src/api/classifications";
+import { getDepartments } from "@/src/api/departments";
+import { createRequest, uploadMultipleAttachments } from "@/src/api/incidents";
+import { getLocationsTree } from "@/src/api/locations";
+import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
+import { getUsers } from "@/src/api/users";
+import {
+  getWorkflows,
+  matchWorkflow as matchWorkflowAPI,
+} from "@/src/api/workflow";
+import { CustomAlert } from "@/src/components/CustomAlert";
+import LocationPicker, {
+  LocationData,
+} from "@/src/components/LocationPickerOSM";
+import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
+import {
+  WatermarkData,
+  WatermarkProcessor,
+} from "@/src/components/WatermarkProcessor";
+import { useAuth } from "@/src/context/AuthContext";
+import i18n from "@/src/i18n";
+import { compressImage } from "@/src/utils/imageCompression";
+import { generateWatermarkedFilename } from "@/src/utils/watermarkUtils";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { t } from "i18next";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActionSheetIOS,
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -34,11 +42,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
-
+  View
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface DropdownOption {
   id: string;
@@ -80,7 +86,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   loading,
   required,
   error,
-  allowClear = true
+  allowClear = true,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
@@ -90,7 +96,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         style={[styles.dropdown, error && styles.dropdownError]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText, { textAlign: "left" }]}>
+        <Text
+          style={[
+            styles.dropdownText,
+            !value && styles.placeholderText,
+            { textAlign: "left" },
+          ]}
+        >
           {value || label}
         </Text>
         {loading ? (
@@ -128,14 +140,16 @@ const Dropdown: React.FC<DropdownProps> = ({
                   setModalVisible(false);
                 }}
               >
-                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
+                <Text style={styles.clearOptionText}>
+                  {t("common.clearSelection")}
+                </Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
 
             {options.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>{t('common.noOptions')}</Text>
+                <Text style={styles.emptyText}>{t("common.noOptions")}</Text>
               </View>
             ) : (
               <FlatList
@@ -174,37 +188,45 @@ const AddRequestScreen = () => {
   const { user } = useAuth();
 
   const priorityOptions: DropdownOption[] = [
-    { id: '1', name: t('priorities.critical') },
-    { id: '2', name: t('priorities.high') },
-    { id: '3', name: t('priorities.medium') },
-    { id: '4', name: t('priorities.low') },
-    { id: '5', name: t('priorities.veryLow') },
+    { id: "1", name: t("priorities.critical") },
+    { id: "2", name: t("priorities.high") },
+    { id: "3", name: t("priorities.medium") },
+    { id: "4", name: t("priorities.low") },
+    { id: "5", name: t("priorities.veryLow") },
   ];
 
   const severityOptions: DropdownOption[] = [
-    { id: '1', name: t('severities.critical') },
-    { id: '2', name: t('severities.major') },
-    { id: '3', name: t('severities.moderate') },
-    { id: '4', name: t('severities.minor') },
-    { id: '5', name: t('severities.cosmetic') },
+    { id: "1", name: t("severities.critical") },
+    { id: "2", name: t("severities.major") },
+    { id: "3", name: t("severities.moderate") },
+    { id: "4", name: t("severities.minor") },
+    { id: "5", name: t("severities.cosmetic") },
   ];
 
   const sourceOptions: DropdownOption[] = [
-    { id: 'mobile', name: t('incidents.sources.mobile') },
+    { id: "mobile", name: t("incidents.sources.mobile") },
   ];
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [comment, setComment] = useState('');
-  const [reporterName, setReporterName] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
-  const [selectedClassification, setSelectedClassification] = useState<DropdownOption | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<DropdownOption | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [comment, setComment] = useState("");
+  const [reporterName, setReporterName] = useState("");
+  const [reporterEmail, setReporterEmail] = useState("");
+  const [selectedClassification, setSelectedClassification] =
+    useState<DropdownOption | null>(null);
+  const [selectedLocation, setSelectedLocation] =
+    useState<DropdownOption | null>(null);
   const [selectedSource] = useState<DropdownOption>(sourceOptions[0]); // Fixed to mobile, non-editable
-  const [selectedAssignee, setSelectedAssignee] = useState<DropdownOption | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<DropdownOption | null>(null);
-  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(priorityOptions[2]);
-  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(severityOptions[2]);
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<DropdownOption | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DropdownOption | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<DropdownOption>(
+    priorityOptions[2],
+  );
+  const [selectedSeverity, setSelectedSeverity] = useState<DropdownOption>(
+    severityOptions[2],
+  );
 
   // Attachments state
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -217,7 +239,9 @@ const AddRequestScreen = () => {
     data: WatermarkData;
     originalName: string;
   }
-  const [pendingWatermarks, setPendingWatermarks] = useState<PendingWatermark[]>([]);
+  const [pendingWatermarks, setPendingWatermarks] = useState<
+    PendingWatermark[]
+  >([]);
 
   // Monitor pending watermarks
   useEffect(() => {
@@ -225,7 +249,9 @@ const AddRequestScreen = () => {
   }, [pendingWatermarks]);
 
   // Geolocation state
-  const [locationData, setLocationData] = useState<LocationData | undefined>(undefined);
+  const [locationData, setLocationData] = useState<LocationData | undefined>(
+    undefined,
+  );
   const locationDataRef = useRef<LocationData | undefined>(undefined);
 
   // Keep ref synced with state to avoid stale data during re-renders
@@ -240,7 +266,9 @@ const AddRequestScreen = () => {
   const [locations, setLocations] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<DropdownOption[]>([]);
   const [departments, setDepartments] = useState<DropdownOption[]>([]);
-  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>([]);
+  const [lookupCategories, setLookupCategories] = useState<LookupCategory[]>(
+    [],
+  );
   const [lookupValues, setLookupValues] = useState<Record<string, string>>({});
 
   const [loadingData, setLoadingData] = useState(true);
@@ -261,65 +289,84 @@ const AddRequestScreen = () => {
   const fetchAllData = async () => {
     setLoadingData(true);
     try {
-      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] = await Promise.all([
-        getClassificationsTree('request'),
-        getLocationsTree(),
-        getWorkflows(true, 'request'),
-        getUsers(),
-        getDepartments(),
-        getLookupCategories().catch(err => ({ success: false, error: err.message })),
-      ]);
+      const [classRes, locRes, workflowRes, userRes, deptRes, lookupRes] =
+        await Promise.all([
+          getClassificationsTree("request"),
+          getLocationsTree(),
+          getWorkflows(true, "request"),
+          getUsers(),
+          getDepartments(),
+          getLookupCategories().catch((err) => ({
+            success: false,
+            error: err.message,
+          })),
+        ]);
 
       if (classRes.success && classRes.data && Array.isArray(classRes.data)) {
         // Normalize classification tree data
         const normalizeClassifications = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => ({
+          return nodes.map((node) => ({
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
-            children: node.children ? normalizeClassifications(node.children) : undefined,
-            name_ar: node?.name_ar
+            children: node.children
+              ? normalizeClassifications(node.children)
+              : undefined,
+            name_ar: node?.name_ar,
           }));
         };
         let normalizedClassifications = normalizeClassifications(classRes.data);
 
         // Filter by user's assigned classifications (unless super admin)
-        if (user && !user.is_super_admin && user.classifications && user.classifications.length > 0) {
-          const userClassificationIds = new Set(user.classifications.map(c => c.id));
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.classifications &&
+          user.classifications.length > 0
+        ) {
+          const userClassificationIds = new Set(
+            user.classifications.map((c) => c.id),
+          );
 
           // Helper to check if node or any descendant is assigned to user
           const hasUserAccess = (node: TreeNode): boolean => {
             if (userClassificationIds.has(node.id)) return true;
             if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
+              return node.children.some((child) => hasUserAccess(child));
             }
             return false;
           };
 
           // Filter tree to only include nodes with user access
           const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
 
-              const filteredNode: TreeNode = {
-                id: node.id,
-                name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
-              };
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
 
-              if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
-                if (filteredChildren.length > 0) {
-                  filteredNode.children = filteredChildren;
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
                 }
-              }
 
-              return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
-          normalizedClassifications = filterByUserAccess(normalizedClassifications);
+          normalizedClassifications = filterByUserAccess(
+            normalizedClassifications,
+          );
         }
 
         setClassifications(normalizedClassifications);
@@ -329,50 +376,61 @@ const AddRequestScreen = () => {
       if (locRes.success && locRes.data && Array.isArray(locRes.data)) {
         // Ensure all IDs are strings
         const normalizeLocations = (nodes: TreeNode[]): TreeNode[] => {
-          return nodes.map(node => ({
+          return nodes.map((node) => ({
             id: String(node.id),
             name: node.name,
             parent_id: node.parent_id ? String(node.parent_id) : null,
             name_ar: node?.name_ar,
-            children: node.children ? normalizeLocations(node.children) : undefined,
+            children: node.children
+              ? normalizeLocations(node.children)
+              : undefined,
           }));
         };
         let normalizedLocations = normalizeLocations(locRes.data);
 
         // Filter by user's assigned locations (unless super admin)
-        if (user && !user.is_super_admin && user.locations && user.locations.length > 0) {
-          const userLocationIds = new Set(user.locations.map(l => l.id));
+        if (
+          user &&
+          !user.is_super_admin &&
+          user.locations &&
+          user.locations.length > 0
+        ) {
+          const userLocationIds = new Set(user.locations.map((l) => l.id));
 
           // Helper to check if node or any descendant is assigned to user
           const hasUserAccess = (node: TreeNode): boolean => {
             if (userLocationIds.has(node.id)) return true;
             if (node.children && node.children.length > 0) {
-              return node.children.some(child => hasUserAccess(child));
+              return node.children.some((child) => hasUserAccess(child));
             }
             return false;
           };
 
           // Filter tree to only include nodes with user access
           const filterByUserAccess = (nodes: TreeNode[]): TreeNode[] => {
-            return nodes.map(node => {
-              if (!hasUserAccess(node)) return null;
+            return nodes
+              .map((node) => {
+                if (!hasUserAccess(node)) return null;
 
-              const filteredNode: TreeNode = {
-                id: node.id,
-                name: node.name,
-                parent_id: node.parent_id,
-                name_ar: node?.name_ar
-              };
+                const filteredNode: TreeNode = {
+                  id: node.id,
+                  name: node.name,
+                  parent_id: node.parent_id,
+                  name_ar: node?.name_ar,
+                };
 
-              if (node.children && node.children.length > 0) {
-                const filteredChildren = filterByUserAccess(node.children).filter(Boolean) as TreeNode[];
-                if (filteredChildren.length > 0) {
-                  filteredNode.children = filteredChildren;
+                if (node.children && node.children.length > 0) {
+                  const filteredChildren = filterByUserAccess(
+                    node.children,
+                  ).filter(Boolean) as TreeNode[];
+                  if (filteredChildren.length > 0) {
+                    filteredNode.children = filteredChildren;
+                  }
                 }
-              }
 
-              return filteredNode;
-            }).filter(Boolean) as TreeNode[];
+                return filteredNode;
+              })
+              .filter(Boolean) as TreeNode[];
           };
 
           normalizedLocations = filterByUserAccess(normalizedLocations);
@@ -386,21 +444,30 @@ const AddRequestScreen = () => {
         setAllWorkflows(workflowRes.data);
       }
       if (userRes.success && userRes.data) {
-        setUsers(userRes.data.map((u: any) => ({
-          id: u.id,
-          name: `${u.first_name} ${u.last_name}`.trim() || u.email || t('common.unknownUser')
-        })));
+        setUsers(
+          userRes.data.map((u: any) => ({
+            id: u.id,
+            name:
+              `${u.first_name} ${u.last_name}`.trim() ||
+              u.email ||
+              t("common.unknownUser"),
+          })),
+        );
       }
       if (deptRes.success && deptRes.data) {
-        setDepartments(deptRes.data.map((d: any) => ({ id: d.id, name: d.name })));
+        setDepartments(
+          deptRes.data.map((d: any) => ({ id: d.id, name: d.name })),
+        );
       }
       if (lookupRes.success && lookupRes.data) {
         // Filter to only show categories that should be added to request form
-        const requestCategories = lookupRes.data.filter((cat: LookupCategory) => cat.add_to_incident_form && cat.is_active);
+        const requestCategories = lookupRes.data.filter(
+          (cat: LookupCategory) => cat.add_to_incident_form && cat.is_active,
+        );
         setLookupCategories(requestCategories);
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     }
     setLoadingData(false);
   };
@@ -417,23 +484,45 @@ const AddRequestScreen = () => {
     try {
       const result = await matchWorkflowAPI(criteria);
       if (result.success && result.data?.workflow_id) {
-        const matched = allWorkflows.find(w => w.id === result.data.workflow_id) || null;
-        setMatchedWorkflow(matched ?? allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        const matched =
+          allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
+        setMatchedWorkflow(
+          matched ??
+            allWorkflows.find((w) => w.is_default) ??
+            allWorkflows[0] ??
+            null,
+        );
       } else if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     } catch {
       if (allWorkflows.length > 0) {
-        setMatchedWorkflow(allWorkflows.find(w => w.is_default) ?? allWorkflows[0] ?? null);
+        setMatchedWorkflow(
+          allWorkflows.find((w) => w.is_default) ?? allWorkflows[0] ?? null,
+        );
       }
     }
-  }, [allWorkflows, selectedClassification, selectedLocation, selectedSource, selectedPriority]);
+  }, [
+    allWorkflows,
+    selectedClassification,
+    selectedLocation,
+    selectedSource,
+    selectedPriority,
+  ]);
 
   useEffect(() => {
     if (allWorkflows.length > 0) {
       matchWorkflow();
     }
-  }, [selectedClassification?.id, selectedLocation?.id, selectedSource?.id, selectedPriority.id, allWorkflows.length]);
+  }, [
+    selectedClassification?.id,
+    selectedLocation?.id,
+    selectedSource?.id,
+    selectedPriority.id,
+    allWorkflows.length,
+  ]);
 
   // Auto-generate title from classification, location, and geolocation
   useEffect(() => {
@@ -462,7 +551,7 @@ const AddRequestScreen = () => {
 
     // Generate title from parts
     if (parts.length > 0) {
-      const generatedTitle = parts.join(' - ');
+      const generatedTitle = parts.join(" - ");
       setTitle(generatedTitle);
     }
   }, [selectedClassification, selectedLocation, locationData]);
@@ -474,58 +563,64 @@ const AddRequestScreen = () => {
   };
 
   const fieldLabels: Record<string, string> = {
-    description: t('addRequest.description'),
-    comment: t('incidents.comment'),
-    classification_id: t('incidents.classification'),
-    priority: t('incidents.priority'),
-    severity: t('incidents.severity'),
-    source: t('incidents.source'),
-    assignee_id: t('incidents.assignee'),
-    department_id: t('incidents.department'),
-    location_id: t('incidents.location'),
-    geolocation: t('details.geolocation'),
-    reporter_name: t('addRequest.reporterName'),
-    reporter_email: t('addRequest.reporterEmail'),
-    attachments: t('incidents.attachments'),
+    description: t("addRequest.description"),
+    comment: t("incidents.comment"),
+    classification_id: t("incidents.classification"),
+    priority: t("incidents.priority"),
+    severity: t("incidents.severity"),
+    source: t("incidents.source"),
+    assignee_id: t("incidents.assignee"),
+    department_id: t("incidents.department"),
+    location_id: t("incidents.location"),
+    geolocation: t("details.geolocation"),
+    reporter_name: t("addRequest.reporterName"),
+    reporter_email: t("addRequest.reporterEmail"),
+    attachments: t("incidents.attachments"),
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = t('addRequest.titlePlaceholder');
+      newErrors.title = t("addRequest.titlePlaceholder");
     }
 
     if (!matchedWorkflow) {
-      newErrors.workflow = 'Please select classification, location, or source to match a workflow';
+      newErrors.workflow =
+        "Please select classification, location, or source to match a workflow";
     }
 
     // Always require classification, location, source, and priority on mobile
     if (!selectedClassification) {
-      newErrors.classification_id = 'Classification is required';
+      newErrors.classification_id = "Classification is required";
     }
 
     if (!selectedLocation) {
-      newErrors.location_id = 'Location is required';
+      newErrors.location_id = "Location is required";
     }
 
     if (!selectedSource) {
-      newErrors.source = 'Source is required';
+      newErrors.source = "Source is required";
     }
 
     if (!selectedPriority) {
-      newErrors.priority = t('addRequest.selectPriority');
+      newErrors.priority = t("addRequest.selectPriority");
     }
 
     for (const field of requiredFields) {
       // Skip classification, location, source, and priority since we already validated them above
-      if (field === 'classification_id' || field === 'location_id' || field === 'source' || field === 'priority') {
+      if (
+        field === "classification_id" ||
+        field === "location_id" ||
+        field === "source" ||
+        field === "priority"
+      ) {
         continue;
       }
       // Check for lookup field requirements (format: lookup:CATEGORY_CODE)
-      if (field.startsWith('lookup:')) {
-        const categoryCode = field.replace('lookup:', '');
-        const category = lookupCategories.find(c => c.code === categoryCode);
+      if (field.startsWith("lookup:")) {
+        const categoryCode = field.replace("lookup:", "");
+        const category = lookupCategories.find((c) => c.code === categoryCode);
         if (category && !lookupValues[category.id]) {
           newErrors[field] = `${category.name} is required`;
         }
@@ -533,53 +628,53 @@ const AddRequestScreen = () => {
       }
 
       // Check attachments separately
-      if (field === 'attachments') {
+      if (field === "attachments") {
         if (attachments.length === 0) {
-          newErrors.attachments = t('addRequest.requiredFields');
+          newErrors.attachments = t("addRequest.requiredFields");
         }
         continue;
       }
 
       // Check geolocation separately
-      if (field === 'geolocation') {
+      if (field === "geolocation") {
         if (!locationData) {
-          newErrors.geolocation = 'Geolocation is required';
+          newErrors.geolocation = "Geolocation is required";
         }
         continue;
       }
 
       let value: any;
       switch (field) {
-        case 'description':
+        case "description":
           value = description;
           break;
-        case 'comment':
+        case "comment":
           value = comment;
           break;
-        case 'classification_id':
+        case "classification_id":
           value = selectedClassification?.id;
           break;
-        case 'location_id':
+        case "location_id":
           value = selectedLocation?.id;
           break;
-        case 'source':
+        case "source":
           value = selectedSource?.id;
           break;
-        case 'assignee_id':
+        case "assignee_id":
           value = selectedAssignee?.id;
           break;
-        case 'department_id':
+        case "department_id":
           value = selectedDepartment?.id;
           break;
-        case 'reporter_name':
+        case "reporter_name":
           value = reporterName;
           break;
-        case 'reporter_email':
+        case "reporter_email":
           value = reporterEmail;
           break;
       }
 
-      if (!value || (typeof value === 'string' && !value.trim())) {
+      if (!value || (typeof value === "string" && !value.trim())) {
         newErrors[field] = `${fieldLabels[field] || field} is required`;
       }
     }
@@ -590,10 +685,15 @@ const AddRequestScreen = () => {
 
   // Attachment handling functions
   const showAttachmentOptions = () => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Choose File'],
+          options: [
+            "Cancel",
+            "Take Photo",
+            "Choose from Gallery",
+            "Choose File",
+          ],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
@@ -604,7 +704,7 @@ const AddRequestScreen = () => {
           } else if (buttonIndex === 3) {
             handlePickDocument();
           }
-        }
+        },
       );
     } else {
       setAttachmentPickerVisible(true);
@@ -613,40 +713,48 @@ const AddRequestScreen = () => {
 
   const handleTakePhoto = async () => {
     // Check if geolocation is required
-    const isGeoRequired = isFieldRequired('geolocation');
+    const isGeoRequired = isFieldRequired("geolocation");
 
     if (isGeoRequired) {
       // If location is required but not available at all
       if (!locationData?.latitude) {
         CustomAlert.alert(
-          t('addIncident.addressUnavailable'),
-          t('addIncident.waitingForLocation'),
-          [{ text: t('common.ok') }]
+          t("addIncident.addressUnavailable"),
+          t("addIncident.waitingForLocation"),
+          [{ text: t("common.ok") }],
         );
         return;
       }
 
       // If we have coordinates but no address yet (still loading)
-      if (locationData?.latitude && !locationData?.address && !locationData?.city) {
+      if (
+        locationData?.latitude &&
+        !locationData?.address &&
+        !locationData?.city
+      ) {
         // Show loading alert
         CustomAlert.alert(
-          t('addIncident.gettingLocationDetails'),
-          t('addIncident.waitingForAddress'),
-          [{ text: t('common.ok') }]
+          t("addIncident.gettingLocationDetails"),
+          t("addIncident.waitingForAddress"),
+          [{ text: t("common.ok") }],
         );
 
         // Wait up to 3 seconds for address
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
 
         // Check again after waiting (need to add ref to add-request.tsx)
-        if (locationData?.latitude && !locationData?.address && !locationData?.city) {
+        if (
+          locationData?.latitude &&
+          !locationData?.address &&
+          !locationData?.city
+        ) {
           CustomAlert.alert(
-            t('addIncident.addressUnavailable'),
-            t('addIncident.addressUnavailableDesc'),
+            t("addIncident.addressUnavailable"),
+            t("addIncident.addressUnavailableDesc"),
             [
-              { text: t('common.cancel'), style: 'cancel' },
-              { text: t('common.next'), onPress: () => handleTakePhoto() } // Retry
-            ]
+              { text: t("common.cancel"), style: "cancel" },
+              { text: t("common.next"), onPress: () => handleTakePhoto() }, // Retry
+            ],
           );
           return;
         }
@@ -656,32 +764,35 @@ const AddRequestScreen = () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         CustomAlert.alert(
-          t('common.permissionRequired', 'Permission Required'),
-          t('common.cameraPermissionNeeded', 'Camera permission is required to take photos. Please enable it in your device settings.'),
+          t("common.permissionRequired", "Permission Required"),
+          t(
+            "common.cameraPermissionNeeded",
+            "Camera permission is required to take photos. Please enable it in your device settings.",
+          ),
           [
             {
-              text: t('common.cancel', 'Cancel'),
-              style: 'cancel'
+              text: t("common.cancel", "Cancel"),
+              style: "cancel",
             },
             {
-              text: t('common.openSettings', 'Open Settings'),
+              text: t("common.openSettings", "Open Settings"),
               onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
+                if (Platform.OS === "ios") {
+                  Linking.openURL("app-settings:");
                 } else {
                   Linking.openSettings();
                 }
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsEditing: false,
         quality: 0.8,
         exif: true,
@@ -689,110 +800,130 @@ const AddRequestScreen = () => {
 
       if (!result.canceled && result.assets) {
         // Process each captured image with visual watermark
-        const newPendingWatermarks: PendingWatermark[] = result.assets.map((asset, index) => {
+        const newPendingWatermarks: PendingWatermark[] = result.assets.map(
+          (asset, index) => {
+            const originalFileName =
+              asset.fileName || `photo_${Date.now()}_${index}.jpg`;
+            // Use ref instead of state to avoid stale data
+            const currentLocation = locationDataRef.current;
 
-          const originalFileName = asset.fileName || `photo_${Date.now()}_${index}.jpg`;
-          // Use ref instead of state to avoid stale data
-          const currentLocation = locationDataRef.current;
+            const watermarkedFileName = generateWatermarkedFilename(
+              originalFileName,
+              {
+                appName: "Automax",
+                userName: user
+                  ? `${user.first_name} ${user.last_name}`.trim() ||
+                    user.username
+                  : undefined,
+                userId: user?.id,
+                timestamp: new Date(),
+                location: currentLocation
+                  ? `${currentLocation.city || ""} ${currentLocation.state || ""}`.trim()
+                  : undefined,
+              },
+            );
 
-          const watermarkedFileName = generateWatermarkedFilename(originalFileName, {
-            appName: 'Automax',
-            userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
-            userId: user?.id,
-            timestamp: new Date(),
-            location: currentLocation ? `${currentLocation.city || ''} ${currentLocation.state || ''}`.trim() : undefined,
-          });
+            const watermarkData: WatermarkData = {
+              latitude: currentLocation?.latitude,
+              longitude: currentLocation?.longitude,
+              address: currentLocation?.address,
+              city: currentLocation?.city,
+              state: currentLocation?.state,
+              country: currentLocation?.country,
+              userName: user
+                ? `${user.first_name} ${user.last_name}`.trim() || user.username
+                : undefined,
+              timestamp: new Date(),
+              appName: "Automax",
+            };
 
-          const watermarkData: WatermarkData = {
-            latitude: currentLocation?.latitude,
-            longitude: currentLocation?.longitude,
-            address: currentLocation?.address,
-            city: currentLocation?.city,
-            state: currentLocation?.state,
-            country: currentLocation?.country,
-            userName: user ? `${user.first_name} ${user.last_name}`.trim() || user.username : undefined,
-            timestamp: new Date(),
-            appName: 'Automax',
-          };
+            return {
+              id: `watermark_${Date.now()}_${index}`,
+              imageUri: asset.uri,
+              data: watermarkData,
+              originalName: watermarkedFileName,
+            };
+          },
+        );
 
-          return {
-            id: `watermark_${Date.now()}_${index}`,
-            imageUri: asset.uri,
-            data: watermarkData,
-            originalName: watermarkedFileName,
-          };
-        });
-
-        setPendingWatermarks(prev => [...prev, ...newPendingWatermarks]);
+        setPendingWatermarks((prev) => [...prev, ...newPendingWatermarks]);
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
-      CustomAlert.alert(t('common.error'), t('common.takePhotoFailed'));
+      console.error("Error taking photo:", error);
+      CustomAlert.alert(t("common.error"), t("common.takePhotoFailed"));
     }
   };
 
   // Handle watermark completion
-  const handleWatermarkComplete = useCallback(async (id: string, watermarkedUri: string, originalName: string) => {
-    // Compress watermarked image before adding to attachments
-    const compressionResult = await compressImage(watermarkedUri, {
-      quality: 0.75,        // ~50% reduction
-      format: 'jpeg',
-      skipSmallFiles: true,
-    });
+  const handleWatermarkComplete = useCallback(
+    async (id: string, watermarkedUri: string, originalName: string) => {
+      // Compress watermarked image before adding to attachments
+      const compressionResult = await compressImage(watermarkedUri, {
+        quality: 0.75, // ~50% reduction
+        format: "jpeg",
+        skipSmallFiles: true,
+      });
 
-    // Use compressed URI or fallback to original on error
-    const finalUri = compressionResult.success && compressionResult.compressedUri
-      ? compressionResult.compressedUri
-      : watermarkedUri;
+      // Use compressed URI or fallback to original on error
+      const finalUri =
+        compressionResult.success && compressionResult.compressedUri
+          ? compressionResult.compressedUri
+          : watermarkedUri;
 
-    // Add watermarked image to attachments
-    setAttachments(prev => [
-      ...prev,
-      {
-        uri: finalUri,
-        name: originalName,
-        type: 'image/jpeg',
-      },
-    ]);
+      // Add watermarked image to attachments
+      setAttachments((prev) => [
+        ...prev,
+        {
+          uri: finalUri,
+          name: originalName,
+          type: "image/jpeg",
+        },
+      ]);
 
-    // Remove from pending list
-    setPendingWatermarks(prev => prev.filter(w => w.id !== id));
+      // Remove from pending list
+      setPendingWatermarks((prev) => prev.filter((w) => w.id !== id));
 
-    // Clear error if any
-    if (errors.attachments) {
-      setErrors(prev => ({ ...prev, attachments: '' }));
-    }
-  }, [errors.attachments]);
+      // Clear error if any
+      if (errors.attachments) {
+        setErrors((prev) => ({ ...prev, attachments: "" }));
+      }
+    },
+    [errors.attachments],
+  );
 
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         CustomAlert.alert(
-          t('common.permissionRequired', 'Permission Required'),
-          t('common.galleryPermissionNeeded', 'Gallery permission is required to select photos. Please enable it in your device settings.'),
+          t("common.permissionRequired", "Permission Required"),
+          t(
+            "common.galleryPermissionNeeded",
+            "Gallery permission is required to select photos. Please enable it in your device settings.",
+          ),
           [
             {
-              text: t('common.cancel', 'Cancel'),
-              style: 'cancel'
+              text: t("common.cancel", "Cancel"),
+              style: "cancel",
             },
             {
-              text: t('common.openSettings', 'Open Settings'),
+              text: t("common.openSettings", "Open Settings"),
               onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
+                if (Platform.OS === "ios") {
+                  Linking.openURL("app-settings:");
                 } else {
                   Linking.openSettings();
                 }
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
+        mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
         quality: 0.8,
       });
@@ -802,17 +933,19 @@ const AddRequestScreen = () => {
         const validFiles: any[] = [];
         const oversizedFiles: string[] = [];
 
-        result.assets.forEach(asset => {
+        result.assets.forEach((asset) => {
           const fileSize = asset.fileSize || 0;
           const fileName = asset.fileName || `image_${Date.now()}.jpg`;
 
           if (fileSize > MAX_FILE_SIZE_BYTES) {
-            oversizedFiles.push(`${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+            oversizedFiles.push(
+              `${fileName} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`,
+            );
           } else {
             validFiles.push({
               uri: asset.uri,
               name: fileName,
-              type: asset.mimeType || 'image/jpeg',
+              type: asset.mimeType || "image/jpeg",
               size: fileSize,
             });
           }
@@ -820,24 +953,30 @@ const AddRequestScreen = () => {
 
         // Add valid files
         if (validFiles.length > 0) {
-          setAttachments(prev => [...prev, ...validFiles]);
+          setAttachments((prev) => [...prev, ...validFiles]);
           if (errors.attachments) {
-            setErrors(prev => ({ ...prev, attachments: '' }));
+            setErrors((prev) => ({ ...prev, attachments: "" }));
           }
         }
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            t('common.filesTooLargeTitle'),
-            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
-            [{ text: t('common.ok') }]
+            t("common.filesTooLargeTitle"),
+            t("common.filesTooLargeDesc", {
+              size: MAX_FILE_SIZE_MB,
+              files: oversizedFiles.join("\n"),
+            }),
+            [{ text: t("common.ok") }],
           );
         }
       }
     } catch (error) {
-      console.error('Error picking from gallery:', error);
-      CustomAlert.alert(t('common.error'), t('common.failedToPickFromGallery', 'Failed to pick from gallery'));
+      console.error("Error picking from gallery:", error);
+      CustomAlert.alert(
+        t("common.error"),
+        t("common.failedToPickFromGallery", "Failed to pick from gallery"),
+      );
     }
   };
 
@@ -853,16 +992,18 @@ const AddRequestScreen = () => {
         const validFiles: any[] = [];
         const oversizedFiles: string[] = [];
 
-        result.assets.forEach(asset => {
+        result.assets.forEach((asset) => {
           const fileSize = asset.size || 0;
 
           if (fileSize > MAX_FILE_SIZE_BYTES) {
-            oversizedFiles.push(`${asset.name} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`);
+            oversizedFiles.push(
+              `${asset.name} (${(fileSize / (1024 * 1024)).toFixed(1)}MB)`,
+            );
           } else {
             validFiles.push({
               uri: asset.uri,
               name: asset.name,
-              type: asset.mimeType || 'application/octet-stream',
+              type: asset.mimeType || "application/octet-stream",
               size: fileSize,
             });
           }
@@ -870,32 +1011,38 @@ const AddRequestScreen = () => {
 
         // Add valid files
         if (validFiles.length > 0) {
-          setAttachments(prev => [...prev, ...validFiles]);
+          setAttachments((prev) => [...prev, ...validFiles]);
           if (errors.attachments) {
-            setErrors(prev => ({ ...prev, attachments: '' }));
+            setErrors((prev) => ({ ...prev, attachments: "" }));
           }
         }
 
         // Show warning for oversized files
         if (oversizedFiles.length > 0) {
           CustomAlert.alert(
-            t('common.filesTooLargeTitle'),
-            t('common.filesTooLargeDesc', { size: MAX_FILE_SIZE_MB, files: oversizedFiles.join('\n') }),
-            [{ text: t('common.ok') }]
+            t("common.filesTooLargeTitle"),
+            t("common.filesTooLargeDesc", {
+              size: MAX_FILE_SIZE_MB,
+              files: oversizedFiles.join("\n"),
+            }),
+            [{ text: t("common.ok") }],
           );
         }
       }
     } catch (error) {
-      console.error('Error picking document:', error);
-      CustomAlert.alert(t('common.error'), t('common.failedToPickDocument', 'Failed to pick document'));
+      console.error("Error picking document:", error);
+      CustomAlert.alert(
+        t("common.error"),
+        t("common.failedToPickDocument", "Failed to pick document"),
+      );
     }
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(prev => {
+    setAttachments((prev) => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -904,12 +1051,12 @@ const AddRequestScreen = () => {
   const handleLocationChange = (location: LocationData | undefined) => {
     setLocationData(location);
     if (location && errors.geolocation) {
-      setErrors(prev => ({ ...prev, geolocation: '' }));
+      setErrors((prev) => ({ ...prev, geolocation: "" }));
     }
   };
 
   const handleLookupChange = (categoryId: string, valueId: string) => {
-    setLookupValues(prev => {
+    setLookupValues((prev) => {
       if (!valueId) {
         const newValues = { ...prev };
         delete newValues[categoryId];
@@ -919,11 +1066,11 @@ const AddRequestScreen = () => {
     });
 
     // Clear error for this lookup field if it exists
-    const category = lookupCategories.find(c => c.id === categoryId);
+    const category = lookupCategories.find((c) => c.id === categoryId);
     if (category) {
       const errorKey = `lookup:${category.code}`;
       if (errors[errorKey]) {
-        setErrors(prev => {
+        setErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[errorKey];
           return newErrors;
@@ -936,7 +1083,7 @@ const AddRequestScreen = () => {
     if (!validate()) {
       const firstError = Object.values(errors)[0];
       if (firstError) {
-        CustomAlert.alert(t('common.validationError'), firstError);
+        CustomAlert.alert(t("common.validationError"), firstError);
       }
       return;
     }
@@ -952,7 +1099,8 @@ const AddRequestScreen = () => {
 
     if (description.trim()) requestData.description = description.trim();
     if (comment.trim()) requestData.comment = comment.trim();
-    if (selectedClassification) requestData.classification_id = selectedClassification.id;
+    if (selectedClassification)
+      requestData.classification_id = selectedClassification.id;
     if (selectedLocation) requestData.location_id = selectedLocation.id;
     if (selectedSource) requestData.source = selectedSource.id;
     requestData.channel = "mobile";
@@ -965,7 +1113,8 @@ const AddRequestScreen = () => {
       if (locationData.city) requestData.city = locationData.city;
       if (locationData.state) requestData.state = locationData.state;
       if (locationData.country) requestData.country = locationData.country;
-      if (locationData.postal_code) requestData.postal_code = locationData.postal_code;
+      if (locationData.postal_code)
+        requestData.postal_code = locationData.postal_code;
     }
     if (reporterName.trim()) requestData.reporter_name = reporterName.trim();
     if (reporterEmail.trim()) requestData.reporter_email = reporterEmail.trim();
@@ -983,30 +1132,37 @@ const AddRequestScreen = () => {
       if (attachments.length > 0) {
         await uploadMultipleAttachments(response.data.id, attachments);
         // Clean up temp files after upload
-        attachments.forEach(file => {
+        attachments.forEach((file) => {
           if (file?.uri) {
-            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+            FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(
+              () => {},
+            );
           }
         });
       }
 
       setSubmitting(false);
-      CustomAlert.alert(t('common.success'), t('addRequest.createdSuccess', 'Request created successfully.'), [
-        { text: t('common.ok'), onPress: () => router.back() },
-      ]);
+      CustomAlert.alert(
+        t("common.success"),
+        t("addRequest.createdSuccess", "Request created successfully."),
+        [{ text: t("common.ok"), onPress: () => router.back() }],
+      );
     } else {
       setSubmitting(false);
-      CustomAlert.alert(t('common.error'), `${t('common.failed')}: ${response.error}`);
+      CustomAlert.alert(
+        t("common.error"),
+        `${t("common.failed")}: ${response.error}`,
+      );
     }
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('addRequest.title')}</Text>
+        <Text style={styles.headerTitle}>{t("addRequest.title")}</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close-circle" size={28} color="#E74C3C" />
         </TouchableOpacity>
@@ -1015,100 +1171,94 @@ const AddRequestScreen = () => {
       {loadingData ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#9B59B6" />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <>
-          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.formContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ padding: 20, marginBottom: 45 }}>
-              <View style={styles.workflowCard}>
-                <View style={styles.workflowHeader}>
-                  <Ionicons name="git-branch" size={20} color="#9B59B6" />
-                  <Text style={styles.workflowLabel}>{t('common.workflow', 'Workflow')}</Text>
-                </View>
-                {matchedWorkflow ? (
-                  <View style={styles.workflowMatched}>
-                    <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
-                    <Text style={styles.workflowName}>{matchedWorkflow.name}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.workflowHint}>
-                    {t('addRequest.workflowHint')}
-                  </Text>
-                )}
-                {errors.workflow && <Text style={styles.errorText}>{errors.workflow}</Text>}
-              </View>
-
               <Text style={styles.sectionTitle}>
-                {t('incidents.title')} <Text style={styles.required}>*</Text>
+                {t("incidents.title")} <Text style={styles.required}>*</Text>
               </Text>
-              <View style={[styles.input, styles.autoGeneratedField, errors.title && styles.inputError]}>
-                <Text style={[styles.autoGeneratedText, !title && styles.placeholderText, { textAlign: "left" }]}>
-                  {title || t('incidents.titlePlaceholder')}
+              <View
+                style={[
+                  styles.input,
+                  styles.autoGeneratedField,
+                  errors.title && styles.inputError,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.autoGeneratedText,
+                    !title && styles.placeholderText,
+                    { textAlign: "left" },
+                  ]}
+                >
+                  {title || t("incidents.titlePlaceholder")}
                 </Text>
-                <Ionicons name="lock-closed" size={16} color="#999" style={styles.lockIcon} />
+                <Ionicons
+                  name="lock-closed"
+                  size={16}
+                  color="#999"
+                  style={styles.lockIcon}
+                />
               </View>
-              <Text style={styles.helperText}>
-                {t('incidents.autoTitle')}
-              </Text>
-              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+              <Text style={styles.helperText}>{t("incidents.autoTitle")}</Text>
+              {errors.title && (
+                <Text style={styles.errorText}>{errors.title}</Text>
+              )}
 
               {/* Classification - only show if required */}
-              {isFieldRequired('classification_id') && (
+              {isFieldRequired("classification_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.classification')} <Text style={styles.required}>*</Text>
+                    {t("incidents.classification")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TreeSelect
-                    label={t('addRequest.selectClassification')}
-                    value={selectedClassification?.name || ''}
+                    label={t("addRequest.selectClassification")}
+                    value={selectedClassification?.name || ""}
                     data={classifications}
-                    onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
+                    onSelect={(node) =>
+                      setSelectedClassification(node as DropdownOption | null)
+                    }
                     required={true}
                     error={errors.classification_id}
                     leafOnly={true}
-                    placeholder={t('addRequest.selectClassification')}
+                    placeholder={t("addRequest.selectClassification")}
                     iconType="classification"
                   />
                 </>
               )}
 
               {/* Location - only show if required */}
-              {isFieldRequired('location_id') && (
+              {isFieldRequired("location_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.location')} <Text style={styles.required}>*</Text>
+                    {t("incidents.location")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TreeSelect
-                    label={t('addRequest.selectLocation')}
-                    value={selectedLocation?.name || ''}
+                    label={t("addRequest.selectLocation")}
+                    value={selectedLocation?.name || ""}
                     data={locations}
-                    onSelect={(node) => setSelectedLocation(node as DropdownOption | null)}
+                    onSelect={(node) =>
+                      setSelectedLocation(node as DropdownOption | null)
+                    }
                     required={true}
                     error={errors.location_id}
                     leafOnly={true}
-                    placeholder={t('addRequest.selectLocation')}
+                    placeholder={t("addRequest.selectLocation")}
                     iconType="location"
                   />
                 </>
               )}
 
-              {/* Source field - always mobile for mobile app, non-editable */}
-              <Text style={styles.sectionTitle}>
-                {t('incidents.source')} {isFieldRequired('source') && <Text style={styles.required}>*</Text>}
-              </Text>
-              <Dropdown
-                label={t('addRequest.selectSource')}
-                value={selectedSource?.name || ''}
-                options={sourceOptions}
-                onSelect={() => { }} // No-op, field is not editable
-                required={isFieldRequired('source')}
-                error={errors.source}
-                disabled={true}
-              />
-
               {/* Lookup Fields - Dynamic master data fields */}
-              {lookupCategories.map(category => {
+              {lookupCategories.map((category) => {
                 const lookupFieldKey = `lookup:${category.code}`;
                 const isRequired = requiredFields.includes(lookupFieldKey);
 
@@ -1116,22 +1266,31 @@ const AddRequestScreen = () => {
                 if (!isRequired) return null;
 
                 const options = (category.values || [])
-                  .filter(v => v.is_active)
-                  .map(v => ({
+                  .filter((v) => v.is_active)
+                  .map((v) => ({
                     id: v.id,
-                    name: v.name
+                    name: v.name,
                   }));
 
                 return (
                   <View key={category.id}>
                     <Text style={styles.sectionTitle}>
-                      {i18n.language === 'en' ? category.name : category?.name_ar} <Text style={styles.required}>*</Text>
+                      {i18n.language === "en"
+                        ? category.name
+                        : category?.name_ar}{" "}
+                      <Text style={styles.required}>*</Text>
                     </Text>
                     <Dropdown
-                      label={`${t('common.select')} ${i18n.language === 'en' ? category.name : category?.name_ar}`}
-                      value={options.find(opt => opt.id === lookupValues[category.id])?.name || ''}
+                      label={`${t("common.select")} ${i18n.language === "en" ? category.name : category?.name_ar}`}
+                      value={
+                        options.find(
+                          (opt) => opt.id === lookupValues[category.id],
+                        )?.name || ""
+                      }
                       options={options}
-                      onSelect={(opt) => handleLookupChange(category.id, opt?.id || '')}
+                      onSelect={(opt) =>
+                        handleLookupChange(category.id, opt?.id || "")
+                      }
                       required={isRequired}
                       error={errors[lookupFieldKey]}
                     />
@@ -1140,15 +1299,22 @@ const AddRequestScreen = () => {
               })}
 
               {/* Priority & Severity - only show if either is required */}
-              {(isFieldRequired('priority') || isFieldRequired('severity')) && (
+              {(isFieldRequired("priority") || isFieldRequired("severity")) && (
                 <View style={styles.row}>
-                  {isFieldRequired('priority') && (
-                    <View style={isFieldRequired('severity') ? styles.halfWidth : styles.fullWidth}>
+                  {isFieldRequired("priority") && (
+                    <View
+                      style={
+                        isFieldRequired("severity")
+                          ? styles.halfWidth
+                          : styles.fullWidth
+                      }
+                    >
                       <Text style={styles.sectionTitle}>
-                        {t('incidents.priority')} <Text style={styles.required}>*</Text>
+                        {t("incidents.priority")}{" "}
+                        <Text style={styles.required}>*</Text>
                       </Text>
                       <Dropdown
-                        label={t('addRequest.selectPriority')}
+                        label={t("addRequest.selectPriority")}
                         value={selectedPriority.name}
                         options={priorityOptions}
                         onSelect={(opt) => opt && setSelectedPriority(opt)}
@@ -1156,13 +1322,20 @@ const AddRequestScreen = () => {
                       />
                     </View>
                   )}
-                  {isFieldRequired('severity') && (
-                    <View style={isFieldRequired('priority') ? styles.halfWidth : styles.fullWidth}>
+                  {isFieldRequired("severity") && (
+                    <View
+                      style={
+                        isFieldRequired("priority")
+                          ? styles.halfWidth
+                          : styles.fullWidth
+                      }
+                    >
                       <Text style={styles.sectionTitle}>
-                        {t('incidents.severity')} <Text style={styles.required}>*</Text>
+                        {t("incidents.severity")}{" "}
+                        <Text style={styles.required}>*</Text>
                       </Text>
                       <Dropdown
-                        label={t('addRequest.selectSeverity')}
+                        label={t("addRequest.selectSeverity")}
                         value={selectedSeverity.name}
                         options={severityOptions}
                         onSelect={(opt) => opt && setSelectedSeverity(opt)}
@@ -1174,14 +1347,15 @@ const AddRequestScreen = () => {
               )}
 
               {/* Assignee - only show if required */}
-              {isFieldRequired('assignee_id') && (
+              {isFieldRequired("assignee_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.assignee')} <Text style={styles.required}>*</Text>
+                    {t("incidents.assignee")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addRequest.selectAssignee')}
-                    value={selectedAssignee?.name || ''}
+                    label={t("addRequest.selectAssignee")}
+                    value={selectedAssignee?.name || ""}
                     options={users}
                     onSelect={setSelectedAssignee}
                     required={true}
@@ -1191,14 +1365,15 @@ const AddRequestScreen = () => {
               )}
 
               {/* Department - only show if required */}
-              {isFieldRequired('department_id') && (
+              {isFieldRequired("department_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.department')} <Text style={styles.required}>*</Text>
+                    {t("incidents.department")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <Dropdown
-                    label={t('addRequest.selectDepartment')}
-                    value={selectedDepartment?.name || ''}
+                    label={t("addRequest.selectDepartment")}
+                    value={selectedDepartment?.name || ""}
                     options={departments}
                     onSelect={setSelectedDepartment}
                     required={true}
@@ -1208,134 +1383,202 @@ const AddRequestScreen = () => {
               )}
 
               {/* Description - only show if required */}
-              {isFieldRequired('description') && (
+              {isFieldRequired("description") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.description')} <Text style={styles.required}>*</Text>
+                    {t("incidents.description")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.description && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addRequest.descriptionPlaceholder')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.description && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addRequest.descriptionPlaceholder")}
                     multiline
                     value={description}
                     onChangeText={(text) => {
                       setDescription(text);
-                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                      if (errors.description)
+                        setErrors((prev) => ({ ...prev, description: "" }));
                     }}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
-                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                  {errors.description && (
+                    <Text style={styles.errorText}>{errors.description}</Text>
+                  )}
                 </>
               )}
 
               {/* Comment - only show if required */}
-              {isFieldRequired('comment') && (
+              {isFieldRequired("comment") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.comment')} <Text style={styles.required}>*</Text>
+                    {t("incidents.comment")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.descriptionInput, errors.comment && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addRequest.commentPlaceholder')}
+                    style={[
+                      styles.descriptionInput,
+                      errors.comment && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addRequest.commentPlaceholder")}
                     multiline
                     value={comment}
                     onChangeText={(text) => {
                       setComment(text);
-                      if (errors.comment) setErrors(prev => ({ ...prev, comment: '' }));
+                      if (errors.comment)
+                        setErrors((prev) => ({ ...prev, comment: "" }));
                     }}
                     placeholderTextColor="#999"
                     textAlignVertical="top"
                   />
-                  {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+                  {errors.comment && (
+                    <Text style={styles.errorText}>{errors.comment}</Text>
+                  )}
                 </>
               )}
 
               {/* Reporter Name - only show if required */}
-              {isFieldRequired('reporter_name') && (
+              {isFieldRequired("reporter_name") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addRequest.reporterName')} <Text style={styles.required}>*</Text>
+                    {t("addRequest.reporterName")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_name && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addRequest.reporterNamePlaceholder')}
+                    style={[
+                      styles.input,
+                      errors.reporter_name && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addRequest.reporterNamePlaceholder")}
                     value={reporterName}
                     onChangeText={(text) => {
                       setReporterName(text);
-                      if (errors.reporter_name) setErrors(prev => ({ ...prev, reporter_name: '' }));
+                      if (errors.reporter_name)
+                        setErrors((prev) => ({ ...prev, reporter_name: "" }));
                     }}
                     placeholderTextColor="#999"
                   />
-                  {errors.reporter_name && <Text style={styles.errorText}>{errors.reporter_name}</Text>}
+                  {errors.reporter_name && (
+                    <Text style={styles.errorText}>{errors.reporter_name}</Text>
+                  )}
                 </>
               )}
 
               {/* Reporter Email - only show if required */}
-              {isFieldRequired('reporter_email') && (
+              {isFieldRequired("reporter_email") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('addRequest.reporterEmail')} <Text style={styles.required}>*</Text>
+                    {t("addRequest.reporterEmail")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
-                    style={[styles.input, errors.reporter_email && styles.inputError, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-                    placeholder={t('addRequest.reporterEmailPlaceholder')}
+                    style={[
+                      styles.input,
+                      errors.reporter_email && styles.inputError,
+                      { textAlign: i18n.language === "ar" ? "right" : "left" },
+                    ]}
+                    placeholder={t("addRequest.reporterEmailPlaceholder")}
                     value={reporterEmail}
                     onChangeText={(text) => {
                       setReporterEmail(text);
-                      if (errors.reporter_email) setErrors(prev => ({ ...prev, reporter_email: '' }));
+                      if (errors.reporter_email)
+                        setErrors((prev) => ({ ...prev, reporter_email: "" }));
                     }}
                     placeholderTextColor="#999"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
-                  {errors.reporter_email && <Text style={styles.errorText}>{errors.reporter_email}</Text>}
+                  {errors.reporter_email && (
+                    <Text style={styles.errorText}>
+                      {errors.reporter_email}
+                    </Text>
+                  )}
                 </>
               )}
 
               {/* Attachments - only show if required */}
-              {isFieldRequired('attachments') && (
+              {isFieldRequired("attachments") && (
                 <>
                   <Text style={styles.sectionTitle}>
-                    {t('incidents.attachments')} <Text style={styles.required}>*</Text>
+                    {t("incidents.attachments")}{" "}
+                    <Text style={styles.required}>*</Text>
                   </Text>
-                  <View style={[styles.attachmentsContainer, errors.attachments && styles.attachmentsContainerError]}>
+                  <View
+                    style={[
+                      styles.attachmentsContainer,
+                      errors.attachments && styles.attachmentsContainerError,
+                    ]}
+                  >
                     {attachments.length > 0 && (
                       <View style={styles.attachmentsList}>
                         {attachments.map((file, index) => (
                           <View key={index} style={styles.attachmentItem}>
                             <View style={styles.attachmentInfo}>
-                              <Ionicons name="document-attach" size={20} color="#9B59B6" />
-                              <Text style={styles.attachmentName} numberOfLines={1}>
+                              <Ionicons
+                                name="document-attach"
+                                size={20}
+                                color="#9B59B6"
+                              />
+                              <Text
+                                style={styles.attachmentName}
+                                numberOfLines={1}
+                              >
                                 {file.name}
                               </Text>
                               <Text style={styles.attachmentSize}>
-                                ({file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'})
+                                (
+                                {file.size
+                                  ? (file.size / 1024).toFixed(1) + " KB"
+                                  : "N/A"}
+                                )
                               </Text>
                             </View>
-                            <TouchableOpacity onPress={() => removeAttachment(index)}>
-                              <Ionicons name="close-circle" size={22} color="#E74C3C" />
+                            <TouchableOpacity
+                              onPress={() => removeAttachment(index)}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={22}
+                                color="#E74C3C"
+                              />
                             </TouchableOpacity>
                           </View>
                         ))}
                       </View>
                     )}
-                    <TouchableOpacity style={styles.attachmentButton} onPress={showAttachmentOptions}>
-                      <Ionicons name="cloud-upload-outline" size={24} color="#9B59B6" />
+                    <TouchableOpacity
+                      style={styles.attachmentButton}
+                      onPress={showAttachmentOptions}
+                    >
+                      <Ionicons
+                        name="cloud-upload-outline"
+                        size={24}
+                        color="#9B59B6"
+                      />
                       <Text style={styles.attachmentButtonText}>
-                        {attachments.length > 0 ? t('addIncident.addMoreFiles') : t('addIncident.tapToUpload')}
+                        {attachments.length > 0
+                          ? t("addIncident.addMoreFiles")
+                          : t("addIncident.tapToUpload")}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  {errors.attachments && <Text style={styles.errorText}>{errors.attachments}</Text>}
+                  {errors.attachments && (
+                    <Text style={styles.errorText}>{errors.attachments}</Text>
+                  )}
                 </>
               )}
 
               {/* Geolocation - only show if required */}
-              {isFieldRequired('geolocation') && (
+              {isFieldRequired("geolocation") && (
                 <>
                   <LocationPicker
-                    label={t('details.geolocation')}
+                    label={t("details.geolocation")}
                     value={locationData}
                     onChange={handleLocationChange}
                     required
@@ -1343,14 +1586,30 @@ const AddRequestScreen = () => {
                     error={errors.geolocation}
                   />
                   {/* Show address loading status */}
-                  {locationData?.latitude && !locationData?.address && !locationData?.city && (
-                    <Text style={{ fontSize: 12, color: '#FF9800', textAlign: "left" }}>
-                      {t('common.gettingAddress')}
-                    </Text>
-                  )}
+                  {locationData?.latitude &&
+                    !locationData?.address &&
+                    !locationData?.city && (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#FF9800",
+                          textAlign: "left",
+                        }}
+                      >
+                        {t("common.gettingAddress")}
+                      </Text>
+                    )}
                   {(locationData?.address || locationData?.city) && (
-                    <Text style={{ fontSize: 12, color: '#4CAF50', textAlign: "left" }}>
-                      {t('common.locationLabel', { address: locationData.city || locationData.address })}
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#4CAF50",
+                        textAlign: "left",
+                      }}
+                    >
+                      {t("common.locationLabel", {
+                        address: locationData.city || locationData.address,
+                      })}
                     </Text>
                   )}
                 </>
@@ -1373,7 +1632,9 @@ const AddRequestScreen = () => {
               onPress={() => setAttachmentPickerVisible(false)}
             >
               <View style={styles.pickerModalContent}>
-                <Text style={styles.pickerModalTitle}>{t('incidents.addAttachment', 'Add Attachment')}</Text>
+                <Text style={styles.pickerModalTitle}>
+                  {t("incidents.addAttachment", "Add Attachment")}
+                </Text>
 
                 <TouchableOpacity
                   style={styles.pickerOption}
@@ -1383,7 +1644,9 @@ const AddRequestScreen = () => {
                   }}
                 >
                   <Ionicons name="camera" size={24} color="#9B59B6" />
-                  <Text style={styles.pickerOptionText}>{t('incidents.takePhoto', 'Take Photo')}</Text>
+                  <Text style={styles.pickerOptionText}>
+                    {t("incidents.takePhoto", "Take Photo")}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1394,7 +1657,9 @@ const AddRequestScreen = () => {
                   }}
                 >
                   <Ionicons name="images" size={24} color="#9B59B6" />
-                  <Text style={styles.pickerOptionText}>{t('common.chooseFromGallery', 'Choose from Gallery')}</Text>
+                  <Text style={styles.pickerOptionText}>
+                    {t("common.chooseFromGallery", "Choose from Gallery")}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1405,20 +1670,29 @@ const AddRequestScreen = () => {
                   }}
                 >
                   <Ionicons name="document" size={24} color="#9B59B6" />
-                  <Text style={styles.pickerOptionText}>{t('common.chooseFile', 'Choose File')}</Text>
+                  <Text style={styles.pickerOptionText}>
+                    {t("common.chooseFile", "Choose File")}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.pickerCancelButton}
                   onPress={() => setAttachmentPickerVisible(false)}
                 >
-                  <Text style={styles.pickerCancelText}>{t('common.cancel', 'Cancel')}</Text>
+                  <Text style={styles.pickerCancelText}>
+                    {t("common.cancel", "Cancel")}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
           </Modal>
 
-          <View style={[styles.submitContainer, { paddingBottom: 20 + insets.bottom }]}>
+          <View
+            style={[
+              styles.submitContainer,
+              { paddingBottom: 20 + insets.bottom },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.submitButton, submitting && styles.disabledButton]}
               onPress={handleSubmit}
@@ -1427,7 +1701,9 @@ const AddRequestScreen = () => {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>{t('addRequest.createButton')}</Text>
+                <Text style={styles.submitButtonText}>
+                  {t("addRequest.createButton")}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1441,7 +1717,11 @@ const AddRequestScreen = () => {
           imageUri={pending.imageUri}
           data={pending.data}
           onComplete={(watermarkedUri) =>
-            handleWatermarkComplete(pending.id, watermarkedUri, pending.originalName)
+            handleWatermarkComplete(
+              pending.id,
+              watermarkedUri,
+              pending.originalName,
+            )
           }
         />
       ))}
@@ -1452,31 +1732,31 @@ const AddRequestScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     paddingTop: 50,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
   formContainer: {
@@ -1485,316 +1765,316 @@ const styles = StyleSheet.create({
     // marginBottom: 45
   },
   workflowCard: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: "#F3E8FF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#9B59B6',
+    borderColor: "#9B59B6",
   },
   workflowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   workflowLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#9B59B6',
+    fontWeight: "600",
+    color: "#9B59B6",
     marginLeft: 8,
   },
   workflowMatched: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   workflowName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginLeft: 8,
   },
   workflowHint: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
-    color: '#333',
-    textAlign: "left"
+    color: "#333",
+    textAlign: "left",
   },
   required: {
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   inputError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   autoGeneratedField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
-    borderColor: '#D0D0D0',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8F9FA",
+    borderColor: "#D0D0D0",
     paddingRight: 10,
   },
   autoGeneratedText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   lockIcon: {
     marginLeft: 8,
   },
   helperText: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
     marginTop: -15,
     marginBottom: 15,
-    textAlign: "left"
+    textAlign: "left",
   },
   placeholderText: {
-    color: '#999',
+    color: "#999",
   },
   dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   dropdownError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   dropdownText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   halfWidth: {
-    width: '48%',
+    width: "48%",
   },
   fullWidth: {
-    width: '100%',
+    width: "100%",
   },
   descriptionInput: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
     height: 120,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: "#E0E0E0",
+    color: "#333",
   },
   bottomPadding: {
     height: 100,
   },
   submitContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: "#EEE",
   },
   submitButton: {
-    backgroundColor: '#9B59B6',
+    backgroundColor: "#9B59B6",
     padding: 16,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   disabledButton: {
-    backgroundColor: '#A0A0A0',
+    backgroundColor: "#A0A0A0",
   },
   submitButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   errorText: {
-    color: '#E74C3C',
+    color: "#E74C3C",
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   clearOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFF5F5',
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF5F5",
   },
   clearOptionText: {
     fontSize: 16,
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   emptyList: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
-    color: '#999',
+    color: "#999",
     fontSize: 16,
   },
   // Attachment styles
   attachmentsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   attachmentsContainerError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   attachmentsList: {
     marginBottom: 12,
   },
   attachmentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8F9FA",
     padding: 10,
     borderRadius: 8,
     marginBottom: 8,
   },
   attachmentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   attachmentName: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     marginLeft: 8,
     flex: 1,
   },
   attachmentSize: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
     marginLeft: 4,
   },
   attachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 12,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#9B59B6',
+    borderStyle: "dashed",
+    borderColor: "#9B59B6",
     borderRadius: 8,
   },
   attachmentButtonText: {
-    color: '#9B59B6',
+    color: "#9B59B6",
     fontSize: 14,
     marginLeft: 8,
   },
   // Attachment picker modal styles
   pickerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   pickerModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 20,
-    width: '80%',
+    width: "80%",
     maxWidth: 300,
   },
   pickerModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   pickerOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginLeft: 12,
   },
   pickerCancelButton: {
     marginTop: 8,
     padding: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   pickerCancelText: {
     fontSize: 16,
-    color: '#E74C3C',
-    fontWeight: '600',
+    color: "#E74C3C",
+    fontWeight: "600",
   },
 });
 

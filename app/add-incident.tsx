@@ -2163,49 +2163,6 @@ const AddIncidentScreen = () => {
           >
             {/* Auto-matched Workflow Display */}
             <View style={{ padding: 20 }}>
-              <View style={[styles.workflowCard]}>
-                <View style={styles.workflowHeader}>
-                  <Ionicons name="git-branch" size={20} color="#2EC4B6" />
-                  <Text style={styles.workflowLabel}>
-                    {t("common.workflow", "Workflow")}
-                  </Text>
-                </View>
-                {matchedWorkflow ? (
-                  <View style={styles.workflowMatched}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color="#27AE60"
-                    />
-                    <Text style={styles.workflowName}>
-                      {i18n.language === "ar" && matchedWorkflow.name_ar
-                        ? matchedWorkflow.name_ar
-                        : matchedWorkflow.name}
-                    </Text>
-                  </View>
-                ) : isMatchingWorkflow ? (
-                  <View style={styles.workflowMatched}>
-                    <ActivityIndicator size="small" color="#2EC4B6" />
-                    <Text style={styles.workflowHint}>
-                      {t(
-                        "addIncident.matchingWorkflow",
-                        "Matching workflow...",
-                      )}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.workflowHint}>
-                    {t(
-                      "addIncident.workflowHint",
-                      "Select classification, location, or source to auto-match a workflow",
-                    )}
-                  </Text>
-                )}
-                {errors.workflow && (
-                  <Text style={styles.errorText}>{errors.workflow}</Text>
-                )}
-              </View>
-
               {/* Title - Auto-generated */}
               <Text style={styles.sectionTitle}>
                 {t("addIncident.incidentTitle")}{" "}
@@ -2287,7 +2244,7 @@ const AddIncidentScreen = () => {
               />
 
               {/* Source - Always mobile for mobile app, non-editable, Always required */}
-              <Text style={styles.sectionTitle}>
+              {/* <Text style={styles.sectionTitle}>
                 {t("addIncident.source")} <Text style={styles.required}>*</Text>
               </Text>
               <Dropdown
@@ -2298,7 +2255,7 @@ const AddIncidentScreen = () => {
                 required={true}
                 error={errors.source}
                 allowClear={false}
-              />
+              /> */}
 
               {/* Lookup Fields - Dynamic master data fields */}
               {lookupCategories.map((category) => {
