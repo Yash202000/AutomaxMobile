@@ -673,9 +673,16 @@ export const createComplaint = async (complaintData: any) => {
     };
   } catch (error: any) {
     const errorData = error.response?.data;
+    // Validation failures come back as `errors` (not `error`/`message`)
+    const validationMsg = errorData?.errors
+      ? typeof errorData.errors === "string"
+        ? errorData.errors
+        : Object.values(errorData.errors).flat().join("\n")
+      : undefined;
     return {
       success: false,
-      error: errorData?.error || errorData?.message || error.message,
+      error:
+        errorData?.error || errorData?.message || validationMsg || error.message,
       details: errorData?.details,
     };
   }

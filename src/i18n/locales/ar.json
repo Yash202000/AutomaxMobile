@@ -811,6 +811,7 @@
     "startRecording": "بدء التسجيل",
     "complaintTitle": "العنوان",
     "titlePlaceholder": "أدخل عنوان الشكوى",
+    "titleTooShort": "يجب أن يتكون العنوان من 5 أحرف على الأقل",
     "description": "الوصف",
     "descriptionPlaceholder": "صف الشكوى بالتفصيل...",
     "selectClassification": "تحديد التصنيف",

@@ -811,6 +811,7 @@
     "title": "Add Complaint",
     "complaintTitle": "Title",
     "titlePlaceholder": "Enter complaint title",
+    "titleTooShort": "Title must be at least 5 characters",
     "description": "Description",
     "descriptionPlaceholder": "Describe the complaint in detail...",
     "selectClassification": "Select Classification",
