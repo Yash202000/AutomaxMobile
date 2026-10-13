@@ -517,12 +517,16 @@ const IncidentsScreen = () => {
     try {
       let params = buildParams(page);
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
-        const statsResponse = await getIncidentStats();
-        if (statsResponse.success && statsResponse.data?.workflow_stats) {
-          params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map(
-            (s: any) => s.id,
-          );
-          state_id = params.current_state_id.join(",");
+        try {
+          const statsResponse = await getIncidentStats();
+          const stateDetails =
+            statsResponse.data?.workflow_stats?.[0]?.by_state_details;
+          if (statsResponse.success && Array.isArray(stateDetails) && stateDetails.length > 0) {
+            params.current_state_id = stateDetails.map((s: any) => s.id);
+            state_id = params.current_state_id.join(",");
+          }
+        } catch (statsErr: any) {
+          if (statsErr?.isLogoutCancel) throw statsErr;
         }
       }
       if (!canViewAllIncidents() && !isViewerMode) {
