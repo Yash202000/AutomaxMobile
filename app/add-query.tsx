@@ -573,9 +573,9 @@ const AddQueryScreen = () => {
           allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
         setMatchedWorkflow(
           matched ??
-            allWorkflows.find((w) => w.is_default) ??
-            allWorkflows[0] ??
-            null,
+          allWorkflows.find((w) => w.is_default) ??
+          allWorkflows[0] ??
+          null,
         );
       } else if (allWorkflows.length > 0) {
         setMatchedWorkflow(
@@ -756,8 +756,8 @@ const AddQueryScreen = () => {
     incidentSearch.trim().length === 0
       ? userIncidents
       : userIncidents.filter((i) =>
-          i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
-        );
+        i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
+      );
 
   // Voice recording functions
   const startRecording = async () => {
@@ -1247,7 +1247,7 @@ const AddQueryScreen = () => {
     setAttachments((prev) => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -1324,7 +1324,7 @@ const AddQueryScreen = () => {
         attachments.forEach((file) => {
           if (file?.uri) {
             FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(
-              () => {},
+              () => { },
             );
           }
         });
@@ -1820,103 +1820,103 @@ const AddQueryScreen = () => {
               {/* Attachments Section */}
               {(isFieldRequired("attachments") ||
                 isFieldRequired("attachment")) && (
-                <>
-                  <Text style={styles.sectionTitle}>
-                    {t("incidents.attachments")}{" "}
-                    <Text style={styles.required}>*</Text>
-                  </Text>
-                  <View
-                    style={[
-                      styles.attachmentsContainer,
-                      (errors.attachments || errors.attachment) &&
+                  <>
+                    <Text style={styles.sectionTitle}>
+                      {t("incidents.attachments")}{" "}
+                      <Text style={styles.required}>*</Text>
+                    </Text>
+                    <View
+                      style={[
+                        styles.attachmentsContainer,
+                        (errors.attachments || errors.attachment) &&
                         styles.attachmentsContainerError,
-                    ]}
-                  >
-                    {attachments.length > 0 && (
-                      <View style={styles.attachmentsList}>
-                        {attachments.map((file, index) => (
-                          <View key={index} style={styles.attachmentItem}>
-                            <View style={styles.attachmentInfo}>
-                              <Ionicons
-                                name={file.isVoice ? "mic" : "document-attach"}
-                                size={20}
-                                color="#3498DB"
-                              />
-                              <Text
-                                style={styles.attachmentName}
-                                numberOfLines={1}
+                      ]}
+                    >
+                      {attachments.length > 0 && (
+                        <View style={styles.attachmentsList}>
+                          {attachments.map((file, index) => (
+                            <View key={index} style={styles.attachmentItem}>
+                              <View style={styles.attachmentInfo}>
+                                <Ionicons
+                                  name={file.isVoice ? "mic" : "document-attach"}
+                                  size={20}
+                                  color="#3498DB"
+                                />
+                                <Text
+                                  style={styles.attachmentName}
+                                  numberOfLines={1}
+                                >
+                                  {file.name}
+                                </Text>
+                                {file.size && (
+                                  <Text style={styles.attachmentSize}>
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </Text>
+                                )}
+                                {file.isVoice && file.duration && (
+                                  <Text style={styles.attachmentSize}>
+                                    ({formatDuration(file.duration)})
+                                  </Text>
+                                )}
+                              </View>
+                              <TouchableOpacity
+                                onPress={() => removeAttachment(index)}
                               >
-                                {file.name}
-                              </Text>
-                              {file.size && (
-                                <Text style={styles.attachmentSize}>
-                                  ({(file.size / 1024).toFixed(1)} KB)
-                                </Text>
-                              )}
-                              {file.isVoice && file.duration && (
-                                <Text style={styles.attachmentSize}>
-                                  ({formatDuration(file.duration)})
-                                </Text>
-                              )}
+                                <Ionicons
+                                  name="close-circle"
+                                  size={22}
+                                  color="#E74C3C"
+                                />
+                              </TouchableOpacity>
                             </View>
-                            <TouchableOpacity
-                              onPress={() => removeAttachment(index)}
-                            >
-                              <Ionicons
-                                name="close-circle"
-                                size={22}
-                                color="#E74C3C"
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    {recording ? (
-                      <TouchableOpacity
-                        style={[
-                          styles.attachmentButton,
-                          styles.recordingButton,
-                        ]}
-                        onPress={stopRecording}
-                      >
-                        <Ionicons name="stop" size={24} color="#EF4444" />
-                        <Text
+                          ))}
+                        </View>
+                      )}
+                      {recording ? (
+                        <TouchableOpacity
                           style={[
-                            styles.attachmentButtonText,
-                            styles.recordingButtonText,
+                            styles.attachmentButton,
+                            styles.recordingButton,
                           ]}
+                          onPress={stopRecording}
                         >
-                          {t("addComplaint.stopRecording")} (
-                          {formatDuration(recordingDuration)})
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.attachmentButton}
-                        onPress={showAttachmentOptions}
-                      >
-                        <Ionicons
-                          name="cloud-upload-outline"
-                          size={24}
-                          color="#3498DB"
-                        />
-                        <Text style={styles.attachmentButtonText}>
-                          {attachments.length > 0
-                            ? t("addIncident.addMoreFiles")
-                            : t("addIncident.tapToUpload")}
-                        </Text>
-                      </TouchableOpacity>
+                          <Ionicons name="stop" size={24} color="#EF4444" />
+                          <Text
+                            style={[
+                              styles.attachmentButtonText,
+                              styles.recordingButtonText,
+                            ]}
+                          >
+                            {t("addComplaint.stopRecording")} (
+                            {formatDuration(recordingDuration)})
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.attachmentButton}
+                          onPress={showAttachmentOptions}
+                        >
+                          <Ionicons
+                            name="cloud-upload-outline"
+                            size={24}
+                            color="#3498DB"
+                          />
+                          <Text style={styles.attachmentButtonText}>
+                            {attachments.length > 0
+                              ? t("addIncident.addMoreFiles")
+                              : t("addIncident.tapToUpload")}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {errors.attachments && (
+                      <Text style={styles.errorText}>{errors.attachments}</Text>
                     )}
-                  </View>
-                  {errors.attachments && (
-                    <Text style={styles.errorText}>{errors.attachments}</Text>
-                  )}
-                  {errors.attachment && (
-                    <Text style={styles.errorText}>{errors.attachment}</Text>
-                  )}
-                </>
-              )}
+                    {errors.attachment && (
+                      <Text style={styles.errorText}>{errors.attachment}</Text>
+                    )}
+                  </>
+                )}
 
               <View style={styles.bottomPadding} />
             </View>
@@ -2436,357 +2436,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddQueryScreen;
-  workflowCard: {
-    backgroundColor: "#E3F2FD",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#3498DB",
-  },
-  workflowHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  workflowLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#3498DB",
-    marginLeft: 8,
-  },
-  workflowMatched: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  workflowName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginLeft: 8,
-  },
-  workflowHint: {
-    fontSize: 14,
-    color: "#666",
-    fontStyle: "italic",
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#333",
-    textAlign: "left",
-  },
-  required: {
-    color: "#E74C3C",
-  },
-  input: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    color: "#333",
-  },
-  inputError: {
-    borderColor: "#E74C3C",
-  },
-  dropdown: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  dropdownError: {
-    borderColor: "#E74C3C",
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-  },
-  placeholderText: {
-    color: "#999",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  halfWidth: {
-    width: "48%",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  descriptionInput: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    height: 120,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    color: "#333",
-  },
-  bottomPadding: {
-    height: 100,
-  },
-  submitContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#EEE",
-  },
-  submitButton: {
-    backgroundColor: "#3498DB",
-    padding: 16,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  disabledButton: {
-    backgroundColor: "#A0A0A0",
-  },
-  submitButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  errorText: {
-    color: "#E74C3C",
-    fontSize: 12,
-    marginTop: -16,
-    marginBottom: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  clearOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    backgroundColor: "#FFF5F5",
-  },
-  clearOptionText: {
-    fontSize: 16,
-    color: "#E74C3C",
-  },
-  optionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  emptyList: {
-    padding: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    color: "#999",
-    fontSize: 16,
-  },
-  selectedIncidentCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E8F5E9",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#4CAF50",
-  },
-  selectedIncidentText: {
-    fontSize: 14,
-    color: "#333",
-    flex: 1,
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginBottom: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#333",
-    padding: 0,
-  },
-  searchResults: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginBottom: 12,
-    overflow: "hidden",
-    maxHeight: 250,
-  },
-  searchResultsScroll: {
-    maxHeight: 250,
-  },
-  searchResultItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  searchResultText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  noResultsText: {
-    fontSize: 14,
-    color: "#999",
-    textAlign: "center",
-    paddingVertical: 12,
-  },
-  attachmentsContainer: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginBottom: 20,
-    overflow: "hidden",
-  },
-  attachmentsContainerError: {
-    borderColor: "#E74C3C",
-  },
-  attachmentsList: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  attachmentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  attachmentInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 8,
-  },
-  attachmentName: {
-    fontSize: 14,
-    color: "#333",
-    flex: 1,
-  },
-  attachmentSize: {
-    fontSize: 12,
-    color: "#666",
-  },
-  attachmentButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 16,
-  },
-  attachmentButtonText: {
-    fontSize: 14,
-    color: "#3498DB",
-    fontWeight: "600",
-  },
-  recordingButton: {
-    backgroundColor: "#FEE2E2",
-  },
-  recordingButtonText: {
-    color: "#EF4444",
-  },
-  pickerModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  pickerModalContent: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    width: "100%",
-    maxWidth: 400,
-    padding: 20,
-  },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  pickerOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    padding: 16,
-    borderRadius: 10,
-    backgroundColor: "#F8F9FA",
-    marginBottom: 12,
-  },
-  pickerOptionText: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-  },
-  pickerCancelButton: {
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  pickerCancelText: {
-    fontSize: 16,
-    color: "#E74C3C",
-    fontWeight: "600",
-  },
-});
 
 export default AddQueryScreen;
