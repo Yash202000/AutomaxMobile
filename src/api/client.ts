@@ -3,6 +3,7 @@ import axios from "axios";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import i18n from "../i18n";
+import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
@@ -52,6 +53,9 @@ const redirectToLogin = async () => {
 // Interceptor to add the token to requests
 apiClient.interceptors.request.use(
   async (config) => {
+    // No request may leave the app before certificate pinning is active
+    await ensureCertificatePinning();
+
     // If logging out, reject all requests except the logout request itself
     if (isLoggingOut && !config.url?.includes("/auth/logout")) {
       const error = new Error("Request cancelled - logging out");
@@ -298,7 +302,8 @@ apiClient.interceptors.response.use(
   },
 );
 
-axios.interceptors.request.use((config) => {
+axios.interceptors.request.use(async (config) => {
+  await ensureCertificatePinning();
   console.log("➡️ REQUEST:", config.method?.toUpperCase(), config.url);
   console.log("➡️ DATA:", config.data);
   return config;
