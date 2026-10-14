@@ -94,6 +94,9 @@ module.exports = {
         },
       ],
       "@react-native-community/datetimepicker",
+      // The expo-dev-client network inspector on iOS bypasses certificate
+      // pinning in development builds; release builds are unaffected.
+      ["expo-build-properties", { ios: { networkInspector: false } }],
       [
         "expo-media-library",
         {
