@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+import { CustomAlert } from "@/src/components/CustomAlert";
 import {
   addSslPinningErrorListener,
   initializeSslPinning,
@@ -39,6 +41,18 @@ const enabledFlag = process.env.EXPO_PUBLIC_SSL_PINNING_ENABLED;
 const enabled = enabledFlag ? enabledFlag === "true" : !__DEV__;
 
 let ready: Promise<void> | null = null;
+let lastAlertAt = 0;
+
+// Many requests usually fail together when a pin mismatches; show one popup.
+const showPinningAlert = (kind: "blocked" | "config") => {
+  const now = Date.now();
+  if (now - lastAlertAt < 10000) return;
+  lastAlertAt = now;
+  CustomAlert.alert(
+    i18n.t(kind === "blocked" ? "certificatePinning.title" : "certificatePinning.configTitle"),
+    i18n.t(kind === "blocked" ? "certificatePinning.message" : "certificatePinning.configMessage"),
+  );
+};
 let listenerAdded = false;
 
 const hostFromUrl = (url: string): string | null => {
@@ -57,6 +71,7 @@ const setup = async (): Promise<void> => {
   }
   if (pins.length === 0) {
     // Fail closed: a release build with pinning on but no pins is misconfigured.
+    showPinningAlert("config");
     throw new Error("SSL pinning is enabled but EXPO_PUBLIC_SSL_PINS is empty");
   }
 
@@ -64,6 +79,7 @@ const setup = async (): Promise<void> => {
     listenerAdded = true;
     addSslPinningErrorListener((error) => {
       console.warn("[SSL pinning] connection blocked:", error.serverHostname);
+      showPinningAlert("blocked");
     });
   }
 

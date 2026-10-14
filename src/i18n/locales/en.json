@@ -945,5 +945,11 @@
   },
   "lookups": {
     "multipleValuesHint": "Tap Add or Done — previously added values are kept."
+  },
+  "certificatePinning": {
+    "title": "Connection Not Secure",
+    "message": "The app could not verify the identity of the server, so the connection was blocked to protect your data. This can happen on an untrusted network or if the server certificate has changed. Please switch to a trusted network (or turn off any VPN/proxy) and try again. If the problem continues, contact support or update the app.",
+    "configTitle": "Security Configuration Error",
+    "configMessage": "Secure connection settings are missing or invalid in this version of the app. Please update the app or contact support."
   }
 }
