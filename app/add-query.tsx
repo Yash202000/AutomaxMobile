@@ -2,7 +2,6 @@ import { getClassificationsTree } from "@/src/api/classifications";
 import { getDepartments } from "@/src/api/departments";
 import {
   createQuery,
-  getIncidents,
   uploadMultipleComplaintAttachments,
 } from "@/src/api/incidents";
 import { getLocationsTree } from "@/src/api/locations";
@@ -12,10 +11,8 @@ import {
   getWorkflows,
   matchWorkflow as matchWorkflowAPI,
 } from "@/src/api/workflow";
-import LocationPicker, {
-  LocationData,
-} from "@/src/components/LocationPickerOSM";
-import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
+import { LocationData } from "@/src/components/LocationPickerOSM";
+import { TreeNode } from "@/src/components/TreeSelect";
 import { WatermarkPreview } from "@/src/components/WatermarkPreview";
 import {
   WatermarkData,
@@ -35,6 +32,7 @@ import { t } from "i18next";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { CustomAlert } from "@/src/components/CustomAlert";
+import IncidentPicker from "@/src/components/IncidentPicker";
 import { useTranslation } from "react-i18next";
 import {
   ActionSheetIOS,
@@ -52,7 +50,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import IncidentPicker from "@/src/components/IncidentPicker";
 
 interface DropdownOption {
   id: string;
@@ -573,9 +570,9 @@ const AddQueryScreen = () => {
           allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
         setMatchedWorkflow(
           matched ??
-          allWorkflows.find((w) => w.is_default) ??
-          allWorkflows[0] ??
-          null,
+            allWorkflows.find((w) => w.is_default) ??
+            allWorkflows[0] ??
+            null,
         );
       } else if (allWorkflows.length > 0) {
         setMatchedWorkflow(
@@ -756,8 +753,8 @@ const AddQueryScreen = () => {
     incidentSearch.trim().length === 0
       ? userIncidents
       : userIncidents.filter((i) =>
-        i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
-      );
+          i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
+        );
 
   // Voice recording functions
   const startRecording = async () => {
@@ -1247,7 +1244,7 @@ const AddQueryScreen = () => {
     setAttachments((prev) => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -1324,7 +1321,7 @@ const AddQueryScreen = () => {
         attachments.forEach((file) => {
           if (file?.uri) {
             FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(
-              () => { },
+              () => {},
             );
           }
         });
@@ -1344,6 +1341,20 @@ const AddQueryScreen = () => {
       );
     }
   };
+
+  useEffect(() => {
+    if (selectedSourceIncident) {
+      const incident: any = userIncidents.find(
+        (i) => i.id === selectedSourceIncident.id,
+      );
+      if (incident)
+        setSelectedLocation(
+          incident.location.id
+            ? { id: incident.location.id, name: incident.location.name }
+            : null,
+        );
+    }
+  }, [selectedSourceIncident]);
 
   return (
     <KeyboardAvoidingView
@@ -1485,44 +1496,6 @@ const AddQueryScreen = () => {
                   />
 
                   {/* Incident picker modal */}
-                </>
-              )}
-
-              {/* <Text style={styles.sectionTitle}>
-              {t('incidents.classification')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TreeSelect
-              label={t('addQuery.selectClassification')}
-              value={selectedClassification?.name || ''}
-              data={classifications}
-              onSelect={(node) => setSelectedClassification(node as DropdownOption | null)}
-              required={true}
-              error={errors.classification_id}
-              leafOnly={true}
-              placeholder={t('addQuery.selectClassification')}
-              iconType="classification"
-            /> */}
-
-              {/* Location - only show if required */}
-              {isFieldRequired("location_id") && (
-                <>
-                  <Text style={styles.sectionTitle}>
-                    {t("incidents.location")}{" "}
-                    <Text style={styles.required}>*</Text>
-                  </Text>
-                  <TreeSelect
-                    label={t("addIncident.selectLocation")}
-                    value={selectedLocation?.name || ""}
-                    data={locations}
-                    onSelect={(node) =>
-                      setSelectedLocation(node as DropdownOption | null)
-                    }
-                    required={true}
-                    error={errors.location_id}
-                    leafOnly={true}
-                    placeholder={t("addIncident.selectLocation")}
-                    iconType="location"
-                  />
                 </>
               )}
 
@@ -1774,149 +1747,106 @@ const AddQueryScreen = () => {
                 </>
               )}
 
-              {/* Geolocation - only show if required */}
-              {isFieldRequired("geolocation") && (
-                <>
-                  <LocationPicker
-                    label={t("details.geolocation", "Geolocation")}
-                    value={locationData}
-                    onChange={handleLocationChange}
-                    required
-                    autoFetch={true}
-                    error={errors.geolocation}
-                  />
-                  {/* Show address loading status */}
-                  {locationData?.latitude &&
-                    !locationData?.address &&
-                    !locationData?.city && (
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: "#FF9800",
-                          textAlign: "left",
-                          marginBottom: 10,
-                        }}
-                      >
-                        {t("common.gettingAddress")}
-                      </Text>
-                    )}
-                  {(locationData?.address || locationData?.city) && (
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: "#4CAF50",
-                        textAlign: "left",
-                        marginBottom: 10,
-                      }}
-                    >
-                      {t("common.locationLabel", {
-                        address: locationData.city || locationData.address,
-                      })}
-                    </Text>
-                  )}
-                </>
-              )}
-
               {/* Attachments Section */}
               {(isFieldRequired("attachments") ||
                 isFieldRequired("attachment")) && (
-                  <>
-                    <Text style={styles.sectionTitle}>
-                      {t("incidents.attachments")}{" "}
-                      <Text style={styles.required}>*</Text>
-                    </Text>
-                    <View
-                      style={[
-                        styles.attachmentsContainer,
-                        (errors.attachments || errors.attachment) &&
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t("incidents.attachments")}{" "}
+                    <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View
+                    style={[
+                      styles.attachmentsContainer,
+                      (errors.attachments || errors.attachment) &&
                         styles.attachmentsContainerError,
-                      ]}
-                    >
-                      {attachments.length > 0 && (
-                        <View style={styles.attachmentsList}>
-                          {attachments.map((file, index) => (
-                            <View key={index} style={styles.attachmentItem}>
-                              <View style={styles.attachmentInfo}>
-                                <Ionicons
-                                  name={file.isVoice ? "mic" : "document-attach"}
-                                  size={20}
-                                  color="#3498DB"
-                                />
-                                <Text
-                                  style={styles.attachmentName}
-                                  numberOfLines={1}
-                                >
-                                  {file.name}
-                                </Text>
-                                {file.size && (
-                                  <Text style={styles.attachmentSize}>
-                                    ({(file.size / 1024).toFixed(1)} KB)
-                                  </Text>
-                                )}
-                                {file.isVoice && file.duration && (
-                                  <Text style={styles.attachmentSize}>
-                                    ({formatDuration(file.duration)})
-                                  </Text>
-                                )}
-                              </View>
-                              <TouchableOpacity
-                                onPress={() => removeAttachment(index)}
+                    ]}
+                  >
+                    {attachments.length > 0 && (
+                      <View style={styles.attachmentsList}>
+                        {attachments.map((file, index) => (
+                          <View key={index} style={styles.attachmentItem}>
+                            <View style={styles.attachmentInfo}>
+                              <Ionicons
+                                name={file.isVoice ? "mic" : "document-attach"}
+                                size={20}
+                                color="#3498DB"
+                              />
+                              <Text
+                                style={styles.attachmentName}
+                                numberOfLines={1}
                               >
-                                <Ionicons
-                                  name="close-circle"
-                                  size={22}
-                                  color="#E74C3C"
-                                />
-                              </TouchableOpacity>
+                                {file.name}
+                              </Text>
+                              {file.size && (
+                                <Text style={styles.attachmentSize}>
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </Text>
+                              )}
+                              {file.isVoice && file.duration && (
+                                <Text style={styles.attachmentSize}>
+                                  ({formatDuration(file.duration)})
+                                </Text>
+                              )}
                             </View>
-                          ))}
-                        </View>
-                      )}
-                      {recording ? (
-                        <TouchableOpacity
+                            <TouchableOpacity
+                              onPress={() => removeAttachment(index)}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={22}
+                                color="#E74C3C"
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {recording ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.attachmentButton,
+                          styles.recordingButton,
+                        ]}
+                        onPress={stopRecording}
+                      >
+                        <Ionicons name="stop" size={24} color="#EF4444" />
+                        <Text
                           style={[
-                            styles.attachmentButton,
-                            styles.recordingButton,
+                            styles.attachmentButtonText,
+                            styles.recordingButtonText,
                           ]}
-                          onPress={stopRecording}
                         >
-                          <Ionicons name="stop" size={24} color="#EF4444" />
-                          <Text
-                            style={[
-                              styles.attachmentButtonText,
-                              styles.recordingButtonText,
-                            ]}
-                          >
-                            {t("addComplaint.stopRecording")} (
-                            {formatDuration(recordingDuration)})
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.attachmentButton}
-                          onPress={showAttachmentOptions}
-                        >
-                          <Ionicons
-                            name="cloud-upload-outline"
-                            size={24}
-                            color="#3498DB"
-                          />
-                          <Text style={styles.attachmentButtonText}>
-                            {attachments.length > 0
-                              ? t("addIncident.addMoreFiles")
-                              : t("addIncident.tapToUpload")}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {errors.attachments && (
-                      <Text style={styles.errorText}>{errors.attachments}</Text>
+                          {t("addComplaint.stopRecording")} (
+                          {formatDuration(recordingDuration)})
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.attachmentButton}
+                        onPress={showAttachmentOptions}
+                      >
+                        <Ionicons
+                          name="cloud-upload-outline"
+                          size={24}
+                          color="#3498DB"
+                        />
+                        <Text style={styles.attachmentButtonText}>
+                          {attachments.length > 0
+                            ? t("addIncident.addMoreFiles")
+                            : t("addIncident.tapToUpload")}
+                        </Text>
+                      </TouchableOpacity>
                     )}
-                    {errors.attachment && (
-                      <Text style={styles.errorText}>{errors.attachment}</Text>
-                    )}
-                  </>
-                )}
+                  </View>
+                  {errors.attachments && (
+                    <Text style={styles.errorText}>{errors.attachments}</Text>
+                  )}
+                  {errors.attachment && (
+                    <Text style={styles.errorText}>{errors.attachment}</Text>
+                  )}
+                </>
+              )}
 
               <View style={styles.bottomPadding} />
             </View>
@@ -2435,6 +2365,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
 
 export default AddQueryScreen;
