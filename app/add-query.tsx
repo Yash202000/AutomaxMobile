@@ -56,6 +56,11 @@ interface DropdownOption {
   name: string;
 }
 
+interface SourceIncidentOption extends DropdownOption {
+  location?: { id: string; name: string } | null;
+  location_id?: string;
+}
+
 interface Workflow {
   id: string;
   name: string;
@@ -247,7 +252,7 @@ const AddQueryScreen = () => {
     severityOptions[2],
   );
   const [selectedSourceIncident, setSelectedSourceIncident] =
-    useState<DropdownOption | null>(null);
+    useState<SourceIncidentOption | null>(null);
   const [userIncidents, setUserIncidents] = useState<DropdownOption[]>([]);
   const [incidentSearch, setIncidentSearch] = useState("");
   const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
@@ -1342,18 +1347,13 @@ const AddQueryScreen = () => {
     }
   };
 
+  // Location is not user-editable; it is derived from the source incident
   useEffect(() => {
-    if (selectedSourceIncident) {
-      const incident: any = userIncidents.find(
-        (i) => i.id === selectedSourceIncident.id,
-      );
-      if (incident)
-        setSelectedLocation(
-          incident.location.id
-            ? { id: incident.location.id, name: incident.location.name }
-            : null,
-        );
-    }
+    const location = selectedSourceIncident?.location;
+    const locationId = location?.id || selectedSourceIncident?.location_id;
+    setSelectedLocation(
+      locationId ? { id: locationId, name: location?.name || "" } : null,
+    );
   }, [selectedSourceIncident]);
 
   return (

@@ -79,6 +79,8 @@ const IncidentPicker = ({
                 const mapped = response.data.map((i: any) => ({
                     id: i.id,
                     name: `${i.incident_number} - ${i.title}`,
+                    location: i.location,
+                    location_id: i.location_id,
                 }));
 
                 setIncidents(prev => isFirstPage ? mapped : [...prev, ...mapped]);
