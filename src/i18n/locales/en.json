@@ -640,6 +640,10 @@
     "verify": "Verify",
     "verified": "Verified",
     "sendOTP": "Send OTP",
+    "otpViaSms": "SMS",
+    "otpViaWhatsapp": "WhatsApp",
+    "otpSentVia": "OTP sent via {{channel}} to {{phone}}.",
+    "changeOtpChannel": "Change verification method",
     "otpVerified": "OTP verified successfully",
     "otpSentFailed": "Failed to send OTP",
     "otpVerifiedFailed": "Failed to verify OTP"

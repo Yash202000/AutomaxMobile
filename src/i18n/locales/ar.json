@@ -639,6 +639,10 @@
     "verify": "تحقق",
     "verified": "تم التحقق",
     "sendOTP": "إرسال رمز التحقق",
+    "otpViaSms": "رسالة نصية",
+    "otpViaWhatsapp": "واتساب",
+    "otpSentVia": "تم إرسال رمز التحقق عبر {{channel}} إلى {{phone}}.",
+    "changeOtpChannel": "تغيير طريقة التحقق",
     "otpVerified": "تم التحقق من رمز التحقق بنجاح",
     "otpSentFailed": "فشل إرسال رمز التحقق",
     "otpVerifiedFailed": "فشل التحقق من رمز التحقق"
