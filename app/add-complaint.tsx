@@ -44,6 +44,11 @@ interface DropdownOption {
   name: string;
 }
 
+interface SourceIncidentOption extends DropdownOption {
+  location?: { id: string; name: string } | null;
+  location_id?: string;
+}
+
 interface Workflow {
   id: string;
   name: string;
@@ -236,7 +241,7 @@ const AddComplaintScreen = () => {
     severityOptions[2],
   );
   const [selectedSourceIncident, setSelectedSourceIncident] =
-    useState<DropdownOption | null>(null);
+    useState<SourceIncidentOption | null>(null);
   const [userIncidents, setUserIncidents] = useState<DropdownOption[]>([]);
   const [incidentSearch, setIncidentSearch] = useState("");
   const [incidentDropdownOpen, setIncidentDropdownOpen] = useState(false);
@@ -286,7 +291,7 @@ const AddComplaintScreen = () => {
         if ((recording as any)._interval) {
           clearInterval((recording as any)._interval);
         }
-        recording.stopAndUnloadAsync().catch(() => { });
+        recording.stopAndUnloadAsync().catch(() => {});
       }
     };
   }, [recording]);
@@ -514,6 +519,7 @@ const AddComplaintScreen = () => {
           incidentRes.data.map((i: any) => ({
             id: i.id,
             name: `${i.incident_number} - ${i.title}`,
+            location: i.location,
           })),
         );
       }
@@ -528,8 +534,8 @@ const AddComplaintScreen = () => {
     incidentSearch.trim().length === 0
       ? userIncidents
       : userIncidents.filter((i) =>
-        i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
-      );
+          i.name.toLowerCase().includes(incidentSearch.toLowerCase()),
+        );
 
   // Auto-match workflow via backend API when criteria change
   const matchWorkflow = useCallback(async () => {
@@ -546,9 +552,9 @@ const AddComplaintScreen = () => {
           allWorkflows.find((w) => w.id === result.data.workflow_id) || null;
         setMatchedWorkflow(
           matched ??
-          allWorkflows.find((w) => w.is_default) ??
-          allWorkflows[0] ??
-          null,
+            allWorkflows.find((w) => w.is_default) ??
+            allWorkflows[0] ??
+            null,
         );
       } else if (allWorkflows.length > 0) {
         setMatchedWorkflow(
@@ -603,9 +609,9 @@ const AddComplaintScreen = () => {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = t('addComplaint.titlePlaceholder');
+      newErrors.title = t("addComplaint.titlePlaceholder");
     } else if (title.trim().length < 5) {
-      newErrors.title = t('addComplaint.titleTooShort');
+      newErrors.title = t("addComplaint.titleTooShort");
     }
 
     if (!matchedWorkflow) {
@@ -745,7 +751,7 @@ const AddComplaintScreen = () => {
     setAudioFiles((prev) => {
       const file = prev[index];
       if (file?.uri) {
-        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(file.uri, { idempotent: true }).catch(() => {});
       }
       return prev.filter((_, i) => i !== index);
     });
@@ -857,7 +863,7 @@ const AddComplaintScreen = () => {
         audioFiles.forEach((audio) => {
           if (audio?.uri) {
             FileSystem.deleteAsync(audio.uri, { idempotent: true }).catch(
-              () => { },
+              () => {},
             );
           }
         });
@@ -875,6 +881,15 @@ const AddComplaintScreen = () => {
       );
     }
   };
+
+  // Location is not user-editable; it is derived from the source incident
+  useEffect(() => {
+    const location = selectedSourceIncident?.location;
+    const locationId = location?.id || selectedSourceIncident?.location_id;
+    setSelectedLocation(
+      locationId ? { id: locationId, name: location?.name || "" } : null,
+    );
+  }, [selectedSourceIncident]);
 
   return (
     <KeyboardAvoidingView
@@ -922,27 +937,6 @@ const AddComplaintScreen = () => {
                 <Text style={styles.errorText}>{errors.title}</Text>
               )}
 
-              {isFieldRequired("location_id") && (
-                <>
-                  <Text style={styles.sectionTitle}>
-                    {t("incidents.location")}{" "}
-                    <Text style={styles.required}>*</Text>
-                  </Text>
-                  <TreeSelect
-                    label={t("addIncident.selectLocation")}
-                    value={selectedLocation?.name || ""}
-                    data={locations}
-                    onSelect={(node) =>
-                      setSelectedLocation(node as DropdownOption | null)
-                    }
-                    required={true}
-                    error={errors.location_id}
-                    leafOnly={true}
-                    placeholder={t("addIncident.selectLocation")}
-                    iconType="location"
-                  />
-                </>
-              )}
               {isFieldRequired("classification_id") && (
                 <>
                   <Text style={styles.sectionTitle}>
@@ -964,23 +958,6 @@ const AddComplaintScreen = () => {
                   />
                 </>
               )}
-
-              {/* Source field - always mobile for mobile app, non-editable */}
-              <Text style={styles.sectionTitle}>
-                {t("addComplaint.source")}{" "}
-                {isFieldRequired("source") && (
-                  <Text style={styles.required}>*</Text>
-                )}
-              </Text>
-              <Dropdown
-                label={t("addComplaint.selectSource")}
-                value={selectedSource?.name || ""}
-                options={sourceOptions}
-                onSelect={() => { }} // No-op, field is not editable
-                required={isFieldRequired("source")}
-                error={errors.source}
-                disabled={true}
-              />
 
               {/* Lookup Fields - Dynamic master data fields */}
               {lookupCategories.map((category) => {
@@ -1317,63 +1294,63 @@ const AddComplaintScreen = () => {
               {/* Voice Recording Section */}
               {(isFieldRequired("attachments") ||
                 isFieldRequired("attachment")) && (
-                  <>
-                    <Text style={styles.sectionTitle}>
-                      {t("addComplaint.voiceRecording")}{" "}
-                      <Text style={styles.required}>*</Text>
-                    </Text>
+                <>
+                  <Text style={styles.sectionTitle}>
+                    {t("addComplaint.voiceRecording")}{" "}
+                    <Text style={styles.required}>*</Text>
+                  </Text>
 
-                    {/* Recorded Audio Files */}
-                    {audioFiles.length > 0 && (
-                      <View style={styles.audioList}>
-                        {audioFiles.map((audio, index) => (
-                          <View key={index} style={styles.audioItem}>
-                            <View style={styles.audioInfo}>
-                              <Ionicons name="mic" size={20} color="#3B82F6" />
-                              <Text style={styles.audioText}>
-                                {t("common.recording")} {index + 1} (
-                                {formatDuration(audio.duration)})
-                              </Text>
-                            </View>
-                            <TouchableOpacity onPress={() => removeAudio(index)}>
-                              <Ionicons
-                                name="trash-outline"
-                                size={20}
-                                color="#EF4444"
-                              />
-                            </TouchableOpacity>
+                  {/* Recorded Audio Files */}
+                  {audioFiles.length > 0 && (
+                    <View style={styles.audioList}>
+                      {audioFiles.map((audio, index) => (
+                        <View key={index} style={styles.audioItem}>
+                          <View style={styles.audioInfo}>
+                            <Ionicons name="mic" size={20} color="#3B82F6" />
+                            <Text style={styles.audioText}>
+                              {t("common.recording")} {index + 1} (
+                              {formatDuration(audio.duration)})
+                            </Text>
                           </View>
-                        ))}
-                      </View>
-                    )}
+                          <TouchableOpacity onPress={() => removeAudio(index)}>
+                            <Ionicons
+                              name="trash-outline"
+                              size={20}
+                              color="#EF4444"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
 
-                    {/* Recording Button */}
-                    <TouchableOpacity
-                      style={[
-                        styles.recordButton,
-                        recording && styles.recordingButton,
-                      ]}
-                      onPress={recording ? stopRecording : startRecording}
-                    >
-                      {recording ? (
-                        <>
-                          <Ionicons name="stop" size={24} color="#fff" />
-                          <Text style={styles.recordButtonText}>
-                            {t("addComplaint.stopRecording")} (
-                            {formatDuration(recordingDuration)})
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <Ionicons name="mic" size={24} color="#fff" />
-                          <Text style={styles.recordButtonText}>
-                            {t("addComplaint.startRecording")}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </>
-                )}
+                  {/* Recording Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.recordButton,
+                      recording && styles.recordingButton,
+                    ]}
+                    onPress={recording ? stopRecording : startRecording}
+                  >
+                    {recording ? (
+                      <>
+                        <Ionicons name="stop" size={24} color="#fff" />
+                        <Text style={styles.recordButtonText}>
+                          {t("addComplaint.stopRecording")} (
+                          {formatDuration(recordingDuration)})
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="mic" size={24} color="#fff" />
+                        <Text style={styles.recordButtonText}>
+                          {t("addComplaint.startRecording")}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
 
               <View style={styles.bottomPadding} />
             </View>
