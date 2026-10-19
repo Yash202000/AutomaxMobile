@@ -543,7 +543,9 @@ const UpdateStatusModal = () => {
   };
 
   const currentStepKey = transitionSteps[transitionStep];
-  const isLastStep = transitionStep === transitionSteps.length - 1;
+  // `>=` so a transition with no configured steps (length 0) is treated as
+  // already on its last step and executes directly instead of stalling.
+  const isLastStep = transitionStep >= transitionSteps.length - 1;
 
   const validateStep = (): boolean => {
     if (!selectedTransition || !currentStepKey) return true;
