@@ -576,6 +576,9 @@ const ComplaintFilterScreen = () => {
                   }
                   mode="date"
                   display="spinner"
+                  themeVariant="light"
+                  textColor="#000000"
+                  style={{ height: 216, alignSelf: "stretch" }}
                   maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
                     if (selectedDate) {
