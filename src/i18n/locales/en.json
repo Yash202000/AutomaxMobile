@@ -526,6 +526,9 @@
     "channel": "Channel"
   },
   "details": {
+    "noAccessTitle": "No longer available",
+    "noAccessMessage": "This item is no longer accessible to you. It may have been reassigned or moved after the last update. Your changes were saved successfully.",
+    "backToList": "Back to list",
     "incident": "Incident",
     "request": "Request",
     "complaint": "Complaint",

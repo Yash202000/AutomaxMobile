@@ -9,6 +9,7 @@ import {
 import { getLookupCategories } from "@/src/api/lookups";
 import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { AuthenticatedImageViewer } from "@/src/components/AuthenticatedImageViewer";
+import { AccessDeniedState } from "@/src/components/AccessDeniedState";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DetailScreenSkeleton } from "@/src/components/DetailScreenSkeleton";
 import { RenderWithIncidentMentions } from "@/src/components/RenderWithIncidentMentions";
@@ -425,6 +426,7 @@ const IncidentDetailsScreen = () => {
   const [attachments, setAttachments] = useState<AttachmentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -467,6 +469,8 @@ const IncidentDetailsScreen = () => {
 
     setLoading(true);
 
+    setAccessDenied(false);
+
     try {
       const [
         detailsResponse,
@@ -490,6 +494,11 @@ const IncidentDetailsScreen = () => {
             : detailsResponse.data.attachments || [],
         );
       } else {
+        if (detailsResponse.status === 403 || detailsResponse.status === 404) {
+          setAccessDenied(true);
+          return;
+        }
+        setAccessDenied(false);
         setError(detailsResponse.error);
 
         // Log failed API response
@@ -694,6 +703,10 @@ const IncidentDetailsScreen = () => {
         <DetailScreenSkeleton sections={[4, 3, 2]} />
       </View>
     );
+  }
+
+  if (accessDenied) {
+    return <AccessDeniedState />;
   }
 
   if (error || !incident) {
