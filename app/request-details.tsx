@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { AccessDeniedState } from '@/src/components/AccessDeniedState';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { DetailScreenSkeleton } from '@/src/components/DetailScreenSkeleton';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
@@ -90,6 +91,7 @@ const RequestDetailsScreen = () => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -110,6 +112,8 @@ const RequestDetailsScreen = () => {
     if (!requestId) return;
 
     setLoading(true);
+
+    setAccessDenied(false);
     try {
       const [detailsResponse, transitionsResponse] = await Promise.all([
         getIncidentById(requestId),
@@ -120,6 +124,11 @@ const RequestDetailsScreen = () => {
         setRequest(detailsResponse.data);
         setAttachments(detailsResponse.data.attachments || []);
       } else {
+        if (detailsResponse.status === 403 || detailsResponse.status === 404) {
+          setAccessDenied(true);
+          return;
+        }
+        setAccessDenied(false);
         setError(detailsResponse.error);
         CustomAlert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
       }
@@ -160,6 +169,10 @@ const RequestDetailsScreen = () => {
         <DetailScreenSkeleton sections={[4, 3, 2]} />
       </View>
     );
+  }
+
+  if (accessDenied) {
+    return <AccessDeniedState />;
   }
 
   if (error || !request) {

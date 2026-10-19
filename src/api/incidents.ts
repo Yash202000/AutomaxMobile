@@ -193,6 +193,7 @@ export const getIncidentById = async (id: string) => {
     return {
       success: false,
       error: error.response?.data?.message || error.message,
+      status: error.response?.status as number | undefined,
     };
   }
 };

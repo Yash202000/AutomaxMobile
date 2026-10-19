@@ -1399,7 +1399,20 @@ const UpdateStatusModal = () => {
         {
           text: t("common.ok"),
           onPress: () => {
-            router.back();
+            // The ticket may no longer be visible to this user after the
+            // update (403), so return to its list rather than the details.
+            const listRoutes: Record<string, string> = {
+              incident: "/(tabs)/incident",
+              request: "/(tabs)/request",
+              complaint: "/(tabs)/complaint",
+              query: "/(tabs)/query",
+            };
+            const listRoute = listRoutes[String(ticketType)];
+            if (listRoute) {
+              router.dismissTo(listRoute as any);
+            } else {
+              router.back();
+            }
           },
         },
       ]);
