@@ -64,7 +64,7 @@ const IncidentPicker = ({
                 reporter_phone: user?.phone,
                 limit: PAGE_SIZE,
                 page: pageNum,
-                current_state_id: [currentStateId],
+                current_state_id: currentStateId ? [currentStateId] : undefined,
                 start_date: last3Months.toISOString(),
                 end_date: today.toISOString(),
             };
