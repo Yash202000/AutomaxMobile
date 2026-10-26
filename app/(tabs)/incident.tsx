@@ -532,6 +532,7 @@ const IncidentsScreen = () => {
       if (!canViewAllIncidents() && !isViewerMode) {
         params.my_record = user?.id;
       }
+      console.log(params)
       const response = await getIncidents(params);
       if (response.success) {
         setIncidents(

@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
 import i18n from "../i18n";
 import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
+import { handleRequestNetworkError } from "../utils/networkStatus";
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error("EXPO_PUBLIC_API_URL is not set");
@@ -120,6 +121,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    // No server response at all: offline / unreachable -> confirm and warn the user
+    if (
+      axios.isAxiosError(error) &&
+      !error.response &&
+      error.code !== "ERR_CANCELED" &&
+      !isLoggingOut
+    ) {
+      void handleRequestNetworkError();
+    }
     // Log ALL API errors (except during logout or specific cancellation scenarios)
     const shouldLogError =
       !isLoggingOut &&

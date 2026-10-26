@@ -893,6 +893,10 @@
     "minCharsTitle": "Keep Typing...",
     "minCharsDesc": "Enter at least 3 characters to search"
   },
+  "network": {
+    "noInternetTitle": "No Internet Connection",
+    "noInternetMessage": "Check your internet connection and try again."
+  },
   "errors": {
     "networkError": "Network error. Please check your connection.",
     "noPermission": "No permission. Please contact administrator to gain access.",
