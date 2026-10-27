@@ -14,8 +14,10 @@ import { useFCM } from '@/hooks/use-FCM';
 import { registerToken } from '@/src/api/notifications';
 import { CustomAlertComponent } from '@/src/components/CustomAlert';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
+import NoInternetOverlay from '@/src/components/NoInternetOverlay';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { useGlobalWebSocket } from '@/src/hooks/useGlobalWebSocket';
+import { useNetworkMonitor } from '@/src/hooks/useNetworkMonitor';
 import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
@@ -153,6 +155,7 @@ function RootLayoutNav() {
   const router = useRouter();
   useFCM(router);
   useGlobalWebSocket();
+  useNetworkMonitor();
 
   useEffect(() => {
     if (isLoading || isLoggingOut) return;
@@ -304,6 +307,7 @@ export default function RootLayout() {
         <RootLayoutNav />
       </AuthProvider>
       <CustomAlertComponent />
+      <NoInternetOverlay />
     </ErrorBoundary>
   );
 }

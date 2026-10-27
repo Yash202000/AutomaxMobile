@@ -4,6 +4,7 @@ import { getSettings } from "@/src/api/common";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
+import { checkConnectivity, showNoInternetAlert } from "@/src/utils/networkStatus";
 import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
@@ -225,6 +226,11 @@ const LoginScreen = () => {
     Keyboard.dismiss();
     setError("");
     setFieldErrors({});
+
+    if (!(await checkConnectivity())) {
+      showNoInternetAlert();
+      return;
+    }
 
     if (loginType === "citizen") {
       const nextFieldErrors: {

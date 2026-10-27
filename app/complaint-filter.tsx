@@ -565,7 +565,19 @@ const ComplaintFilterScreen = () => {
                       ? t('filter.selectFromDate', 'Select From Date')
                       : t('filter.selectToDate', 'Select To Date')}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                  <TouchableOpacity onPress={() => {
+                      // iOS spinner only fires onChange on change, so commit the shown date (today) if unset
+                      if (showDatePicker === 'from') {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        setFilters(prev => (prev.start_date ? prev : { ...prev, start_date: d.toISOString() }));
+                      } else {
+                        const d = new Date();
+                        d.setHours(23, 59, 59, 999);
+                        setFilters(prev => (prev.end_date ? prev : { ...prev, end_date: d.toISOString() }));
+                      }
+                      setShowDatePicker(null);
+                    }}>
                     <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
