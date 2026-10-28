@@ -172,9 +172,9 @@ export const TreeItem: React.FC<TreeItemProps> = ({
 
       {hasChildren && isExpanded && (
         <View>
-          {node.children!.map((child) => (
+          {node.children!.map((child, index) => (
             <TreeItem
-              key={child.id}
+              key={`${child.id}-${index}`}
               node={child}
               level={level + 1}
               expandedIds={expandedIds}
@@ -528,9 +528,9 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
               >
-                {data.map((item) => (
+                {data.map((item, index) => (
                   <TreeItem
-                    key={String(item.id)}
+                    key={`${String(item.id)}-${index}`}
                     node={item}
                     level={0}
                     expandedIds={expandedIds}

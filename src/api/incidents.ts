@@ -5,7 +5,7 @@ import apiClient from "./client";
  * screens previously sent as GET query params (see MOBILE-BRIEF-incidents-search.md).
  * ID-list filters must be arrays for the backend (`dive,uuid` validation) even
  * though some screens pass a single id as a string — wrap those here.
- * `priority` must stay a single int (backend field is `*int`, not a slice).
+ * `priority` is sent as an array of ints (backend accepts one or many).
  */
 function buildSearchBody(params: Record<string, any>): Record<string, any> {
   const body: Record<string, any> = {
@@ -45,8 +45,8 @@ function buildSearchBody(params: Record<string, any>): Record<string, any> {
     params.priority !== ""
   ) {
     body.priority = Array.isArray(params.priority)
-      ? params.priority[0]
-      : params.priority;
+      ? params.priority
+      : [params.priority];
   }
 
   // ID-list filters — backend requires arrays even when a screen passes one id as a string.

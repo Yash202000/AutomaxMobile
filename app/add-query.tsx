@@ -194,7 +194,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const AddQueryScreen = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isCitizen } = useAuth();
   const insets = useSafeAreaInsets();
 
   const priorityOptions: DropdownOption[] = [
@@ -1541,9 +1541,10 @@ const AddQueryScreen = () => {
               })}
 
               {/* Priority & Severity - only show if either is required */}
-              {(isFieldRequired("priority") || isFieldRequired("severity")) && (
+              {((isFieldRequired("priority") && !isCitizen) ||
+                isFieldRequired("severity")) && (
                 <View style={styles.row}>
-                  {isFieldRequired("priority") && (
+                  {isFieldRequired("priority") && !isCitizen && (
                     <View
                       style={
                         isFieldRequired("severity")

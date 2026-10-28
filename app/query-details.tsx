@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { useAuth } from '@/src/context/AuthContext';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { AccessDeniedState } from '@/src/components/AccessDeniedState';
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -139,6 +140,7 @@ const QueryDetailsScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { classTree, deptTree, locTree, getPath } = useHierarchy();
+  const { isCitizen } = useAuth();
   const [query, setQuery] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -372,8 +374,8 @@ const QueryDetailsScreen = () => {
                 <InfoRow icon="megaphone-outline" label={t('details.channel')} value={query.channel} iconColor="#F59E0B" />
               )}
               <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, query.classification?.id) || query.classification?.name || ''} iconColor={COLORS.accent} />
-              <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, query.department?.id) || query.department?.name || ''} iconColor="#8B5CF6" />
-              <InfoRow icon="person-outline" label={t('details.assignees')}
+              {!isCitizen && (<InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, query.department?.id) || query.department?.name || ''} iconColor="#8B5CF6" />)}
+              {!isCitizen && (<InfoRow icon="person-outline" label={t('details.assignees')}
                 value={query.assignees?.length
                   ? query.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
                   : query.assignee
@@ -381,7 +383,7 @@ const QueryDetailsScreen = () => {
                     : ''
                 }
                 iconColor="#EC4899"
-              />
+              />)}
               {query.location && (
                 <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, query.location.id) || query.location.name} iconColor={COLORS.error} />
               )}
@@ -494,32 +496,34 @@ const QueryDetailsScreen = () => {
         )}
 
         {/* Comments Card */}
-        <AnimatedListItem index={nextSection()}>
-          <View style={styles.card}>
-            <SectionHeader title={t('details.comments')} icon="chatbubbles" />
-            {query.comments && query.comments.length > 0 ? (
-              query.comments.map((comment: any) => (
-                <View style={styles.commentItem} key={comment.id}>
-                  <View style={styles.commentHeader}>
-                    <View style={[styles.commentAvatar, { backgroundColor: COLORS.accent }]}>
-                      <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+        {!isCitizen && (
+          <AnimatedListItem index={nextSection()}>
+            <View style={styles.card}>
+              <SectionHeader title={t('details.comments')} icon="chatbubbles" />
+              {query.comments && query.comments.length > 0 ? (
+                query.comments.map((comment: any) => (
+                  <View style={styles.commentItem} key={comment.id}>
+                    <View style={styles.commentHeader}>
+                      <View style={[styles.commentAvatar, { backgroundColor: COLORS.accent }]}>
+                        <Text style={styles.commentAvatarText}>{comment.author.username[0]}</Text>
+                      </View>
+                      <View style={styles.commentMeta}>
+                        <Text style={styles.commentAuthor}>{comment.author.username}</Text>
+                        <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
+                      </View>
                     </View>
-                    <View style={styles.commentMeta}>
-                      <Text style={styles.commentAuthor}>{comment.author.username}</Text>
-                      <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString('en-GB')}</Text>
-                    </View>
+                    <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
                   </View>
-                  <RenderWithIncidentMentions text={comment.content} style={styles.commentContent} />
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
+                  <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
                 </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="chatbubble-outline" size={32} color={COLORS.text.muted} />
-                <Text style={styles.emptyStateText}>{t('details.noComments')}</Text>
-              </View>
-            )}
-          </View>
-        </AnimatedListItem>
+              )}
+            </View>
+          </AnimatedListItem>
+        )}
 
         {/* Attachments Card */}
         <AnimatedListItem index={nextSection()}>
@@ -636,54 +640,56 @@ const QueryDetailsScreen = () => {
         )}
 
         {/* Transition History Card */}
-        <AnimatedListItem index={nextSection()}>
-          <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
-            <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
-            {query.transition_history && query.transition_history.length > 0 ? (
-              <View style={styles.timeline}>
-                {query.transition_history.map((item: any, index: number) => (
-                  <View key={item.id} style={styles.timelineItem}>
-                    <View style={styles.timelineLeft}>
-                      <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
-                      {index < query.transition_history.length - 1 && <View style={styles.timelineLine} />}
-                    </View>
-                    <View style={styles.timelineContent}>
-                      <View style={styles.transitionBadges}>
-                        <View style={styles.fromBadge}>
-                          <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
-                        </View>
-                        <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
-                        <View style={[styles.toBadge, { backgroundColor: COLORS.accentLight }]}>
-                          <Text style={[styles.toBadgeText, { color: COLORS.accent }]}>{item.to_state.name}</Text>
-                        </View>
+        {!isCitizen && (
+          <AnimatedListItem index={nextSection()}>
+            <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
+              <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
+              {query.transition_history && query.transition_history.length > 0 ? (
+                <View style={styles.timeline}>
+                  {query.transition_history.map((item: any, index: number) => (
+                    <View key={item.id} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View style={[styles.timelineDot, { backgroundColor: COLORS.accent }]} />
+                        {index < query.transition_history.length - 1 && <View style={styles.timelineLine} />}
                       </View>
-                      <Text style={styles.transitionMeta}>
-                        {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
-                      </Text>
-                      {item.comment && (
-                        <View style={styles.transitionComment}>
-                          <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                          <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
+                      <View style={styles.timelineContent}>
+                        <View style={styles.transitionBadges}>
+                          <View style={styles.fromBadge}>
+                            <Text style={styles.fromBadgeText}>{item.from_state.name}</Text>
+                          </View>
+                          <Ionicons name={t('common.icons.arrowForward') as any} size={14} color={COLORS.text.muted} />
+                          <View style={[styles.toBadge, { backgroundColor: COLORS.accentLight }]}>
+                            <Text style={[styles.toBadgeText, { color: COLORS.accent }]}>{item.to_state.name}</Text>
+                          </View>
                         </View>
-                      )}
-                      {item?.feedbacks?.comment && (
-                        <View style={styles.transitionComment}>
-                          <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
-                          <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
-                        </View>
-                      )}
+                        <Text style={styles.transitionMeta}>
+                          {t('details.by')} {item.performed_by.username} • {new Date(item.transitioned_at).toLocaleDateString('en-GB')}
+                        </Text>
+                        {item.comment && (
+                          <View style={styles.transitionComment}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                            <RenderWithIncidentMentions text={item.comment} style={styles.transitionCommentText} />
+                          </View>
+                        )}
+                        {item?.feedbacks?.comment && (
+                          <View style={styles.transitionComment}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.text.secondary} />
+                            <RenderWithIncidentMentions text={item.feedbacks.comment} style={styles.transitionCommentText} />
+                          </View>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="time-outline" size={32} color={COLORS.text.muted} />
-                <Text style={styles.emptyStateText}>{t('details.noTransitionHistory')}</Text>
-              </View>
-            )}
-          </View>
-        </AnimatedListItem>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={32} color={COLORS.text.muted} />
+                  <Text style={styles.emptyStateText}>{t('details.noTransitionHistory')}</Text>
+                </View>
+              )}
+            </View>
+          </AnimatedListItem>
+        )}
       </ScrollView>
 
       {/* Update Button */}
