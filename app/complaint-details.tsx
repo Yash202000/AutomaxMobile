@@ -2,6 +2,7 @@ import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getComplaintHistory, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { useAuth } from '@/src/context/AuthContext';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
 import { AccessDeniedState } from '@/src/components/AccessDeniedState';
 import { CustomAlert } from '@/src/components/CustomAlert';
@@ -77,6 +78,7 @@ const ComplaintDetailsScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { classTree, deptTree, locTree, getPath } = useHierarchy();
+  const { isCitizen } = useAuth();
   const [complaint, setComplaint] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -273,7 +275,7 @@ const ComplaintDetailsScreen = () => {
         {/* Title Card */}
         <AnimatedListItem index={nextSection()}>
         <View style={styles.titleCard}>
-          <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
+          {!isCitizen && <View style={[styles.priorityBar, { backgroundColor: config.color }]} />}
           <View style={styles.titleCardContent}>
             <View style={styles.titleHeader}>
               <View style={[styles.typeBadge]}>
@@ -305,8 +307,8 @@ const ComplaintDetailsScreen = () => {
               <InfoRow icon="megaphone-outline" label={t('details.channel')} value={complaint.channel} iconColor="#F59E0B" />
             )}
             <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, complaint.classification?.id) || complaint.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />
-            <InfoRow icon="person-outline" label={t('details.assignees')}
+            {!isCitizen && (<InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />)}
+            {!isCitizen && (<InfoRow icon="person-outline" label={t('details.assignees')}
               value={complaint.assignees?.length
                 ? complaint.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
                 : complaint.assignee
@@ -314,7 +316,7 @@ const ComplaintDetailsScreen = () => {
                   : ''
               }
               iconColor="#EC4899"
-            />
+            />)}
             {complaint.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, complaint.location.id) || complaint.location.name} iconColor={COLORS.error} />
             )}
@@ -427,7 +429,8 @@ const ComplaintDetailsScreen = () => {
         )}
 
         {/* Comments Card */}
-        <AnimatedListItem index={nextSection()}>
+        {!isCitizen && (
+<AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {complaint.comments && complaint.comments.length > 0 ? (
@@ -453,6 +456,7 @@ const ComplaintDetailsScreen = () => {
           )}
         </View>
         </AnimatedListItem>
+)}
 
         {/* Attachments Card */}
         <AnimatedListItem index={nextSection()}>
@@ -552,7 +556,8 @@ const ComplaintDetailsScreen = () => {
         )}
 
         {/* Transition History Card */}
-        <AnimatedListItem index={nextSection()}>
+        {!isCitizen && (
+<AnimatedListItem index={nextSection()}>
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {history && history.length > 0 ? (
@@ -600,6 +605,7 @@ const ComplaintDetailsScreen = () => {
           )}
         </View>
         </AnimatedListItem>
+)}
       </ScrollView>
 
       {/* Update Button */}

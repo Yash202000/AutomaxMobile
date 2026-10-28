@@ -1,4 +1,5 @@
 import { getClassificationsTree } from '@/src/api/classifications';
+import { useAuth } from '@/src/context/AuthContext';
 import { getDepartmentsTree } from '@/src/api/departments';
 import { getComplaintStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
@@ -116,6 +117,7 @@ const ComplaintFilterScreen = () => {
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const { isCitizen } = useAuth();
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   useEffect(() => {
@@ -389,7 +391,7 @@ const ComplaintFilterScreen = () => {
             )
           )}
 
-          {renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
+          {!isCitizen && renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
             filters.priorities.length === 0 ? t('filter.allLabel', 'All') : (filters.priorities.length === 1 ? t(`priorities.${priorities.find(p => p.value === filters.priorities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.priorities.length })),
             false,
             [{ value: null, label: t('filter.allPriorities', 'All Priorities') }, ...priorities],
@@ -421,7 +423,7 @@ const ComplaintFilterScreen = () => {
           )
         )} */}
 
-          {renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
+          {!isCitizen && renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
             filters.assignee_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.assignee_ids.length })),
             loadingUsers,
             [{ id: null, first_name: t('filter.allLabel', 'All'), last_name: t('filter.assignee', 'Assignees') }, ...users],

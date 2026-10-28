@@ -535,8 +535,16 @@ const IncidentsScreen = () => {
       console.log(params)
       const response = await getIncidents(params);
       if (response.success) {
+        // De-duplicate by id: shifting pages / overlapping loads can return the
+        // same incident twice, which breaks FlatList keys.
+        const dedupe = (list: Incident[]) => {
+          const seen = new Set<string>();
+          return list.filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+        };
         setIncidents(
-          append ? (prev) => [...prev, ...response.data] : response.data,
+          append
+            ? (prev) => dedupe([...prev, ...response.data])
+            : dedupe(response.data),
         );
         setPagination(response.pagination);
       } else {

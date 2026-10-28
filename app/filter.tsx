@@ -1,5 +1,6 @@
 import { getClassificationsTree } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
+import { useAuth } from '@/src/context/AuthContext';
+import { getDepartmentsTree } from '@/src/api/departments';
 import { getIncidentStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
@@ -95,8 +96,9 @@ const FilterScreen = () => {
   }>();
 
   const [states, setStates] = useState<any[]>([]);
+  const { isCitizen } = useAuth();
   const { canViewAllIncidents } = usePermissions()
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [locations, setLocations] = useState<TreeNode[]>([]);
@@ -145,7 +147,7 @@ const FilterScreen = () => {
 
   const fetchDepartments = async () => {
     setLoadingDepartments(true);
-    const response = await getDepartments();
+    const response = await getDepartmentsTree();
     if (response.success) {
       setDepartments(response.data || []);
     }
@@ -238,21 +240,12 @@ const FilterScreen = () => {
     }
   };
 
-  const selectDepartment = (department: any) => {
-    const isSelected = filters.department_ids.includes(department.id);
-    if (isSelected) {
-      setFilters({
-        ...filters,
-        department_ids: filters.department_ids.filter(id => id !== department.id),
-        department_names: filters.department_names.filter(name => name !== department.name),
-      });
-    } else {
-      setFilters({
-        ...filters,
-        department_ids: [...filters.department_ids, department.id],
-        department_names: [...filters.department_names, department.name],
-      });
-    }
+  const handleDepartmentMultiSelect = (nodes: any[]) => {
+    setFilters({
+      ...filters,
+      department_ids: nodes.map(n => n.id),
+      department_names: nodes.map(n => n.name),
+    });
   };
 
   const handleClassificationMultiSelect = (nodes: any[]) => {
@@ -386,12 +379,6 @@ const FilterScreen = () => {
     return `${filters.assignee_ids.length} ${t('filter.selected')}`;
   };
 
-  const getSelectedDepartmentName = () => {
-    if (filters.department_ids.length === 0) return t('filter.all');
-    if (filters.department_ids.length === 1) return filters.department_names[0] || t('filter.selected');
-    return `${filters.department_ids.length} ${t('filter.selected')}`;
-  };
-
   const getSelectedClassificationName = () => {
     if (filters.classification_ids.length === 0) return t('filter.all');
     return `${filters.classification_ids.length} ${t('filter.selected')}`;
@@ -472,7 +459,8 @@ const FilterScreen = () => {
           </View>
 
           {/* Priority Filter */}
-          <View style={styles.filterSection}>
+          {!isCitizen && (
+<View style={styles.filterSection}>
             <TouchableOpacity
               style={styles.filterHeader}
               onPress={() => toggleSection('priority')}
@@ -522,6 +510,7 @@ const FilterScreen = () => {
               </View>
             )}
           </View>
+)}
 
           {/* Classification Filter */}
           <View style={styles.filterSection}>
@@ -574,7 +563,7 @@ const FilterScreen = () => {
           </View>
 
           {/* Assignee Filter */}
-          {canViewAllIncidents() && <View style={styles.filterSection}>
+          {!isCitizen && canViewAllIncidents() && <View style={styles.filterSection}>
             <TouchableOpacity
               style={styles.filterHeader}
               onPress={() => toggleSection('assignee')}
@@ -636,59 +625,30 @@ const FilterScreen = () => {
           </View>}
 
           {/* Department Filter */}
-          <View style={styles.filterSection}>
-            <TouchableOpacity
-              style={styles.filterHeader}
-              onPress={() => toggleSection('department')}
-            >
-              <View style={styles.filterHeaderLeft}>
-                <Ionicons name="business-outline" size={20} color="#1A237E" />
-                <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+          {!isCitizen && (
+            <View style={styles.filterSection}>
+              <View style={styles.filterHeader}>
+                <View style={styles.filterHeaderLeft}>
+                  <Ionicons name="business-outline" size={20} color="#1A237E" />
+                  <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+                </View>
               </View>
-              <View style={styles.filterHeaderRight}>
-                <Text style={[styles.filterValue, filters.department_ids.length > 0 && styles.filterValueActive]}>
-                  {getSelectedDepartmentName()}
-                </Text>
-                <Ionicons
-                  name={expandedSection === 'department' ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color="#666"
+              <View style={styles.treeSelectWrapper}>
+                <TreeSelect
+                  label={t('filter.department')}
+                  value=""
+                  data={departments}
+                  loading={loadingDepartments}
+                  onSelect={() => { }}
+                  leafOnly={false}
+                  placeholder={filters.department_ids.length > 0 ? `${filters.department_ids.length} selected` : t('filter.allDepartments')}
+                  multiSelect={true}
+                  selectedIds={filters.department_ids}
+                  onMultiSelect={handleDepartmentMultiSelect}
                 />
               </View>
-            </TouchableOpacity>
-
-            {expandedSection === 'department' && (
-              <View style={styles.filterOptions}>
-                {loadingDepartments ? (
-                  <ActivityIndicator size="small" color="#1A237E" />
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.filterOption, filters.department_ids.length === 0 && styles.filterOptionSelected]}
-                      onPress={() => setFilters({ ...filters, department_ids: [], department_names: [] })}
-                    >
-                      <Text style={[styles.filterOptionText, filters.department_ids.length === 0 && styles.filterOptionTextSelected]}>
-                        {t('filter.allDepartments')}
-                      </Text>
-                      {filters.department_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                    {departments.map((department) => (
-                      <TouchableOpacity
-                        key={department.id}
-                        style={[styles.filterOption, filters.department_ids.includes(department.id) && styles.filterOptionSelected]}
-                        onPress={() => selectDepartment(department)}
-                      >
-                        <Text style={[styles.filterOptionText, filters.department_ids.includes(department.id) && styles.filterOptionTextSelected]}>
-                          {department.name}
-                        </Text>
-                        {filters.department_ids.includes(department.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                      </TouchableOpacity>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Source Filter */}
           <View style={styles.filterSection}>
