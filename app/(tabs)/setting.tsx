@@ -1,34 +1,54 @@
-import { getProfile } from '@/src/api/user';
-import { useAuth } from '@/src/context/AuthContext';
-import { getCurrentLanguage, setLanguage, supportedLanguages } from '@/src/i18n';
-import { crashLogger } from '@/src/utils/crashLogger';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
-import * as Updates from 'expo-updates';
-import { t } from 'i18next';
-import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomAlert } from '@/src/components/CustomAlert';
-
+import { getProfile } from "@/src/api/user";
+import { CustomAlert } from "@/src/components/CustomAlert";
+import { useAuth } from "@/src/context/AuthContext";
+import {
+  getCurrentLanguage,
+  setLanguage,
+  supportedLanguages,
+} from "@/src/i18n";
+import { crashLogger } from "@/src/utils/crashLogger";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
+import * as Updates from "expo-updates";
+import { t } from "i18next";
+import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  ActivityIndicator,
+  ImageBackground,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const COLORS = {
-  primary: '#2EC4B6',
-  secondary: '#1A237E',
-  background: '#F5F5F5',
-  card: '#FFFFFF',
-  text: '#333333',
-  textSecondary: '#666666',
-  textMuted: '#999999',
-  border: '#F0F0F0',
-  error: '#E74C3C',
-  white: '#FFFFFF',
+  primary: "#2EC4B6",
+  secondary: "#1A237E",
+  background: "#F5F5F5",
+  card: "#FFFFFF",
+  text: "#333333",
+  textSecondary: "#666666",
+  textMuted: "#999999",
+  border: "#F0F0F0",
+  error: "#E74C3C",
+  white: "#FFFFFF",
 };
 
-const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
+const SettingsOption = ({
+  label,
+  hasDropdown = false,
+  value,
+  onPress,
+  icon,
+}: {
   label: string;
   hasDropdown?: boolean;
   value?: string;
@@ -37,17 +57,38 @@ const SettingsOption = ({ label, hasDropdown = false, value, onPress, icon }: {
 }) => (
   <TouchableOpacity style={styles.option} onPress={onPress}>
     <View style={styles.optionLeft}>
-      {icon && <Ionicons name={icon as any} size={20} color={COLORS.secondary} style={styles.optionIcon} />}
+      {icon && (
+        <Ionicons
+          name={icon as any}
+          size={20}
+          color={COLORS.secondary}
+          style={styles.optionIcon}
+        />
+      )}
       <Text style={styles.optionLabel}>{label}</Text>
     </View>
     <View style={styles.optionValueContainer}>
       {value && <Text style={styles.optionValue}>{value}</Text>}
-      <Ionicons name={hasDropdown ? 'chevron-down' : t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />
+      <Ionicons
+        name={
+          hasDropdown
+            ? "chevron-down"
+            : (t("common.icons.chevronForward") as any)
+        }
+        size={18}
+        color={COLORS.textMuted}
+      />
     </View>
   </TouchableOpacity>
 );
 
-const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
+const SettingsToggle = ({
+  label,
+  description,
+  value,
+  onValueChange,
+  icon,
+}: {
   label: string;
   description?: string;
   value: boolean;
@@ -56,19 +97,35 @@ const SettingsToggle = ({ label, description, value, onValueChange, icon }: {
 }) => (
   <View style={styles.option}>
     <View style={[styles.optionLeft, { flex: 1 }]}>
-      {icon && <Ionicons name={icon as any} size={20} color={COLORS.secondary} style={styles.optionIcon} />}
+      {icon && (
+        <Ionicons
+          name={icon as any}
+          size={20}
+          color={COLORS.secondary}
+          style={styles.optionIcon}
+        />
+      )}
       <View>
         <Text style={styles.optionLabel}>{label}</Text>
-        {description && <Text style={styles.optionDescription} numberOfLines={1} ellipsizeMode='tail'>{description}</Text>}
+        {description && (
+          <Text
+            style={styles.optionDescription}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {description}
+          </Text>
+        )}
       </View>
     </View>
     <Switch
       value={value}
       onValueChange={onValueChange}
-      trackColor={{ false: '#D1D1D1', true: COLORS.primary }}
-      thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+      trackColor={{ false: "#D1D1D1", true: COLORS.primary }}
+      thumbColor={Platform.OS === "ios" ? undefined : "#FFFFFF"}
       style={{
-        transform: Platform.OS === 'ios' ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [],
+        transform:
+          Platform.OS === "ios" ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [],
       }}
     />
   </View>
@@ -82,16 +139,19 @@ const SettingsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
-  const [logFileSize, setLogFileSize] = useState<string>('0 KB');
+  const [logFileSize, setLogFileSize] = useState<string>("0 KB");
   const [hasLogs, setHasLogs] = useState(false);
   const [sharingLogs, setSharingLogs] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const insets = useSafeAreaInsets();
 
-  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
-  const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || 'viewer,viewer2').split(',');
-  const isViewerRole = user?.roles?.some((role: any) => viewerRoles.includes(role.code)) ?? false;
+  const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === "true";
+  const viewerRoles = (
+    process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || "viewer,viewer2"
+  ).split(",");
+  const isViewerRole =
+    user?.roles?.some((role: any) => viewerRoles.includes(role.code)) ?? false;
   const isViewerMode = isViewerApp && isViewerRole;
 
   const loadLogInfo = useCallback(async () => {
@@ -101,7 +161,7 @@ const SettingsScreen = () => {
       setLogFileSize(size);
       setHasLogs(logsExist);
     } catch (error) {
-      console.error('Failed to load log info:', error);
+      console.error("Failed to load log info:", error);
     }
   }, []);
 
@@ -113,19 +173,19 @@ const SettingsScreen = () => {
         if (response.success) {
           setUser(response.data);
         } else {
-          CustomAlert.alert(t('common.error'), t('errors.unknownError'));
+          CustomAlert.alert(t("common.error"), t("errors.unknownError"));
         }
         setLoading(false);
       };
 
       const loadNotificationSettings = async () => {
         try {
-          const value = await AsyncStorage.getItem('notificationsEnabled');
+          const value = await AsyncStorage.getItem("notificationsEnabled");
           if (value !== null) {
-            setNotificationsEnabled(value === 'true');
+            setNotificationsEnabled(value === "true");
           }
         } catch (error) {
-          console.error('Failed to load notification settings:', error);
+          console.error("Failed to load notification settings:", error);
         }
       };
 
@@ -133,7 +193,7 @@ const SettingsScreen = () => {
       loadNotificationSettings();
       setCurrentLang(getCurrentLanguage());
       loadLogInfo();
-    }, [loadLogInfo])
+    }, [loadLogInfo]),
   );
 
   const handleLogout = async () => {
@@ -154,38 +214,41 @@ const SettingsScreen = () => {
 
       // Always prompt for restart when changing language (RTL changes require restart)
       CustomAlert.alert(
-        t('settings.langChangeTitle'),
-        t('settings.langChangeMessage'),
+        t("settings.langChangeTitle"),
+        t("settings.langChangeMessage"),
         [
           {
-            text: t('common.ok'),
+            text: t("common.ok"),
             onPress: async () => {
               try {
                 await Updates.reloadAsync();
               } catch {
                 // If Updates.reloadAsync fails, just notify user to restart manually
                 CustomAlert.alert(
-                  t('settings.restartRequired'),
-                  t('settings.restartMessage')
+                  t("settings.restartRequired"),
+                  t("settings.restartMessage"),
                 );
               }
-            }
-          }
-        ]
+            },
+          },
+        ],
       );
     } catch (error) {
-      CustomAlert.alert(t('common.error'), t('errors.unknownError'));
+      CustomAlert.alert(t("common.error"), t("errors.unknownError"));
     }
   };
 
   const getCurrentLanguageName = () => {
-    const lang = supportedLanguages.find(l => l.code === currentLang);
-    return lang?.nativeName || 'English';
+    const lang = supportedLanguages.find((l) => l.code === currentLang);
+    return lang?.nativeName || "English";
   };
 
   const handleShareLogs = async () => {
     if (!hasLogs) {
-      CustomAlert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      CustomAlert.alert(
+        t("settings.logs.noLogs"),
+        t("settings.logs.noLogsDescription"),
+      );
       return;
     }
 
@@ -195,7 +258,7 @@ const SettingsScreen = () => {
       const logFileUri = await crashLogger.getLogFileUri();
 
       if (!logFileUri) {
-        CustomAlert.alert(t('common.error'), t('settings.logs.failedToShare'));
+        CustomAlert.alert(t("common.error"), t("settings.logs.failedToShare"));
         setSharingLogs(false);
         return;
       }
@@ -204,8 +267,8 @@ const SettingsScreen = () => {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
         CustomAlert.alert(
-          t('common.error'),
-          t('settings.logs.sharingNotAvailable')
+          t("common.error"),
+          t("settings.logs.sharingNotAvailable"),
         );
         setSharingLogs(false);
         return;
@@ -213,55 +276,64 @@ const SettingsScreen = () => {
 
       // Share the log file
       await Sharing.shareAsync(logFileUri, {
-        mimeType: 'text/plain',
-        dialogTitle: 'Share App Logs',
-        UTI: 'public.plain-text',
+        mimeType: "text/plain",
+        dialogTitle: "Share App Logs",
+        UTI: "public.plain-text",
       });
 
       setSharingLogs(false);
     } catch (error) {
-      console.error('Failed to share logs:', error);
-      CustomAlert.alert(
-        t('common.error'),
-        t('settings.logs.failedToShare')
-      );
+      console.error("Failed to share logs:", error);
+      CustomAlert.alert(t("common.error"), t("settings.logs.failedToShare"));
       setSharingLogs(false);
     }
   };
 
   const handleDeleteLogs = async () => {
     if (!hasLogs) {
-      CustomAlert.alert(t('settings.logs.noLogs'), t('settings.logs.noLogsDescription'));
+      CustomAlert.alert(
+        t("settings.logs.noLogs"),
+        t("settings.logs.noLogsDescription"),
+      );
       return;
     }
 
     CustomAlert.alert(
-      t('settings.logs.deleteConfirmTitle'),
-      t('settings.logs.deleteConfirmMessage'),
+      t("settings.logs.deleteConfirmTitle"),
+      t("settings.logs.deleteConfirmMessage"),
       [
         {
-          text: t('common.cancel'),
-          style: 'cancel',
+          text: t("common.cancel"),
+          style: "cancel",
         },
         {
-          text: t('common.delete'),
-          style: 'destructive',
+          text: t("common.delete"),
+          style: "destructive",
           onPress: async () => {
             try {
               const success = await crashLogger.clearLogs();
               if (success) {
-                CustomAlert.alert(t('common.success'), t('settings.logs.logsDeleted'));
+                CustomAlert.alert(
+                  t("common.success"),
+                  t("settings.logs.logsDeleted"),
+                );
                 await loadLogInfo();
               } else {
-                CustomAlert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+                CustomAlert.alert(
+                  t("common.error"),
+                  t("settings.logs.failedToDelete"),
+                );
               }
             } catch (error) {
-              console.error('Failed to delete logs:', error);
-              CustomAlert.alert(t('common.error'), t('settings.logs.failedToDelete'));
+              console.error("Failed to delete logs:", error);
+              CustomAlert.alert(
+                t("common.error"),
+                t("settings.logs.failedToDelete"),
+              );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -275,54 +347,75 @@ const SettingsScreen = () => {
         }
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
-        <Text style={styles.headerTitle}>{t('settings.title')}</Text>
+        <Text style={styles.headerTitle}>{t("settings.title")}</Text>
       </ImageBackground>
       <ScrollView style={styles.container}>
         {/* User Profile */}
         {loading ? (
           <ActivityIndicator style={styles.profileCard} />
         ) : (
-          <TouchableOpacity style={styles.profileCard} activeOpacity={isCitizen ? 1 : 0.2} onPress={isCitizen ? undefined : () => router.push('/edit-profile')}>
+          <TouchableOpacity
+            style={styles.profileCard}
+            activeOpacity={isCitizen ? 1 : 0.2}
+            onPress={isCitizen ? undefined : () => router.push("/edit-profile")}
+          >
             <View style={styles.profileInfo}>
               <View style={styles.avatarContainer}>
                 <Text style={styles.avatarText}>
-                  {user?.first_name?.[0] || user?.username?.[0] || 'U'}
+                  {user?.first_name?.[0] || user?.username?.[0] || "U"}
                 </Text>
               </View>
               <View>
                 <Text style={[styles.profileName, { textAlign: "left" }]}>
-                  {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : t('common.user', 'User')}
+                  {user
+                    ? `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+                      user.username
+                    : t("common.user", "User")}
                 </Text>
-                <Text style={styles.profileEmail}>{isCitizen ? (user?.phone || '') : (user?.email || t('profile.noEmail'))}</Text>
+                <Text style={styles.profileEmail}>
+                  {isCitizen
+                    ? user?.phone
+                      ? "\u200E" + user.phone
+                      : ""
+                    : user?.email || t("profile.noEmail")}
+                </Text>
               </View>
             </View>
-            {!isCitizen && <Ionicons name={t('common.icons.chevronForward') as any} size={18} color={COLORS.textMuted} />}
+            {!isCitizen && (
+              <Ionicons
+                name={t("common.icons.chevronForward") as any}
+                size={18}
+                color={COLORS.textMuted}
+              />
+            )}
           </TouchableOpacity>
         )}
 
         {/* Options Section (email/password users only) */}
-        {!isCitizen && (<>
-        <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
-        <View style={styles.optionsContainer}>
-          <SettingsOption
-            label={t('settings.profile')}
-            icon="person-outline"
-            onPress={() => router.push('/edit-profile')}
-          />
-          {!isAdLogin && (
-            <SettingsOption
-              label={t('settings.changePassword')}
-              icon="lock-closed-outline"
-              onPress={() => router.push('/change-password')}
-            />
-          )}
-        </View>
-        </>)}
+        {!isCitizen && (
+          <>
+            <Text style={styles.sectionTitle}>{t("settings.profile")}</Text>
+            <View style={styles.optionsContainer}>
+              <SettingsOption
+                label={t("settings.profile")}
+                icon="person-outline"
+                onPress={() => router.push("/edit-profile")}
+              />
+              {!isAdLogin && (
+                <SettingsOption
+                  label={t("settings.changePassword")}
+                  icon="lock-closed-outline"
+                  onPress={() => router.push("/change-password")}
+                />
+              )}
+            </View>
+          </>
+        )}
 
-        <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+        <Text style={styles.sectionTitle}>{t("settings.language")}</Text>
         <View style={styles.optionsContainer}>
           <SettingsOption
-            label={t('settings.changeLanguage')}
+            label={t("settings.changeLanguage")}
             icon="language-outline"
             value={getCurrentLanguageName()}
             hasDropdown
@@ -330,53 +423,87 @@ const SettingsScreen = () => {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>{t('notifications.title')}</Text>
+        <Text style={styles.sectionTitle}>{t("notifications.title")}</Text>
         <View style={styles.optionsContainer}>
           <SettingsToggle
-            label={t('notifications.toggle')}
-            description={t('notifications.toggleDescription')}
+            label={t("notifications.toggle")}
+            description={t("notifications.toggleDescription")}
             icon="notifications-outline"
             value={notificationsEnabled}
             onValueChange={async (value) => {
               setNotificationsEnabled(value);
               try {
-                await AsyncStorage.setItem('notificationsEnabled', value.toString());
+                await AsyncStorage.setItem(
+                  "notificationsEnabled",
+                  value.toString(),
+                );
               } catch (error) {
-                console.error('Failed to save notification settings:', error);
+                console.error("Failed to save notification settings:", error);
               }
             }}
           />
         </View>
 
         {/* Log Buttons */}
-        <Text style={styles.sectionTitle}>{t('settings.diagnostics')}</Text>
+        <Text style={styles.sectionTitle}>{t("settings.diagnostics")}</Text>
         <View style={styles.logInfoContainer}>
           <View style={styles.logInfoRow}>
-            <Ionicons name="document-text-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>{t('settings.logs.fileSize')}</Text>
+            <Ionicons
+              name="document-text-outline"
+              size={18}
+              color={COLORS.textSecondary}
+            />
+            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>
+              {t("settings.logs.fileSize")}
+            </Text>
             <Text style={styles.logInfoValue}>{logFileSize}</Text>
           </View>
           <View style={styles.logInfoRow}>
-            <Ionicons name="albums-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>{t('settings.logs.status')}</Text>
-            <Text style={[styles.logInfoValue, { color: hasLogs ? COLORS.primary : COLORS.textMuted }]}>
-              {hasLogs ? t('settings.logs.available') : t('settings.logs.empty')}
+            <Ionicons
+              name="albums-outline"
+              size={18}
+              color={COLORS.textSecondary}
+            />
+            <Text style={[styles.logInfoLabel, { textAlign: "left" }]}>
+              {t("settings.logs.status")}
+            </Text>
+            <Text
+              style={[
+                styles.logInfoValue,
+                { color: hasLogs ? COLORS.primary : COLORS.textMuted },
+              ]}
+            >
+              {hasLogs
+                ? t("settings.logs.available")
+                : t("settings.logs.empty")}
             </Text>
           </View>
         </View>
         <View style={styles.logButtonsContainer}>
           <TouchableOpacity
-            style={[styles.logButton, (!hasLogs || sharingLogs) && styles.logButtonDisabled]}
+            style={[
+              styles.logButton,
+              (!hasLogs || sharingLogs) && styles.logButtonDisabled,
+            ]}
             onPress={handleShareLogs}
             disabled={!hasLogs || sharingLogs}
           >
             {sharingLogs ? (
               <ActivityIndicator size="small" color={COLORS.secondary} />
             ) : (
-              <Ionicons name="share-outline" size={20} color={hasLogs ? COLORS.secondary : COLORS.textMuted} />
+              <Ionicons
+                name="share-outline"
+                size={20}
+                color={hasLogs ? COLORS.secondary : COLORS.textMuted}
+              />
             )}
-            <Text style={[styles.logButtonText, (!hasLogs || sharingLogs) && styles.logButtonTextDisabled]}>
-              {t('settings.shareLogs')}
+            <Text
+              style={[
+                styles.logButtonText,
+                (!hasLogs || sharingLogs) && styles.logButtonTextDisabled,
+              ]}
+            >
+              {t("settings.shareLogs")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -384,9 +511,18 @@ const SettingsScreen = () => {
             onPress={handleDeleteLogs}
             disabled={!hasLogs}
           >
-            <Ionicons name="trash-outline" size={20} color={hasLogs ? COLORS.error : COLORS.textMuted} />
-            <Text style={[styles.logButtonText, { color: hasLogs ? COLORS.error : COLORS.textMuted }]}>
-              {t('settings.deleteLogs')}
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color={hasLogs ? COLORS.error : COLORS.textMuted}
+            />
+            <Text
+              style={[
+                styles.logButtonText,
+                { color: hasLogs ? COLORS.error : COLORS.textMuted },
+              ]}
+            >
+              {t("settings.deleteLogs")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -394,11 +530,13 @@ const SettingsScreen = () => {
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-          <Text style={styles.logoutButtonText}>{t('auth.logout')}</Text>
+          <Text style={styles.logoutButtonText}>{t("auth.logout")}</Text>
         </TouchableOpacity>
 
         {/* Version */}
-        <Text style={styles.versionText}>{t('settings.version')} {process.env.EXPO_PUBLIC_APP_VERSION}</Text>
+        <Text style={styles.versionText}>
+          {t("settings.version")} {process.env.EXPO_PUBLIC_APP_VERSION}
+        </Text>
       </ScrollView>
 
       {/* Language Selection Modal */}
@@ -414,27 +552,35 @@ const SettingsScreen = () => {
           onPress={() => setLanguageModalVisible(false)}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t('settings.changeLanguage')}</Text>
+            <Text style={styles.modalTitle}>
+              {t("settings.changeLanguage")}
+            </Text>
             {supportedLanguages.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
                 style={[
                   styles.languageOption,
-                  currentLang === lang.code && styles.languageOptionSelected
+                  currentLang === lang.code && styles.languageOptionSelected,
                 ]}
                 onPress={() => handleLanguageChange(lang.code)}
               >
                 <View style={styles.languageInfo}>
-                  <Text style={[
-                    styles.languageName,
-                    currentLang === lang.code && styles.languageNameSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.languageName,
+                      currentLang === lang.code && styles.languageNameSelected,
+                    ]}
+                  >
                     {lang.nativeName}
                   </Text>
                   <Text style={styles.languageNameEn}>{lang.name}</Text>
                 </View>
                 {currentLang === lang.code && (
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.secondary} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color={COLORS.secondary}
+                  />
                 )}
               </TouchableOpacity>
             ))}
@@ -442,12 +588,12 @@ const SettingsScreen = () => {
               style={styles.modalCancelButton}
               onPress={() => setLanguageModalVisible(false)}
             >
-              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
-    </View >
+    </View>
   );
 };
 
@@ -460,17 +606,17 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     color: COLORS.white,
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background
+    backgroundColor: COLORS.background,
   },
   profileCard: {
     backgroundColor: COLORS.card,
@@ -478,12 +624,12 @@ const styles = StyleSheet.create({
     margin: 20,
     marginBottom: 10,
     borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -494,26 +640,26 @@ const styles = StyleSheet.create({
     }),
   },
   profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   avatarContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: COLORS.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 15,
   },
   avatarText: {
     color: COLORS.white,
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   profileName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   profileEmail: {
@@ -523,22 +669,22 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.textSecondary,
     marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 10,
-    textTransform: 'uppercase',
-    textAlign: "left"
+    textTransform: "uppercase",
+    textAlign: "left",
   },
   optionsContainer: {
     backgroundColor: COLORS.card,
     marginHorizontal: 20,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
@@ -550,15 +696,15 @@ const styles = StyleSheet.create({
   },
   option: {
     padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   optionIcon: {
     marginRight: 12,
@@ -566,7 +712,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 16,
     color: COLORS.text,
-    textAlign: "left"
+    textAlign: "left",
   },
   optionDescription: {
     fontSize: 12,
@@ -574,8 +720,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   optionValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   optionValue: {
     marginRight: 10,
@@ -590,7 +736,7 @@ const styles = StyleSheet.create({
     padding: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
@@ -601,8 +747,8 @@ const styles = StyleSheet.create({
     }),
   },
   logInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
   },
   logInfoLabel: {
@@ -613,12 +759,12 @@ const styles = StyleSheet.create({
   },
   logInfoValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   logButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginHorizontal: 20,
     gap: 15,
   },
@@ -628,13 +774,13 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
@@ -649,7 +795,7 @@ const styles = StyleSheet.create({
   },
   logButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.secondary,
   },
   logButtonTextDisabled: {
@@ -661,20 +807,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     borderWidth: 1,
     borderColor: COLORS.error,
   },
   logoutButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.error,
   },
   versionText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginVertical: 30,
     color: COLORS.textMuted,
     fontSize: 14,
@@ -682,35 +828,35 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
-    width: '85%',
+    width: "85%",
     maxWidth: 400,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
     borderRadius: 10,
     marginBottom: 10,
     backgroundColor: COLORS.background,
   },
   languageOptionSelected: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderWidth: 1,
     borderColor: COLORS.secondary,
   },
@@ -719,9 +865,9 @@ const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
-    textAlign: "left"
+    textAlign: "left",
   },
   languageNameSelected: {
     color: COLORS.secondary,
@@ -730,17 +876,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
-    textAlign: "left"
+    textAlign: "left",
   },
   modalCancelButton: {
     marginTop: 10,
     padding: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalCancelText: {
     fontSize: 16,
     color: COLORS.textSecondary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
 
