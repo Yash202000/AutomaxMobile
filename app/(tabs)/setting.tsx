@@ -374,7 +374,9 @@ const SettingsScreen = () => {
                 </Text>
                 <Text style={styles.profileEmail}>
                   {isCitizen
-                    ? user?.phone || ""
+                    ? user?.phone
+                      ? "\u200E" + user.phone
+                      : ""
                     : user?.email || t("profile.noEmail")}
                 </Text>
               </View>
