@@ -1,4 +1,5 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { appendUnique, dedupeById } from "@/src/utils/dedupeById";
 import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { TicketListSkeleton } from "@/src/components/TicketListSkeleton";

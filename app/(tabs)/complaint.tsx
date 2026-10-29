@@ -1,4 +1,5 @@
 import { getComplaints, getComplaintStats } from '@/src/api/incidents';
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { TicketListSkeleton } from '@/src/components/TicketListSkeleton';
 import { useAuth } from '@/src/context/AuthContext';
@@ -204,7 +205,7 @@ const ComplaintsScreen = () => {
         const response = await getComplaints(params);
 
         if (response.success) {
-            setComplaints(append ? prev => [...prev, ...response.data] : response.data);
+            setComplaints(append ? prev => appendUnique(prev, response.data) : dedupeById(response.data));
             setPagination(response.pagination);
         } else {
             setError(response.error || t('errors.fetchFailed'));

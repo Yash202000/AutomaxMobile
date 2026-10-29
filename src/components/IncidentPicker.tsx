@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import {
     ActivityIndicator,
     FlatList,
@@ -83,7 +84,7 @@ const IncidentPicker = ({
                     location_id: i.location_id,
                 }));
 
-                setIncidents(prev => isFirstPage ? mapped : [...prev, ...mapped]);
+                setIncidents(prev => isFirstPage ? dedupeById(mapped) : appendUnique(prev, mapped));
                 setTotalPages(response.pagination?.total_pages ?? 1);
                 setPage(pageNum);
             }
