@@ -1285,11 +1285,36 @@ const IncidentDetailsScreen = () => {
         </AnimatedListItem>
 
         <AuthenticatedImageViewer
-          images={imageAttachments.map((att) => ({
-            id: att.id,
-            uri: `${baseURL}/attachments/${att.id}/preview`,
-            file_name: att.file_name,
-          }))}
+          images={imageAttachments.map((att) => {
+            const transition = att.transition_history_id
+              ? getHistoryById(att.transition_history_id)
+              : undefined;
+            const d = att.created_at ? new Date(att.created_at) : null;
+            const pad = (n: number) => String(n).padStart(2, "0");
+            return {
+              id: att.id,
+              uri: `${baseURL}/attachments/${att.id}/preview`,
+              file_name: att.file_name,
+              // Only attachments uploaded as part of a transition get details.
+              meta: transition
+                ? {
+                    status:
+                      (i18n.language === "ar" && transition.to_state?.name_ar) ||
+                      transition.to_state?.name ||
+                      undefined,
+                    // Attachments don't store their own GPS; use the incident's.
+                    coordinates:
+                      incident?.latitude != null && incident?.longitude != null
+                        ? `${incident.latitude.toFixed(6)}, ${incident.longitude.toFixed(6)}`
+                        : undefined,
+                    uploadedAt:
+                      d && !isNaN(d.getTime())
+                        ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                        : undefined,
+                  }
+                : undefined,
+            };
+          })}
           imageIndex={currentImageIndex}
           visible={isImageViewerVisible}
           onRequestClose={() => setImageViewerVisible(false)}

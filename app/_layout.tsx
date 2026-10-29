@@ -258,7 +258,7 @@ function RootLayoutNav() {
         <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
         <Stack.Screen name="query-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-query" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile'), headerTitle: '' }} />
+        <Stack.Screen name="edit-profile" options={{ title: t('settings.profile'), headerTitle: '' }} />
         <Stack.Screen name="change-password" options={{ title: t('settings.changePassword') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />

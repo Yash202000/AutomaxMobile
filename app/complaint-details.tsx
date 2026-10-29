@@ -167,13 +167,29 @@ const ComplaintDetailsScreen = () => {
     }, [fetchDetails])
   );
 
+  useEffect(() => {
+    return () => {
+      sound?.unloadAsync().catch(() => {});
+    };
+  }, [sound]);
+
   // Audio playback functions
   const playAudio = async (audioId: string) => {
     try {
       // Stop currently playing audio
       if (sound) {
-        await sound.unloadAsync();
+        await sound.unloadAsync().catch(() => {});
+        setSound(null);
       }
+
+      // iOS mutes playback with the silent switch and routes to the earpiece
+      // while the session is still in recording mode.
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
 
       const audioUrl = `${baseURL}/attachments/${audioId}/preview`;
       const { sound: newSound } = await Audio.Sound.createAsync(
@@ -181,8 +197,8 @@ const ComplaintDetailsScreen = () => {
         { shouldPlay: true },
         (status) => {
           if (status.isLoaded) {
-            setAudioPosition({ ...audioPosition, [audioId]: status.positionMillis });
-            setAudioDuration({ ...audioDuration, [audioId]: status.durationMillis || 0 });
+            setAudioPosition((prev) => ({ ...prev, [audioId]: status.positionMillis }));
+            setAudioDuration((prev) => ({ ...prev, [audioId]: status.durationMillis || 0 }));
             if (status.didJustFinish) {
               setPlayingAudioId(null);
             }

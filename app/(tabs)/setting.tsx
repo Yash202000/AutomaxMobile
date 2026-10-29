@@ -305,7 +305,7 @@ const SettingsScreen = () => {
         <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
         <View style={styles.optionsContainer}>
           <SettingsOption
-            label={t('settings.editProfile')}
+            label={t('settings.profile')}
             icon="person-outline"
             onPress={() => router.push('/edit-profile')}
           />

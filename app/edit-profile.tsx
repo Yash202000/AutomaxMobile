@@ -320,45 +320,24 @@ const EditProfileScreenContent = () => {
               }}
             >
               <Text style={{ fontSize: 22, fontWeight: "bold" }}>
-                {t("settings.editProfile")}
-              </Text>
-              <Text style={{ color: "#6c757d", fontWeight: "500" }}>
-                {t("settings.updateProfileInfo")}
+                {t("settings.profile")}
               </Text>
             </View>
             <CustomInput
               label={t("profile.firstName")}
               value={firstName}
-              onChangeText={setFirstName}
+              editable={false}
             />
             <CustomInput
               label={t("profile.lastName")}
               value={lastName}
-              onChangeText={setLastName}
-            />
-            <CustomInput
-              label={t("profile.enterYourEmail")}
-              value={email}
               editable={false}
             />
             <CustomInput
               label={t("profile.mobileNo")}
               value={phone}
-              onChangeText={(text) => {
-                setPhone(text);
-              }}
-              isVerified={mobileVerified && !isPhoneChanged}
-              actionButton={[
-                {
-                  id: "verify-btn",
-                  label: t("profile.verify"),
-                  onPress: handleStartVerify,
-                  show:
-                    !isPhoneChanged &&
-                    !mobileVerified &&
-                    (phone ? true : false),
-                },
-              ]}
+              editable={false}
+              isVerified={mobileVerified}
             />
             <CustomInput
               label={t("profile.roles")}
@@ -368,26 +347,10 @@ const EditProfileScreenContent = () => {
 
             {/* Placeholder to ensure content is not hidden by floating footer if any, 
                             though here footer is part of KAV */}
-            <View style={{ height: 100 }} />
+            <View style={{ height: 24 }} />
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              (saving || !hasChanges) && styles.disabledButton,
-            ]}
-            onPress={handleSave}
-            disabled={saving || !hasChanges}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveButtonText}>{t("profile.save")}</Text>
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
 
       {/* OTP Verification Modal */}

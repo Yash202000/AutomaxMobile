@@ -1,4 +1,5 @@
 import { getQueries, getQueryStats } from '@/src/api/incidents';
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { TicketListSkeleton } from '@/src/components/TicketListSkeleton';
 import { useAuth } from '@/src/context/AuthContext';
@@ -205,7 +206,7 @@ const QueriesScreen = () => {
             }
             const response = await getQueries(params);
             if (response.success) {
-                setQueries(append ? prev => [...prev, ...response.data] : response.data);
+                setQueries(append ? prev => appendUnique(prev, response.data) : dedupeById(response.data));
                 setPagination(response.pagination);
             } else {
                 setError(response.error || t('errors.fetchFailed'));
