@@ -850,7 +850,9 @@ const AddQueryScreen = () => {
 
   // Attachment options handler
   const showAttachmentOptions = () => {
-    if (Platform.OS === "ios") {
+    // iPad presents ActionSheetIOS as a popover that needs a real anchor view
+    // (a bad/missing one crashes), so iPad uses the in-app modal like Android.
+    if (Platform.OS === "ios" && !Platform.isPad) {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: [
