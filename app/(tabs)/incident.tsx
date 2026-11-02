@@ -1,5 +1,4 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
-import { appendUnique, dedupeById } from "@/src/utils/dedupeById";
 import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { TicketListSkeleton } from "@/src/components/TicketListSkeleton";
@@ -485,7 +484,7 @@ const IncidentsScreen = () => {
       sort_by: sortByUpdated ? "updated_at" : "created_at",
     };
     if (activeStateId) params.current_state_id = activeStateId.split(",");
-    if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
+    if (priority) params.priorities = priority.split(",").map((p) => parseInt(p));
     if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
     if (assignee_id) params.assignee_id = assignee_id.split(",");
     if (department_id) params.department_id = department_id.split(",");
@@ -494,7 +493,7 @@ const IncidentsScreen = () => {
     else if (treeSelectedIds.size > 0 && isViewerMode)
       params.classification_id = Array.from(treeSelectedIds);
     if (location_ids) params.location_id = location_ids.split(",");
-    if (source) params.source = source.split(",");
+    if (source) params.sources = source.split(",");
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
@@ -533,7 +532,6 @@ const IncidentsScreen = () => {
       if (!canViewAllIncidents() && !isViewerMode) {
         params.my_record = user?.id;
       }
-      console.log(params)
       const response = await getIncidents(params);
       if (response.success) {
         // De-duplicate by id: shifting pages / overlapping loads can return the

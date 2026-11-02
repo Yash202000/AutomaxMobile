@@ -399,6 +399,7 @@ const QueryDetailsScreen = () => {
               {query.lookup_values && query.lookup_values.length > 0 && (() => {
                 const grouped: Record<string, LookupValue[]> = {};
                 query.lookup_values.forEach((value: any) => {
+                if (isCitizen && String(value.category?.code || '').toUpperCase() === 'PRIORITY') return;
                   const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
                   if (!grouped[categoryName]) {
                     grouped[categoryName] = [];
@@ -448,7 +449,7 @@ const QueryDetailsScreen = () => {
                   // Extract all custom fields
                   Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
                     const ld = categories.find((c: any) => c.id === fieldData.category_id);
-                    if (key.startsWith('lookup:')) {
+                    if (key.startsWith('lookup:') && !(isCitizen && String(ld?.code || key.slice(7)).toUpperCase() === 'PRIORITY')) {
                       allFields.push({
                         key,
                         label: i18n.language === 'en' ? ld.name : (ld.name_ar || ld.name),

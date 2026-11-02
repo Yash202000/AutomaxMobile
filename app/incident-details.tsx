@@ -101,6 +101,7 @@ interface LookupValue {
     id: string;
     name: string;
     name_ar?: string;
+    code?: string;
     validation_rules?: string;
   };
 }
@@ -851,13 +852,13 @@ const IncidentDetailsScreen = () => {
                   >
                     {incident.converted_request?.incident_number
                       ? t("incidents.tapToViewRequest", {
-                          number: incident.converted_request.incident_number,
-                          defaultValue: `Tap to view ${incident.converted_request.incident_number}`,
-                        })
+                        number: incident.converted_request.incident_number,
+                        defaultValue: `Tap to view ${incident.converted_request.incident_number}`,
+                      })
                       : t(
-                          "incidents.tapToViewConverted",
-                          "Tap to view converted request",
-                        )}
+                        "incidents.tapToViewConverted",
+                        "Tap to view converted request",
+                      )}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
@@ -919,13 +920,13 @@ const IncidentDetailsScreen = () => {
                   >
                     {incident.source_incident?.incident_number
                       ? t("incidents.tapToViewSource", {
-                          number: incident.source_incident.incident_number,
-                          defaultValue: `Tap to view source ${incident.source_incident.incident_number}`,
-                        })
+                        number: incident.source_incident.incident_number,
+                        defaultValue: `Tap to view source ${incident.source_incident.incident_number}`,
+                      })
                       : t(
-                          "incidents.tapToViewSourceIncident",
-                          "Tap to view source incident",
-                        )}
+                        "incidents.tapToViewSourceIncident",
+                        "Tap to view source incident",
+                      )}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#22C55E" />
@@ -1006,10 +1007,10 @@ const IncidentDetailsScreen = () => {
                         <Text style={styles.infoValue}>
                           {visibleAssignees.length
                             ? visibleAssignees
-                                .map((a) =>
-                                  `${a.first_name || ""} ${a.last_name || ""}`.trim(),
-                                )
-                                .join(", ")
+                              .map((a) =>
+                                `${a.first_name || ""} ${a.last_name || ""}`.trim(),
+                              )
+                              .join(", ")
                             : t("common.na")}
                         </Text>
                       </View>
@@ -1065,6 +1066,7 @@ const IncidentDetailsScreen = () => {
                 (() => {
                   const grouped: Record<string, LookupValue[]> = {};
                   incident.lookup_values.forEach((value) => {
+                    if (isCitizen && String(value.category?.code || '').toUpperCase() === 'PRIORITY') return;
                     const categoryName =
                       (i18n.language === "en"
                         ? value.category?.name
@@ -1137,7 +1139,7 @@ const IncidentDetailsScreen = () => {
                         const ld = categories.find(
                           (c: any) => c.id === fieldData.category_id,
                         );
-                        if (key.startsWith("lookup:")) {
+                        if (key.startsWith("lookup:") && !(isCitizen && String(ld?.code || key.slice(7)).toUpperCase() === 'PRIORITY')) {
                           allFields.push({
                             key,
                             label:
@@ -1298,20 +1300,20 @@ const IncidentDetailsScreen = () => {
               // Only attachments uploaded as part of a transition get details.
               meta: transition
                 ? {
-                    status:
-                      (i18n.language === "ar" && transition.to_state?.name_ar) ||
-                      transition.to_state?.name ||
-                      undefined,
-                    // Attachments don't store their own GPS; use the incident's.
-                    coordinates:
-                      incident?.latitude != null && incident?.longitude != null
-                        ? `${incident.latitude.toFixed(6)}, ${incident.longitude.toFixed(6)}`
-                        : undefined,
-                    uploadedAt:
-                      d && !isNaN(d.getTime())
-                        ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-                        : undefined,
-                  }
+                  status:
+                    (i18n.language === "ar" && transition.to_state?.name_ar) ||
+                    transition.to_state?.name ||
+                    undefined,
+                  // Attachments don't store their own GPS; use the incident's.
+                  coordinates:
+                    incident?.latitude != null && incident?.longitude != null
+                      ? `${incident.latitude.toFixed(6)}, ${incident.longitude.toFixed(6)}`
+                      : undefined,
+                  uploadedAt:
+                    d && !isNaN(d.getTime())
+                      ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                      : undefined,
+                }
                 : undefined,
             };
           })}
@@ -1428,8 +1430,8 @@ const IncidentDetailsScreen = () => {
                     {incident.reporter?.first_name
                       ? `${incident.reporter.first_name} ${incident.reporter.last_name || ""}`
                       : incident.reporter?.username ||
-                        incident.reporter_name ||
-                        t("common.unknown", "Unknown")}
+                      incident.reporter_name ||
+                      t("common.unknown", "Unknown")}
                   </Text>
                   {(incident.reporter_email || incident.reporter?.email) && (
                     <Text style={styles.reporterEmail}>
@@ -1591,7 +1593,7 @@ const IncidentDetailsScreen = () => {
                             <View style={styles.fromBadge}>
                               <Text style={styles.fromBadgeText}>
                                 {i18n.language === "ar" &&
-                                item.from_state?.name_ar
+                                  item.from_state?.name_ar
                                   ? item.from_state?.name_ar
                                   : item.from_state.name}
                               </Text>
@@ -1604,7 +1606,7 @@ const IncidentDetailsScreen = () => {
                             <View style={styles.toBadge}>
                               <Text style={styles.toBadgeText}>
                                 {i18n.language === "ar" &&
-                                item.to_state?.name_ar
+                                  item.to_state?.name_ar
                                   ? item.to_state?.name_ar
                                   : item.to_state.name}
                               </Text>

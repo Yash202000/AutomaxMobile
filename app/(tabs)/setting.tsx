@@ -13,7 +13,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as Updates from "expo-updates";
 import { t } from "i18next";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -368,8 +368,8 @@ const SettingsScreen = () => {
               <View>
                 <Text style={[styles.profileName, { textAlign: "left" }]}>
                   {user
-                    ? `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-                      user.username
+                    ? [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" ") ||
+                    user.username
                     : t("common.user", "User")}
                 </Text>
                 <Text style={styles.profileEmail}>

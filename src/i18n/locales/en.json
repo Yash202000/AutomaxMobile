@@ -626,6 +626,7 @@
     }
   },
   "profile": {
+    "middleName": "Middle Name",
     "firstName": "First Name",
     "lastName": "Last Name",
     "email": "Email",

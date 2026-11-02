@@ -165,7 +165,7 @@ const ComplaintsScreen = () => {
     const buildParams = (page: number) => {
         const params: Record<string, any> = { page, limit: 20 };
         if (activeStateId) params.current_state_id = activeStateId;
-        if (priority) params.priority = parseInt(priority);
+        if (priority) params.priorities = parseInt(priority);
         if (severity) params.severity = parseInt(severity);
         if (assignee_id) params.assignee_id = assignee_id;
         if (department_id) params.department_id = department_id.split(",");

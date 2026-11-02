@@ -94,6 +94,7 @@ const EditProfileScreenContent = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
   const [originalFirstName, setOriginalFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [originalLastName, setOriginalLastName] = useState("");
@@ -125,6 +126,7 @@ const EditProfileScreenContent = () => {
         if (response.success) {
           const {
             first_name,
+            middle_name,
             last_name,
             email,
             phone,
@@ -133,6 +135,7 @@ const EditProfileScreenContent = () => {
           } = response.data;
           setData(response.data);
           setFirstName(first_name || "");
+          setMiddleName(middle_name || "");
           setOriginalFirstName(first_name || "");
           setLastName(last_name || "");
           setOriginalLastName(last_name || "");
@@ -328,6 +331,13 @@ const EditProfileScreenContent = () => {
               value={firstName}
               editable={false}
             />
+            {middleName ? (
+              <CustomInput
+                label={t("profile.middleName")}
+                value={middleName}
+                editable={false}
+              />
+            ) : null}
             <CustomInput
               label={t("profile.lastName")}
               value={lastName}
