@@ -1041,7 +1041,9 @@ const AddIncidentScreen = () => {
       return;
     }
 
-    if (Platform.OS === "ios") {
+    // iPad presents ActionSheetIOS as a popover that needs a real anchor view
+    // (a bad/missing one crashes), so iPad uses the in-app modal like Android.
+    if (Platform.OS === "ios" && !Platform.isPad) {
       const options = ["Cancel", "Take Photo", "Choose from Gallery"];
       // Choose File is still disabled — not wired to the permission check below.
       // options.push('Choose File');
@@ -1051,7 +1053,6 @@ const AddIncidentScreen = () => {
           options,
           cancelButtonIndex: 0,
           title: t("common.selectOption"),
-          anchor: 1,
         },
         (buttonIndex) => {
           const selected = options[buttonIndex];
