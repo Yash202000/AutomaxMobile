@@ -1,4 +1,5 @@
 import { baseURL } from '@/src/api/client';
+import { useAuth } from '@/src/context/AuthContext';
 import { getAvailableTransitions, getIncidentById } from '@/src/api/incidents';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
@@ -60,6 +61,7 @@ interface LookupValue {
     id: string;
     name: string;
     name_ar?: string;
+    code?: string;
   };
 }
 
@@ -81,6 +83,7 @@ const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
 );
 
 const RequestDetailsScreen = () => {
+  const { isCitizen } = useAuth();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -313,6 +316,7 @@ const RequestDetailsScreen = () => {
             {request.lookup_values && request.lookup_values.length > 0 && (() => {
               const grouped: Record<string, LookupValue[]> = {};
               request.lookup_values.forEach((value: LookupValue) => {
+                if (isCitizen && String(value.category?.code || '').toUpperCase() === 'PRIORITY') return;
                 const categoryName = value.category?.name || 'Other';
                 if (!grouped[categoryName]) {
                   grouped[categoryName] = [];
@@ -361,7 +365,7 @@ const RequestDetailsScreen = () => {
 
                 // Extract all custom fields
                 Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
-                  if (key.startsWith('lookup:')) {
+                  if (key.startsWith('lookup:') && !(isCitizen && key.slice(7).toUpperCase() === 'PRIORITY')) {
                     allFields.push({
                       key,
                       label: fieldData.label || key.replace('lookup:', ''),

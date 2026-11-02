@@ -658,6 +658,8 @@ const AddQueryScreen = () => {
       if (field.startsWith("lookup:")) {
         const categoryCode = field.replace("lookup:", "");
         const category = lookupCategories.find((c) => c.code === categoryCode);
+        // Citizens never see the Priority field, so it can't block submission.
+        if (isCitizen && categoryCode.toUpperCase() === "PRIORITY") continue;
         if (category && !lookupValues[category.id]) {
           newErrors[field] = `${category.name} is required`;
         }
@@ -1296,6 +1298,19 @@ const AddQueryScreen = () => {
     }
     // Add lookup values if any selected
     const selectedLookupIds = Object.values(lookupValues).filter(Boolean);
+    // Citizens can't pick a priority; submit the middle (normal) one by default.
+    if (isCitizen) {
+      const priorityCategory = lookupCategories.find(
+        (c) => c.code?.toUpperCase() === "PRIORITY",
+      );
+      if (priorityCategory && !lookupValues[priorityCategory.id]) {
+        const active = (priorityCategory.values || [])
+          .filter((v: any) => v.is_active)
+          .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        const fallback = active[Math.floor((active.length - 1) / 2)];
+        if (fallback) selectedLookupIds.push(fallback.id);
+      }
+    }
     if (selectedLookupIds.length > 0) {
       queryData.lookup_value_ids = selectedLookupIds;
     }
@@ -1507,6 +1522,10 @@ const AddQueryScreen = () => {
                 // Only show if required by workflow
                 if (!isRequired) return null;
 
+                // Priority is not a citizen decision.
+                if (isCitizen && category.code?.toUpperCase() === "PRIORITY")
+                  return null;
+
                 const options = (category.values || [])
                   .filter((v) => v.is_active)
                   .map((v) => ({
@@ -1568,7 +1587,7 @@ const AddQueryScreen = () => {
                   {isFieldRequired("severity") && (
                     <View
                       style={
-                        isFieldRequired("priority")
+                        isFieldRequired("priority") && !isCitizen
                           ? styles.halfWidth
                           : styles.fullWidth
                       }
