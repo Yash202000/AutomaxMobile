@@ -229,6 +229,11 @@ export const createIncident = async (incidentData: any) => {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
       details: errorData?.details,
+      // Backend returns 409 (key "duplicate_incident") only when the same user
+      // already has an open incident with the same classification + location.
+      isDuplicate:
+        error.response?.status === 409 ||
+        errorData?.error_code === "DUPLICATE_INCIDENT",
     };
   }
 };

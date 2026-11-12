@@ -36,6 +36,7 @@
     "loading": "Loading...",
     "recording": "Recording",
     "error": "Error",
+    "note": "Note",
     "retry": "Retry",
     "failedToLoad": "Failed to load",
     "cancel": "Cancel",
