@@ -35,6 +35,7 @@ interface iCustomInputProps {
     show: boolean;
   }[];
   isVerified?: boolean;
+  forceLTR?: boolean;
 }
 
 const CustomInput = ({
@@ -44,6 +45,7 @@ const CustomInput = ({
   editable = true,
   actionButton,
   isVerified,
+  forceLTR,
 }: iCustomInputProps) => {
   const isRTL = I18nManager.isRTL;
   return (
@@ -66,6 +68,8 @@ const CustomInput = ({
             !editable && styles.disabledInput,
             isRTL && styles.textRTL,
             { textAlign: i18n.language === "ar" ? "right" : "left" },
+            // Keep numbers like "+919500307796" left-to-right in RTL layouts
+            forceLTR && { writingDirection: "ltr" },
           ]}
           value={value}
           onChangeText={onChangeText}
@@ -347,6 +351,7 @@ const EditProfileScreenContent = () => {
               label={t("profile.mobileNo")}
               value={phone}
               editable={false}
+              forceLTR
               isVerified={mobileVerified}
             />
             <CustomInput

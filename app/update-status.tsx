@@ -1624,23 +1624,6 @@ const UpdateStatusModal = () => {
                   ]}
                 />
               ))}
-              {transitionSteps.length === 0 && (
-                <View
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 5,
-                    backgroundColor: "#E6E7E8",
-                    width: "100%",
-                    alignItems: "center",
-                    borderRadius: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <Text style={{ color: "#888" }}>
-                    {t("common.noStepsConfigured")}
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
         )}
@@ -1671,7 +1654,7 @@ const UpdateStatusModal = () => {
                         { textAlign: "left" },
                       ]}
                     >
-                      {trans.transition.name}
+                      {i18n.language === 'ar' && trans.transition.name_ar ? trans.transition.name_ar : trans.transition.name}
                     </Text>
                     {trans.transition.to_state && (
                       <View style={styles.transitionCardStateRow}>
