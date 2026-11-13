@@ -1,10 +1,27 @@
 import { ldapLogin, sendOtp } from "@/src/api/auth";
 import apiClient from "@/src/api/client";
 import { getSettings } from "@/src/api/common";
+import {
+  isValidNationalId,
+  NAFATH_ERROR,
+  nafathApi,
+  nafathErrorOf,
+  NATIONAL_ID_LENGTH,
+  type NafathApproved,
+  type NafathPending,
+} from "@/src/api/nafath";
 import { CustomAlert } from "@/src/components/CustomAlert";
+import {
+  NafathApproval,
+  type NafathFailure,
+} from "@/src/components/NafathApproval";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
-import { checkConnectivity, showNoInternetAlert } from "@/src/utils/networkStatus";
+import { crashLogger } from "@/src/utils/crashLogger";
+import {
+  checkConnectivity,
+  showNoInternetAlert,
+} from "@/src/utils/networkStatus";
 import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
@@ -22,7 +39,6 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   StatusBar,
@@ -62,8 +78,12 @@ const LoginScreen = () => {
     enableCitizenLogin ? "citizen" : "employee",
   );
   const [loginMethod, setLoginMethod] = useState<
-    "email" | "ad" | "phone" | "sso"
+    "email" | "ad" | "phone" | "nafath"
   >("email");
+  const [nafathPending, setNafathPending] = useState<NafathPending | null>(
+    null,
+  );
+  const [nafathNoEmployee, setNafathNoEmployee] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [adUsername, setAdUsername] = useState("");
   const [adPassword, setAdPassword] = useState("");
@@ -105,6 +125,7 @@ const LoginScreen = () => {
   const trimmedCitizenMiddleName = citizenMiddleName.trim();
   const trimmedCitizenLastName = citizenLastName.trim();
   const trimmedNationalId = nationalId.trim();
+  const isNationalIdValid = isValidNationalId(trimmedNationalId);
   const citizenPhoneDigits = phoneNumber.replace(/\D/g, "");
   const hasCitizenPhoneMinDigits =
     citizenPhoneDigits.length >= MOBILE_PHONE_MIN_DIGITS;
@@ -122,8 +143,8 @@ const LoginScreen = () => {
         ? !email || !password
         : loginMethod === "ad"
           ? !adUsername || !adPassword
-          : loginMethod === "sso"
-            ? !trimmedNationalId
+          : loginMethod === "nafath"
+            ? !isNationalIdValid
             : !phoneNumber));
   const isButtonDimmed =
     loading ||
@@ -133,8 +154,8 @@ const LoginScreen = () => {
         ? !email || !password
         : loginMethod === "ad"
           ? !adUsername || !adPassword
-          : loginMethod === "sso"
-            ? !trimmedNationalId
+          : loginMethod === "nafath"
+            ? !isNationalIdValid
             : !phoneNumber);
 
   useEffect(() => {
@@ -314,7 +335,7 @@ const LoginScreen = () => {
 
     const isEmail = loginMethod === "email";
     const isAd = loginMethod === "ad";
-    const isSso = loginMethod === "sso";
+    const isNafath = loginMethod === "nafath";
 
     if (isAd) {
       // AD (LDAP) Login Logic
@@ -343,44 +364,29 @@ const LoginScreen = () => {
       return;
     }
 
-    if (isSso) {
-      if (!trimmedNationalId) {
-        setError(t("auth.nationalIdRequired", "Please enter your national ID"));
+    if (isNafath) {
+      if (!isNationalIdValid) {
+        setError(
+          t("auth.nationalIdInvalid", "National ID must be exactly 10 digits"),
+        );
         return;
       }
 
       setLoading(true);
+      setNafathNoEmployee(false);
       try {
-        const response = await apiClient.post("/auth/sso/login", {
-          national_id: trimmedNationalId,
-        });
-
-        if (response.data?.success && response.data.data?.token) {
-          const { token, refresh_token, validation_url } = response.data.data;
-          await SecureStore.setItemAsync("loginMethod", "sso");
-          const loggedInUser = await login(token, refresh_token);
-
-          if (validation_url) {
-            await Linking.openURL(validation_url);
-          } else {
-            await navigateAfterLogin(loggedInUser, router, {
-              enforcePhoneVerification: false,
-              otpChannel: otpViaWhatsapp ? "whatsapp" : "sms",
-            });
-          }
+        const response = await nafathApi.start(trimmedNationalId);
+        if (response.success && response.data) {
+          setNafathPending(response.data);
         } else {
-          setError(
-            response.data?.error ||
-              response.data?.message ||
-              t("auth.loginError"),
-          );
+          handleNafathFailure({
+            code: response.error_code,
+            message: response.error,
+            network: false,
+          });
         }
       } catch (err: any) {
-        const remoteError =
-          err.response?.data?.error || err.response?.data?.message;
-        setError(
-          typeof remoteError === "string" ? remoteError : t("auth.loginError"),
-        );
+        handleNafathFailure(nafathErrorOf(err));
       } finally {
         setLoading(false);
       }
@@ -514,6 +520,98 @@ const LoginScreen = () => {
     }
   };
 
+  // Records a Nafath login attempt. The National ID is masked (last 4 digits).
+  const logNafathAttempt = (
+    result: string,
+    extra: Record<string, unknown> = {},
+  ) => {
+    const id = trimmedNationalId;
+    crashLogger
+      .logInfo("Nafath login attempt", {
+        result,
+        national_id:
+          id.length > 4 ? "*".repeat(id.length - 4) + id.slice(-4) : "****",
+        time: new Date().toISOString(),
+        ...extra,
+      })
+      .catch(() => {});
+  };
+
+  // Maps a Nafath failure to the message shown on the Nafath tab.
+  const handleNafathFailure = (failure: NafathFailure) => {
+    setNafathPending(null);
+    logNafathAttempt("failed", {
+      code: failure.code ?? (failure.network ? "network" : "unknown"),
+    });
+    switch (failure.code) {
+      case NAFATH_ERROR.rejected:
+        setError(t("auth.nafathRejected", "Login was rejected"));
+        return;
+      case NAFATH_ERROR.timeout:
+      case NAFATH_ERROR.restart:
+        setError(t("auth.nafathExpired", "Request expired. Try again."));
+        return;
+      case NAFATH_ERROR.notRegistered:
+        setNafathNoEmployee(true);
+        setError(
+          t(
+            "auth.nafathNoEmployeeAccount",
+            "No employee account found for this ID",
+          ),
+        );
+        return;
+      case NAFATH_ERROR.invalidId:
+        setError(
+          t("auth.nationalIdInvalid", "National ID must be exactly 10 digits"),
+        );
+        return;
+      case NAFATH_ERROR.disabled:
+      case NAFATH_ERROR.unavailable:
+        setError(
+          t(
+            "auth.nafathUnavailable",
+            "Nafath is unavailable right now. Please try again.",
+          ),
+        );
+        return;
+    }
+    if (failure.network) {
+      setError(
+        t(
+          "auth.nafathNoInternet",
+          "No internet connection. Check your connection and try again.",
+        ),
+      );
+      return;
+    }
+    setError(failure.message || t("auth.loginError"));
+  };
+
+  const handleNafathApproved = async (data: NafathApproved) => {
+    await SecureStore.setItemAsync("loginMethod", "nafath");
+    const loggedInUser = await login(data.token, data.refresh_token);
+    logNafathAttempt("success", { user_id: loggedInUser?.id ?? data.user?.id });
+    setNafathPending(null);
+    // Nafath approval is already the second factor: no OTP, straight home.
+    await navigateAfterLogin(loggedInUser, router, {
+      enforcePhoneVerification: false,
+      skipTotpCheck: true,
+    });
+  };
+
+  const handleNafathCancel = () => {
+    setNafathPending(null);
+    setError("");
+    logNafathAttempt("cancelled");
+  };
+
+  // Unregistered National ID: continue with the citizen login.
+  const switchToCitizenLogin = () => {
+    setLoginType("citizen");
+    setLoginMethod("phone");
+    resetLoginFields();
+  };
+
   // Strips anything that isn't an English or Arabic letter as the user types,
   // so spaces, digits, and special characters can never be entered.
   const sanitizeCitizenNamePart = (value: string) =>
@@ -554,6 +652,8 @@ const LoginScreen = () => {
     setShowAdPassword(false);
     setError("");
     setFieldErrors({});
+    setNafathPending(null);
+    setNafathNoEmployee(false);
   };
 
   const handlePhoneNumberChange = (value: string) => {
@@ -782,7 +882,7 @@ const LoginScreen = () => {
             )}
 
             {/* Login Type Tabs — visible only when citizen login is enabled */}
-            {enableCitizenLogin && (
+            {enableCitizenLogin && !nafathPending && (
               <View style={styles.tabContainer}>
                 <TouchableOpacity
                   style={[
@@ -828,746 +928,834 @@ const LoginScreen = () => {
             )}
 
             {/* Employee method pill — Email / AD / Phone, only when citizen login is also enabled */}
-            {loginType === "employee" && enableCitizenLogin && (
-              <View style={styles.methodPillContainer}>
-                {(["email", "ad", "sso"] as const).map((method) => (
-                  <TouchableOpacity
-                    key={method}
-                    style={[
-                      styles.methodPillButton,
-                      loginMethod === method && styles.methodPillActive,
-                    ]}
-                    onPress={() => {
-                      setLoginMethod(method);
-                      resetLoginFields();
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.methodPillText,
-                        loginMethod === method && styles.methodPillTextActive,
-                      ]}
-                    >
-                      {method === "email"
-                        ? t("auth.loginEmail", "Email")
-                        : method === "ad"
-                          ? t("auth.adLogin", "AD Login")
-                          : method === "sso"
-                            ? t("auth.ssoLogin", "SSO")
-                            : t("auth.loginMobile", "Phone")}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* Input Fields Container */}
-            <View style={styles.inputsContainer}>
-              {loginType === "citizen" ? (
-                <>
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.firstName", "First Name")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: fieldErrors.firstName
-                            ? "#E74C3C"
-                            : firstNameBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="person-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t(
-                          "auth.firstNamePlaceholder",
-                          "Enter your first name",
-                        )}
-                        placeholderTextColor="#999"
-                        value={citizenFirstName}
-                        onChangeText={handleCitizenFirstNameChange}
-                        onFocus={handleFirstNameFocus}
-                        onBlur={handleFirstNameBlur}
-                        autoCapitalize="words"
-                        autoCorrect={false}
-                      />
-                    </Animated.View>
-                    {fieldErrors.firstName ? (
-                      <Text style={styles.fieldErrorText}>
-                        {fieldErrors.firstName}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.middleName", "Middle Name")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: fieldErrors.middleName
-                            ? "#E74C3C"
-                            : middleNameBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="person-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t(
-                          "auth.middleNamePlaceholder",
-                          "Enter your middle name",
-                        )}
-                        placeholderTextColor="#999"
-                        value={citizenMiddleName}
-                        onChangeText={handleCitizenMiddleNameChange}
-                        onFocus={handleMiddleNameFocus}
-                        onBlur={handleMiddleNameBlur}
-                        autoCapitalize="words"
-                        autoCorrect={false}
-                      />
-                    </Animated.View>
-                    {fieldErrors.middleName ? (
-                      <Text style={styles.fieldErrorText}>
-                        {fieldErrors.middleName}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.lastName", "Last Name")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: fieldErrors.lastName
-                            ? "#E74C3C"
-                            : lastNameBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="person-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t(
-                          "auth.lastNamePlaceholder",
-                          "Enter your last name",
-                        )}
-                        placeholderTextColor="#999"
-                        value={citizenLastName}
-                        onChangeText={handleCitizenLastNameChange}
-                        onFocus={handleLastNameFocus}
-                        onBlur={handleLastNameBlur}
-                        autoCapitalize="words"
-                        autoCorrect={false}
-                      />
-                    </Animated.View>
-                    {fieldErrors.lastName ? (
-                      <Text style={styles.fieldErrorText}>
-                        {fieldErrors.lastName}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.mobileNumber", "Mobile Number")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: fieldErrors.phone
-                            ? "#E74C3C"
-                            : phoneBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="call-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t("auth.mobilePlaceholder", {
-                          defaultValue: "12345678",
-                        })}
-                        placeholderTextColor="#999"
-                        value={phoneNumber}
-                        onChangeText={handlePhoneNumberChange}
-                        onFocus={handlePhoneFocus}
-                        onBlur={handlePhoneBlur}
-                        keyboardType="phone-pad"
-                        maxLength={INTERNATIONAL_PHONE_MAX_DIGITS + 1}
-                      />
-                    </Animated.View>
-                    {fieldErrors.phone ? (
-                      <Text style={styles.fieldErrorText}>
-                        {fieldErrors.phone}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  {/* OTP Channel Selection */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.otpChannel")}
-                    </Text>
-                    <View style={styles.channelContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.channelButton,
-                          otpChannel === "sms" && styles.activeChannel,
-                        ]}
-                        onPress={() => setOtpChannel("sms")}
-                      >
-                        <Ionicons
-                          name="chatbubble-ellipses-outline"
-                          size={20}
-                          color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
-                        />
-                        <Text
-                          style={[
-                            styles.channelText,
-                            otpChannel === "sms" && styles.activeChannelText,
-                          ]}
-                        >
-                          {t("auth.sms")}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.channelButton,
-                          otpChannel === "whatsapp" && styles.activeChannel,
-                        ]}
-                        onPress={() => setOtpChannel("whatsapp")}
-                      >
-                        <Ionicons
-                          name="logo-whatsapp"
-                          size={20}
-                          color={otpChannel === "whatsapp" ? "#2EC4B6" : "#666"}
-                        />
-                        <Text
-                          style={[
-                            styles.channelText,
-                            otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
-                          ]}
-                        >
-                          {t("auth.whatsapp")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </>
-              ) : loginMethod === "ad" ? (
-                /* AD (LDAP) Login */
-                <>
-                  {/* Username Input */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.adUsername", "Username")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        { borderColor: adUsernameBorderColor, borderWidth: 2 },
-                      ]}
-                    >
-                      <Ionicons
-                        name="person-circle-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t(
-                          "auth.adUsernamePlaceholder",
-                          "domain\\username or username",
-                        )}
-                        placeholderTextColor="#999"
-                        value={adUsername}
-                        onChangeText={setAdUsername}
-                        onFocus={() =>
-                          Animated.spring(adUsernameFocusAnim, {
-                            toValue: 1,
-                            useNativeDriver: false,
-                          }).start()
-                        }
-                        onBlur={() =>
-                          Animated.spring(adUsernameFocusAnim, {
-                            toValue: 0,
-                            useNativeDriver: false,
-                          }).start()
-                        }
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                    </Animated.View>
-                  </View>
-
-                  {/* AD Password Input */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.password")}
-                    </Text>
-                    <View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: isADPasswordFocused
-                            ? "#2EC4B6"
-                            : "#E5E5E5",
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="lock-closed-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t("auth.passwordPlaceholder", "••••••••")}
-                        placeholderTextColor="#999"
-                        secureTextEntry={!showAdPassword}
-                        value={adPassword}
-                        onChangeText={setAdPassword}
-                        onFocus={() => setADPasswordFocused(true)}
-                        onBlur={() => setADPasswordFocused(false)}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity
-                        style={styles.eyeButton}
-                        onPress={() => setShowAdPassword(!showAdPassword)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name={
-                            showAdPassword ? "eye-off-outline" : "eye-outline"
-                          }
-                          size={20}
-                          color="#666"
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* AD badge */}
-                  <View style={styles.adBadgeRow}>
-                    <Ionicons
-                      name="shield-checkmark-outline"
-                      size={14}
-                      color="#6366F1"
-                    />
-                    <Text style={styles.adBadgeText}>
-                      {t(
-                        "auth.adDescription",
-                        "Sign in with your Active Directory credentials",
-                      )}
-                    </Text>
-                  </View>
-                </>
-              ) : loginMethod === "sso" ? (
-                <View style={styles.inputWrapper}>
-                  <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                    {t("auth.nationalId", "National ID")}
-                  </Text>
-                  <Animated.View
-                    style={[
-                      styles.inputContainer,
-                      {
-                        borderColor: nationalIdBorderColor,
-                        borderWidth: 2,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="id-card-outline"
-                      size={20}
-                      color="#666"
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      style={[
-                        styles.textInput,
-                        {
-                          textAlign: currentLang === "ar" ? "right" : "left",
-                        },
-                      ]}
-                      placeholder={t(
-                        "auth.nationalIdPlaceholder",
-                        "Enter your national ID",
-                      )}
-                      placeholderTextColor="#999"
-                      value={nationalId}
-                      onChangeText={setNationalId}
-                      onFocus={() =>
-                        Animated.spring(nationalIdFocusAnim, {
-                          toValue: 1,
-                          useNativeDriver: false,
-                        }).start()
-                      }
-                      onBlur={() =>
-                        Animated.spring(nationalIdFocusAnim, {
-                          toValue: 0,
-                          useNativeDriver: false,
-                        }).start()
-                      }
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      returnKeyType="done"
-                      onSubmitEditing={handleLogin}
-                    />
-                  </Animated.View>
-                </View>
-              ) : loginMethod === "email" ? (
-                <>
-                  {/* Email Input */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.email")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: emailBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="mail-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t(
-                          "auth.emailPlaceholder",
-                          "user@example.com",
-                        )}
-                        placeholderTextColor="#999"
-                        value={email}
-                        onChangeText={setEmail}
-                        onFocus={handleEmailFocus}
-                        onBlur={handleEmailBlur}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                    </Animated.View>
-                  </View>
-
-                  {/* Password Input */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.password")}
-                    </Text>
-                    <View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: isEmailPasswordFocused
-                            ? "#2EC4B6"
-                            : "#E5E5E5",
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="lock-closed-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t("auth.passwordPlaceholder", "••••••••")}
-                        placeholderTextColor="#999"
-                        secureTextEntry={!showPassword}
-                        value={password}
-                        onChangeText={setPassword}
-                        onFocus={() => setIsEmailPasswordFocused(true)}
-                        onBlur={() => setIsEmailPasswordFocused(false)}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity
-                        style={styles.eyeButton}
-                        onPress={() => setShowPassword(!showPassword)}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name={
-                            showPassword ? "eye-off-outline" : "eye-outline"
-                          }
-                          size={20}
-                          color="#666"
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </>
-              ) : (
-                /* Phone Number Input */
-                <>
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.phone")}
-                    </Text>
-                    <Animated.View
-                      style={[
-                        styles.inputContainer,
-                        {
-                          borderColor: phoneBorderColor,
-                          borderWidth: 2,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="call-outline"
-                        size={20}
-                        color="#666"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            textAlign: currentLang === "ar" ? "right" : "left",
-                          },
-                        ]}
-                        placeholder={t("auth.phonePlaceholder", "05xxxxxxxx")}
-                        placeholderTextColor="#999"
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        onFocus={handlePhoneFocus}
-                        onBlur={handlePhoneBlur}
-                        keyboardType="phone-pad"
-                      />
-                    </Animated.View>
-                  </View>
-
-                  {/* OTP Channel Selection */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel]}>
-                      {t("auth.otpChannel")}
-                    </Text>
-                    <View style={styles.channelContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.channelButton,
-                          otpChannel === "sms" && styles.activeChannel,
-                        ]}
-                        onPress={() => setOtpChannel("sms")}
-                      >
-                        <Ionicons
-                          name="chatbubble-ellipses-outline"
-                          size={20}
-                          color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
-                        />
-                        <Text
-                          style={[
-                            styles.channelText,
-                            otpChannel === "sms" && styles.activeChannelText,
-                          ]}
-                        >
-                          {t("auth.sms")}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.channelButton,
-                          otpChannel === "whatsapp" && styles.activeChannel,
-                        ]}
-                        onPress={() => setOtpChannel("whatsapp")}
-                      >
-                        <Ionicons
-                          name="logo-whatsapp"
-                          size={20}
-                          color={otpChannel === "whatsapp" ? "#2EC4B6" : "#666"}
-                        />
-                        <Text
-                          style={[
-                            styles.channelText,
-                            otpChannel === "whatsapp" &&
-                              styles.activeChannelText,
-                          ]}
-                        >
-                          {t("auth.whatsapp")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </>
-              )}
-
-              {/* 2FA channel preference — only relevant when the server has
-                  totp_enabled on, and only for methods that don't already
-                  have their own OTP channel picker (phone login has one). */}
-              {loginType === "employee" &&
-                loginMethod !== "phone" &&
-                totpEnabled && (
-                  <View style={styles.inputWrapper}>
-                    <Text style={[styles.inputLabel, { textAlign: "left" }]}>
-                      {t("auth.twoFactorAuth", "2FA")}
-                    </Text>
+            {loginType === "employee" &&
+              enableCitizenLogin &&
+              !nafathPending && (
+                <View style={styles.methodPillContainer}>
+                  {(["email", "ad", "nafath"] as const).map((method) => (
                     <TouchableOpacity
-                      style={styles.checkboxRow}
-                      onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
-                      activeOpacity={0.7}
+                      key={method}
+                      style={[
+                        styles.methodPillButton,
+                        loginMethod === method && styles.methodPillActive,
+                      ]}
+                      onPress={() => {
+                        setLoginMethod(method);
+                        resetLoginFields();
+                      }}
                     >
-                      <View
+                      <Text
                         style={[
-                          styles.checkbox,
-                          otpViaWhatsapp && styles.checkboxChecked,
+                          styles.methodPillText,
+                          loginMethod === method && styles.methodPillTextActive,
                         ]}
                       >
-                        {otpViaWhatsapp && (
-                          <Ionicons name="checkmark" size={14} color="#fff" />
-                        )}
-                      </View>
-                      <Ionicons
-                        name="logo-whatsapp"
-                        size={18}
-                        color="#666"
-                        style={{ marginLeft: 8, marginRight: 6 }}
-                      />
-                      <Text style={styles.checkboxLabel}>
-                        {t("auth.sendOtpViaWhatsapp", "Send OTP via WhatsApp")}
+                        {method === "email"
+                          ? t("auth.loginEmail", "Email")
+                          : method === "ad"
+                            ? t("auth.adLogin", "AD Login")
+                            : method === "nafath"
+                              ? t("auth.nafathLogin", "Nafath")
+                              : t("auth.loginMobile", "Phone")}
                       </Text>
                     </TouchableOpacity>
-                  </View>
-                )}
-
-              {/* Forgot Password - Only for email login */}
-              {loginType === "employee" && loginMethod === "email" && (
-                <TouchableOpacity
-                  onPress={() => router.push("/forgot-password")}
-                  style={[
-                    styles.forgotPasswordContainer,
-                    {
-                      alignSelf:
-                        currentLang === "ar" ? "flex-start" : "flex-end",
-                    },
-                  ]}
-                >
-                  <Text style={styles.forgotPasswordText}>
-                    {t("auth.forgotPassword")}
-                  </Text>
-                </TouchableOpacity>
+                  ))}
+                </View>
               )}
-            </View>
 
-            {/* Login Button */}
-            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-              <TouchableOpacity
-                activeOpacity={1}
-                onPressIn={handleButtonPressIn}
-                onPressOut={handleButtonPressOut}
-                onPress={handleLogin}
-                disabled={isLoginDisabled}
-                style={styles.loginButton}
-              >
-                <LinearGradient
-                  colors={
-                    isButtonDimmed
-                      ? ["#CCCCCC", "#AAAAAA"]
-                      : ["#2EC4B6", "#20B2A3"]
-                  }
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginButtonGradient}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" size="small" />
+            {nafathPending ? (
+              <NafathApproval
+                initial={nafathPending}
+                onApproved={handleNafathApproved}
+                onFailed={handleNafathFailure}
+                onCancel={handleNafathCancel}
+              />
+            ) : (
+              <>
+                {/* Input Fields Container */}
+                <View style={styles.inputsContainer}>
+                  {loginType === "citizen" ? (
+                    <>
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.firstName", "First Name")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: fieldErrors.firstName
+                                ? "#E74C3C"
+                                : firstNameBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.firstNamePlaceholder",
+                              "Enter your first name",
+                            )}
+                            placeholderTextColor="#999"
+                            value={citizenFirstName}
+                            onChangeText={handleCitizenFirstNameChange}
+                            onFocus={handleFirstNameFocus}
+                            onBlur={handleFirstNameBlur}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                          />
+                        </Animated.View>
+                        {fieldErrors.firstName ? (
+                          <Text style={styles.fieldErrorText}>
+                            {fieldErrors.firstName}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.middleName", "Middle Name")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: fieldErrors.middleName
+                                ? "#E74C3C"
+                                : middleNameBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.middleNamePlaceholder",
+                              "Enter your middle name",
+                            )}
+                            placeholderTextColor="#999"
+                            value={citizenMiddleName}
+                            onChangeText={handleCitizenMiddleNameChange}
+                            onFocus={handleMiddleNameFocus}
+                            onBlur={handleMiddleNameBlur}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                          />
+                        </Animated.View>
+                        {fieldErrors.middleName ? (
+                          <Text style={styles.fieldErrorText}>
+                            {fieldErrors.middleName}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.lastName", "Last Name")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: fieldErrors.lastName
+                                ? "#E74C3C"
+                                : lastNameBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.lastNamePlaceholder",
+                              "Enter your last name",
+                            )}
+                            placeholderTextColor="#999"
+                            value={citizenLastName}
+                            onChangeText={handleCitizenLastNameChange}
+                            onFocus={handleLastNameFocus}
+                            onBlur={handleLastNameBlur}
+                            autoCapitalize="words"
+                            autoCorrect={false}
+                          />
+                        </Animated.View>
+                        {fieldErrors.lastName ? (
+                          <Text style={styles.fieldErrorText}>
+                            {fieldErrors.lastName}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.mobileNumber", "Mobile Number")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: fieldErrors.phone
+                                ? "#E74C3C"
+                                : phoneBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="call-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t("auth.mobilePlaceholder", {
+                              defaultValue: "12345678",
+                            })}
+                            placeholderTextColor="#999"
+                            value={phoneNumber}
+                            onChangeText={handlePhoneNumberChange}
+                            onFocus={handlePhoneFocus}
+                            onBlur={handlePhoneBlur}
+                            keyboardType="phone-pad"
+                            maxLength={INTERNATIONAL_PHONE_MAX_DIGITS + 1}
+                          />
+                        </Animated.View>
+                        {fieldErrors.phone ? (
+                          <Text style={styles.fieldErrorText}>
+                            {fieldErrors.phone}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      {/* OTP Channel Selection */}
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.otpChannel")}
+                        </Text>
+                        <View style={styles.channelContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.channelButton,
+                              otpChannel === "sms" && styles.activeChannel,
+                            ]}
+                            onPress={() => setOtpChannel("sms")}
+                          >
+                            <Ionicons
+                              name="chatbubble-ellipses-outline"
+                              size={20}
+                              color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
+                            />
+                            <Text
+                              style={[
+                                styles.channelText,
+                                otpChannel === "sms" &&
+                                  styles.activeChannelText,
+                              ]}
+                            >
+                              {t("auth.sms")}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.channelButton,
+                              otpChannel === "whatsapp" && styles.activeChannel,
+                            ]}
+                            onPress={() => setOtpChannel("whatsapp")}
+                          >
+                            <Ionicons
+                              name="logo-whatsapp"
+                              size={20}
+                              color={
+                                otpChannel === "whatsapp" ? "#2EC4B6" : "#666"
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.channelText,
+                                otpChannel === "whatsapp" &&
+                                  styles.activeChannelText,
+                              ]}
+                            >
+                              {t("auth.whatsapp")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  ) : loginMethod === "ad" ? (
+                    /* AD (LDAP) Login */
+                    <>
+                      {/* Username Input */}
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.adUsername", "Username")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: adUsernameBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-circle-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.adUsernamePlaceholder",
+                              "domain\\username or username",
+                            )}
+                            placeholderTextColor="#999"
+                            value={adUsername}
+                            onChangeText={setAdUsername}
+                            onFocus={() =>
+                              Animated.spring(adUsernameFocusAnim, {
+                                toValue: 1,
+                                useNativeDriver: false,
+                              }).start()
+                            }
+                            onBlur={() =>
+                              Animated.spring(adUsernameFocusAnim, {
+                                toValue: 0,
+                                useNativeDriver: false,
+                              }).start()
+                            }
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                          />
+                        </Animated.View>
+                      </View>
+
+                      {/* AD Password Input */}
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.password")}
+                        </Text>
+                        <View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: isADPasswordFocused
+                                ? "#2EC4B6"
+                                : "#E5E5E5",
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="lock-closed-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.passwordPlaceholder",
+                              "••••••••",
+                            )}
+                            placeholderTextColor="#999"
+                            secureTextEntry={!showAdPassword}
+                            value={adPassword}
+                            onChangeText={setAdPassword}
+                            onFocus={() => setADPasswordFocused(true)}
+                            onBlur={() => setADPasswordFocused(false)}
+                            autoCapitalize="none"
+                          />
+                          <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowAdPassword(!showAdPassword)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name={
+                                showAdPassword
+                                  ? "eye-off-outline"
+                                  : "eye-outline"
+                              }
+                              size={20}
+                              color="#666"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* AD badge */}
+                      <View style={styles.adBadgeRow}>
+                        <Ionicons
+                          name="shield-checkmark-outline"
+                          size={14}
+                          color="#6366F1"
+                        />
+                        <Text style={styles.adBadgeText}>
+                          {t(
+                            "auth.adDescription",
+                            "Sign in with your Active Directory credentials",
+                          )}
+                        </Text>
+                      </View>
+                    </>
+                  ) : loginMethod === "nafath" ? (
+                    <View style={styles.inputWrapper}>
+                      <Text style={[styles.inputLabel, { textAlign: "left" }]}>
+                        {t("auth.nationalId", "National ID")}
+                      </Text>
+                      <Animated.View
+                        style={[
+                          styles.inputContainer,
+                          {
+                            borderColor: nationalIdBorderColor,
+                            borderWidth: 2,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name="id-card-outline"
+                          size={20}
+                          color="#666"
+                          style={styles.inputIcon}
+                        />
+                        <TextInput
+                          style={[
+                            styles.textInput,
+                            {
+                              textAlign:
+                                currentLang === "ar" ? "right" : "left",
+                            },
+                          ]}
+                          placeholder={t(
+                            "auth.nationalIdPlaceholder",
+                            "Enter your national ID",
+                          )}
+                          placeholderTextColor="#999"
+                          value={nationalId}
+                          onChangeText={(value) => {
+                            setNationalId(
+                              value
+                                .replace(/\D/g, "")
+                                .slice(0, NATIONAL_ID_LENGTH),
+                            );
+                            if (error) setError("");
+                            setNafathNoEmployee(false);
+                          }}
+                          keyboardType="number-pad"
+                          inputMode="numeric"
+                          maxLength={NATIONAL_ID_LENGTH}
+                          onFocus={() =>
+                            Animated.spring(nationalIdFocusAnim, {
+                              toValue: 1,
+                              useNativeDriver: false,
+                            }).start()
+                          }
+                          onBlur={() =>
+                            Animated.spring(nationalIdFocusAnim, {
+                              toValue: 0,
+                              useNativeDriver: false,
+                            }).start()
+                          }
+                          autoCorrect={false}
+                          returnKeyType="done"
+                          onSubmitEditing={() => {
+                            if (isNationalIdValid) handleLogin();
+                          }}
+                        />
+                      </Animated.View>
+                    </View>
+                  ) : loginMethod === "email" ? (
+                    <>
+                      {/* Email Input */}
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.email")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: emailBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="mail-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.emailPlaceholder",
+                              "user@example.com",
+                            )}
+                            placeholderTextColor="#999"
+                            value={email}
+                            onChangeText={setEmail}
+                            onFocus={handleEmailFocus}
+                            onBlur={handleEmailBlur}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                          />
+                        </Animated.View>
+                      </View>
+
+                      {/* Password Input */}
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.password")}
+                        </Text>
+                        <View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: isEmailPasswordFocused
+                                ? "#2EC4B6"
+                                : "#E5E5E5",
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="lock-closed-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.passwordPlaceholder",
+                              "••••••••",
+                            )}
+                            placeholderTextColor="#999"
+                            secureTextEntry={!showPassword}
+                            value={password}
+                            onChangeText={setPassword}
+                            onFocus={() => setIsEmailPasswordFocused(true)}
+                            onBlur={() => setIsEmailPasswordFocused(false)}
+                            autoCapitalize="none"
+                          />
+                          <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons
+                              name={
+                                showPassword ? "eye-off-outline" : "eye-outline"
+                              }
+                              size={20}
+                              color="#666"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
                   ) : (
-                    <Text style={styles.loginButtonText}>
-                      {loginType === "citizen" || loginMethod === "phone"
-                        ? t("auth.sendOTP")
-                        : loginMethod === "ad"
-                          ? t("auth.adLoginButton", "Sign In with AD")
-                          : loginMethod === "sso"
-                            ? t("auth.ssoLoginButton", "Sign In with SSO")
-                            : t("auth.login")}
-                    </Text>
+                    /* Phone Number Input */
+                    <>
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.phone")}
+                        </Text>
+                        <Animated.View
+                          style={[
+                            styles.inputContainer,
+                            {
+                              borderColor: phoneBorderColor,
+                              borderWidth: 2,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="call-outline"
+                            size={20}
+                            color="#666"
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={[
+                              styles.textInput,
+                              {
+                                textAlign:
+                                  currentLang === "ar" ? "right" : "left",
+                              },
+                            ]}
+                            placeholder={t(
+                              "auth.phonePlaceholder",
+                              "05xxxxxxxx",
+                            )}
+                            placeholderTextColor="#999"
+                            value={phoneNumber}
+                            onChangeText={setPhoneNumber}
+                            onFocus={handlePhoneFocus}
+                            onBlur={handlePhoneBlur}
+                            keyboardType="phone-pad"
+                          />
+                        </Animated.View>
+                      </View>
+
+                      {/* OTP Channel Selection */}
+                      <View style={styles.inputWrapper}>
+                        <Text style={[styles.inputLabel]}>
+                          {t("auth.otpChannel")}
+                        </Text>
+                        <View style={styles.channelContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.channelButton,
+                              otpChannel === "sms" && styles.activeChannel,
+                            ]}
+                            onPress={() => setOtpChannel("sms")}
+                          >
+                            <Ionicons
+                              name="chatbubble-ellipses-outline"
+                              size={20}
+                              color={otpChannel === "sms" ? "#2EC4B6" : "#666"}
+                            />
+                            <Text
+                              style={[
+                                styles.channelText,
+                                otpChannel === "sms" &&
+                                  styles.activeChannelText,
+                              ]}
+                            >
+                              {t("auth.sms")}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.channelButton,
+                              otpChannel === "whatsapp" && styles.activeChannel,
+                            ]}
+                            onPress={() => setOtpChannel("whatsapp")}
+                          >
+                            <Ionicons
+                              name="logo-whatsapp"
+                              size={20}
+                              color={
+                                otpChannel === "whatsapp" ? "#2EC4B6" : "#666"
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.channelText,
+                                otpChannel === "whatsapp" &&
+                                  styles.activeChannelText,
+                              ]}
+                            >
+                              {t("auth.whatsapp")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
                   )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
+
+                  {/* 2FA channel preference — only relevant when the server has
+                  totp_enabled on, and only for methods that don't already
+                  have their own OTP channel picker (phone login has one). */}
+                  {loginType === "employee" &&
+                    loginMethod !== "phone" &&
+                    loginMethod !== "nafath" &&
+                    totpEnabled && (
+                      <View style={styles.inputWrapper}>
+                        <Text
+                          style={[styles.inputLabel, { textAlign: "left" }]}
+                        >
+                          {t("auth.twoFactorAuth", "2FA")}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.checkboxRow}
+                          onPress={() => setOtpViaWhatsapp(!otpViaWhatsapp)}
+                          activeOpacity={0.7}
+                        >
+                          <View
+                            style={[
+                              styles.checkbox,
+                              otpViaWhatsapp && styles.checkboxChecked,
+                            ]}
+                          >
+                            {otpViaWhatsapp && (
+                              <Ionicons
+                                name="checkmark"
+                                size={14}
+                                color="#fff"
+                              />
+                            )}
+                          </View>
+                          <Ionicons
+                            name="logo-whatsapp"
+                            size={18}
+                            color="#666"
+                            style={{ marginLeft: 8, marginRight: 6 }}
+                          />
+                          <Text style={styles.checkboxLabel}>
+                            {t(
+                              "auth.sendOtpViaWhatsapp",
+                              "Send OTP via WhatsApp",
+                            )}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                  {/* Forgot Password - Only for email login */}
+                  {loginType === "employee" && loginMethod === "email" && (
+                    <TouchableOpacity
+                      onPress={() => router.push("/forgot-password")}
+                      style={[
+                        styles.forgotPasswordContainer,
+                        {
+                          alignSelf:
+                            currentLang === "ar" ? "flex-start" : "flex-end",
+                        },
+                      ]}
+                    >
+                      <Text style={styles.forgotPasswordText}>
+                        {t("auth.forgotPassword")}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Login Button */}
+                <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                  <TouchableOpacity
+                    activeOpacity={1}
+                    onPressIn={handleButtonPressIn}
+                    onPressOut={handleButtonPressOut}
+                    onPress={handleLogin}
+                    disabled={isLoginDisabled}
+                    style={styles.loginButton}
+                  >
+                    <LinearGradient
+                      colors={
+                        isButtonDimmed
+                          ? ["#CCCCCC", "#AAAAAA"]
+                          : ["#2EC4B6", "#20B2A3"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.loginButtonGradient}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.loginButtonText}>
+                          {loginType === "citizen" || loginMethod === "phone"
+                            ? t("auth.sendOTP")
+                            : loginMethod === "ad"
+                              ? t("auth.adLoginButton", "Sign In with AD")
+                              : loginMethod === "nafath"
+                                ? t(
+                                    "auth.nafathLoginButton",
+                                    "Sign In with Nafath",
+                                  )
+                                : t("auth.login")}
+                        </Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+              </>
+            )}
 
             {/* Error Message */}
             {error ? (
@@ -1578,6 +1766,19 @@ const LoginScreen = () => {
                 </Text>
               </Animated.View>
             ) : null}
+
+            {/* Nafath: National ID has no employee account — log in as a citizen */}
+            {nafathNoEmployee && enableCitizenLogin && !nafathPending && (
+              <TouchableOpacity
+                onPress={switchToCitizenLogin}
+                style={styles.citizenFallbackButton}
+                accessibilityRole="button"
+              >
+                <Text style={styles.citizenFallbackText}>
+                  {t("auth.continueAsCitizen", "Continue as citizen")}
+                </Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         </ScrollView>
 
@@ -1820,6 +2021,20 @@ const styles = StyleSheet.create({
   channelContainer: {
     flexDirection: "row",
     gap: 12,
+  },
+  citizenFallbackButton: {
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: "#2EC4B6",
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#F0FFFE",
+  },
+  citizenFallbackText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#159A8D",
   },
   channelButton: {
     flex: 1,

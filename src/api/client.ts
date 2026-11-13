@@ -70,6 +70,7 @@ apiClient.interceptors.request.use(
     const publicEndpoints = [
       "/auth/login",
       "/auth/sso/login",
+      "/auth/nafath/",
       "/auth/register",
       "/auth/forgot-password",
       "/auth/verify-reset-otp",
@@ -163,7 +164,13 @@ apiClient.interceptors.response.use(
             typeof originalRequest.data === "string"
               ? originalRequest.data
               : JSON.stringify(originalRequest.data);
-          errorDetails.requestData = dataStr.substring(0, 500); // Limit to 500 chars
+          errorDetails.requestData = dataStr
+            .replace(
+              /("national_id"\s*:\s*")(\d*)(\d{4})"/g,
+              (_m: string, key: string, head: string, tail: string) =>
+                `${key}${"*".repeat(head.length)}${tail}"`,
+            )
+            .substring(0, 500); // Limit to 500 chars
         } catch (e) {
           errorDetails.requestData = "Unable to stringify request data";
         }
@@ -220,6 +227,8 @@ apiClient.interceptors.response.use(
     if (
       originalRequest.url?.includes("/auth/login") ||
       originalRequest.url?.includes("/auth/sso/login") ||
+      // Nafath login 401s mean the login request expired, not the session.
+      originalRequest.url?.includes("/auth/nafath/") ||
       originalRequest.url?.includes("/ldap/login")
     ) {
       return Promise.reject(error);
