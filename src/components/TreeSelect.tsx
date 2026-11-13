@@ -1,6 +1,6 @@
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { t } from 'i18next';
-import React, { useCallback, useState } from 'react';
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { t } from "i18next";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -10,10 +10,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import i18n from '../i18n';
+} from "react-native";
+import i18n from "../i18n";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export interface TreeNode {
   id: string;
@@ -52,7 +52,7 @@ interface TreeSelectProps {
   error?: string;
   leafOnly?: boolean;
   placeholder?: string;
-  iconType?: 'classification' | 'location' | 'default';
+  iconType?: "classification" | "location" | "default";
   disabled?: boolean; // When true, the picker is read-only and cannot be opened
   // Multi-select props
   multiSelect?: boolean;
@@ -71,7 +71,7 @@ export interface TreeItemProps {
   // Multi-select
   multiSelect?: boolean;
   selectedIds?: Set<string>;
-  iconType?: 'classification' | 'location' | 'default';
+  iconType?: "classification" | "location" | "default";
 }
 
 export const TreeItem: React.FC<TreeItemProps> = ({
@@ -84,15 +84,18 @@ export const TreeItem: React.FC<TreeItemProps> = ({
   selectedId,
   multiSelect,
   selectedIds,
-  iconType = 'default',
+  iconType = "default",
 }) => {
   if (!node || !node.id || !node.name) return null;
 
-  const hasChildren = node.children && Array.isArray(node.children) && node.children.length > 0;
+  const hasChildren =
+    node.children && Array.isArray(node.children) && node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
   const isLeaf = !hasChildren;
   const canSelect = leafOnly ? isLeaf : true;
-  const isSelected = multiSelect ? (selectedIds?.has(node.id) ?? false) : selectedId === node.id;
+  const isSelected = multiSelect
+    ? (selectedIds?.has(node.id) ?? false)
+    : selectedId === node.id;
 
   return (
     <View>
@@ -110,9 +113,16 @@ export const TreeItem: React.FC<TreeItemProps> = ({
       >
         <View style={styles.treeItemContent}>
           {hasChildren ? (
-            <TouchableOpacity onPress={() => onToggle(node.id)} style={styles.expandButton}>
+            <TouchableOpacity
+              onPress={() => onToggle(node.id)}
+              style={styles.expandButton}
+            >
               <Ionicons
-                name={isExpanded ? 'chevron-down' : t('common.icons.chevronForward') as any}
+                name={
+                  isExpanded
+                    ? "chevron-down"
+                    : (t("common.icons.chevronForward") as any)
+                }
                 size={18}
                 color="#666"
               />
@@ -122,37 +132,56 @@ export const TreeItem: React.FC<TreeItemProps> = ({
           )}
           <Ionicons
             name={
-              iconType === 'classification'
-                ? (hasChildren ? 'layers' : 'alert-circle')
-                : iconType === 'location'
-                  ? (hasChildren ? 'map' : 'location')
-                  : (hasChildren ? 'folder' : 'document')
+              iconType === "classification"
+                ? hasChildren
+                  ? "layers"
+                  : "alert-circle"
+                : iconType === "location"
+                  ? hasChildren
+                    ? "map"
+                    : "location"
+                  : hasChildren
+                    ? "folder"
+                    : "document"
             }
             size={18}
             color={
-              iconType === 'classification'
-                ? (hasChildren ? '#8B5CF6' : '#EC4899')
-                : iconType === 'location'
-                  ? (hasChildren ? '#10B981' : '#3B82F6')
-                  : (hasChildren ? '#F39C12' : '#3498DB')
+              iconType === "classification"
+                ? hasChildren
+                  ? "#8B5CF6"
+                  : "#EC4899"
+                : iconType === "location"
+                  ? hasChildren
+                    ? "#10B981"
+                    : "#3B82F6"
+                  : hasChildren
+                    ? "#F39C12"
+                    : "#3498DB"
             }
             style={styles.nodeIcon}
           />
           <View style={styles.textContainer}>
             <Text
               style={[
-                { textAlign: 'left' },
+                { textAlign: "left" },
                 styles.treeItemText,
                 !canSelect && styles.treeItemTextDisabled,
                 isSelected && styles.treeItemTextSelected,
               ]}
               numberOfLines={1}
             >
-              {i18n.language === 'ar' && node?.name_ar ? node?.name_ar : node.name}
+              {i18n.language === "ar" && node?.name_ar
+                ? node?.name_ar
+                : node.name}
             </Text>
             {node?.count !== undefined && node?.count !== null && (
               <View style={[styles.badge, isSelected && styles.badgeSelected]}>
-                <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    isSelected && styles.badgeTextSelected,
+                  ]}
+                >
                   {node.count}
                 </Text>
               </View>
@@ -160,11 +189,16 @@ export const TreeItem: React.FC<TreeItemProps> = ({
           </View>
         </View>
         {multiSelect && canSelect ? (
-          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-            {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
+          <View
+            style={[styles.checkbox, isSelected && styles.checkboxSelected]}
+          >
+            {isSelected && (
+              <Ionicons name="checkmark" size={14} color="white" />
+            )}
           </View>
         ) : (
-          !multiSelect && isSelected && (
+          !multiSelect &&
+          isSelected && (
             <Ionicons name="checkmark-circle" size={20} color="#2EC4B6" />
           )
         )}
@@ -204,7 +238,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   error,
   leafOnly = true,
   placeholder,
-  iconType = 'default',
+  iconType = "default",
   disabled = false,
   multiSelect = false,
   selectedIds: selectedIdsProp = [],
@@ -229,7 +263,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
       }
       return null;
     },
-    []
+    [],
   );
 
   // Find node by id
@@ -244,25 +278,32 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
       }
       return null;
     },
-    []
+    [],
   );
 
   // Build the full hierarchy path for a node as a breadcrumb string
   // e.g. "Country › State › City"
   const getHierarchyPath = useCallback(
-    (nodes: TreeNode[], targetId: string, ancestors: string[] = []): string | null => {
+    (
+      nodes: TreeNode[],
+      targetId: string,
+      ancestors: string[] = [],
+    ): string | null => {
       for (const node of nodes) {
         if (node.id === targetId) {
-          return [...ancestors, node.name].join(' › ');
+          return [...ancestors, node.name].join(" › ");
         }
         if (node.children && node.children.length > 0) {
-          const result = getHierarchyPath(node.children, targetId, [...ancestors, node.name]);
+          const result = getHierarchyPath(node.children, targetId, [
+            ...ancestors,
+            node.name,
+          ]);
           if (result) return result;
         }
       }
       return null;
     },
-    []
+    [],
   );
 
   // Sync single-select selectedId from valueId (preferred) or by name search fallback
@@ -299,17 +340,24 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   }, [multiSelect, selectedIdsProp]);
 
   const findParentPath = useCallback(
-    (nodes: TreeNode[], targetId: string, path: string[] = []): string[] | null => {
+    (
+      nodes: TreeNode[],
+      targetId: string,
+      path: string[] = [],
+    ): string[] | null => {
       for (const node of nodes) {
         if (node.id === targetId) return path;
         if (node.children) {
-          const result = findParentPath(node.children, targetId, [...path, node.id]);
+          const result = findParentPath(node.children, targetId, [
+            ...path,
+            node.id,
+          ]);
           if (result) return result;
         }
       }
       return null;
     },
-    []
+    [],
   );
 
   const expandParents = useCallback(
@@ -323,7 +371,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
         });
       }
     },
-    [data, findParentPath]
+    [data, findParentPath],
   );
 
   const handleToggle = useCallback((id: string) => {
@@ -357,9 +405,9 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
           const idsToToggle = getAllNodeIds(node);
 
           if (isSelected) {
-            idsToToggle.forEach(id => newSet.delete(id));
+            idsToToggle.forEach((id) => newSet.delete(id));
           } else {
-            idsToToggle.forEach(id => newSet.add(id));
+            idsToToggle.forEach((id) => newSet.add(id));
           }
           return newSet;
         });
@@ -369,7 +417,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
         setModalVisible(false);
       }
     },
-    [leafOnly, onSelect, multiSelect]
+    [leafOnly, onSelect, multiSelect],
   );
 
   const handleClear = useCallback(() => {
@@ -393,19 +441,32 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   }, [multiSelect, onMultiSelect, pendingIds, data, findNodeById]);
 
   const expandAll = useCallback(() => {
-    const getAllIds = (nodes: TreeNode[], depth = 0, maxDepth = 10): string[] => {
+    const getAllIds = (
+      nodes: TreeNode[],
+      depth = 0,
+      maxDepth = 10,
+    ): string[] => {
       let ids: string[] = [];
       if (!Array.isArray(nodes) || depth >= maxDepth) return ids;
       for (const node of nodes) {
-        if (node && node.id && node.children && Array.isArray(node.children) && node.children.length > 0) {
+        if (
+          node &&
+          node.id &&
+          node.children &&
+          Array.isArray(node.children) &&
+          node.children.length > 0
+        ) {
           ids.push(node.id);
-          if (depth < maxDepth - 1) ids = ids.concat(getAllIds(node.children, depth + 1, maxDepth));
+          if (depth < maxDepth - 1)
+            ids = ids.concat(getAllIds(node.children, depth + 1, maxDepth));
         }
       }
       return ids;
     };
     const allIds = getAllIds(data);
-    setExpandedIds(new Set(allIds.length > 500 ? allIds.slice(0, 500) : allIds));
+    setExpandedIds(
+      new Set(allIds.length > 500 ? allIds.slice(0, 500) : allIds),
+    );
   }, [data]);
 
   const collapseAll = useCallback(() => {
@@ -415,7 +476,7 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   // Display text for the trigger button
   // Prefer valueId for hierarchy path (avoids name-collision); fall back to name search
   const resolvedNodeId = !multiSelect
-    ? (valueId || findNodeByName(data, value)?.id)
+    ? valueId || findNodeByName(data, value)?.id
     : undefined;
 
   const hierarchyPath = resolvedNodeId
@@ -426,8 +487,9 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     ? selectedIdsProp.length === 0
       ? placeholder || label
       : selectedIdsProp.length === 1
-        ? (findNodeById(data, selectedIdsProp[0])?.name || t('filter.nSelected', { count: 1 }))
-        : t('filter.nSelected', { count: selectedIdsProp.length })
+        ? findNodeById(data, selectedIdsProp[0])?.name ||
+          t("filter.nSelected", { count: 1 })
+        : t("filter.nSelected", { count: selectedIdsProp.length })
     : hierarchyPath || value || placeholder || label;
 
   const hasValue = multiSelect ? selectedIdsProp.length > 0 : !!value;
@@ -435,11 +497,21 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
   return (
     <>
       <TouchableOpacity
-        style={[styles.dropdown, error && styles.dropdownError, disabled && styles.dropdownDisabled]}
+        style={[
+          styles.dropdown,
+          error && styles.dropdownError,
+          disabled && styles.dropdownDisabled,
+        ]}
         onPress={disabled ? undefined : handleOpen}
         activeOpacity={disabled ? 1 : 0.7}
       >
-        <Text style={[styles.dropdownText, !hasValue && styles.placeholderText, { textAlign: 'left' }]}>
+        <Text
+          style={[
+            styles.dropdownText,
+            !hasValue && styles.placeholderText,
+            { textAlign: "left" },
+          ]}
+        >
           {displayText}
         </Text>
         {loading ? (
@@ -461,16 +533,25 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => multiSelect ? handleDone() : setModalVisible(false)}
+          onPress={() => (multiSelect ? handleDone() : setModalVisible(false))}
         >
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+          <View
+            style={styles.modalContent}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {label}{multiSelect && pendingIds.size > 0 ? ` (${pendingIds.size})` : ''}
+                {label}
+                {multiSelect && pendingIds.size > 0
+                  ? ` (${pendingIds.size})`
+                  : ""}
               </Text>
               {multiSelect ? (
-                <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
-                  <Text style={styles.doneButtonText}>{t('common.done')}</Text>
+                <TouchableOpacity
+                  style={styles.doneButton}
+                  onPress={handleDone}
+                >
+                  <Text style={styles.doneButtonText}>{t("common.done")}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -481,26 +562,53 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
 
             {/* Toolbar */}
             <View style={styles.toolbar}>
-              <TouchableOpacity style={styles.toolbarButton} onPress={expandAll}>
+              <TouchableOpacity
+                style={styles.toolbarButton}
+                onPress={expandAll}
+              >
                 <Ionicons name="expand" size={16} color="#666" />
-                <Text style={styles.toolbarButtonText}>{t('common.expandAll')}</Text>
+                <Text style={styles.toolbarButtonText}>
+                  {t("common.expandAll")}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.toolbarButton} onPress={collapseAll}>
+              <TouchableOpacity
+                style={styles.toolbarButton}
+                onPress={collapseAll}
+              >
                 <Ionicons name="contract" size={16} color="#666" />
-                <Text style={styles.toolbarButtonText}>{t('common.collapseAll')}</Text>
+                <Text style={styles.toolbarButtonText}>
+                  {t("common.collapseAll")}
+                </Text>
               </TouchableOpacity>
-              {multiSelect && (pendingIds.size > 0 || (!multiSelect && !!value)) && (
-                <TouchableOpacity style={styles.toolbarButton} onPress={handleClear}>
-                  <Ionicons name="close-circle-outline" size={16} color="#E74C3C" />
-                  <Text style={[styles.toolbarButtonText, { color: '#E74C3C' }]}>{t('common.clear')}</Text>
-                </TouchableOpacity>
-              )}
+              {multiSelect &&
+                (pendingIds.size > 0 || (!multiSelect && !!value)) && (
+                  <TouchableOpacity
+                    style={styles.toolbarButton}
+                    onPress={handleClear}
+                  >
+                    <Ionicons
+                      name="close-circle-outline"
+                      size={16}
+                      color="#E74C3C"
+                    />
+                    <Text
+                      style={[styles.toolbarButtonText, { color: "#E74C3C" }]}
+                    >
+                      {t("common.clear")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
             </View>
 
             {/* Clear option (single select) */}
             {!multiSelect && value && (
-              <TouchableOpacity style={styles.clearOption} onPress={handleClear}>
-                <Text style={styles.clearOptionText}>{t('common.clearSelection')}</Text>
+              <TouchableOpacity
+                style={styles.clearOption}
+                onPress={handleClear}
+              >
+                <Text style={styles.clearOptionText}>
+                  {t("common.clearSelection")}
+                </Text>
                 <Ionicons name="close-circle" size={20} color="#E74C3C" />
               </TouchableOpacity>
             )}
@@ -511,15 +619,15 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
                 <Ionicons name="information-circle" size={16} color="#666" />
                 <Text style={styles.hintText}>
                   {multiSelect
-                    ? t('common.tapLeafToSelectMultiple')
-                    : t('common.onlyItemWithoutChildren')}
+                    ? t("common.tapLeafToSelectMultiple")
+                    : t("common.onlyItemWithoutChildren")}
                 </Text>
               </View>
             )}
 
             {data.length === 0 ? (
               <View style={styles.emptyList}>
-                <Text style={styles.emptyText}>{t('common.noOption')}</Text>
+                <Text style={styles.emptyText}>{t("common.noOption")}</Text>
               </View>
             ) : (
               <ScrollView
@@ -554,118 +662,118 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
 
 const styles = StyleSheet.create({
   dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   dropdownDisabled: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E0E0E0',
+    backgroundColor: "#F5F5F5",
+    borderColor: "#E0E0E0",
     opacity: 0.8,
   },
   dropdownError: {
-    borderColor: '#E74C3C',
+    borderColor: "#E74C3C",
   },
   dropdownText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   placeholderText: {
-    color: '#999',
+    color: "#999",
   },
   errorText: {
-    color: '#E74C3C',
+    color: "#E74C3C",
     fontSize: 12,
     marginTop: -16,
     marginBottom: 16,
-    textAlign: 'left'
+    textAlign: "left",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: SCREEN_HEIGHT * 0.7,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: "#EEE",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   doneButton: {
-    backgroundColor: '#2EC4B6',
+    backgroundColor: "#2EC4B6",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
   },
   doneButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
     fontSize: 15,
   },
   toolbar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
     gap: 10,
   },
   toolbarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     borderRadius: 6,
     gap: 4,
   },
   toolbarButtonText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   clearOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFF5F5',
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF5F5",
   },
   clearOptionText: {
     fontSize: 16,
-    color: '#E74C3C',
+    color: "#E74C3C",
   },
   hintContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 10,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     gap: 6,
   },
   hintText: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   treeList: {
     flex: 1,
@@ -674,20 +782,20 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   treeItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 12,
     paddingRight: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: "#F5F5F5",
   },
   treeItemSelected: {
-    backgroundColor: '#E8F8F7',
+    backgroundColor: "#E8F8F7",
   },
   treeItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   expandButton: {
@@ -702,62 +810,62 @@ const styles = StyleSheet.create({
   },
   treeItemText: {
     fontSize: 15,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   treeItemTextDisabled: {
-    color: '#999',
+    color: "#999",
   },
   treeItemTextSelected: {
-    color: '#2EC4B6',
-    fontWeight: '600',
+    color: "#2EC4B6",
+    fontWeight: "600",
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#CCC',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#CCC",
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkboxSelected: {
-    backgroundColor: '#2EC4B6',
-    borderColor: '#2EC4B6',
+    backgroundColor: "#2EC4B6",
+    borderColor: "#2EC4B6",
   },
   textContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   badge: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 2,
     minWidth: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 8,
   },
   badgeSelected: {
-    backgroundColor: '#2EC4B6',
+    backgroundColor: "#2EC4B6",
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#4B5563',
+    fontWeight: "600",
+    color: "#4B5563",
   },
   badgeTextSelected: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   emptyList: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
-    color: '#999',
+    color: "#999",
     fontSize: 16,
   },
 });
