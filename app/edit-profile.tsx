@@ -71,7 +71,14 @@ const CustomInput = ({
             // Keep numbers like "+919500307796" left-to-right in RTL layouts
             forceLTR && { writingDirection: "ltr" },
           ]}
-          value={value}
+          // Android ignores writingDirection on TextInput and resolves digit-only
+          // text using the RTL layout direction, moving the leading "+" to the
+          // end. A leading LRM (U+200E) forces an LTR base direction.
+          value={
+            forceLTR && Platform.OS === "android" && value
+              ? `\u200E${value}`
+              : value
+          }
           onChangeText={onChangeText}
           editable={editable}
         />
