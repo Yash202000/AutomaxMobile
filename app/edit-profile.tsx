@@ -235,8 +235,10 @@ const EditProfileScreenContent = () => {
       }
     } catch (err: any) {
       setOtpError(
-        err.response?.data?.error ||
-          t("auth.otpSentFailed", "Failed to send OTP"),
+        err.response?.status === 503
+          ? t("auth.otpSentFailed", "Failed to send OTP")
+          : err.response?.data?.error ||
+              t("auth.otpSentFailed", "Failed to send OTP"),
       );
     } finally {
       setSendingOtp(false);

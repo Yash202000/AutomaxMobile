@@ -48,7 +48,7 @@ export const sendOtp = async (
   phone: string,
   channel: 'sms' | 'whatsapp' = 'sms',
   type: 'employee' | 'citizen' = 'employee'
-): Promise<{ success: true; session_id: string } | { success: false; error: string }> => {
+): Promise<{ success: true; session_id: string } | { success: false; error: string; status?: number }> => {
   try {
     const response = await apiClient.post('/otp/send', { phone, channel, type });
     if (response.data && response.data.session_id) {
@@ -56,7 +56,11 @@ export const sendOtp = async (
     }
     return { success: false, error: 'Invalid response from server' };
   } catch (error: any) {
-    return { success: false, error: error.response?.data?.error || error.response?.data?.message || error.message };
+    return {
+      success: false,
+      error: error.response?.data?.error || error.response?.data?.message || error.message,
+      status: error.response?.status,
+    };
   }
 };
 
