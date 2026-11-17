@@ -367,7 +367,7 @@ const LoginScreen = () => {
     if (isNafath) {
       if (!isNationalIdValid) {
         setError(
-          t("auth.nationalIdInvalid", "National ID must be exactly 10 digits"),
+          t("auth.nationalIdInvalid", "Please enter a valid National ID"),
         );
         return;
       }
@@ -562,7 +562,7 @@ const LoginScreen = () => {
         return;
       case NAFATH_ERROR.invalidId:
         setError(
-          t("auth.nationalIdInvalid", "National ID must be exactly 10 digits"),
+          t("auth.nationalIdInvalid", "Please enter a valid National ID"),
         );
         return;
       case NAFATH_ERROR.disabled:

@@ -45,10 +45,11 @@ export const NAFATH_ERROR = {
   unavailable: "nafath_unavailable",
 } as const;
 
-// National ID / Iqama: exactly 10 digits.
+// National ID / Iqama: 10 digits starting with 1 (citizen) or 2 (Iqama),
+// same rule the backend enforces.
 export const NATIONAL_ID_LENGTH = 10;
 export const isValidNationalId = (id: string) =>
-  new RegExp(`^\\d{${NATIONAL_ID_LENGTH}}$`).test(id);
+  new RegExp(`^[12]\\d{${NATIONAL_ID_LENGTH - 1}}$`).test(id);
 
 export const nafathApi = {
   start: async (nationalId: string): Promise<ApiResponse<NafathPending>> => {

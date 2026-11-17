@@ -229,7 +229,7 @@
     "phonePlaceholder": "+1234567890",
     "nafathLogin": "نفاذ",
     "nafathLoginButton": "تسجيل الدخول عبر نفاذ",
-    "nationalIdInvalid": "يجب أن يتكون رقم الهوية الوطنية من 10 أرقام",
+    "nationalIdInvalid": "يرجى إدخال رقم هوية وطنية صحيح",
     "nafathOpenApp": "افتح تطبيق نفاذ",
     "nafathPickNumber": "افتح تطبيق نفاذ واختر هذا الرقم",
     "nafathNumberLabel": "الرقم المطلوب اختياره في نفاذ: {{number}}",
