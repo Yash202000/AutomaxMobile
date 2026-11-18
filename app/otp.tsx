@@ -140,7 +140,11 @@ const OtpScreen = () => {
         setError(t('auth.otpSentFailed', 'Failed to resend OTP'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || t('auth.otpSentFailed', 'Failed to resend OTP'));
+      setError(
+        err.response?.status === 503
+          ? t('auth.otpSentFailed', 'Failed to resend OTP')
+          : err.response?.data?.error || t('auth.otpSentFailed', 'Failed to resend OTP'),
+      );
     } finally {
       setLoading(false);
     }

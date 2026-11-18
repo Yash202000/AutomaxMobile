@@ -324,8 +324,10 @@ const LoginScreen = () => {
         }
       } catch (err: any) {
         setError(
-          err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          err.response?.status === 503
+            ? t("auth.otpSentFailed", "Failed to send OTP")
+            : err.response?.data?.error ||
+                t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);
@@ -452,7 +454,10 @@ const LoginScreen = () => {
               router.push({ pathname: "/otp", params: otpParams });
             } else {
               setError(
-                otpRes.error || t("auth.otpSentFailed", "Failed to send OTP"),
+                otpRes.status === 503
+                  ? t("auth.otpSentFailed", "Failed to send OTP")
+                  : otpRes.error ||
+                      t("auth.otpSentFailed", "Failed to send OTP"),
               );
             }
           }
@@ -511,8 +516,10 @@ const LoginScreen = () => {
         }
       } catch (err: any) {
         setError(
-          err.response?.data?.error ||
-            t("auth.otpSentFailed", "Failed to send OTP"),
+          err.response?.status === 503
+            ? t("auth.otpSentFailed", "Failed to send OTP")
+            : err.response?.data?.error ||
+                t("auth.otpSentFailed", "Failed to send OTP"),
         );
       } finally {
         setLoading(false);

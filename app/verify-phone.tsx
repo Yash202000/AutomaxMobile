@@ -42,7 +42,12 @@ const VerifyPhoneScreen = () => {
         resetTimer();
         setOtpSent(true);
       } else {
-        CustomAlert.alert(t('common.error'), result.error || t('auth.otpSentFailed', 'Failed to send OTP'));
+        CustomAlert.alert(
+          t('common.error'),
+          result.status === 503
+            ? t('auth.otpSentFailed', 'Failed to send OTP')
+            : result.error || t('auth.otpSentFailed', 'Failed to send OTP'),
+        );
       }
     } finally {
       setSending(false);
