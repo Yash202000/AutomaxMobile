@@ -649,7 +649,6 @@ const IncidentDetailsScreen = () => {
       pathname: "/convert-to-request",
       params: {
         id: incident.id,
-        transitions: JSON.stringify(availableTransitions),
         incident: JSON.stringify({
           id: incident.id,
           classification_id:
