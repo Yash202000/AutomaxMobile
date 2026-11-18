@@ -232,7 +232,7 @@
     "phonePlaceholder": "+1234567890",
     "nafathLogin": "Nafath",
     "nafathLoginButton": "Sign In with Nafath",
-    "nationalIdInvalid": "National ID must be exactly 10 digits",
+    "nationalIdInvalid": "Please enter a valid National ID",
     "nafathOpenApp": "Open the Nafath app",
     "nafathPickNumber": "Open the Nafath app and select this number",
     "nafathNumberLabel": "Number to choose in Nafath: {{number}}",
