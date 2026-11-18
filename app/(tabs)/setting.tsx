@@ -1,5 +1,7 @@
 import { getProfile } from "@/src/api/user";
 import { CustomAlert } from "@/src/components/CustomAlert";
+import KffAppBar from "@/src/components/kff/KffAppBar";
+import KffBackground from "@/src/components/kff/KffBackground";
 import { useAuth } from "@/src/context/AuthContext";
 import {
   getCurrentLanguage,
@@ -7,8 +9,10 @@ import {
   supportedLanguages,
 } from "@/src/i18n";
 import { crashLogger } from "@/src/utils/crashLogger";
+import { isKffDispatcher } from "@/src/utils/kff";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as Updates from "expo-updates";
@@ -145,6 +149,8 @@ const SettingsScreen = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const insets = useSafeAreaInsets();
+  const isKff = isKffDispatcher();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === "true";
   const viewerRoles = (
@@ -337,19 +343,30 @@ const SettingsScreen = () => {
     );
   };
 
+  // KFF: map-line background + KFF app bar (no bell/logout, centred title).
+  // Its tab bar floats over content, so the list pads for it.
+  const Root = isKff ? KffBackground : View;
+
   return (
-    <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <ImageBackground
-        source={
-          isViewerMode
-            ? require("@/assets/images/viewerBackground.png")
-            : require("@/assets/images/background.png")
-        }
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
+    <Root style={isKff ? undefined : [styles.safeArea, { paddingBottom: insets.bottom }]}>
+      {isKff ? (
+        <KffAppBar title={t("settings.title")} showActions={false} centerTitle />
+      ) : (
+        <ImageBackground
+          source={
+            isViewerMode
+              ? require("@/assets/images/viewerBackground.png")
+              : require("@/assets/images/background.png")
+          }
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
+        >
+          <Text style={styles.headerTitle}>{t("settings.title")}</Text>
+        </ImageBackground>
+      )}
+      <ScrollView
+        style={[styles.container, isKff && styles.kffContainer]}
+        contentContainerStyle={isKff ? { paddingBottom: tabBarHeight + 24 } : undefined}
       >
-        <Text style={styles.headerTitle}>{t("settings.title")}</Text>
-      </ImageBackground>
-      <ScrollView style={styles.container}>
         {/* User Profile */}
         {loading ? (
           <ActivityIndicator style={styles.profileCard} />
@@ -593,7 +610,7 @@ const SettingsScreen = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </Root>
   );
 };
 
@@ -617,6 +634,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  kffContainer: {
+    backgroundColor: "transparent",
   },
   profileCard: {
     backgroundColor: COLORS.card,

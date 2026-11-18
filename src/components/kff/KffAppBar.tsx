@@ -16,11 +16,15 @@ interface KffAppBarProps {
   subtitle?: string;
   /** Shows a back button when provided. */
   onBack?: () => void;
+  /** Bell + logout icons on the right. Default true. */
+  showActions?: boolean;
+  /** Centres the title instead of left-aligning it. */
+  centerTitle?: boolean;
 }
 
 // Sticky KFF app bar: sits outside each screen's scroll view and pads itself
 // for the top safe area. Bell badge = live count of incoming incidents.
-const KffAppBar = ({ title, subtitle, onBack }: KffAppBarProps) => {
+const KffAppBar = ({ title, subtitle, onBack, showActions = true, centerTitle = false }: KffAppBarProps) => {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -62,43 +66,50 @@ const KffAppBar = ({ title, subtitle, onBack }: KffAppBarProps) => {
 
       <View style={styles.titleBlock}>
         {!!subtitle && (
-          <Text style={styles.subtitle} numberOfLines={1}>
+          <Text style={[styles.subtitle, centerTitle && styles.centered]} numberOfLines={1}>
             {subtitle}
           </Text>
         )}
         {!!title && (
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, centerTitle && styles.centered]} numberOfLines={1}>
             {title}
           </Text>
         )}
       </View>
 
-      <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.navigate('/(tabs)/kff-incident-alerts')}
-        accessibilityLabel={t('kff.alerts.title')}
-        hitSlop={6}
-      >
-        <Ionicons name="notifications" size={26} color={KFF_COLORS.primary} />
-        {count > 0 && (
-          <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>
-            <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
-          </Animated.View>
-        )}
-      </TouchableOpacity>
+      {/* Balances the back button so a centred title stays truly centred. */}
+      {centerTitle && !showActions && onBack && <View style={styles.backButtonSpacer} />}
 
-      <TouchableOpacity
-        style={styles.iconButton}
-        onPress={handleLogout}
-        accessibilityLabel={t('auth.logout')}
-        hitSlop={6}
-      >
-        <Image
-          source={require('@/assets/images/kff/logout.svg')}
-          style={styles.logoutIcon}
-          contentFit="contain"
-        />
-      </TouchableOpacity>
+      {showActions && (
+        <>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.navigate('/(tabs)/kff-incident-alerts')}
+            accessibilityLabel={t('kff.alerts.title')}
+            hitSlop={6}
+          >
+            <Ionicons name="notifications" size={26} color={KFF_COLORS.primary} />
+            {count > 0 && (
+              <Animated.View style={[styles.badge, { transform: [{ scale: badgeScale }] }]}>
+                <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+              </Animated.View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleLogout}
+            accessibilityLabel={t('auth.logout')}
+            hitSlop={6}
+          >
+            <Image
+              source={require('@/assets/images/kff/logout.svg')}
+              style={styles.logoutIcon}
+              contentFit="contain"
+            />
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 };
@@ -124,6 +135,12 @@ const styles = StyleSheet.create({
     backgroundColor: KFF_COLORS.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backButtonSpacer: {
+    width: 38,
+  },
+  centered: {
+    textAlign: 'center',
   },
   titleBlock: {
     flex: 1,
