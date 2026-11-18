@@ -1,5 +1,36 @@
 const appName = process.env.APP_NAME || "Automax";
-const appIcon = "./assets/images/start-logo.png";
+
+// KFF Dispatcher build has its own launcher icon and splash. Same flag as
+// src/utils/kff.ts so one .env switch drives both native assets and JS.
+const isKff = process.env.EXPO_PUBLIC_KFF_DISPATHER === "true";
+
+const appIcon = isKff
+  ? "./assets/images/kff/kff-app-icon.png"
+  : "./assets/images/start-logo.png";
+// Android adaptive icons crop the foreground to a circle/squircle, so KFF uses
+// a transparent variant with the logo kept inside the safe zone.
+const adaptiveIconForeground = isKff
+  ? "./assets/images/kff/kff-adaptive-icon.png"
+  : appIcon;
+
+// Native splash: Android 12+ only supports a centred icon on a solid colour, so
+// the KFF native splash is the Automax wordmark on the background's mid blue.
+// The full network-background design is drawn in JS (src/components/kff/KffSplash).
+const splashConfig = isKff
+  ? {
+      image: "./assets/images/kff/kff-splash-logo.png",
+      imageWidth: 200,
+      resizeMode: "contain",
+      backgroundColor: "#2235B6",
+      dark: { backgroundColor: "#2235B6" },
+    }
+  : {
+      image: "./assets/images/start-logo.png",
+      imageWidth: 200,
+      resizeMode: "contain",
+      backgroundColor: "#ffffff",
+      dark: { backgroundColor: "#000000" },
+    };
 
 // Maps: with a key every map screen uses native Google Maps; without one the
 // app keeps its OpenStreetMap (Leaflet) maps and no Google SDK key is injected.
@@ -38,7 +69,7 @@ module.exports = {
       ),
       supportsRTL: true,
       adaptiveIcon: {
-        foregroundImage: appIcon,
+        foregroundImage: adaptiveIconForeground,
         backgroundColor: process.env.APP_ICON_BG_COLOR || "#ffffff",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
@@ -81,18 +112,7 @@ module.exports = {
           isAndroidForegroundServiceEnabled: false,
         },
       ],
-      [
-        "expo-splash-screen",
-        {
-          image: "./assets/images/start-logo.png",
-          imageWidth: 200,
-          resizeMode: "contain",
-          backgroundColor: "#ffffff",
-          dark: {
-            backgroundColor: "#000000",
-          },
-        },
-      ],
+      ["expo-splash-screen", splashConfig],
       "@react-native-community/datetimepicker",
       // The expo-dev-client network inspector on iOS bypasses certificate
       // pinning in development builds; release builds are unaffected.

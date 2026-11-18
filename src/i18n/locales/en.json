@@ -164,6 +164,91 @@
     "cappedNotice": "Showing first {{shown}} of {{total}} — narrow your filters to see the rest",
     "googleUnavailable": "Google Maps unavailable — showing OpenStreetMap"
   },
+  "kff": {
+    "tabs": {
+      "profile": "Profile",
+      "myIncidents": "My Incidents"
+    },
+    "profile": {
+      "unitNo": "Unit No",
+      "unitStatus": "Unit Status",
+      "tetraRadioAlarm": "Tetra radio alarm",
+      "todayActivities": "Today Activities",
+      "activities": "Activities",
+      "unitDetails": "Unit Details",
+      "vehicleModel": "Vehicle Model",
+      "capacity": "Capacity",
+      "totalDistance": "Total Distance",
+      "selectStatus": "Select unit status"
+    },
+    "unitStatus": {
+      "online": "Online",
+      "busy": "Busy",
+      "offline": "Offline"
+    },
+    "status": {
+      "accepted": "Accepted",
+      "completed": "Completed",
+      "rejected": "Rejected"
+    },
+    "state": {
+      "new": "New Ticket",
+      "assigned": "Assigned",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "rejected": "Rejected"
+    },
+    "criticality": "Criticality",
+    "criticalityLevel": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "description": "Description",
+    "callerDetails": "Caller Details",
+    "noIncidents": "No {{status}} incidents on this day",
+    "noIncidentsDesc": "Pick another date from the calendar to see more.",
+    "loadFailed": "Couldn't load your incidents.",
+    "alerts": {
+      "title": "New Incidents",
+      "count_one": "{{count}} incident waiting for your response",
+      "count_other": "{{count}} incidents waiting for your response",
+      "empty": "No new incidents",
+      "emptyDesc": "Incidents dispatched to your unit will appear here."
+    },
+    "detail": {
+      "title": "Incident Details",
+      "classification": "Classification",
+      "destination": "Destination",
+      "currentLocation": "Current Location",
+      "directions": "Directions",
+      "directionsFailed": "Unable to open maps for directions.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "rejectConfirm": "Are you sure you want to reject this incident?",
+      "notFound": "This incident is no longer available.",
+      "loadFailed": "Couldn't load this incident.",
+      "expandMap": "Expand map",
+      "addAttachments": "Add Attachments",
+      "addComments": "Add Comments",
+      "handled": {
+        "accepted": "Accepted on {{date}}",
+        "rejected": "Rejected on {{date}}",
+        "completed": "Completed on {{date}}"
+      }
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo_one": "{{count}} minute ago",
+      "minutesAgo_other": "{{count}} minutes ago",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago"
+    },
+    "logoutConfirm": "Are you sure you want to logout?"
+  },
   "tabs": {
     "dashboard": "Dashboard",
     "incident": "Incidents",

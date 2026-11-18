@@ -161,6 +161,107 @@
     "cappedNotice": "عرض أول {{shown}} من {{total}} — قم بتضييق نطاق التصفية لعرض الباقي",
     "googleUnavailable": "خرائط Google غير متاحة — يتم عرض OpenStreetMap"
   },
+  "kff": {
+    "tabs": {
+      "profile": "الملف الشخصي",
+      "myIncidents": "بلاغاتي"
+    },
+    "profile": {
+      "unitNo": "رقم الوحدة",
+      "unitStatus": "حالة الوحدة",
+      "tetraRadioAlarm": "إنذار راديو تترا",
+      "todayActivities": "أنشطة اليوم",
+      "activities": "الأنشطة",
+      "unitDetails": "تفاصيل الوحدة",
+      "vehicleModel": "طراز المركبة",
+      "capacity": "السعة",
+      "totalDistance": "إجمالي المسافة",
+      "selectStatus": "اختر حالة الوحدة"
+    },
+    "unitStatus": {
+      "online": "متصل",
+      "busy": "مشغول",
+      "offline": "غير متصل"
+    },
+    "status": {
+      "accepted": "المقبولة",
+      "completed": "المكتملة",
+      "rejected": "المرفوضة"
+    },
+    "state": {
+      "new": "بلاغ جديد",
+      "assigned": "مُسند",
+      "inProgress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "rejected": "مرفوض"
+    },
+    "criticality": "الأهمية",
+    "criticalityLevel": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية",
+      "critical": "حرجة"
+    },
+    "description": "الوصف",
+    "callerDetails": "بيانات المتصل",
+    "noIncidents": "لا توجد بلاغات ({{status}}) في هذا اليوم",
+    "noIncidentsDesc": "اختر تاريخًا آخر من التقويم لعرض المزيد.",
+    "loadFailed": "تعذّر تحميل بلاغاتك.",
+    "alerts": {
+      "title": "البلاغات الجديدة",
+      "count_zero": "لا توجد بلاغات بانتظار ردك",
+      "count_one": "بلاغ واحد بانتظار ردك",
+      "count_two": "بلاغان بانتظار ردك",
+      "count_few": "{{count}} بلاغات بانتظار ردك",
+      "count_many": "{{count}} بلاغًا بانتظار ردك",
+      "count_other": "{{count}} بلاغ بانتظار ردك",
+      "empty": "لا توجد بلاغات جديدة",
+      "emptyDesc": "ستظهر هنا البلاغات المرسلة إلى وحدتك."
+    },
+    "detail": {
+      "title": "تفاصيل البلاغ",
+      "classification": "التصنيف",
+      "destination": "الوجهة",
+      "currentLocation": "الموقع الحالي",
+      "directions": "الاتجاهات",
+      "directionsFailed": "تعذر فتح الخرائط للحصول على الاتجاهات.",
+      "accept": "قبول",
+      "reject": "رفض",
+      "rejectConfirm": "هل أنت متأكد أنك تريد رفض هذا البلاغ؟",
+      "notFound": "هذا البلاغ لم يعد متاحًا.",
+      "loadFailed": "تعذّر تحميل البلاغ.",
+      "expandMap": "تكبير الخريطة",
+      "addAttachments": "إضافة مرفقات",
+      "addComments": "إضافة تعليقات",
+      "handled": {
+        "accepted": "تم القبول في {{date}}",
+        "rejected": "تم الرفض في {{date}}",
+        "completed": "اكتمل في {{date}}"
+      }
+    },
+    "time": {
+      "justNow": "الآن",
+      "minutesAgo_zero": "منذ أقل من دقيقة",
+      "minutesAgo_one": "منذ دقيقة",
+      "minutesAgo_two": "منذ دقيقتين",
+      "minutesAgo_few": "منذ {{count}} دقائق",
+      "minutesAgo_many": "منذ {{count}} دقيقة",
+      "minutesAgo_other": "منذ {{count}} دقيقة",
+      "hoursAgo_zero": "منذ أقل من ساعة",
+      "hoursAgo_one": "منذ ساعة",
+      "hoursAgo_two": "منذ ساعتين",
+      "hoursAgo_few": "منذ {{count}} ساعات",
+      "hoursAgo_many": "منذ {{count}} ساعة",
+      "hoursAgo_other": "منذ {{count}} ساعة",
+      "daysAgo_zero": "اليوم",
+      "daysAgo_one": "منذ يوم",
+      "daysAgo_two": "منذ يومين",
+      "daysAgo_few": "منذ {{count}} أيام",
+      "daysAgo_many": "منذ {{count}} يومًا",
+      "daysAgo_other": "منذ {{count}} يوم"
+    },
+    "logoutConfirm": "هل أنت متأكد أنك تريد تسجيل الخروج؟"
+  },
   "tabs": {
     "dashboard": "لوحة التحكم",
     "incident": "البلاغات",

@@ -5,6 +5,7 @@ import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
 import { checkConnectivity, showNoInternetAlert } from "@/src/utils/networkStatus";
+import { isKffDispatcher } from "@/src/utils/kff";
 import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
@@ -762,7 +763,11 @@ const LoginScreen = () => {
               >
                 <View style={styles.logoShadow}>
                   <Image
-                    source={require("@/assets/images/start-logo.png")}
+                    source={
+                      isKffDispatcher()
+                        ? require("@/assets/images/kff/kff-logo.png")
+                        : require("@/assets/images/start-logo.png")
+                    }
                     style={styles.headerLogo}
                   />
                 </View>
