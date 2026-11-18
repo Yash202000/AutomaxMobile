@@ -25,6 +25,9 @@ export interface TreeNode {
   count?: number;
 }
 
+const getNodeName = (node: Pick<TreeNode, "name" | "name_ar">): string =>
+  i18n.language === "ar" && node?.name_ar ? node.name_ar : node?.name;
+
 export interface TreeNodeWithStats {
   id: string;
   name: string;
@@ -170,9 +173,7 @@ export const TreeItem: React.FC<TreeItemProps> = ({
               ]}
               numberOfLines={1}
             >
-              {i18n.language === "ar" && node?.name_ar
-                ? node?.name_ar
-                : node.name}
+              {getNodeName(node)}
             </Text>
             {node?.count !== undefined && node?.count !== null && (
               <View style={[styles.badge, isSelected && styles.badgeSelected]}>
@@ -291,12 +292,12 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     ): string | null => {
       for (const node of nodes) {
         if (node.id === targetId) {
-          return [...ancestors, node.name].join(" › ");
+          return [...ancestors, getNodeName(node)].join(" › ");
         }
         if (node.children && node.children.length > 0) {
           const result = getHierarchyPath(node.children, targetId, [
             ...ancestors,
-            node.name,
+            getNodeName(node),
           ]);
           if (result) return result;
         }
@@ -483,11 +484,16 @@ const TreeSelect: React.FC<TreeSelectProps> = ({
     ? getHierarchyPath(data, resolvedNodeId)
     : null;
 
+  const singleMultiSelectNode =
+    multiSelect && selectedIdsProp.length === 1
+      ? findNodeById(data, selectedIdsProp[0])
+      : null;
+
   const displayText = multiSelect
     ? selectedIdsProp.length === 0
       ? placeholder || label
       : selectedIdsProp.length === 1
-        ? findNodeById(data, selectedIdsProp[0])?.name ||
+        ? (singleMultiSelectNode && getNodeName(singleMultiSelectNode)) ||
           t("filter.nSelected", { count: 1 })
         : t("filter.nSelected", { count: selectedIdsProp.length })
     : hierarchyPath || value || placeholder || label;

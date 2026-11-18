@@ -187,6 +187,10 @@ const UpdateStatusModal = () => {
       });
     }
   };
+ 
+  const getFieldChangeLabel = (fc: any): string =>
+    i18n.language === "ar" && fc?.label_ar ? fc.label_ar : fc?.label || "";
+
   const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>(
@@ -1954,9 +1958,7 @@ const UpdateStatusModal = () => {
                       <View key={fc.field_name} style={{ marginBottom: 16 }}>
                         {!fc.field_name.startsWith("lookup:") && (
                           <Text style={styles.label}>
-                            {i18n.language === "en" && fc.label
-                              ? fc.label
-                              : fc.label_ar}
+                            {getFieldChangeLabel(fc)}
                             {fc.is_required && (
                               <Text style={{ color: "#E74C3C" }}> *</Text>
                             )}
@@ -2012,11 +2014,14 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "department_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.departmentAssignment", "Department")
                             }
                             value={
                               fieldChangeDisplayValues["department_id"] || ""
+                            }
+                            valueId={
+                              fieldChangeValues["department_id"] || undefined
                             }
                             data={
                               fc.department_type_filter
@@ -2048,10 +2053,14 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "location_id" && (
                           <TreeSelect
                             label={
-                              fc.label || t("incidents.location", "Location")
+                              getFieldChangeLabel(fc) ||
+                              t("incidents.location", "Location")
                             }
                             value={
                               fieldChangeDisplayValues["location_id"] || ""
+                            }
+                            valueId={
+                              fieldChangeValues["location_id"] || undefined
                             }
                             data={locationsTree}
                             onSelect={(node) => {
@@ -2077,12 +2086,16 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "classification_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.classification", "Classification")
                             }
                             value={
                               fieldChangeDisplayValues["classification_id"] ||
                               ""
+                            }
+                            valueId={
+                              fieldChangeValues["classification_id"] ||
+                              undefined
                             }
                             data={classificationsTree}
                             onSelect={(node) => {
