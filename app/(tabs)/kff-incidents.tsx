@@ -4,7 +4,8 @@ import KffBackground from "@/src/components/kff/KffBackground";
 import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { formatKffDateTime, formatKffRelativeTime, startOfDay } from "@/src/components/kff/kffDateUtils";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
-import { KFF_COLORS } from "@/src/components/kff/kffTheme";
+import { useKffCurrentLocation } from "@/src/components/kff/useKffCurrentLocation";
+import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { KFF_STATUSES, KffIncident, KffListStatus } from "@/src/components/kff/kffTypes";
 import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,9 +25,16 @@ import {
 
 // KFF Dispatcher — My Incidents tab.
 // Incidents assigned to the logged-in user on the selected day, from the
-// Automax incidents API (see src/components/kff/kffIncidentApi.ts).
+// Automax incidents API (see src/api/kffIncidents.ts).
 
-const KffIncidentCard = ({ incident }: { incident: KffIncident }) => {
+const KffIncidentCard = ({
+  incident,
+  currentLocation,
+}: {
+  incident: KffIncident;
+  /** Unit's own position (device GPS), shared by every card. */
+  currentLocation: string;
+}) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const [callerExpanded, setCallerExpanded] = useState(false);
@@ -64,7 +72,11 @@ const KffIncidentCard = ({ incident }: { incident: KffIncident }) => {
 
         <View style={styles.separator} />
 
-        <KffRouteTimeline destination={incident.to} currentLocation={incident.from} compact />
+        <KffRouteTimeline
+          destination={incident.to}
+          currentLocation={currentLocation}
+          compact
+        />
 
         {!!incident.description && (
           <>
@@ -107,6 +119,7 @@ const parseStatus = (value?: string): KffListStatus | undefined =>
 const KffIncidentsScreen = () => {
   const { t } = useTranslation();
   const tabBarHeight = useBottomTabBarHeight();
+  const { text: currentLocationText } = useKffCurrentLocation();
   const params = useLocalSearchParams<{ status?: string; date?: string; ts?: string }>();
 
   const [activeStatus, setActiveStatus] = useState<KffListStatus>(
@@ -145,7 +158,9 @@ const KffIncidentsScreen = () => {
       <FlatList
         data={incidents}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <KffIncidentCard incident={item} />}
+        renderItem={({ item }) => (
+          <KffIncidentCard incident={item} currentLocation={currentLocationText} />
+        )}
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -287,11 +302,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginBottom: 14,
     overflow: "hidden",
-    shadowColor: KFF_COLORS.navy,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    ...KFF_SHADOWS.card,
   },
   cardBody: {
     padding: 16,

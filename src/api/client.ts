@@ -6,6 +6,7 @@ import i18n from "../i18n";
 import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
 import { handleRequestNetworkError } from "../utils/networkStatus";
+import { attachApiLogger } from "./apiLogger";
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error("EXPO_PUBLIC_API_URL is not set");
@@ -18,6 +19,33 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Dev-only API Inspector feed (EXPO_PUBLIC_DEBUG_API_LOGS=true, `npm run api-inspector`).
+// Must be attached before the interceptors below.
+attachApiLogger(apiClient);
+
+// Runtime API server override. Only the KFF passcode-login flow uses it (the
+// admin "Web Service URL", see src/services/kffDeviceConfig.ts); every other
+// build never registers a loader, so requests keep EXPO_PUBLIC_API_URL.
+let runtimeBaseURLReady: Promise<void> | null = null;
+
+/** Current API base URL (the runtime override when one is set). */
+export const getApiBaseURL = (): string => apiClient.defaults.baseURL || baseURL;
+
+/** Points every following request at `url`; null restores EXPO_PUBLIC_API_URL. */
+export const setApiBaseURL = (url: string | null) => {
+  apiClient.defaults.baseURL = url || baseURL;
+};
+
+/**
+ * Registers an async source for the API base URL (read from storage at app
+ * start). Requests wait for it once, so nothing is sent to the wrong server.
+ */
+export const registerApiBaseURLLoader = (loader: () => Promise<string | null>) => {
+  runtimeBaseURLReady = loader()
+    .then((url) => setApiBaseURL(url))
+    .catch(() => setApiBaseURL(null));
+};
 
 // Flag to prevent multiple refresh attempts
 let isRefreshing = false;
@@ -56,6 +84,13 @@ apiClient.interceptors.request.use(
   async (config) => {
     // No request may leave the app before certificate pinning is active
     await ensureCertificatePinning();
+
+    // Runtime base URL (KFF only): axios merged the defaults before this
+    // interceptor ran, so re-apply the (possibly just loaded) override.
+    if (runtimeBaseURLReady) {
+      await runtimeBaseURLReady;
+      config.baseURL = getApiBaseURL();
+    }
 
     // If logging out, reject all requests except the logout request itself
     if (isLoggingOut && !config.url?.includes("/auth/logout")) {
@@ -276,7 +311,7 @@ apiClient.interceptors.response.use(
     }
 
     try {
-      const response = await axios.post(`${baseURL}/auth/refresh`, {
+      const response = await axios.post(`${getApiBaseURL()}/auth/refresh`, {
         refresh_token: refreshToken,
       });
       const { token, refresh_token } = response.data.data;

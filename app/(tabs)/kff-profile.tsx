@@ -2,7 +2,7 @@ import KffAppBar from "@/src/components/kff/KffAppBar";
 import KffBackground from "@/src/components/kff/KffBackground";
 import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { isSameDay, startOfDay } from "@/src/components/kff/kffDateUtils";
-import { KFF_COLORS } from "@/src/components/kff/kffTheme";
+import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { KFF_UNIT_STATUSES, KffListStatus, KffUnitStatus } from "@/src/components/kff/kffTypes";
 import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
 import { useAuth } from "@/src/context/AuthContext";
@@ -218,14 +218,6 @@ const KffProfileScreen = () => {
   );
 };
 
-const CARD_SHADOW = {
-  shadowColor: KFF_COLORS.navy,
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.06,
-  shadowRadius: 10,
-  elevation: 2,
-};
-
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
@@ -236,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 22,
     padding: 16,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.soft,
   },
   unitTop: {
     flexDirection: "row",

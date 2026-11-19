@@ -23,13 +23,21 @@ import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
-import { isKffDispatcher, KFF_HOME_ROUTE } from '@/src/utils/kff';
+import { initKffDeviceConfig } from '@/src/services/kffDeviceConfig';
+import { isKffDispatcher, isKffPasscodeLogin, KFF_HOME_ROUTE } from '@/src/utils/kff';
 import { Ionicons } from '@expo/vector-icons';
 import { t } from 'i18next';
 
 // How long the KFF launch screen stays up at minimum, so it doesn't just flash
 // when the stored session restores instantly.
 const KFF_SPLASH_MIN_MS = 1500;
+
+// KFF passcode login: API requests use the server saved in the admin device
+// setup. Registered before anything renders so no request goes out first.
+if (isKffPasscodeLogin()) initKffDeviceConfig();
+
+// Unauthenticated KFF passcode-login screens (only reachable in that mode).
+const KFF_AUTH_SCREENS = ['kff-register', 'kff-create-passcode', 'kff-device-setup'];
 
 
 
@@ -176,7 +184,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading || isLoggingOut) return;
 
-    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password'];
+    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password', ...KFF_AUTH_SCREENS];
     const inAuthGroup = authScreens.includes(segments[0] as string);
 
     if (!isAuthenticated && !inAuthGroup) {
@@ -266,6 +274,9 @@ function RootLayoutNav() {
         <Stack.Screen name="forgot-password" options={{ title: '' }} />
         <Stack.Screen name="otp" options={{ title: '' }} />
         <Stack.Screen name="reset-password" options={{ title: '' }} />
+        <Stack.Screen name="kff-register" options={{ headerShown: false }} />
+        <Stack.Screen name="kff-create-passcode" options={{ headerShown: false }} />
+        <Stack.Screen name="kff-device-setup" options={{ headerShown: false }} />
         <Stack.Screen name="incident-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-incident" options={{ headerShown: false }} />
         <Stack.Screen name="my-incidents" options={{ headerShown: false }} />

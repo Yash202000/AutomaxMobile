@@ -3,10 +3,14 @@ import { KffCriticalityPill, KffStateBadge, KffTicketIcon } from "@/src/componen
 import KffBackground from "@/src/components/kff/KffBackground";
 import { formatKffDateTime } from "@/src/components/kff/kffDateUtils";
 import {
-  fetchKffIncidentById,
-  getCachedKffIncidentRaw,
   mapApiIncidentToKff,
-} from "@/src/components/kff/kffIncidentApi";
+  mapKffIncidentInfo,
+  toTransitionIncidentParam,
+} from "@/src/components/kff/kffIncidentMapper";
+import { useKffIncidentDetail } from "@/src/components/kff/useKffIncidentDetail";
+import KffReasonModal from "@/src/components/kff/KffReasonModal";
+import { executeKffTransition } from "@/src/api/kffIncidents";
+import { openKffDirections } from "@/src/utils/kffDirections";
 import {
   acceptKffIncident,
   findKffIncident,
@@ -14,22 +18,20 @@ import {
   useKffIncidents,
 } from "@/src/components/kff/kffIncidentStore";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
-import { KFF_COLORS } from "@/src/components/kff/kffTheme";
+import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { CustomAlert } from "@/src/components/CustomAlert";
-import {
-  SingleLocationMap,
-  SingleLocationMapHandle,
-} from "@/src/components/maps/SingleLocationMap";
+import KffRouteMap, { KffRouteMapHandle } from "@/src/components/kff/KffRouteMap";
+import { useKffCurrentLocation } from "@/src/components/kff/useKffCurrentLocation";
 import { KFF_HOME_ROUTE } from "@/src/utils/kff";
-import { openMapsDirections } from "@/src/utils/openMapsDirections";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -40,11 +42,30 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // KFF Dispatcher — incident detail (opened from the bell list or My Incidents).
-// Always loaded from the Automax incident details API (getIncidentById via
-// kffIncidentApi.ts). An incident still waiting in the bell list keeps its
-// 'new' status so Accept / Reject are shown.
+// Loaded from the incidents API (useKffIncidentDetail). An incident still
+// waiting in the bell list keeps its 'new' status so Accept / Reject show.
 
 const ADD_ICON = require("@/assets/images/kff/add.svg");
+
+// Workflow transition helpers (Automax available-transitions payload).
+const isRejectTransition = (tr: any) =>
+  tr?.is_rejection === true || /reject/i.test(`${tr?.code ?? ""} ${tr?.name ?? ""}`);
+const isStartTransition = (tr: any) =>
+  /start|en.?route/i.test(`${tr?.code ?? ""} ${tr?.name ?? ""} ${tr?.to_state?.name ?? ""}`);
+/** Inputs the KFF screen can't collect itself → use the update-status form. */
+const needsTransitionForm = (item: any) => {
+  const tr = item?.transition ?? {};
+  const mandatory = (item?.requirements ?? []).filter((req: any) => req?.is_mandatory);
+  return (
+    !!tr.manual_select_user ||
+    !!tr.auto_detect_department ||
+    !!tr.require_assignee ||
+    !!tr.is_final_close ||
+    !!tr.to_state?.is_partial_close ||
+    (tr.field_changes?.length ?? 0) > 0 ||
+    mandatory.some((req: any) => !(req.requirement_type === "comment" && isRejectTransition(tr)))
+  );
+};
 
 const KffIncidentDetailScreen = () => {
   const { t, i18n } = useTranslation();
@@ -55,33 +76,14 @@ const KffIncidentDetailScreen = () => {
   const incidentsState = useKffIncidents();
   const localIncident = id ? findKffIncident(incidentsState, id) : undefined;
 
-  // Render the row cached from the My Incidents list straight away, then
-  // replace it with the full record from the details API.
-  const [remoteRaw, setRemoteRaw] = useState<any>(() =>
-    id ? getCachedKffIncidentRaw(id) : undefined,
-  );
-  const [remoteLoading, setRemoteLoading] = useState(true);
-  const [remoteError, setRemoteError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => {
-    if (!id) {
-      setRemoteLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setRemoteRaw(getCachedKffIncidentRaw(id));
-    setRemoteLoading(true);
-    setRemoteError(false);
-    fetchKffIncidentById(id).then((response) => {
-      if (cancelled) return;
-      if (response.success && response.data) setRemoteRaw(response.data);
-      else setRemoteError(response.status !== 404);
-      setRemoteLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [id, reloadKey]);
+  const {
+    raw: remoteRaw,
+    loading: remoteLoading,
+    error: remoteError,
+    transitions,
+    transitionsLoading,
+    reload,
+  } = useKffIncidentDetail(id);
 
   const remoteIncident = useMemo(
     () => (remoteRaw ? mapApiIncidentToKff(remoteRaw, i18n.language) : undefined),
@@ -93,8 +95,20 @@ const KffIncidentDetailScreen = () => {
       ? { ...remoteIncident, status: "new" as const, state: "new" as const }
       : remoteIncident ?? localIncident;
 
+  const [runningTransitionId, setRunningTransitionId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<any>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
-  const fullMapRef = useRef<SingleLocationMapHandle>(null);
+  const fullMapRef = useRef<KffRouteMapHandle>(null);
+
+  // Unit's own position (device GPS) for "Current Location" and the map.
+  const { location: myLocation, text: currentLocationText } = useKffCurrentLocation();
+  const currentMarker = useMemo(
+    () =>
+      myLocation
+        ? { latitude: myLocation.latitude, longitude: myLocation.longitude, label: t("kff.detail.currentLocation") }
+        : null,
+    [myLocation, t],
+  );
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -122,7 +136,7 @@ const KffIncidentDetailScreen = () => {
                 <TouchableOpacity
                   style={styles.retryButton}
                   activeOpacity={0.85}
-                  onPress={() => setReloadKey((k) => k + 1)}
+                  onPress={reload}
                 >
                   <Text style={styles.retryText}>{t("common.retry")}</Text>
                 </TouchableOpacity>
@@ -142,7 +156,80 @@ const KffIncidentDetailScreen = () => {
     const onError = () =>
       CustomAlert.alert(t("common.error"), t("kff.detail.directionsFailed"));
     if (!hasLocation) return onError();
-    openMapsDirections(latitude, longitude, onError);
+    openKffDirections({ latitude, longitude }, myLocation).catch(onError);
+  };
+
+  const info = remoteRaw ? mapKffIncidentInfo(remoteRaw, i18n.language) : undefined;
+  const transitionLabel = (tr: any): string => (i18n.language === "ar" && tr?.name_ar) || tr?.name || "";
+  const isDefaultLocation = info?.location.trim().toLowerCase() === "default";
+
+  const handleCall = () => {
+    if (!info?.callerPhone) return;
+    Linking.openURL(`tel:${info.callerPhone.replace(/[^\d+]/g, "")}`).catch(() =>
+      CustomAlert.alert(t("common.error"), t("kff.detail.callFailed")),
+    );
+  };
+
+  // Runs a transition on its own; a reject first asks for a reason (sent as the
+  // comment), Start also opens Google Maps directions to the incident.
+  // Transitions that need extra input (users, fields, attachments, feedback…)
+  // fall back to the Automax update-status form with that transition chosen.
+  const runTransition = async (item: any, reason?: string) => {
+    const tr = item.transition;
+    setRunningTransitionId(tr.id);
+    const result = await executeKffTransition(String(remoteRaw.id), {
+      transitionId: tr.id,
+      comment: reason,
+      version: remoteRaw.version,
+    });
+    setRunningTransitionId(null);
+    if (!result.success) {
+      CustomAlert.alert(t("common.error"), result.error || t("kff.detail.transitionFailed"));
+      return;
+    }
+    setRejectTarget(null);
+    reload();
+    if (isStartTransition(tr)) handleDirections();
+  };
+
+  const handleTransition = (item: any) => {
+    const tr = item.transition;
+    if (!remoteRaw || runningTransitionId) return;
+    if (item.can_execute === false) {
+      CustomAlert.alert(t("common.notAllowed", "Not allowed"), item.reason || t("kff.detail.transitionFailed"));
+      return;
+    }
+    if (isDefaultLocation) {
+      CustomAlert.alert(
+        t("common.notAllowed", "Not allowed"),
+        t(
+          "incidents.defaultLocationTransitionBlocked",
+          "Transition is not allowed while the incident location is Default. Incident location should be updated first.",
+        ),
+      );
+      return;
+    }
+    if (needsTransitionForm(item)) {
+      router.push({
+        pathname: "/update-status",
+        params: {
+          id: String(remoteRaw.id),
+          type: "incident",
+          transitions: JSON.stringify(transitions),
+          incident: JSON.stringify(toTransitionIncidentParam(remoteRaw)),
+          transitionId: tr.id,
+        },
+      });
+      return;
+    }
+    if (isRejectTransition(tr)) {
+      setRejectTarget(item);
+      return;
+    }
+    CustomAlert.alert(transitionLabel(tr), t("kff.detail.transitionConfirm", { action: transitionLabel(tr) }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: transitionLabel(tr), onPress: () => runTransition(item) },
+    ]);
   };
 
   const handleAccept = () => {
@@ -179,33 +266,63 @@ const KffIncidentDetailScreen = () => {
         contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Ticket header: directions tile + ticket card */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.directionsTile}
-            activeOpacity={0.8}
-            onPress={handleDirections}
-            accessibilityLabel={t("kff.detail.directions")}
-          >
-            <Ionicons name="navigate-circle" size={40} color={KFF_COLORS.primary} />
-            <Text style={styles.directionsText}>{t("kff.detail.directions")}</Text>
-          </TouchableOpacity>
-
-          <View style={styles.ticketCard}>
-            <KffTicketIcon size={56} />
-            <View style={styles.ticketInfo}>
-              <Text style={styles.ticketNumber}>{incident.ticketNumber}</Text>
+        {/* Ticket header (full width) */}
+        <View style={styles.ticketCard}>
+          <KffTicketIcon size={56} />
+          <View style={styles.ticketInfo}>
+            <Text style={styles.ticketNumber} numberOfLines={1} adjustsFontSizeToFit>
+              {incident.ticketNumber}
+            </Text>
+            <View style={styles.badgeRow}>
               {isNew ? (
                 <Text style={styles.ticketState}>{t("kff.state.new")}</Text>
               ) : (
                 <KffStateBadge state={incident.state} />
               )}
-              <View style={styles.pillSpacing}>
-                <KffCriticalityPill level={incident.criticality} />
-              </View>
+              <KffCriticalityPill level={incident.criticality} />
             </View>
           </View>
         </View>
+
+        {/* Workflow transitions: centred buttons, blue — reject in red */}
+        {!isNew && (transitionsLoading || transitions.length > 0) && (
+          <View style={styles.card}>
+            <Text style={[styles.cardTitle, styles.centeredTitle]}>{t("kff.detail.actions")}</Text>
+            {transitionsLoading && transitions.length === 0 ? (
+              <ActivityIndicator style={styles.actionsLoader} color={KFF_COLORS.primary} />
+            ) : (
+              <View style={styles.transitionList}>
+                {transitions.map((item: any) => {
+                  const tr = item?.transition;
+                  if (!tr?.id) return null;
+                  const running = runningTransitionId === tr.id;
+                  const blocked = isDefaultLocation || item.can_execute === false;
+                  return (
+                    <TouchableOpacity
+                      key={tr.id}
+                      style={[
+                        styles.transitionButton,
+                        isRejectTransition(tr) && styles.transitionReject,
+                        (blocked || (!!runningTransitionId && !running)) && styles.transitionDisabled,
+                      ]}
+                      activeOpacity={0.85}
+                      disabled={!!runningTransitionId}
+                      onPress={() => handleTransition(item)}
+                    >
+                      {running ? (
+                        <ActivityIndicator color={KFF_COLORS.white} />
+                      ) : (
+                        <Text style={styles.transitionText} numberOfLines={2}>
+                          {transitionLabel(tr)}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Details */}
         <View style={styles.card}>
@@ -217,7 +334,10 @@ const KffIncidentDetailScreen = () => {
 
           <View style={styles.separator} />
 
-          <KffRouteTimeline destination={incident.to} currentLocation={incident.from} />
+          <KffRouteTimeline
+            destination={incident.to}
+            currentLocation={currentLocationText}
+          />
 
           {!!incident.description && (
             <>
@@ -249,6 +369,37 @@ const KffIncidentDetailScreen = () => {
           )}
         </View>
 
+        {/* Location + caller details from the incident record */}
+        {info && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("kff.detail.info")}</Text>
+            <InfoRow icon="business-outline" label={t("kff.detail.location")} value={info.location} />
+            <InfoRow icon="location-outline" label={t("kff.detail.address")} value={info.address} />
+            <InfoRow icon="person-outline" label={t("kff.detail.callerName")} value={info.callerName} />
+            {!!info.callerPhone && (
+              <View style={styles.infoRow}>
+                <Ionicons name="call-outline" size={20} color={KFF_COLORS.primary} />
+                <View style={styles.infoText}>
+                  <Text style={styles.infoLabel}>{t("kff.detail.callerNumber")}</Text>
+                  <Text style={styles.infoValue} selectable>
+                    {"\u200E" + info.callerPhone}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={handleCall}
+                  accessibilityLabel={t("kff.detail.call")}
+                >
+                  <Ionicons name="call" size={18} color={KFF_COLORS.white} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <InfoRow icon="mail-outline" label={t("kff.detail.callerEmail")} value={info.callerEmail} />
+            <InfoRow icon="people-outline" label={t("kff.detail.department")} value={info.department} />
+            <InfoRow icon="person-circle-outline" label={t("kff.detail.assignedTo")} value={info.assignee} />
+          </View>
+        )}
+
         {/* Follow-up actions on an incident the unit is working (My Incidents) */}
         {incident.status === "accepted" && (
           <View style={styles.followUpPanel}>
@@ -266,12 +417,9 @@ const KffIncidentDetailScreen = () => {
         {/* Map preview */}
         {hasLocation && (
           <View style={styles.mapCard}>
-            <SingleLocationMap
-              latitude={latitude}
-              longitude={longitude}
-              title={incident.title}
-              address={incident.to}
-              markerColor={KFF_COLORS.danger}
+            <KffRouteMap
+              destination={{ latitude, longitude, title: incident.title, address: incident.to }}
+              current={currentMarker}
             />
             <TouchableOpacity
               style={styles.expandButton}
@@ -284,16 +432,28 @@ const KffIncidentDetailScreen = () => {
         )}
       </ScrollView>
 
+      <KffReasonModal
+        visible={!!rejectTarget}
+        title={rejectTarget ? transitionLabel(rejectTarget.transition) : ""}
+        submitLabel={rejectTarget ? transitionLabel(rejectTarget.transition) : ""}
+        submitting={!!runningTransitionId}
+        onCancel={() => setRejectTarget(null)}
+        onSubmit={(reason) => rejectTarget && runTransition(rejectTarget, reason)}
+      />
+
       {/* Full-screen map */}
       <Modal visible={mapExpanded && hasLocation} animationType="slide" onRequestClose={() => setMapExpanded(false)}>
         <View style={styles.fullMap}>
-          <SingleLocationMap
+          <KffRouteMap
             ref={fullMapRef}
-            latitude={latitude ?? 0}
-            longitude={longitude ?? 0}
-            title={incident.title}
-            address={incident.to}
-            markerColor={KFF_COLORS.danger}
+            destination={{
+              latitude: latitude ?? 0,
+              longitude: longitude ?? 0,
+              title: incident.title,
+              address: incident.to,
+            }}
+            current={currentMarker}
+            interactive
           />
           <TouchableOpacity
             style={[styles.closeMapButton, { top: insets.top + 12 }]}
@@ -322,13 +482,27 @@ const KffIncidentDetailScreen = () => {
   );
 };
 
-const CARD_SHADOW = {
-  shadowColor: KFF_COLORS.navy,
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-  elevation: 4,
-};
+// One label/value line in the incident information card (hidden when empty).
+const InfoRow = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: string;
+}) =>
+  value ? (
+    <View style={styles.infoRow}>
+      <Ionicons name={icon} size={20} color={KFF_COLORS.primary} />
+      <View style={styles.infoText}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue} selectable>
+          {value}
+        </Text>
+      </View>
+    </View>
+  ) : null;
 
 const styles = StyleSheet.create({
   content: {
@@ -336,42 +510,28 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 14,
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    gap: 12,
-  },
-  directionsTile: {
-    width: 78,
-    backgroundColor: KFF_COLORS.white,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    ...CARD_SHADOW,
-  },
-  directionsText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: KFF_COLORS.primary,
-  },
   ticketCard: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     backgroundColor: KFF_COLORS.white,
     borderRadius: 20,
     padding: 14,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   ticketInfo: {
     flex: 1,
     alignItems: "flex-start",
-    gap: 2,
+    gap: 8,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
   },
   ticketNumber: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     color: KFF_COLORS.text,
   },
@@ -379,14 +539,83 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: KFF_COLORS.textSecondary,
   },
-  pillSpacing: {
-    marginTop: 6,
+  centeredTitle: {
+    textAlign: "center",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: KFF_COLORS.navy,
+    marginBottom: 12,
+    textAlign: "left",
+  },
+  actionsLoader: {
+    marginVertical: 8,
+  },
+  transitionList: {
+    alignItems: "center",
+    gap: 10,
+  },
+  transitionButton: {
+    width: "80%",
+    minHeight: 50,
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: KFF_COLORS.primary,
+    shadowColor: KFF_COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  transitionReject: {
+    backgroundColor: KFF_COLORS.danger,
+    shadowColor: KFF_COLORS.danger,
+  },
+  transitionDisabled: {
+    opacity: 0.5,
+  },
+  transitionText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: KFF_COLORS.white,
+    textAlign: "center",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+  },
+  infoText: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: KFF_COLORS.textMuted,
+    textAlign: "left",
+  },
+  infoValue: {
+    fontSize: 15,
+    color: KFF_COLORS.text,
+    marginTop: 2,
+    textAlign: "left",
+  },
+  callButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: KFF_COLORS.accepted,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
     backgroundColor: KFF_COLORS.white,
     borderRadius: 22,
     padding: 18,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   classification: {
     fontSize: 22,
@@ -485,7 +714,7 @@ const styles = StyleSheet.create({
     backgroundColor: KFF_COLORS.white,
     borderRadius: 30,
     paddingVertical: 14,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   followUpIcon: {
     width: 26,
@@ -501,7 +730,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: KFF_COLORS.white,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   expandButton: {
     position: "absolute",
@@ -513,7 +742,7 @@ const styles = StyleSheet.create({
     backgroundColor: KFF_COLORS.white,
     alignItems: "center",
     justifyContent: "center",
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   fullMap: {
     flex: 1,
@@ -528,7 +757,7 @@ const styles = StyleSheet.create({
     backgroundColor: KFF_COLORS.white,
     alignItems: "center",
     justifyContent: "center",
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   zoomControls: {
     position: "absolute",
@@ -542,7 +771,7 @@ const styles = StyleSheet.create({
     backgroundColor: KFF_COLORS.white,
     alignItems: "center",
     justifyContent: "center",
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   fullMapDirections: {
     position: "absolute",
@@ -554,7 +783,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingVertical: 12,
     paddingHorizontal: 18,
-    ...CARD_SHADOW,
+    ...KFF_SHADOWS.card,
   },
   fullMapDirectionsText: {
     color: KFF_COLORS.white,

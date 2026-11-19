@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
-import { baseURL } from '../api/client';
+import { getApiBaseURL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { CustomAlert } from '../components/CustomAlert';
 
 const getWsUrl = () => {
-  return baseURL
+  return getApiBaseURL()
     .replace(/\/api\/v\d+\/?$/, '')
     .replace(/^https:/, 'wss:')
     .replace(/^http:/, 'ws:')

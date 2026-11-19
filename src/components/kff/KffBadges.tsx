@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
@@ -6,16 +7,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { KffCriticality, KffIncidentState } from './kffTypes';
 import { KFF_COLORS, KFF_CRITICALITY_COLORS } from './kffTheme';
 
-// Round tile with the tilted ticket glyph used on KFF incident cards.
+// Round ticket icon (assets/images/kff/ticket-icon.svg, grey circle included)
+// used on KFF incident cards, the bell list and the incident detail.
 export const KffTicketIcon = ({ size = 52 }: { size?: number }) => (
-  <View style={[styles.ticketTile, { width: size, height: size, borderRadius: size / 2 }]}>
-    <Ionicons
-      name="ticket"
-      size={Math.round(size * 0.48)}
-      color={KFF_COLORS.primary}
-      style={styles.ticketGlyph}
-    />
-  </View>
+  <Image
+    source={require('@/assets/images/kff/ticket-icon.svg')}
+    style={{ width: size, height: size }}
+    contentFit="contain"
+  />
 );
 
 // "Criticality | ● High" pill (blue label segment + white value segment).
@@ -70,14 +69,6 @@ const styles = StyleSheet.create({
     color: KFF_COLORS.white,
     fontSize: 12,
     fontWeight: '700',
-  },
-  ticketTile: {
-    backgroundColor: '#F1F3F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ticketGlyph: {
-    transform: [{ rotate: '-45deg' }],
   },
   pill: {
     flexDirection: 'row',

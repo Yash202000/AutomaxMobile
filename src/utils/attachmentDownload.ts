@@ -2,7 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
-import { baseURL } from '@/src/api/client';
+import { getApiBaseURL } from '@/src/api/client';
 import * as SecureStore from 'expo-secure-store';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import i18n from '@/src/i18n';
@@ -39,7 +39,7 @@ export const downloadAndOpenAttachment = async (
     }
 
     // Download the file with authentication
-    const downloadUrl = `${baseURL}/attachments/${attachmentId}`;
+    const downloadUrl = `${getApiBaseURL()}/attachments/${attachmentId}`;
     const destination = new File(Paths.document, fileName);
 
     const downloadedFile = await File.downloadFileAsync(

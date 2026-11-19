@@ -1,4 +1,4 @@
-import apiClient, { baseURL } from './client';
+import apiClient, { getApiBaseURL } from './client';
 
 interface PaginationInfo {
     page: number;
@@ -74,7 +74,7 @@ export const markNotificationAsRead = async (id: string, isRead: boolean = true)
 
 export const registerToken = async (payload: { device_token: string, device_type: string, user_id: string }) => {
     try {
-        console.log("[API] Registering token at:", baseURL + '/fcm/register');
+        console.log("[API] Registering token at:", getApiBaseURL() + '/fcm/register');
         const response = await apiClient.post('/fcm/register', payload);
         if (response.status >= 200 && response.status < 300) {
             console.log("[API] Token registered successfully:", response.data);

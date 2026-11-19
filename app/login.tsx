@@ -5,7 +5,8 @@ import { CustomAlert } from "@/src/components/CustomAlert";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
 import { checkConnectivity, showNoInternetAlert } from "@/src/utils/networkStatus";
-import { isKffDispatcher } from "@/src/utils/kff";
+import KffLoginScreen from "@/src/components/kff/login/KffLoginScreen";
+import { isKffDispatcher, isKffPasscodeLogin } from "@/src/utils/kff";
 import { navigateAfterLogin } from "@/src/utils/postLoginNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
@@ -2000,4 +2001,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+// KFF passcode login replaces this screen only when EXPO_PUBLIC_KFF_DISPATHER_Login is on.
+export default isKffPasscodeLogin() ? KffLoginScreen : LoginScreen;

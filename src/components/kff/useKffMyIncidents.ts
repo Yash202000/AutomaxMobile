@@ -3,7 +3,9 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { fetchKffMyIncidents, mapApiIncidentToKff } from './kffIncidentApi';
+import { fetchKffMyIncidents } from '@/src/api/kffIncidents';
+
+import { mapApiIncidentToKff } from './kffIncidentMapper';
 import { countByStatus } from './kffTypes';
 
 /**

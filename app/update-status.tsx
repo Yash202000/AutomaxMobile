@@ -79,6 +79,7 @@ const UpdateStatusModal = () => {
     type,
     transitions,
     incident: incidentParam,
+    transitionId: transitionIdParam,
   } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
   const ticketType = Array.isArray(type)
@@ -1518,6 +1519,22 @@ const UpdateStatusModal = () => {
       });
     }
   };
+
+  // Optional `transitionId` param: open with that transition already chosen
+  // (the KFF incident detail has one button per transition). Runs once.
+  const preselectTransitionId = Array.isArray(transitionIdParam)
+    ? transitionIdParam[0]
+    : transitionIdParam;
+  const preselectDone = useRef(false);
+  useEffect(() => {
+    if (preselectDone.current || !preselectTransitionId) return;
+    const match = availableTransitions.find(
+      (trans: any) => trans?.transition?.id === preselectTransitionId,
+    );
+    if (!match) return;
+    preselectDone.current = true;
+    handleTransitionSelect(match);
+  }, [preselectTransitionId, availableTransitions, handleTransitionSelect]);
 
   return (
     <KeyboardAvoidingView

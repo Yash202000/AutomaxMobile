@@ -1,4 +1,4 @@
-// Shared KFF Dispatcher types (API mapping lives in kffIncidentApi.ts).
+// Shared KFF Dispatcher types (API mapping lives in kffIncidentMapper.ts).
 
 /** 'new' = incoming notification the driver hasn't accepted/rejected yet. */
 export type KffIncidentStatus = 'new' | 'accepted' | 'completed' | 'rejected';
@@ -21,8 +21,6 @@ export interface KffIncident {
   createdAt: Date;
   /** When the driver accepted / rejected it (incoming incidents only). */
   handledAt?: Date;
-  /** Driver's current location when the incident was dispatched ('' if unknown). */
-  from: string;
   /** Destination (incident location). */
   to: string;
   /** Undefined when the incident has no coordinates. */
