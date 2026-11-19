@@ -1,8 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getAvailableTransitions } from '@/src/api/incidents';
-import { fetchKffIncidentById, getCachedKffIncidentRaw } from '@/src/api/kffIncidents';
+import {
+  fetchKffIncidentById,
+  fetchKffTransitions,
+  getCachedKffIncidentRaw,
+} from '@/src/api/kffIncidents';
 
 /**
  * Incident record + the workflow transitions the user can run, for the KFF
@@ -13,7 +16,8 @@ import { fetchKffIncidentById, getCachedKffIncidentRaw } from '@/src/api/kffInci
 export const useKffIncidentDetail = (id?: string) => {
   const [raw, setRaw] = useState<any>(() => (id ? getCachedKffIncidentRaw(id) : undefined));
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  // null = ok; '' = generic failure; otherwise the server's message (e.g. 403).
+  const [error, setError] = useState<string | null>(null);
   const [transitions, setTransitions] = useState<any[]>([]);
   const [transitionsLoading, setTransitionsLoading] = useState(false);
   const requestId = useRef(0);
@@ -31,19 +35,27 @@ export const useKffIncidentDetail = (id?: string) => {
       return;
     }
     setLoading(true);
-    setError(false);
+    setError(null);
     setTransitionsLoading(true);
-    fetchKffIncidentById(id).then((response) => {
+    // Details first; transitions only once the record itself loaded.
+    (async () => {
+      const response = await fetchKffIncidentById(id);
       if (current !== requestId.current) return;
-      if (response.success && response.data) setRaw(response.data);
-      else setError(response.status !== 404);
+      if (!response.success || !response.data) {
+        if (response.status === 403) setError(response.error || '');
+        else if (response.status !== 404) setError('');
+        setTransitions([]);
+        setLoading(false);
+        setTransitionsLoading(false);
+        return;
+      }
+      setRaw(response.data);
       setLoading(false);
-    });
-    getAvailableTransitions(id).then((response) => {
+      const items = await fetchKffTransitions(id);
       if (current !== requestId.current) return;
-      setTransitions(response.success && Array.isArray(response.data) ? response.data : []);
+      setTransitions(items);
       setTransitionsLoading(false);
-    });
+    })();
   }, [id]);
 
   useFocusEffect(load);

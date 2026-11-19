@@ -1,4 +1,6 @@
 import { handleNotification } from "@/src/utils/notificationRouter";
+import { loadKffNotifications } from "@/src/components/kff/kffNotificationStore";
+import { isKffDispatcher } from "@/src/utils/kff";
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -29,6 +31,8 @@ export function useFCM(navigation: any) {
                 // foreground
                 unsubscribeOnMessage = onMessage(messaging, async remoteMessage => {
                     console.log("Foreground:", remoteMessage);
+                    // KFF: refresh the inbox so the bell badge updates live.
+                    if (isKffDispatcher()) loadKffNotifications('refresh');
 
                     const enabled = await AsyncStorage.getItem('notificationsEnabled');
                     if (enabled === 'false') {

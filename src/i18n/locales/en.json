@@ -166,6 +166,7 @@
   },
   "kff": {
     "login": {
+      "noUsers": "No user is registered on this device yet. Tap Register to set one up.",
       "newUser": "New user?",
       "title": "Login",
       "selectProfile": "Select your profile",
@@ -176,11 +177,9 @@
       "loadingProfiles": "Loading profiles…",
       "notConfigured": "This device isn't set up yet. Log in as admin to set the Device ID and Web Service URL.",
       "unitUsersFailed": "Couldn't load the users for this device.",
-      "unitUsersPending": "User list isn't available yet (API pending).",
       "codeRequired": "Enter your 4 digit code.",
       "wrongCode": "Incorrect code. Try again.",
       "adminCodeMissing": "Admin code isn't configured for this build.",
-      "passcodeLoginPending": "Passcode login isn't available yet (API pending).",
       "loginFailed": "Login failed. Try again.",
       "language": "Language",
       "languageChangedTitle": "Language",
@@ -207,7 +206,6 @@
       "submit": "Register",
       "successTitle": "Registered",
       "success": "Your code has been created. You can now log in with it.",
-      "pending": "Code registration isn't available yet (API pending).",
       "failed": "Couldn't create your code. Try again."
     },
     "deviceSetup": {
@@ -260,7 +258,6 @@
       "rejected": "Rejected"
     },
     "state": {
-      "new": "New Ticket",
       "assigned": "Assigned",
       "inProgress": "In Progress",
       "completed": "Completed",
@@ -279,6 +276,9 @@
     "noIncidentsDesc": "Pick another date from the calendar to see more.",
     "loadFailed": "Couldn't load your incidents.",
     "alerts": {
+      "newIncident": "New incident",
+      "loadFailed": "Couldn't load notifications",
+      "pullToRetry": "Pull down to try again.",
       "title": "New Incidents",
       "count_one": "{{count}} incident waiting for your response",
       "count_other": "{{count}} incidents waiting for your response",
@@ -309,19 +309,11 @@
       "currentLocation": "Current Location",
       "directions": "Directions",
       "directionsFailed": "Unable to open maps for directions.",
-      "accept": "Accept",
-      "reject": "Reject",
-      "rejectConfirm": "Are you sure you want to reject this incident?",
       "notFound": "This incident is no longer available.",
       "loadFailed": "Couldn't load this incident.",
       "expandMap": "Expand map",
       "addAttachments": "Add Attachments",
-      "addComments": "Add Comments",
-      "handled": {
-        "accepted": "Accepted on {{date}}",
-        "rejected": "Rejected on {{date}}",
-        "completed": "Completed on {{date}}"
-      }
+      "addComments": "Add Comments"
     },
     "time": {
       "justNow": "Just now",

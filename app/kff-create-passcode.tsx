@@ -10,7 +10,6 @@ import KffAuthLayout from '@/src/components/kff/login/KffAuthLayout';
 import KffCodeInput from '@/src/components/kff/login/KffCodeInput';
 import KffStepIndicator from '@/src/components/kff/login/KffStepIndicator';
 import { KFF_COLORS } from '@/src/components/kff/kffTheme';
-import { loadKffDeviceConfig } from '@/src/services/kffDeviceConfig';
 import { getKffRegistrationToken, setKffRegistrationToken } from '@/src/utils/kffLoginSession';
 
 const PASSCODE_LENGTH = 4;
@@ -40,10 +39,9 @@ const KffCreatePasscodeScreen = () => {
     setError('');
     setLoading(true);
     try {
-      const { deviceId } = await loadKffDeviceConfig();
-      const result = await registerKffPasscode(token, code, deviceId.trim());
+      const result = await registerKffPasscode(token, code);
       if (!result.success) {
-        setError(result.notAvailable ? t('kff.createPasscode.pending') : result.error || t('kff.createPasscode.failed'));
+        setError(result.error || t('kff.createPasscode.failed'));
         return;
       }
       setKffRegistrationToken(null);

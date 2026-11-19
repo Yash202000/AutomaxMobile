@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { getKffUnitUsers, kffPasscodeLogin } from '@/src/api/kffAuth';
+import { getKffUnitUsers, kffPasscodeLogin, KffUnitUser } from '@/src/api/kffAuth';
 import { useAuth } from '@/src/context/AuthContext';
 import { isKffDeviceConfigured, loadKffDeviceConfig } from '@/src/services/kffDeviceConfig';
+import { saveKffSession } from '@/src/services/kffSession';
 import { KFF_HOME_ROUTE } from '@/src/utils/kff';
 import { KFF_ADMIN_PASSCODE, setKffAdminUnlocked } from '@/src/utils/kffLoginSession';
 
@@ -29,7 +30,7 @@ const KffLoginScreen = () => {
   const { login } = useAuth();
 
   const adminProfile: KffProfile = { id: ADMIN_ID, name: t('kff.login.admin'), isAdmin: true };
-  const [users, setUsers] = useState<KffProfile[]>([]);
+  const [users, setUsers] = useState<KffUnitUser[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [deviceId, setDeviceId] = useState('');
   const [configured, setConfigured] = useState(true);
@@ -39,7 +40,7 @@ const KffLoginScreen = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const profiles = [adminProfile, ...users];
+  const profiles: KffProfile[] = [adminProfile, ...users];
   const selected = profiles[Math.min(selectedIndex, profiles.length - 1)];
 
   // Reload the unit's users whenever the screen is shown (e.g. after the admin
@@ -66,15 +67,14 @@ const KffLoginScreen = () => {
         if (!active) return;
         setLoadingUsers(false);
         if (result.success) {
-          setUsers(result.data.map((user) => ({ id: user.id, name: user.name })));
+          setUsers(result.data);
           // Start on the first real user; admin stays one swipe away.
           setSelectedIndex(result.data.length > 0 ? 1 : 0);
+          if (result.data.length === 0) setUsersError(t('kff.login.noUsers'));
         } else {
           setUsers([]);
           setSelectedIndex(0);
-          setUsersError(
-            result.notAvailable ? t('kff.login.unitUsersPending') : t('kff.login.unitUsersFailed'),
-          );
+          setUsersError(t('kff.login.unitUsersFailed'));
         }
       })();
       return () => {
@@ -114,13 +114,23 @@ const KffLoginScreen = () => {
 
     setSubmitting(true);
     try {
-      const result = await kffPasscodeLogin(selected.id, code, deviceId);
+      const result = await kffPasscodeLogin(selected.id, code);
       if (!result.success) {
-        setError(result.notAvailable ? t('kff.login.passcodeLoginPending') : t('kff.login.wrongCode'));
+        setError(result.error || t('kff.login.wrongCode'));
         setCode('');
         return;
       }
-      await login(result.data.token, result.data.refreshToken);
+      const { token, refreshToken, unitId, ...user } = result.data;
+      // Unit id (UUID) from the unit-user lookup is the one every KFF API
+      // needs. Never the Device ID: the backend rejects non-UUID unit ids.
+      const unitUser = users.find((u) => u.id === selected.id);
+      await saveKffSession({
+        ...user,
+        unitId: unitUser?.unitId || unitId || '',
+        plateNumber: unitUser?.plateNumber,
+        uniqueId: unitUser?.uniqueId || deviceId,
+      });
+      await login(token, refreshToken);
       router.replace(KFF_HOME_ROUTE);
     } catch {
       setError(t('kff.login.loginFailed'));

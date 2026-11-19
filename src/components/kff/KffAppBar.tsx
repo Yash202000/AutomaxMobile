@@ -8,7 +8,14 @@ import { useTranslation } from 'react-i18next';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { resetKffIncidents, useKffIncidents } from './kffIncidentStore';
+import { clearKffSession } from '@/src/services/kffSession';
+
+import {
+  isUnreadKffNotification,
+  loadKffNotifications,
+  resetKffNotifications,
+  useKffNotifications,
+} from './kffNotificationStore';
 import { KFF_COLORS } from './kffTheme';
 
 interface KffAppBarProps {
@@ -23,14 +30,19 @@ interface KffAppBarProps {
 }
 
 // Sticky KFF app bar: sits outside each screen's scroll view and pads itself
-// for the top safe area. Bell badge = live count of incoming incidents.
+// for the top safe area. Bell badge = unread notifications in the unit inbox.
 const KffAppBar = ({ title, subtitle, onBack, showActions = true, centerTitle = false }: KffAppBarProps) => {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
-  const { incoming } = useKffIncidents();
-  const count = incoming.length;
+  const { items, loaded, loading } = useKffNotifications();
+  const count = items.filter(isUnreadKffNotification).length;
+
+  // First app bar on screen loads the inbox once; the list screen refreshes it.
+  useEffect(() => {
+    if (showActions && !loaded && !loading) loadKffNotifications();
+  }, [showActions, loaded, loading]);
 
   // Small "pop" on the badge whenever the count changes.
   const badgeScale = useRef(new Animated.Value(1)).current;
@@ -49,7 +61,8 @@ const KffAppBar = ({ title, subtitle, onBack, showActions = true, centerTitle = 
         text: t('auth.logout'),
         style: 'destructive',
         onPress: () => {
-          resetKffIncidents();
+          resetKffNotifications();
+          clearKffSession();
           logout();
         },
       },

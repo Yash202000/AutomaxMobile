@@ -11,12 +11,6 @@ import { useKffIncidentDetail } from "@/src/components/kff/useKffIncidentDetail"
 import KffReasonModal from "@/src/components/kff/KffReasonModal";
 import { executeKffTransition } from "@/src/api/kffIncidents";
 import { openKffDirections } from "@/src/utils/kffDirections";
-import {
-  acceptKffIncident,
-  findKffIncident,
-  rejectKffIncident,
-  useKffIncidents,
-} from "@/src/components/kff/kffIncidentStore";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
 import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { CustomAlert } from "@/src/components/CustomAlert";
@@ -41,9 +35,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// KFF Dispatcher — incident detail (opened from the bell list or My Incidents).
-// Loaded from the incidents API (useKffIncidentDetail). An incident still
-// waiting in the bell list keeps its 'new' status so Accept / Reject show.
+// KFF Dispatcher — incident detail (opened from a notification or My Incidents).
+// Loaded from the incidents API (useKffIncidentDetail); every action, including
+// accept / reject, is a workflow transition button.
 
 const ADD_ICON = require("@/assets/images/kff/add.svg");
 
@@ -73,8 +67,6 @@ const KffIncidentDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const incidentsState = useKffIncidents();
-  const localIncident = id ? findKffIncident(incidentsState, id) : undefined;
 
   const {
     raw: remoteRaw,
@@ -85,15 +77,10 @@ const KffIncidentDetailScreen = () => {
     reload,
   } = useKffIncidentDetail(id);
 
-  const remoteIncident = useMemo(
+  const incident = useMemo(
     () => (remoteRaw ? mapApiIncidentToKff(remoteRaw, i18n.language) : undefined),
     [remoteRaw, i18n.language],
   );
-  // Still pending in the bell list → keep 'new' so Accept / Reject show.
-  const incident =
-    remoteIncident && localIncident?.status === "new"
-      ? { ...remoteIncident, status: "new" as const, state: "new" as const }
-      : remoteIncident ?? localIncident;
 
   const [runningTransitionId, setRunningTransitionId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<any>(null);
@@ -125,14 +112,16 @@ const KffIncidentDetailScreen = () => {
           ) : (
             <>
               <Ionicons
-                name={remoteError ? "cloud-offline-outline" : "document-text-outline"}
+                name={remoteError !== null ? "cloud-offline-outline" : "document-text-outline"}
                 size={40}
                 color={KFF_COLORS.primary}
               />
               <Text style={styles.notFoundText}>
-                {remoteError ? t("kff.detail.loadFailed") : t("kff.detail.notFound")}
+                {remoteError === null
+                  ? t("kff.detail.notFound")
+                  : remoteError || t("kff.detail.loadFailed")}
               </Text>
-              {remoteError && (
+              {remoteError !== null && (
                 <TouchableOpacity
                   style={styles.retryButton}
                   activeOpacity={0.85}
@@ -148,7 +137,6 @@ const KffIncidentDetailScreen = () => {
     );
   }
 
-  const isNew = incident.status === "new";
   const { latitude, longitude } = incident;
   const hasLocation = latitude !== undefined && longitude !== undefined;
 
@@ -185,6 +173,7 @@ const KffIncidentDetailScreen = () => {
     setRunningTransitionId(null);
     if (!result.success) {
       CustomAlert.alert(t("common.error"), result.error || t("kff.detail.transitionFailed"));
+      reload(); // e.g. stale version after someone else updated it
       return;
     }
     setRejectTarget(null);
@@ -232,31 +221,9 @@ const KffIncidentDetailScreen = () => {
     ]);
   };
 
-  const handleAccept = () => {
-    acceptKffIncident(incident.id);
-    router.navigate({
-      pathname: "/(tabs)/kff-incidents",
-      params: { status: "accepted", date: new Date().toISOString(), ts: String(Date.now()) },
-    });
-  };
-
   // TODO: wire up once the KFF attachment/comment endpoints exist (no-op for now).
   const handleAddAttachments = () => {};
   const handleAddComments = () => {};
-
-  const handleReject = () => {
-    CustomAlert.alert(t("kff.detail.reject"), t("kff.detail.rejectConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("kff.detail.reject"),
-        style: "destructive",
-        onPress: () => {
-          rejectKffIncident(incident.id);
-          router.navigate("/(tabs)/kff-incident-alerts");
-        },
-      },
-    ]);
-  };
 
   return (
     <KffBackground>
@@ -274,18 +241,14 @@ const KffIncidentDetailScreen = () => {
               {incident.ticketNumber}
             </Text>
             <View style={styles.badgeRow}>
-              {isNew ? (
-                <Text style={styles.ticketState}>{t("kff.state.new")}</Text>
-              ) : (
-                <KffStateBadge state={incident.state} />
-              )}
+              <KffStateBadge state={incident.state} />
               <KffCriticalityPill level={incident.criticality} />
             </View>
           </View>
         </View>
 
         {/* Workflow transitions: centred buttons, blue — reject in red */}
-        {!isNew && (transitionsLoading || transitions.length > 0) && (
+        {(transitionsLoading || transitions.length > 0) && (
           <View style={styles.card}>
             <Text style={[styles.cardTitle, styles.centeredTitle]}>{t("kff.detail.actions")}</Text>
             {transitionsLoading && transitions.length === 0 ? (
@@ -346,27 +309,6 @@ const KffIncidentDetailScreen = () => {
             </>
           )}
 
-          {isNew ? (
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.acceptButton} activeOpacity={0.85} onPress={handleAccept}>
-                <Text style={styles.acceptText}>{t("kff.detail.accept")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rejectButton} onPress={handleReject} hitSlop={8}>
-                <Text style={styles.rejectText}>{t("kff.detail.reject")}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            incident.handledAt && (
-              <View style={styles.handledNote}>
-                <Ionicons name="checkmark-done" size={16} color={KFF_COLORS.textSecondary} />
-                <Text style={styles.handledText}>
-                  {t(`kff.detail.handled.${incident.status}`, {
-                    date: formatKffDateTime(incident.handledAt, i18n.language),
-                  })}
-                </Text>
-              </View>
-            )
-          )}
         </View>
 
         {/* Location + caller details from the incident record */}
@@ -535,10 +477,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: KFF_COLORS.text,
   },
-  ticketState: {
-    fontSize: 14,
-    color: KFF_COLORS.textSecondary,
-  },
   centeredTitle: {
     textAlign: "center",
   },
@@ -652,52 +590,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: KFF_COLORS.text,
-    textAlign: "left",
-  },
-  actions: {
-    marginTop: 22,
-    alignItems: "center",
-    gap: 6,
-  },
-  acceptButton: {
-    alignSelf: "stretch",
-    backgroundColor: KFF_COLORS.primary,
-    borderRadius: 28,
-    paddingVertical: 16,
-    alignItems: "center",
-    shadowColor: KFF_COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  acceptText: {
-    color: KFF_COLORS.white,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  rejectButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  rejectText: {
-    color: KFF_COLORS.text,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  handledNote: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 18,
-    backgroundColor: KFF_COLORS.background,
-    borderRadius: 12,
-    padding: 10,
-  },
-  handledText: {
-    flex: 1,
-    fontSize: 13,
-    color: KFF_COLORS.textSecondary,
     textAlign: "left",
   },
   followUpPanel: {

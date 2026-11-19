@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -16,6 +17,7 @@ import { KFF_COLORS } from '../kffTheme';
 export interface KffProfile {
   id: string;
   name: string;
+  imageUrl?: string;
   isAdmin?: boolean;
 }
 
@@ -97,11 +99,15 @@ const KffProfileCarousel = ({ profiles, selectedIndex, onSelect }: KffProfileCar
                   accessibilityLabel={profile.name}
                 >
                   <View style={styles.avatar}>
-                    <Ionicons
-                      name={profile.isAdmin ? 'shield-checkmark' : 'person'}
-                      size={30}
-                      color="#B7BCD6"
-                    />
+                    {profile.imageUrl ? (
+                      <Image source={{ uri: profile.imageUrl }} style={styles.avatarImage} />
+                    ) : (
+                      <Ionicons
+                        name={profile.isAdmin ? 'shield-checkmark' : 'person'}
+                        size={30}
+                        color="#B7BCD6"
+                      />
+                    )}
                   </View>
                   <Text style={styles.name} numberOfLines={2}>
                     {profile.name}
@@ -153,8 +159,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8EAF4',
     borderWidth: 1,
     borderColor: '#DADDEE',
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   name: {
     fontSize: 15,

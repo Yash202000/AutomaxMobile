@@ -114,6 +114,10 @@ apiClient.interceptors.request.use(
       "/otp/verify",
       "/ldap/login",
       "/settings",
+      // KFF Dispatcher pre-login calls (unit user lookup; passcode setup during
+      // registration carries its own Authorization header).
+      "/auth/unit/",
+      "/users/passcode",
     ];
     const isPublicEndpoint = publicEndpoints.some((endpoint) =>
       config.url?.includes(endpoint),

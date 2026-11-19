@@ -36,7 +36,6 @@ const STATE_BADGE: Record<
   KffIncidentState,
   { color: string; icon: keyof typeof Ionicons.glyphMap }
 > = {
-  new: { color: KFF_COLORS.primary, icon: 'sparkles' },
   assigned: { color: KFF_COLORS.assigned, icon: 'warning' },
   inProgress: { color: KFF_COLORS.inProgress, icon: 'navigate' },
   completed: { color: KFF_COLORS.completed, icon: 'checkmark-circle' },

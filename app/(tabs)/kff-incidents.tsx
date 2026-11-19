@@ -65,7 +65,7 @@ const KffIncidentCard = ({
           <View style={styles.timeAgo}>
             <Ionicons name="time-outline" size={14} color={KFF_COLORS.textMuted} />
             <Text style={styles.timeAgoText}>
-              {formatKffRelativeTime(incident.handledAt ?? incident.createdAt, t)}
+              {formatKffRelativeTime(incident.createdAt, t)}
             </Text>
           </View>
         </View>
