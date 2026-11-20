@@ -242,10 +242,16 @@
       "todayActivities": "Today Activities",
       "activities": "Activities",
       "unitDetails": "Unit Details",
-      "vehicleModel": "Vehicle Model",
-      "capacity": "Capacity",
-      "totalDistance": "Total Distance",
+      "vehicleType": "Vehicle Type",
+      "plateNumber": "Plate Number",
+      "location": "Location",
       "selectStatus": "Select unit status"
+    },
+    "resourceStatus": {
+      "available": "Available",
+      "busy": "Busy",
+      "unavailable": "Unavailable",
+      "offline": "Offline"
     },
     "unitStatus": {
       "online": "Online",

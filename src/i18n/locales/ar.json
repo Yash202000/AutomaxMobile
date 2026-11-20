@@ -239,10 +239,16 @@
       "todayActivities": "أنشطة اليوم",
       "activities": "الأنشطة",
       "unitDetails": "تفاصيل الوحدة",
-      "vehicleModel": "طراز المركبة",
-      "capacity": "السعة",
-      "totalDistance": "إجمالي المسافة",
+      "vehicleType": "نوع المركبة",
+      "plateNumber": "رقم اللوحة",
+      "location": "الموقع",
       "selectStatus": "اختر حالة الوحدة"
+    },
+    "resourceStatus": {
+      "available": "متاح",
+      "busy": "مشغول",
+      "unavailable": "غير متاح",
+      "offline": "غير متصل"
     },
     "unitStatus": {
       "online": "متصل",

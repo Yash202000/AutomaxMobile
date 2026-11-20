@@ -3,29 +3,37 @@ import KffBackground from "@/src/components/kff/KffBackground";
 import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { isSameDay, startOfDay } from "@/src/components/kff/kffDateUtils";
 import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
-import { KFF_UNIT_STATUSES, KffListStatus, KffUnitStatus } from "@/src/components/kff/kffTypes";
+import { KffListStatus } from "@/src/components/kff/kffTypes";
 import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
+import { useKffUnitProfile } from "@/src/components/kff/useKffUnitProfile";
 import { useAuth } from "@/src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // KFF Dispatcher — Profile tab.
-// Activity counts come from the incidents API. There is no API yet for the
-// unit (number, rating, vehicle, capacity, distance, status), so those show
-// "—" until one exists; the status picker is local-only and not saved.
+// Activity counts come from the incidents API; the unit card and details from
+// the unit-user lookup + dispatch resource (useKffUnitProfile). The unit
+// status is read-only for now (no status picker).
 
-/** Shown wherever a value has no data source yet. */
+/** Shown while loading or when the API has no value. */
 const NO_VALUE = "—";
 
-const UNIT_STATUS_COLORS: Record<KffUnitStatus, string> = {
-  online: KFF_COLORS.online,
-  busy: KFF_COLORS.busy,
-  offline: KFF_COLORS.offline,
+/** Dot colour for the dispatch resource status (e.g. "available"). */
+const unitStatusColor = (status: string) => {
+  const s = status.toLowerCase();
+  if (/avail|online|free|idle/.test(s)) return KFF_COLORS.online;
+  if (/busy|assign|dispatch|enroute|en.route|on.?scene|engaged/.test(s)) return KFF_COLORS.busy;
+  if (/off|unavail|out.of.service|inactive/.test(s)) return KFF_COLORS.offline;
+  return KFF_COLORS.textMuted;
 };
+
+/** "out_of_service" → "Out Of Service". */
+const humanize = (value: string) =>
+  value.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const ACTIVITY_CARDS: {
   status: KffListStatus;
@@ -51,10 +59,10 @@ const KffProfileScreen = () => {
   const { user } = useAuth();
 
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [unitStatus, setUnitStatus] = useState<KffUnitStatus | null>(null);
-  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
 
   const { counts, loading: countsLoading } = useKffMyIncidents();
+  const { uniqueId, unit } = useKffUnitProfile();
+  const unitStatus = unit?.status || "";
   const isToday = isSameDay(selectedDate, new Date());
 
   const driverName =
@@ -68,9 +76,9 @@ const KffProfileScreen = () => {
   };
 
   const unitDetails: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
-    { icon: "car-sport-outline", label: t("kff.profile.vehicleModel"), value: NO_VALUE },
-    { icon: "people-outline", label: t("kff.profile.capacity"), value: NO_VALUE },
-    { icon: "speedometer-outline", label: t("kff.profile.totalDistance"), value: NO_VALUE },
+    { icon: "car-sport-outline", label: t("kff.profile.vehicleType"), value: unit?.name || NO_VALUE },
+    { icon: "card-outline", label: t("kff.profile.plateNumber"), value: unit?.plateNumber || NO_VALUE },
+    { icon: "location-outline", label: t("kff.profile.location"), value: unit?.locationName || NO_VALUE },
   ];
 
   return (
@@ -91,7 +99,9 @@ const KffProfileScreen = () => {
             </View>
             <View style={styles.unitInfo}>
               <Text style={styles.unitLabel}>{t("kff.profile.unitNo")}</Text>
-              <Text style={styles.unitNumber}>{NO_VALUE}</Text>
+              <Text style={styles.unitNumber} numberOfLines={1} adjustsFontSizeToFit>
+                {uniqueId || NO_VALUE}
+              </Text>
             </View>
           </View>
 
@@ -100,28 +110,15 @@ const KffProfileScreen = () => {
           <View style={styles.unitBottom}>
             <View style={styles.unitCol}>
               <Text style={styles.colLabel}>{t("kff.profile.unitStatus")}</Text>
-              <TouchableOpacity
-                style={styles.statusPill}
-                activeOpacity={0.8}
-                onPress={() => setStatusMenuVisible(true)}
-              >
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor: unitStatus
-                        ? UNIT_STATUS_COLORS[unitStatus]
-                        : KFF_COLORS.textMuted,
-                    },
-                  ]}
-                />
+              {/* Read-only for now: the status picker is hidden. */}
+              <View style={styles.statusPill}>
+                <View style={[styles.statusDot, { backgroundColor: unitStatusColor(unitStatus) }]} />
                 <Text style={styles.statusText}>
-                  {unitStatus ? t(`kff.unitStatus.${unitStatus}`) : NO_VALUE}
+                  {unitStatus
+                    ? t(`kff.resourceStatus.${unitStatus.toLowerCase()}`, { defaultValue: humanize(unitStatus) })
+                    : NO_VALUE}
                 </Text>
-                <View style={styles.statusChevron}>
-                  <Ionicons name="chevron-down" size={14} color={KFF_COLORS.primary} />
-                </View>
-              </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.colDivider} />
             <View style={styles.unitCol}>
@@ -185,35 +182,6 @@ const KffProfileScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Unit status picker (local state only — no API yet) */}
-      <Modal
-        visible={statusMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setStatusMenuVisible(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setStatusMenuVisible(false)}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t("kff.profile.selectStatus")}</Text>
-            {KFF_UNIT_STATUSES.map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={styles.modalOption}
-                onPress={() => {
-                  setUnitStatus(status);
-                  setStatusMenuVisible(false);
-                }}
-              >
-                <View style={[styles.statusDot, { backgroundColor: UNIT_STATUS_COLORS[status] }]} />
-                <Text style={styles.modalOptionText}>{t(`kff.unitStatus.${status}`)}</Text>
-                {status === unitStatus && (
-                  <Ionicons name="checkmark" size={20} color={KFF_COLORS.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
     </KffBackground>
   );
 };
@@ -310,14 +278,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: KFF_COLORS.text,
   },
-  statusChevron: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: KFF_COLORS.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   alarmTile: {
     width: 36,
     height: 36,
@@ -400,41 +360,6 @@ const styles = StyleSheet.create({
     color: KFF_COLORS.navy,
     textAlign: "left",
     marginTop: 2,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  modalCard: {
-    width: "100%",
-    maxWidth: 320,
-    backgroundColor: KFF_COLORS.white,
-    borderRadius: 18,
-    paddingVertical: 12,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: KFF_COLORS.navy,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    textAlign: "left",
-  },
-  modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  modalOptionText: {
-    flex: 1,
-    fontSize: 15,
-    color: KFF_COLORS.text,
-    textAlign: "left",
   },
 });
 

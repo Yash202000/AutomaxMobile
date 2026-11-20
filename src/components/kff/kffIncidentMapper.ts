@@ -22,8 +22,18 @@ const mapCriticality = (raw: any): KffCriticality => {
   return PRIORITY_TO_CRITICALITY[parseInt(String(raw.priority), 10)] ?? 'medium';
 };
 
-const mapStatus = (raw: any): { status: KffListStatus; state: KffIncidentState } => {
-  const s = raw.current_state ?? {};
+const mapStatus = (raw: any): { status: KffListStatus; state: KffIncidentState } =>
+  mapWorkflowState(raw.current_state);
+
+/**
+ * My Incidents tab (Accepted / Completed / Rejected) for a workflow state —
+ * e.g. a transition's `to_state`, to open the right tab after an update.
+ */
+export const kffListStatusForState = (workflowState: any): KffListStatus =>
+  mapWorkflowState(workflowState).status;
+
+function mapWorkflowState(workflowState: any): { status: KffListStatus; state: KffIncidentState } {
+  const s = workflowState ?? {};
   const text = `${s.code ?? ''} ${s.name ?? ''}`.toLowerCase();
   if (/reject|cancel/.test(text)) return { status: 'rejected', state: 'rejected' };
   if (/complet|resolv|clos|done|finish/.test(text) || s.state_type === 'terminal') {
@@ -33,7 +43,7 @@ const mapStatus = (raw: any): { status: KffListStatus; state: KffIncidentState }
     return { status: 'accepted', state: 'inProgress' };
   }
   return { status: 'accepted', state: 'assigned' };
-};
+}
 
 const pickLocalized = (obj: any, language: string): string =>
   (language === 'ar' && obj?.name_ar) || obj?.name || '';

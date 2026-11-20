@@ -8,7 +8,6 @@ import {
   toTransitionIncidentParam,
 } from "@/src/components/kff/kffIncidentMapper";
 import { useKffIncidentDetail } from "@/src/components/kff/useKffIncidentDetail";
-import KffReasonModal from "@/src/components/kff/KffReasonModal";
 import { executeKffTransition } from "@/src/api/kffIncidents";
 import { openKffDirections } from "@/src/utils/kffDirections";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
@@ -46,18 +45,22 @@ const isRejectTransition = (tr: any) =>
   tr?.is_rejection === true || /reject/i.test(`${tr?.code ?? ""} ${tr?.name ?? ""}`);
 const isStartTransition = (tr: any) =>
   /start|en.?route/i.test(`${tr?.code ?? ""} ${tr?.name ?? ""} ${tr?.to_state?.name ?? ""}`);
-/** Inputs the KFF screen can't collect itself → use the update-status form. */
+/**
+ * Inputs the KFF screen can't collect itself → use the update-status form.
+ * Reject always goes there too, so the reason is entered in the full form.
+ */
 const needsTransitionForm = (item: any) => {
   const tr = item?.transition ?? {};
   const mandatory = (item?.requirements ?? []).filter((req: any) => req?.is_mandatory);
   return (
+    isRejectTransition(tr) ||
     !!tr.manual_select_user ||
     !!tr.auto_detect_department ||
     !!tr.require_assignee ||
     !!tr.is_final_close ||
     !!tr.to_state?.is_partial_close ||
     (tr.field_changes?.length ?? 0) > 0 ||
-    mandatory.some((req: any) => !(req.requirement_type === "comment" && isRejectTransition(tr)))
+    mandatory.length > 0
   );
 };
 
@@ -83,7 +86,6 @@ const KffIncidentDetailScreen = () => {
   );
 
   const [runningTransitionId, setRunningTransitionId] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<any>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
   const fullMapRef = useRef<KffRouteMapHandle>(null);
 
@@ -158,16 +160,15 @@ const KffIncidentDetailScreen = () => {
     );
   };
 
-  // Runs a transition on its own; a reject first asks for a reason (sent as the
-  // comment), Start also opens Google Maps directions to the incident.
-  // Transitions that need extra input (users, fields, attachments, feedback…)
-  // fall back to the Automax update-status form with that transition chosen.
-  const runTransition = async (item: any, reason?: string) => {
+  // Runs a transition on its own; Start also opens Google Maps directions to
+  // the incident. Reject and transitions that need extra input (users, fields,
+  // attachments, feedback…) open the update-status form with that transition
+  // chosen instead.
+  const runTransition = async (item: any) => {
     const tr = item.transition;
     setRunningTransitionId(tr.id);
     const result = await executeKffTransition(String(remoteRaw.id), {
       transitionId: tr.id,
-      comment: reason,
       version: remoteRaw.version,
     });
     setRunningTransitionId(null);
@@ -176,7 +177,6 @@ const KffIncidentDetailScreen = () => {
       reload(); // e.g. stale version after someone else updated it
       return;
     }
-    setRejectTarget(null);
     reload();
     if (isStartTransition(tr)) handleDirections();
   };
@@ -209,10 +209,6 @@ const KffIncidentDetailScreen = () => {
           transitionId: tr.id,
         },
       });
-      return;
-    }
-    if (isRejectTransition(tr)) {
-      setRejectTarget(item);
       return;
     }
     CustomAlert.alert(transitionLabel(tr), t("kff.detail.transitionConfirm", { action: transitionLabel(tr) }), [
@@ -373,15 +369,6 @@ const KffIncidentDetailScreen = () => {
           </View>
         )}
       </ScrollView>
-
-      <KffReasonModal
-        visible={!!rejectTarget}
-        title={rejectTarget ? transitionLabel(rejectTarget.transition) : ""}
-        submitLabel={rejectTarget ? transitionLabel(rejectTarget.transition) : ""}
-        submitting={!!runningTransitionId}
-        onCancel={() => setRejectTarget(null)}
-        onSubmit={(reason) => rejectTarget && runTransition(rejectTarget, reason)}
-      />
 
       {/* Full-screen map */}
       <Modal visible={mapExpanded && hasLocation} animationType="slide" onRequestClose={() => setMapExpanded(false)}>

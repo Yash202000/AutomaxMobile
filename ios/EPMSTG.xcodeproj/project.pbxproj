@@ -18,13 +18,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* EPMSTG.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EPMSTG.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* KFFDISPATCHER.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KFFDISPATCHER.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EPMSTG/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = EPMSTG/Info.plist; sourceTree = "<group>"; };
 		148E5A90FA9B6F411242C8CE /* Pods-EPMSTG.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EPMSTG.release.xcconfig"; path = "Target Support Files/Pods-EPMSTG/Pods-EPMSTG.release.xcconfig"; sourceTree = "<group>"; };
 		7339251A28D3079D37A81388 /* Pods-EPMSTG.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EPMSTG.debug.xcconfig"; path = "Target Support Files/Pods-EPMSTG/Pods-EPMSTG.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = EPMSTG/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B5CBC62DE2C669F06F7626F4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = EPMSTG/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B5CBC62DE2C669F06F7626F4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = EPMSTG/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		BC62F9EFB72A7969CF7B4EBB /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-EPMSTG/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -103,7 +103,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* EPMSTG.app */,
+				13B07F961A680F5B00A75B9A /* KFFDISPATCHER.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -131,7 +131,6 @@
 				7339251A28D3079D37A81388 /* Pods-EPMSTG.debug.xcconfig */,
 				148E5A90FA9B6F411242C8CE /* Pods-EPMSTG.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -158,7 +157,7 @@
 			);
 			name = EPMSTG;
 			productName = EPMSTG;
-			productReference = 13B07F961A680F5B00A75B9A /* EPMSTG.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* KFFDISPATCHER.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -395,6 +394,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = EPMSTG/EPMSTG.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 33LQ5MPFBV;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -413,8 +413,8 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.leadergroup.kffdispatcher";
-				PRODUCT_NAME = "KFFDISPATCHER";
+				PRODUCT_BUNDLE_IDENTIFIER = com.leadergroup.kffdispatcher;
+				PRODUCT_NAME = KFFDISPATCHER;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPMSTG/EPMSTG-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -431,6 +431,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = EPMSTG/EPMSTG.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 33LQ5MPFBV;
 				INFOPLIST_FILE = EPMSTG/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -444,8 +445,8 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.leadergroup.kffdispatcher";
-				PRODUCT_NAME = "KFFDISPATCHER";
+				PRODUCT_BUNDLE_IDENTIFIER = com.leadergroup.kffdispatcher;
+				PRODUCT_NAME = KFFDISPATCHER;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPMSTG/EPMSTG-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
