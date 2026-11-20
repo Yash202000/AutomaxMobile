@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { KFF_COLORS } from '../kffTheme';
 
@@ -24,6 +24,7 @@ const KffCodeInput = ({
   onComplete,
 }: KffCodeInputProps) => {
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const handleChange = (text: string) => {
     const digits = text.replace(/[^0-9]/g, '').slice(0, length);
@@ -32,7 +33,9 @@ const KffCodeInput = ({
   };
 
   return (
-    <View style={styles.wrapper}>
+    // Tapping anywhere on the boxes focuses the input (also re-opens the
+    // keyboard after it was dismissed).
+    <Pressable style={styles.wrapper} onPress={() => inputRef.current?.focus()}>
       <View style={styles.row} pointerEvents="none">
         {Array.from({ length }).map((_, index) => {
           const digit = value[index];
@@ -45,6 +48,7 @@ const KffCodeInput = ({
         })}
       </View>
       <TextInput
+        ref={inputRef}
         style={styles.hiddenInput}
         value={value}
         onChangeText={handleChange}
@@ -53,12 +57,15 @@ const KffCodeInput = ({
         keyboardType="number-pad"
         autoFocus={autoFocus}
         caretHidden
+        selectionColor="transparent"
+        textContentType="oneTimeCode"
+        contextMenuHidden
         maxLength={length}
         secureTextEntry={false}
         importantForAutofill="no"
         accessibilityLabel="Passcode"
       />
-    </View>
+    </Pressable>
   );
 };
 
@@ -91,7 +98,10 @@ const styles = StyleSheet.create({
   },
   hiddenInput: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0,
+    // NOT opacity: 0 — iOS ignores touches (and focus) on views with alpha
+    // below 0.01. Keep it fully opaque but with invisible text instead.
+    color: 'transparent',
+    backgroundColor: 'transparent',
   },
 });
 
