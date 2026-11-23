@@ -32,7 +32,6 @@ FirebaseApp.configure()
       in: window,
       launchOptions: launchOptions)
 #endif
-
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

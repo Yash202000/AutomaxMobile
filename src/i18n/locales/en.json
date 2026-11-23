@@ -36,6 +36,7 @@
     "loading": "Loading...",
     "recording": "Recording",
     "error": "Error",
+    "note": "Note",
     "retry": "Retry",
     "failedToLoad": "Failed to load",
     "cancel": "Cancel",
@@ -147,7 +148,9 @@
     "sharingNotAvailable": "Sharing is not available on this device",
     "downloadError": "Download Error",
     "failedToDownload": "Failed to download attachment",
-    "savedToPhotos": "Image saved to Photos"
+    "savedToPhotos": "Image saved to Photos",
+    "add": "Add",
+    "more": "more"
   },
   "map": {
     "incidents": "Incidents Map",
@@ -159,7 +162,8 @@
     "queries": "Queries Map",
     "queriesOnMap": "queries on map",
     "tapToLoad": "Tap marker to load",
-    "cappedNotice": "Showing first {{shown}} of {{total}} — narrow your filters to see the rest"
+    "cappedNotice": "Showing first {{shown}} of {{total}} — narrow your filters to see the rest",
+    "googleUnavailable": "Google Maps unavailable — showing OpenStreetMap"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -199,7 +203,7 @@
     "lastNameRequired": "Please enter your last name",
     "phone": "Phone Number",
     "mobileNumber": "Mobile Number",
-    "mobilePlaceholder": "+1234567890",
+    "mobilePlaceholder": "05xxxxxxxx",
     "mobileRequired": "Please enter your mobile number",
     "invalidMobileNumber": "Please enter a valid mobile number",
     "forgotPassword": "Forgot Password?",
@@ -226,8 +230,23 @@
     "emailPlaceholder": "user@example.com",
     "passwordPlaceholder": "••••••••",
     "phonePlaceholder": "+1234567890",
-    "ssoLogin": "SSO",
-    "ssoLoginButton": "Sign In with SSO",
+    "nafathLogin": "Nafath",
+    "nafathLoginButton": "Sign In with Nafath",
+    "nationalIdInvalid": "Please enter a valid National ID",
+    "nafathOpenApp": "Open the Nafath app",
+    "nafathPickNumber": "Open the Nafath app and select this number",
+    "nafathNumberLabel": "Number to choose in Nafath: {{number}}",
+    "nafathWaiting": "Waiting for your approval…",
+    "nafathNewNumberIn": "A new number will appear in {{seconds}} s",
+    "nafathExpiresIn": "Request expires in {{time}}",
+    "nafathApproved": "Approved. Signing you in…",
+    "nafathCancel": "Cancel",
+    "nafathRejected": "Login was rejected",
+    "nafathExpired": "Request expired. Try again.",
+    "nafathNoEmployeeAccount": "No employee account found for this ID",
+    "continueAsCitizen": "Continue as citizen",
+    "nafathUnavailable": "Nafath is unavailable right now. Please try again.",
+    "nafathNoInternet": "No internet connection. Check your connection and try again.",
     "nationalId": "National ID",
     "nationalIdPlaceholder": "Enter your national ID",
     "nationalIdRequired": "Please enter your national ID",
@@ -523,6 +542,12 @@
     "channel": "Channel"
   },
   "details": {
+    "incidentStatus": "Incident status",
+    "coordinates": "Coordinates",
+    "uploadedAt": "Uploaded",
+    "noAccessTitle": "No longer available",
+    "noAccessMessage": "This item is no longer accessible to you. It may have been reassigned or moved after the last update. Your changes were saved successfully.",
+    "backToList": "Back to list",
     "incident": "Incident",
     "request": "Request",
     "complaint": "Complaint",
@@ -617,6 +642,7 @@
     }
   },
   "profile": {
+    "middleName": "Middle Name",
     "firstName": "First Name",
     "lastName": "Last Name",
     "email": "Email",
@@ -637,6 +663,10 @@
     "verify": "Verify",
     "verified": "Verified",
     "sendOTP": "Send OTP",
+    "otpViaSms": "SMS",
+    "otpViaWhatsapp": "WhatsApp",
+    "otpSentVia": "OTP sent via {{channel}} to {{phone}}.",
+    "changeOtpChannel": "Change verification method",
     "otpVerified": "OTP verified successfully",
     "otpSentFailed": "Failed to send OTP",
     "otpVerifiedFailed": "Failed to verify OTP"
@@ -808,6 +838,7 @@
     "title": "Add Complaint",
     "complaintTitle": "Title",
     "titlePlaceholder": "Enter complaint title",
+    "titleTooShort": "Title must be at least 5 characters",
     "description": "Description",
     "descriptionPlaceholder": "Describe the complaint in detail...",
     "selectClassification": "Select Classification",
@@ -882,6 +913,10 @@
     "minCharsTitle": "Keep Typing...",
     "minCharsDesc": "Enter at least 3 characters to search"
   },
+  "network": {
+    "noInternetTitle": "No Internet Connection",
+    "noInternetMessage": "Check your internet connection and try again."
+  },
   "errors": {
     "networkError": "Network error. Please check your connection.",
     "noPermission": "No permission. Please contact administrator to gain access.",
@@ -939,5 +974,14 @@
   },
   "sort": {
     "updated": "Latest Updated"
+  },
+  "lookups": {
+    "multipleValuesHint": "Tap Add or Done — previously added values are kept."
+  },
+  "certificatePinning": {
+    "title": "Connection Not Secure",
+    "message": "The app could not verify the identity of the server, so the connection was blocked to protect your data. This can happen on an untrusted network or if the server certificate has changed. Please switch to a trusted network (or turn off any VPN/proxy) and try again. If the problem continues, contact support or update the app.",
+    "configTitle": "Security Configuration Error",
+    "configMessage": "Secure connection settings are missing or invalid in this version of the app. Please update the app or contact support."
   }
 }

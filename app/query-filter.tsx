@@ -1,4 +1,5 @@
 import { getClassificationsTree } from '@/src/api/classifications';
+import { useAuth } from '@/src/context/AuthContext';
 import { getDepartmentsTree } from '@/src/api/departments';
 import { getQueryStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
@@ -116,6 +117,7 @@ const QueryFilterScreen = () => {
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const { isCitizen } = useAuth();
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   useEffect(() => {
@@ -415,7 +417,7 @@ const QueryFilterScreen = () => {
             )
           )}
 
-          {renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
+          {!isCitizen && renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
             filters.priorities.length === 0 ? t('filter.allLabel', 'All') : (filters.priorities.length === 1 ? t(`priorities.${priorities.find(p => p.value === filters.priorities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.priorities.length })),
             false,
             [{ value: null, label: t('filter.allPriorities', 'All Priorities') }, ...priorities],
@@ -447,7 +449,7 @@ const QueryFilterScreen = () => {
           )
         )} */}
 
-          {renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
+          {!isCitizen && renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
             filters.assignee_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.assignee_ids.length })),
             loadingUsers,
             [{ id: null, first_name: t('filter.allLabel', 'All'), last_name: t('filter.assignee', 'Assignees') }, ...users],
@@ -591,7 +593,19 @@ const QueryFilterScreen = () => {
                       ? t('filter.selectFromDate', 'Select From Date')
                       : t('filter.selectToDate', 'Select To Date')}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                  <TouchableOpacity onPress={() => {
+                      // iOS spinner only fires onChange on change, so commit the shown date (today) if unset
+                      if (showDatePicker === 'from') {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        setFilters(prev => (prev.start_date ? prev : { ...prev, start_date: d.toISOString() }));
+                      } else {
+                        const d = new Date();
+                        d.setHours(23, 59, 59, 999);
+                        setFilters(prev => (prev.end_date ? prev : { ...prev, end_date: d.toISOString() }));
+                      }
+                      setShowDatePicker(null);
+                    }}>
                     <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
@@ -602,6 +616,9 @@ const QueryFilterScreen = () => {
                   }
                   mode="date"
                   display="spinner"
+                  themeVariant="light"
+                  textColor="#000000"
+                  style={{ height: 216, alignSelf: "stretch" }}
                   maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
                     if (selectedDate) {

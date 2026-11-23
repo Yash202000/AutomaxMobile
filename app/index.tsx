@@ -141,8 +141,8 @@ const StartScreen = () => {
             },
           ]}
         >
-          <Text style={styles.title}>{t('common.automax')}</Text>
-          <Text style={styles.subtitle}>{t('common.ims')}</Text>
+          {/* <Text style={styles.title}>{t('common.automax')}</Text> */}
+          {/* <Text style={styles.subtitle}>{t('common.ims')}</Text> */}
         </Animated.View>
       </View>
 

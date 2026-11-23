@@ -29,6 +29,13 @@ interface ImageItem {
   id: string;
   uri: string;
   file_name: string;
+  // Optional details shown in the header (outside the zoomable image area, so
+  // they never cover the picture while zooming).
+  meta?: {
+    status?: string;
+    coordinates?: string;
+    uploadedAt?: string;
+  };
 }
 
 interface AuthenticatedImageViewerProps {
@@ -174,6 +181,21 @@ export const AuthenticatedImageViewer: React.FC<AuthenticatedImageViewerProps> =
               <Text style={styles.headerSubtitle} numberOfLines={1}>
                 {currentImage?.file_name}
               </Text>
+              {currentImage?.meta?.status ? (
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {t('details.incidentStatus', 'Incident status')}: {currentImage.meta.status}
+                </Text>
+              ) : null}
+              {currentImage?.meta?.coordinates ? (
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {t('details.coordinates', 'Coordinates')}: {currentImage.meta.coordinates}
+                </Text>
+              ) : null}
+              {currentImage?.meta?.uploadedAt ? (
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {t('details.uploadedAt', 'Uploaded')}: {currentImage.meta.uploadedAt}
+                </Text>
+              ) : null}
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity onPress={handleRotate} style={styles.headerActionButton}>
@@ -299,6 +321,11 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     color: '#FFFFFF80',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  metaText: {
+    color: '#FFFFFFCC',
     fontSize: 12,
     marginTop: 2,
   },

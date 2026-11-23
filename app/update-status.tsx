@@ -187,6 +187,10 @@ const UpdateStatusModal = () => {
       });
     }
   };
+ 
+  const getFieldChangeLabel = (fc: any): string =>
+    i18n.language === "ar" && fc?.label_ar ? fc.label_ar : fc?.label || "";
+
   const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>(
@@ -543,7 +547,9 @@ const UpdateStatusModal = () => {
   };
 
   const currentStepKey = transitionSteps[transitionStep];
-  const isLastStep = transitionStep === transitionSteps.length - 1;
+  // `>=` so a transition with no configured steps (length 0) is treated as
+  // already on its last step and executes directly instead of stalling.
+  const isLastStep = transitionStep >= transitionSteps.length - 1;
 
   const validateStep = (): boolean => {
     if (!selectedTransition || !currentStepKey) return true;
@@ -1399,7 +1405,20 @@ const UpdateStatusModal = () => {
         {
           text: t("common.ok"),
           onPress: () => {
-            router.back();
+            // The ticket may no longer be visible to this user after the
+            // update (403), so return to its list rather than the details.
+            const listRoutes: Record<string, string> = {
+              incident: "/(tabs)/incident",
+              request: "/(tabs)/request",
+              complaint: "/(tabs)/complaint",
+              query: "/(tabs)/query",
+            };
+            const listRoute = listRoutes[String(ticketType)];
+            if (listRoute) {
+              router.dismissTo(listRoute as any);
+            } else {
+              router.back();
+            }
           },
         },
       ]);
@@ -1609,23 +1628,6 @@ const UpdateStatusModal = () => {
                   ]}
                 />
               ))}
-              {transitionSteps.length === 0 && (
-                <View
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 5,
-                    backgroundColor: "#E6E7E8",
-                    width: "100%",
-                    alignItems: "center",
-                    borderRadius: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <Text style={{ color: "#888" }}>
-                    {t("common.noStepsConfigured")}
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
         )}
@@ -1656,7 +1658,9 @@ const UpdateStatusModal = () => {
                         { textAlign: "left" },
                       ]}
                     >
-                      {trans.transition.name}
+                      {i18n.language === "ar" && trans.transition.name_ar
+                        ? trans.transition.name_ar
+                        : trans.transition.name}
                     </Text>
                     {trans.transition.to_state && (
                       <View style={styles.transitionCardStateRow}>
@@ -1954,7 +1958,7 @@ const UpdateStatusModal = () => {
                       <View key={fc.field_name} style={{ marginBottom: 16 }}>
                         {!fc.field_name.startsWith("lookup:") && (
                           <Text style={styles.label}>
-                            {fc.label || fc.field_name}
+                            {getFieldChangeLabel(fc)}
                             {fc.is_required && (
                               <Text style={{ color: "#E74C3C" }}> *</Text>
                             )}
@@ -2010,11 +2014,14 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "department_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.departmentAssignment", "Department")
                             }
                             value={
                               fieldChangeDisplayValues["department_id"] || ""
+                            }
+                            valueId={
+                              fieldChangeValues["department_id"] || undefined
                             }
                             data={
                               fc.department_type_filter
@@ -2046,10 +2053,14 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "location_id" && (
                           <TreeSelect
                             label={
-                              fc.label || t("incidents.location", "Location")
+                              getFieldChangeLabel(fc) ||
+                              t("incidents.location", "Location")
                             }
                             value={
                               fieldChangeDisplayValues["location_id"] || ""
+                            }
+                            valueId={
+                              fieldChangeValues["location_id"] || undefined
                             }
                             data={locationsTree}
                             onSelect={(node) => {
@@ -2075,12 +2086,16 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "classification_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.classification", "Classification")
                             }
                             value={
                               fieldChangeDisplayValues["classification_id"] ||
                               ""
+                            }
+                            valueId={
+                              fieldChangeValues["classification_id"] ||
+                              undefined
                             }
                             data={classificationsTree}
                             onSelect={(node) => {
@@ -2178,6 +2193,7 @@ const UpdateStatusModal = () => {
                                 }
                                 required={fc.is_required}
                                 error={errors[fc.field_name]}
+                                singleValueOnly
                                 mentionFilters={{
                                   classification_ids:
                                     incident?.classification_id
@@ -2774,6 +2790,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
     marginTop: 12,
+    textAlign: "left",
   },
   dropdown: {
     flexDirection: "row",

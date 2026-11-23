@@ -484,7 +484,7 @@ const IncidentsScreen = () => {
       sort_by: sortByUpdated ? "updated_at" : "created_at",
     };
     if (activeStateId) params.current_state_id = activeStateId.split(",");
-    if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
+    if (priority) params.priorities = priority.split(",").map((p) => parseInt(p));
     if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
     if (assignee_id) params.assignee_id = assignee_id.split(",");
     if (department_id) params.department_id = department_id.split(",");
@@ -493,7 +493,7 @@ const IncidentsScreen = () => {
     else if (treeSelectedIds.size > 0 && isViewerMode)
       params.classification_id = Array.from(treeSelectedIds);
     if (location_ids) params.location_id = location_ids.split(",");
-    if (source) params.source = source.split(",");
+    if (source) params.sources = source.split(",");
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
@@ -517,12 +517,16 @@ const IncidentsScreen = () => {
     try {
       let params = buildParams(page);
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
-        const statsResponse = await getIncidentStats();
-        if (statsResponse.success && statsResponse.data?.workflow_stats) {
-          params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map(
-            (s: any) => s.id,
-          );
-          state_id = params.current_state_id.join(",");
+        try {
+          const statsResponse = await getIncidentStats();
+          const stateDetails =
+            statsResponse.data?.workflow_stats?.[0]?.by_state_details;
+          if (statsResponse.success && Array.isArray(stateDetails) && stateDetails.length > 0) {
+            params.current_state_id = stateDetails.map((s: any) => s.id);
+            state_id = params.current_state_id.join(",");
+          }
+        } catch (statsErr: any) {
+          if (statsErr?.isLogoutCancel) throw statsErr;
         }
       }
       if (!canViewAllIncidents() && !isViewerMode) {
@@ -530,8 +534,16 @@ const IncidentsScreen = () => {
       }
       const response = await getIncidents(params);
       if (response.success) {
+        // De-duplicate by id: shifting pages / overlapping loads can return the
+        // same incident twice, which breaks FlatList keys.
+        const dedupe = (list: Incident[]) => {
+          const seen = new Set<string>();
+          return list.filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+        };
         setIncidents(
-          append ? (prev) => [...prev, ...response.data] : response.data,
+          append
+            ? (prev) => dedupe([...prev, ...response.data])
+            : dedupe(response.data),
         );
         setPagination(response.pagination);
       } else {

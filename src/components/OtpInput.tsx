@@ -21,7 +21,11 @@ export const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, length = 6,
   const joined = value.join('');
 
   const handleChangeText = (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '').slice(0, length);
+    // No `maxLength` on the input: the OS would truncate a pasted "123 456" /
+    // "123-456" before we can strip separators. If a paste lands on top of
+    // existing digits, the pasted code is the tail.
+    const all = text.replace(/[^0-9]/g, '');
+    const digits = all.length > length ? all.slice(-length) : all;
     onChange(Array.from({ length }, (_, i) => digits[i] || ''));
     if (digits.length === length) {
       onComplete?.(digits);
@@ -49,7 +53,7 @@ export const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, length = 6,
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         keyboardType="number-pad"
-        maxLength={length}
+        contextMenuHidden={false}
         autoFocus={autoFocus}
         textContentType="oneTimeCode"
         autoComplete="one-time-code"

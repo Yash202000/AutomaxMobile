@@ -1,6 +1,7 @@
 import {
   getIncidents
 } from "@/src/api/incidents";
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import { getProfile } from "@/src/api/user";
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { usePermissions } from "@/src/hooks/usePermissions";
@@ -315,7 +316,7 @@ const MyIncidentsScreen = () => {
     if (response.success) {
       const data = response.data || [];
       if (append) {
-        setIncidents((prev) => [...prev, ...data]);
+        setIncidents((prev) => appendUnique(prev, data));
       } else {
         setIncidents(data);
       }

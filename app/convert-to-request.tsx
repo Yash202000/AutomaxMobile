@@ -1,19 +1,12 @@
 import { getClassificationsTree } from "@/src/api/classifications";
-import {
-  convertToRequest,
-  executeTransition,
-  getIncidents,
-  uploadAttachment,
-} from "@/src/api/incidents";
+import { convertToRequest, getIncidents } from "@/src/api/incidents";
 import { getWorkflows } from "@/src/api/workflow";
-import { filterInvalidImages } from "@/src/utils/imageValidation";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
 import i18n from "@/src/i18n";
 import { Ionicons } from "@expo/vector-icons";
-import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -47,33 +40,21 @@ export default function ConvertToRequestScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { id, transitions, incident } = useLocalSearchParams();
+  const { id } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
 
-  const incidentVersion = useMemo(() => {
-    try {
-      const incidentStr = Array.isArray(incident) ? incident[0] : incident;
-      const parsed = incidentStr ? JSON.parse(incidentStr as string) : null;
-      return parsed?.version || 1;
-    } catch (error) {
-      return 1;
-    }
-  }, [incident]);
-
   const [loading, setLoading] = useState(false);
-  // True while a just-picked image attachment is being validated against the
-  // server — surfaced on the upload button so the UI doesn't look stuck.
-  const [validatingAttachment, setValidatingAttachment] = useState(false);
 
   // Data
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [workflows, setWorkflows] = useState<any[]>([]);
 
-  // Wizard State
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  // Wizard State (New Request skips step 1 and starts at Classification)
+  const [currentStepIndex, setCurrentStepIndex] = useState(1);
 
-  // Step 1: Transition
+  // Step 1: New / Existing request
   const [convertType, setConvertType] = useState<"new" | "existing">("new");
+  const firstStepIndex = convertType === "new" ? 1 : 0;
 
   // -- For existing
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,32 +64,13 @@ export default function ConvertToRequestScreen() {
   const [convertableRequestId, setConvertableRequestId] = useState<string>("");
 
   // -- For new
-  const [transitionId, setTransitionId] = useState<string | null>("");
-  const [selectedTransitionObj, setSelectedTransitionObj] = useState<any>(null);
-  const [transitionComment, setTransitionComment] = useState("");
-
-  // Dynamic requirements
-  const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const [feedbackComment, setFeedbackComment] = useState("");
-  const [transitionAttachment, setTransitionAttachment] =
-    useState<DocumentPicker.DocumentPickerResult | null>(null);
-
-  const [showTransitionPicker, setShowTransitionPicker] = useState(false);
-
   // Step 2: Classification
   const [classificationId, setClassificationId] = useState("");
 
   // Step 3: Workflow
   const [workflowId, setWorkflowId] = useState("");
   const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
-
-  const availableTransitions = useMemo(() => {
-    try {
-      return transitions ? JSON.parse(transitions as string) : [];
-    } catch (error) {
-      return [];
-    }
-  }, [transitions]);
 
   useEffect(() => {
     fetchData();
@@ -177,48 +139,6 @@ export default function ConvertToRequestScreen() {
     }
   };
 
-  const handlePickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-
-        // Validate image content up front, at selection time, instead of
-        // waiting until submit.
-        setValidatingAttachment(true);
-        const { invalidFiles } = await filterInvalidImages([
-          {
-            uri: file.uri,
-            name: file.name,
-            type: file.mimeType || "application/octet-stream",
-          },
-        ]);
-        setValidatingAttachment(false);
-
-        if (invalidFiles.length > 0) {
-          CustomAlert.alert(
-            t("addIncident.invalidImageTitle"),
-            invalidFiles.join("\n"),
-          );
-          return;
-        }
-
-        setTransitionAttachment(result);
-      }
-    } catch (err) {
-      setValidatingAttachment(false);
-      console.error("Failed to pick document", err);
-    }
-  };
-
-  const handleRemoveDocument = () => {
-    setTransitionAttachment(null);
-  };
-
   const handleNext = () => {
     if (currentStepIndex === 0) {
       if (convertType === "existing" && !selectedRequest) {
@@ -229,53 +149,6 @@ export default function ConvertToRequestScreen() {
         return;
       }
 
-      if (
-        convertType === "new" &&
-        selectedTransitionObj &&
-        selectedTransitionObj.requirements
-      ) {
-        // Validate requirements
-        const isAttachmentRequired = selectedTransitionObj.requirements.some(
-          (r: any) => r.requirement_type === "attachment" && r.is_mandatory,
-        );
-        const isFeedbackRequired = selectedTransitionObj.requirements.some(
-          (r: any) => r.requirement_type === "feedback" && r.is_mandatory,
-        );
-        const isCommentRequired = selectedTransitionObj.requirements.some(
-          (r: any) => r.requirement_type === "comment" && r.is_mandatory,
-        );
-
-        if (
-          isAttachmentRequired &&
-          (!transitionAttachment || !transitionAttachment.assets)
-        ) {
-          CustomAlert.alert(
-            t("common.error"),
-            t("incidents.attachmentRequired", "Attachment is required"),
-          );
-          return;
-        }
-        if (
-          isFeedbackRequired &&
-          (!feedbackRating || !feedbackComment.trim())
-        ) {
-          CustomAlert.alert(
-            t("common.error"),
-            t(
-              "incidents.feedbackRequired",
-              "Feedback rating and comment are required",
-            ),
-          );
-          return;
-        }
-        if (isCommentRequired && !transitionComment.trim()) {
-          CustomAlert.alert(
-            t("common.error"),
-            t("incidents.commentRequired", "Comment is required"),
-          );
-          return;
-        }
-      }
 
       setCurrentStepIndex(1);
     } else if (currentStepIndex === 1) {
@@ -305,7 +178,7 @@ export default function ConvertToRequestScreen() {
   };
 
   const handleBack = () => {
-    if (currentStepIndex > 0) {
+    if (currentStepIndex > firstStepIndex) {
       setCurrentStepIndex(currentStepIndex - 1);
     }
   };
@@ -324,70 +197,7 @@ export default function ConvertToRequestScreen() {
 
     setLoading(true);
     try {
-      // 1. If a real transition was selected, execute it via the dedicated transition
-      // endpoint first (it correctly enforces optimistic locking via `version`).
-      // The convert-to-request endpoint is then called without transition_id so it
-      // only handles the classification/workflow/request-creation part.
-      if (convertType === "new" && transitionId) {
-        let attachmentIds: string[] | undefined;
-        if (transitionAttachment && transitionAttachment.assets) {
-          const file = transitionAttachment.assets[0];
-          const fileToUpload: any = {
-            uri: file.uri,
-            type: file.mimeType || "application/octet-stream",
-            name: file.name,
-          };
-
-          // Image attachments are validated at selection time (see
-          // handlePickDocument/filterInvalidImages), so by submit time
-          // they're already known-good.
-          const uploadRes = await uploadAttachment(incidentId, fileToUpload);
-          if (!uploadRes.success) {
-            CustomAlert.alert(t("common.error"), t("incidents.uploadFailed"));
-            setLoading(false);
-            return;
-          }
-          if (uploadRes.data?.id) {
-            attachmentIds = [uploadRes.data.id];
-          }
-        }
-
-        const transitionRes = await executeTransition(incidentId, {
-          transition_id: transitionId,
-          comment: transitionComment || undefined,
-          attachments: attachmentIds,
-          feedback:
-            feedbackRating || feedbackComment.trim()
-              ? { rating: feedbackRating || 0, comment: feedbackComment || "" }
-              : undefined,
-          version: incidentVersion,
-        });
-
-        if (!transitionRes.success) {
-          const errorMessage = transitionRes.error || "";
-          if (
-            errorMessage.includes("conflict") ||
-            errorMessage.includes("modified by another user")
-          ) {
-            CustomAlert.alert(
-              t("common.conflictDetected", "Conflict Detected"),
-              t(
-                "common.incidentModifiedByAnother",
-                "This incident was modified by another user. Please review and try again.",
-              ),
-            );
-          } else {
-            CustomAlert.alert(
-              t("common.error"),
-              errorMessage || t("errors.unknownError"),
-            );
-          }
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 2. Build convert payload
+      // Build convert payload
       const payload: any = {
         classification_id:
           selectedRequest?.classification?.id || classificationId,
@@ -400,7 +210,7 @@ export default function ConvertToRequestScreen() {
 
       // Feedback is mandatory for every conversion (new or existing) — matches web behavior
       payload.feedback = {
-        rating: feedbackRating || 0,
+        rating: 0,
         comment: feedbackComment.trim(),
       };
 
@@ -429,12 +239,12 @@ export default function ConvertToRequestScreen() {
   };
 
   const renderStepIndicator = () => {
-    const steps = [1, 2, 3, 4];
+    const steps = convertType === "new" ? [1, 2, 3] : [1, 2, 3, 4];
     return (
       <View style={styles.stepIndicatorContainer}>
         {steps.map((step, index) => {
-          const isActive = index === currentStepIndex;
-          const isCompleted = index < currentStepIndex;
+          const isActive = index === currentStepIndex - firstStepIndex;
+          const isCompleted = index < currentStepIndex - firstStepIndex;
 
           return (
             <React.Fragment key={index}>
@@ -473,45 +283,55 @@ export default function ConvertToRequestScreen() {
     );
   };
 
+  // New / Existing toggle (shown on the first step of either flow)
+  const renderTypeToggle = () => (
+    <View style={styles.toggleContainer}>
+      <TouchableOpacity
+        style={[
+          styles.toggleButton,
+          convertType === "new" && styles.toggleButtonActive,
+        ]}
+        onPress={() => {
+          setConvertType("new");
+          setCurrentStepIndex(1);
+        }}
+      >
+        <Text
+          style={[
+            styles.toggleButtonText,
+            convertType === "new" && styles.toggleButtonTextActive,
+          ]}
+        >
+          {t("requests.newRequest")}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.toggleButton,
+          convertType === "existing" && styles.toggleButtonActive,
+        ]}
+        onPress={() => {
+          setConvertType("existing");
+          setCurrentStepIndex(0);
+        }}
+      >
+        <Text
+          style={[
+            styles.toggleButtonText,
+            convertType === "existing" && styles.toggleButtonTextActive,
+          ]}
+        >
+          {t("requests.existingRequest")}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderStep1 = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>{t("requests.transition")}</Text>
 
-      {/* Type Toggle */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            convertType === "new" && styles.toggleButtonActive,
-          ]}
-          onPress={() => setConvertType("new")}
-        >
-          <Text
-            style={[
-              styles.toggleButtonText,
-              convertType === "new" && styles.toggleButtonTextActive,
-            ]}
-          >
-            {t("requests.newRequest")}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            convertType === "existing" && styles.toggleButtonActive,
-          ]}
-          onPress={() => setConvertType("existing")}
-        >
-          <Text
-            style={[
-              styles.toggleButtonText,
-              convertType === "existing" && styles.toggleButtonTextActive,
-            ]}
-          >
-            {t("requests.existingRequest")}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {renderTypeToggle()}
 
       {convertType === "existing" ? (
         <View style={styles.formGroup}>
@@ -591,200 +411,7 @@ export default function ConvertToRequestScreen() {
               </Text>
             )}
         </View>
-      ) : (
-        <>
-          {availableTransitions.length > 0 ? (
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>
-                {t("incidents.optionalTransition")}
-              </Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowTransitionPicker(true)}
-              >
-                <Text
-                  style={[
-                    styles.selectorText,
-                    transitionId === null && styles.placeholderText,
-                  ]}
-                >
-                  {transitionId
-                    ? availableTransitions.find(
-                        (t: any) => t.transition.id === transitionId,
-                      )?.transition?.name || transitionId
-                    : transitionId === ""
-                      ? t("incidents.skipTransition")
-                      : t("incidents.selectTransition")}
-                </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color={COLORS.text.secondary}
-                />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={styles.noResultsText}>
-              {t(
-                "incidents.noTransitionsAvailable",
-                "No transitions available. You can proceed to the next step.",
-              )}
-            </Text>
-          )}
-
-          {/* Dynamic Requirements */}
-          {selectedTransitionObj &&
-            selectedTransitionObj.requirements &&
-            selectedTransitionObj.requirements.length > 0 && (
-              <View style={styles.requirementsContainer}>
-                {/* Feedback */}
-                {selectedTransitionObj.requirements.some(
-                  (r: any) => r.requirement_type === "feedback",
-                ) && (
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>
-                      {t("incidents.feedback")}
-                      {selectedTransitionObj.requirements.some(
-                        (r: any) =>
-                          r.requirement_type === "feedback" && r.is_mandatory,
-                      ) && " *"}
-                    </Text>
-                    <View style={styles.feedbackContainer}>
-                      <Text style={styles.feedbackHint}>
-                        {t("incidents.rateExperience")}
-                      </Text>
-                      <View style={styles.starsContainer}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <TouchableOpacity
-                            key={star}
-                            onPress={() => setFeedbackRating(star)}
-                          >
-                            <Ionicons
-                              name={
-                                star <= feedbackRating ? "star" : "star-outline"
-                              }
-                              size={32}
-                              color={
-                                star <= feedbackRating
-                                  ? "#FBBF24"
-                                  : COLORS.text.muted
-                              }
-                            />
-                          </TouchableOpacity>
-                        ))}
-                        {feedbackRating > 0 && (
-                          <Text style={styles.feedbackRatingText}>
-                            {feedbackRating}/5
-                          </Text>
-                        )}
-                      </View>
-                      <TextInput
-                        style={[
-                          styles.textArea,
-                          { marginTop: 12, minHeight: 80 },
-                        ]}
-                        multiline
-                        numberOfLines={3}
-                        placeholder={t("incidents.feedbackCommentPlaceholder")}
-                        value={feedbackComment}
-                        onChangeText={setFeedbackComment}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {/* Attachment */}
-                {selectedTransitionObj.requirements.some(
-                  (r: any) => r.requirement_type === "attachment",
-                ) && (
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>
-                      {t("incidents.attachment")}
-                      {selectedTransitionObj.requirements.some(
-                        (r: any) =>
-                          r.requirement_type === "attachment" && r.is_mandatory,
-                      ) && " *"}
-                    </Text>
-                    {transitionAttachment && transitionAttachment.assets ? (
-                      <View style={styles.attachmentCard}>
-                        <View style={styles.attachmentInfo}>
-                          <Ionicons
-                            name="document-text"
-                            size={24}
-                            color={COLORS.text.secondary}
-                          />
-                          <Text style={styles.attachmentName} numberOfLines={1}>
-                            {transitionAttachment.assets[0].name}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={handleRemoveDocument}
-                          style={styles.removeAttachmentButton}
-                        >
-                          <Ionicons
-                            name="close"
-                            size={20}
-                            color={COLORS.error}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.uploadButton}
-                        onPress={handlePickDocument}
-                        disabled={validatingAttachment}
-                      >
-                        {validatingAttachment ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={COLORS.text.secondary}
-                          />
-                        ) : (
-                          <Ionicons
-                            name="cloud-upload-outline"
-                            size={24}
-                            color={COLORS.text.secondary}
-                          />
-                        )}
-                        <Text style={styles.uploadButtonText}>
-                          {validatingAttachment
-                            ? t(
-                                "addIncident.validatingImage",
-                                "Validating image...",
-                              )
-                            : t("incidents.clickToUpload")}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-
-                {/* Comment */}
-                {selectedTransitionObj.requirements.some(
-                  (r: any) => r.requirement_type === "comment",
-                ) && (
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>
-                      {t("incidents.comment", "Comment")}
-                      {selectedTransitionObj.requirements.some(
-                        (r: any) =>
-                          r.requirement_type === "comment" && r.is_mandatory,
-                      ) && " *"}
-                    </Text>
-                    <TextInput
-                      style={styles.textArea}
-                      multiline
-                      numberOfLines={4}
-                      placeholder={t("incidents.addCommentForTransition")}
-                      value={transitionComment}
-                      onChangeText={setTransitionComment}
-                    />
-                  </View>
-                )}
-              </View>
-            )}
-        </>
-      )}
+      ) : null}
     </View>
   );
 
@@ -793,6 +420,8 @@ export default function ConvertToRequestScreen() {
       <Text style={styles.stepTitle}>
         {t("details.classification", "Classification")}
       </Text>
+
+      {convertType === "new" && renderTypeToggle()}
 
       {convertType === "existing" && selectedRequest?.classification ? (
         <View style={styles.infoCard}>
@@ -903,20 +532,6 @@ export default function ConvertToRequestScreen() {
           workflowId ||
           t("common.na");
 
-    const transitionName = transitionId
-      ? availableTransitions.find((t: any) => t.transition.id === transitionId)
-          ?.transition?.name || transitionId
-      : transitionId === ""
-        ? t("incidents.skipTransition")
-        : t("incidents.none");
-
-    const hasFeedbackRequirement = selectedTransitionObj?.requirements?.some(
-      (r: any) => r.requirement_type === "feedback",
-    );
-    const hasCommentRequirement = selectedTransitionObj?.requirements?.some(
-      (r: any) => r.requirement_type === "comment",
-    );
-
     return (
       <View style={styles.stepContent}>
         <Text style={styles.stepTitle}>{t("requests.review")}</Text>
@@ -945,47 +560,6 @@ export default function ConvertToRequestScreen() {
             </View>
           )}
 
-          {/* Transition (only for new request) */}
-          {convertType === "new" && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                {t("requests.transition")}
-              </Text>
-              <Text style={styles.summaryValue}>{transitionName}</Text>
-            </View>
-          )}
-
-          {/* Transition comment */}
-          {convertType === "new" &&
-          transitionId &&
-          hasCommentRequirement &&
-          transitionComment ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                {t("incidents.comment", "Comment")}
-              </Text>
-              <Text
-                style={[styles.summaryValue, { flexShrink: 1 }]}
-                numberOfLines={3}
-              >
-                {transitionComment}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Feedback rating */}
-          {convertType === "new" &&
-          transitionId &&
-          hasFeedbackRequirement &&
-          feedbackRating > 0 ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{t("incidents.feedback")}</Text>
-              <Text style={styles.summaryValue}>
-                {"★".repeat(feedbackRating)}
-                {"☆".repeat(5 - feedbackRating)} ({feedbackRating}/5)
-              </Text>
-            </View>
-          ) : null}
 
           {/* Classification */}
           <View style={styles.summaryRow}>
@@ -1045,15 +619,16 @@ export default function ConvertToRequestScreen() {
           <TouchableOpacity
             style={[
               styles.navButton,
-              currentStepIndex === 0 && styles.navButtonDisabled,
+              currentStepIndex === firstStepIndex && styles.navButtonDisabled,
             ]}
             onPress={handleBack}
-            disabled={currentStepIndex === 0 || loading}
+            disabled={currentStepIndex === firstStepIndex || loading}
           >
             <Text
               style={[
                 styles.navButtonText,
-                currentStepIndex === 0 && styles.navButtonTextDisabled,
+                currentStepIndex === firstStepIndex &&
+                  styles.navButtonTextDisabled,
               ]}
             >
               {t("common.back", "Back")}
@@ -1139,142 +714,6 @@ export default function ConvertToRequestScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showTransitionPicker} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t("incidents.optionalTransition")}
-              </Text>
-              <TouchableOpacity onPress={() => setShowTransitionPicker(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text.primary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll}>
-              <TouchableOpacity
-                style={[
-                  styles.modalItem,
-                  transitionId === "" && styles.modalItemSelected,
-                ]}
-                onPress={() => {
-                  setTransitionId("");
-                  setSelectedTransitionObj(null);
-                  setTransitionComment("");
-                  setFeedbackRating(0);
-                  setFeedbackComment("");
-                  setTransitionAttachment(null);
-                  setShowTransitionPicker(false);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.modalItemText,
-                    transitionId === "" && styles.modalItemTextSelected,
-                  ]}
-                >
-                  {t("incidents.skipTransition")}
-                </Text>
-                {transitionId === "" && (
-                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
-                )}
-              </TouchableOpacity>
-
-              {availableTransitions.map((t: any) => (
-                <TouchableOpacity
-                  key={t.transition.id}
-                  style={[
-                    styles.modalItem,
-                    transitionId === t.transition.id &&
-                      styles.modalItemSelected,
-                  ]}
-                  onPress={() => {
-                    setTransitionId(t.transition.id);
-                    setSelectedTransitionObj(t);
-                    setShowTransitionPicker(false);
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.modalItemText,
-                        transitionId === t.transition.id &&
-                          styles.modalItemTextSelected,
-                        { marginBottom: 4 },
-                      ]}
-                    >
-                      {t.transition.name}
-                    </Text>
-
-                    <View
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                      <View
-                        style={[
-                          styles.stateBadge,
-                          {
-                            backgroundColor: t.transition.from_state?.color
-                              ? `${t.transition.from_state.color}20`
-                              : "#f1f5f9",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stateBadgeText,
-                            {
-                              color:
-                                t.transition.from_state?.color ||
-                                COLORS.text.secondary,
-                            },
-                          ]}
-                        >
-                          {t.transition.from_state?.name || "State"}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={12}
-                        color={COLORS.text.muted}
-                        style={{ marginHorizontal: 4 }}
-                      />
-                      <View
-                        style={[
-                          styles.stateBadge,
-                          {
-                            backgroundColor: t.transition.to_state?.color
-                              ? `${t.transition.to_state.color}20`
-                              : "#f1f5f9",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stateBadgeText,
-                            {
-                              color:
-                                t.transition.to_state?.color ||
-                                COLORS.text.secondary,
-                            },
-                          ]}
-                        >
-                          {t.transition.to_state?.name || "State"}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  {transitionId === t.transition.id && (
-                    <Ionicons
-                      name="checkmark"
-                      size={20}
-                      color={COLORS.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1612,82 +1051,4 @@ const styles = StyleSheet.create({
   modalItemText: { fontSize: 16, color: COLORS.text.primary },
   modalItemTextSelected: { color: COLORS.primary, fontWeight: "600" },
 
-  requirementsContainer: {
-    marginTop: 10,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  feedbackContainer: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  feedbackHint: {
-    fontSize: 14,
-    color: COLORS.text.secondary,
-    marginBottom: 8,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  feedbackRatingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text.primary,
-  },
-  uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 20,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderStyle: "dashed",
-    borderRadius: 12,
-  },
-  uploadButtonText: {
-    fontSize: 14,
-    color: COLORS.text.secondary,
-  },
-  attachmentCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-  },
-  attachmentInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  attachmentName: {
-    fontSize: 14,
-    color: COLORS.text.primary,
-    flex: 1,
-  },
-  removeAttachmentButton: {
-    padding: 4,
-  },
-  stateBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  stateBadgeText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
 });

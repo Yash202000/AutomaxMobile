@@ -5,7 +5,7 @@ import apiClient from "./client";
  * screens previously sent as GET query params (see MOBILE-BRIEF-incidents-search.md).
  * ID-list filters must be arrays for the backend (`dive,uuid` validation) even
  * though some screens pass a single id as a string — wrap those here.
- * `priority` must stay a single int (backend field is `*int`, not a slice).
+ * `priority` is sent as an array of ints (backend accepts one or many).
  */
 function buildSearchBody(params: Record<string, any>): Record<string, any> {
   const body: Record<string, any> = {
@@ -45,8 +45,8 @@ function buildSearchBody(params: Record<string, any>): Record<string, any> {
     params.priority !== ""
   ) {
     body.priority = Array.isArray(params.priority)
-      ? params.priority[0]
-      : params.priority;
+      ? params.priority
+      : [params.priority];
   }
 
   // ID-list filters — backend requires arrays even when a screen passes one id as a string.
@@ -193,6 +193,7 @@ export const getIncidentById = async (id: string) => {
     return {
       success: false,
       error: error.response?.data?.message || error.message,
+      status: error.response?.status as number | undefined,
     };
   }
 };
@@ -228,6 +229,11 @@ export const createIncident = async (incidentData: any) => {
       success: false,
       error: errorData?.error || errorData?.message || error.message,
       details: errorData?.details,
+      // Backend returns 409 (key "duplicate_incident") only when the same user
+      // already has an open incident with the same classification + location.
+      isDuplicate:
+        error.response?.status === 409 ||
+        errorData?.error_code === "DUPLICATE_INCIDENT",
     };
   }
 };
@@ -367,7 +373,7 @@ export const getMatchingUsers = async (matchCriteria: any) => {
 export const uploadAttachment = async (
   incidentId: string,
   file: any,
-  version: any,
+  version?: any,
 ) => {
   try {
     const formData = new FormData();
@@ -377,8 +383,12 @@ export const uploadAttachment = async (
       type: file.type,
     } as any);
 
+    const versionParam =
+      version !== undefined && version !== null && version !== ""
+        ? `?version=${version}`
+        : "";
     const response = await apiClient.post(
-      `/incidents/${incidentId}/attachments?version=${version}`,
+      `/incidents/${incidentId}/attachments${versionParam}`,
       formData,
       {
         headers: {
@@ -403,7 +413,7 @@ export const uploadAttachment = async (
 export const uploadMultipleAttachments = async (
   incidentId: string,
   files: any[],
-  version: any,
+  version?: any,
 ) => {
   const results: any[] = [];
   const errors: any[] = [];
@@ -669,9 +679,16 @@ export const createComplaint = async (complaintData: any) => {
     };
   } catch (error: any) {
     const errorData = error.response?.data;
+    // Validation failures come back as `errors` (not `error`/`message`)
+    const validationMsg = errorData?.errors
+      ? typeof errorData.errors === "string"
+        ? errorData.errors
+        : Object.values(errorData.errors).flat().join("\n")
+      : undefined;
     return {
       success: false,
-      error: errorData?.error || errorData?.message || error.message,
+      error:
+        errorData?.error || errorData?.message || validationMsg || error.message,
       details: errorData?.details,
     };
   }

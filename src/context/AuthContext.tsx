@@ -31,6 +31,7 @@ export interface User {
   email: string;
   username: string;
   first_name: string;
+  middle_name?: string;
   last_name: string;
   phone?: string;
   mobile_verified?: boolean;
@@ -61,6 +62,7 @@ interface AuthContextType {
   setRequiresBiometric: (val: boolean) => void;
   /** True when the current session was started via AD/LDAP login */
   isAdLogin: boolean;
+  isCitizen: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -210,6 +212,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return user.roles.some(role => role.code === roleCode && role.is_active);
   }, [user]);
 
+  const isCitizen = user?.roles?.some(role => role.code === 'citizen') ?? false;
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
@@ -225,6 +229,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     requiresBiometric,
     setRequiresBiometric,
     isAdLogin,
+    isCitizen,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

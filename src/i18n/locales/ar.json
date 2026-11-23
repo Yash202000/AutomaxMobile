@@ -36,6 +36,7 @@
     "loading": "جاري التحميل...",
     "recording": "تسجيل",
     "error": "خطأ",
+    "note": "تنويه",
     "retry": "إعادة المحاولة",
     "failedToLoad": "فشل التحميل",
     "cancel": "إلغاء",
@@ -114,6 +115,7 @@
     "uploadFailed": "فشل رفع المرفقات. يرجى المحاولة مرة أخرى.",
     "takePhotoFailed": "فشل التقاط الصورة",
     "chooseFromGallery": "اختر من المعرض",
+    "selectImagesFromLibrary": "اختر الصور من مكتبة الصور الخاصة بك",
     "chooseFile": "اختر ملفاً",
     "recordVoice": "تسجيل صوتي",
     "workflow": "سير العمل",
@@ -143,7 +145,9 @@
     "sharingNotAvailable": "المشاركة غير متاحة على هذا الجهاز",
     "downloadError": "خطأ في التحميل",
     "failedToDownload": "فشل في تحميل المرفق",
-    "savedToPhotos": "تم حفظ الصورة في معرض الصور"
+    "savedToPhotos": "تم حفظ الصورة في معرض الصور",
+    "add": "إضافة",
+    "more": "أكثر"
   },
   "map": {
     "incidents": "خريطة الحوادث",
@@ -155,7 +159,8 @@
     "queries": "خريطة الاستفسارات",
     "queriesOnMap": "استفسار على الخريطة",
     "tapToLoad": "انقر على العلامة للتحميل",
-    "cappedNotice": "عرض أول {{shown}} من {{total}} — قم بتضييق نطاق التصفية لعرض الباقي"
+    "cappedNotice": "عرض أول {{shown}} من {{total}} — قم بتضييق نطاق التصفية لعرض الباقي",
+    "googleUnavailable": "خرائط Google غير متاحة — يتم عرض OpenStreetMap"
   },
   "tabs": {
     "dashboard": "لوحة التحكم",
@@ -195,7 +200,7 @@
     "lastNameRequired": "يرجى إدخال اسم عائلتك",
     "phone": "رقم الهاتف",
     "mobileNumber": "رقم الجوال",
-    "mobilePlaceholder": "+1234567890",
+    "mobilePlaceholder": "05xxxxxxxx",
     "mobileRequired": "يرجى إدخال رقم الجوال",
     "invalidMobileNumber": "يرجى إدخال رقم جوال صالح مع رمز الدولة، مثال +1234567890",
     "forgotPassword": "هل نسيت كلمة المرور ؟",
@@ -222,8 +227,23 @@
     "emailPlaceholder": "user@example.com",
     "passwordPlaceholder": "••••••••",
     "phonePlaceholder": "+1234567890",
-    "ssoLogin": "الدخول الموحد",
-    "ssoLoginButton": "تسجيل الدخول الموحد",
+    "nafathLogin": "نفاذ",
+    "nafathLoginButton": "تسجيل الدخول عبر نفاذ",
+    "nationalIdInvalid": "يرجى إدخال رقم هوية وطنية صحيح",
+    "nafathOpenApp": "افتح تطبيق نفاذ",
+    "nafathPickNumber": "افتح تطبيق نفاذ واختر هذا الرقم",
+    "nafathNumberLabel": "الرقم المطلوب اختياره في نفاذ: {{number}}",
+    "nafathWaiting": "بانتظار موافقتك…",
+    "nafathNewNumberIn": "سيظهر رقم جديد خلال {{seconds}} ث",
+    "nafathExpiresIn": "تنتهي صلاحية الطلب خلال {{time}}",
+    "nafathApproved": "تمت الموافقة. جارٍ تسجيل دخولك…",
+    "nafathCancel": "إلغاء",
+    "nafathRejected": "تم رفض تسجيل الدخول",
+    "nafathExpired": "انتهت صلاحية الطلب. حاول مرة أخرى.",
+    "nafathNoEmployeeAccount": "لا يوجد حساب موظف مرتبط بهذا الرقم",
+    "continueAsCitizen": "المتابعة كمواطن",
+    "nafathUnavailable": "خدمة نفاذ غير متاحة حالياً. يرجى المحاولة مرة أخرى.",
+    "nafathNoInternet": "لا يوجد اتصال بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.",
     "nationalId": "الرقم الوطني",
     "nationalIdPlaceholder": "أدخل الرقم الوطني",
     "nationalIdRequired": "يرجى إدخال الرقم الوطني",
@@ -341,7 +361,7 @@
     "loadingMore": "جاري تحميل المزيد...",
     "total": "الإجمالي",
     "open": "مفتوح",
-    "comments": "التعاليق",
+    "comments": "التعليقات",
     "attachments": "المرفقات",
     "history": "السجل",
     "addComment": "إضافة تعليق",
@@ -517,6 +537,12 @@
     "channel": "القناة"
   },
   "details": {
+    "incidentStatus": "حالة البلاغ",
+    "coordinates": "الإحداثيات",
+    "uploadedAt": "تاريخ الرفع",
+    "noAccessTitle": "لم يعد متاحاً",
+    "noAccessMessage": "لم يعد بإمكانك الوصول إلى هذا العنصر. ربما تمت إعادة تعيينه أو نقله بعد آخر تحديث. تم حفظ تغييراتك بنجاح.",
+    "backToList": "العودة إلى القائمة",
     "incident": "حادثة",
     "request": "طلب",
     "complaint": "شكوى",
@@ -528,7 +554,7 @@
     "assignees": "المسند اليه",
     "description": "الوصف",
     "channel": "القناة",
-    "comments": "التعاليق",
+    "comments": "التعليقات",
     "viewAll": "مشاهدة الكل",
     "noComments": "لا توجد تعليقات بعد.",
     "attachments": "المرفقات",
@@ -610,6 +636,7 @@
     }
   },
   "profile": {
+    "middleName": "الاسم الأوسط",
     "firstName": "الاسم الأول",
     "lastName": "الاسم الأخير",
     "email": "البريد الإلكتروني",
@@ -636,6 +663,10 @@
     "verify": "تحقق",
     "verified": "تم التحقق",
     "sendOTP": "إرسال رمز التحقق",
+    "otpViaSms": "رسالة نصية",
+    "otpViaWhatsapp": "واتساب",
+    "otpSentVia": "تم إرسال رمز التحقق عبر {{channel}} إلى {{phone}}.",
+    "changeOtpChannel": "تغيير طريقة التحقق",
     "otpVerified": "تم التحقق من رمز التحقق بنجاح",
     "otpSentFailed": "فشل إرسال رمز التحقق",
     "otpVerifiedFailed": "فشل التحقق من رمز التحقق"
@@ -808,6 +839,7 @@
     "startRecording": "بدء التسجيل",
     "complaintTitle": "العنوان",
     "titlePlaceholder": "أدخل عنوان الشكوى",
+    "titleTooShort": "يجب أن يتكون العنوان من 5 أحرف على الأقل",
     "description": "الوصف",
     "descriptionPlaceholder": "صف الشكوى بالتفصيل...",
     "selectClassification": "تحديد التصنيف",
@@ -881,6 +913,10 @@
     "minCharsTitle": "استمر في الكتابة...",
     "minCharsDesc": "أدخل 3 أحرف على الأقل للبحث"
   },
+  "network": {
+    "noInternetTitle": "لا يوجد اتصال بالإنترنت",
+    "noInternetMessage": "تحقق من اتصالك بالإنترنت وحاول مرة أخرى."
+  },
   "errors": {
     "noPermission": "لا تملك الصلاحية. يرجى التواصل مع المسؤول للحصول على حق الوصول.",
     "networkError": "خطأ في الشبكة. تحقق من اتصالك.",
@@ -938,5 +974,14 @@
   },
   "sort": {
     "updated": "الأحدث تحديثًا"
+  },
+  "lookups": {
+    "multipleValuesHint": "اضغط إضافة أو تم — يتم الاحتفاظ بالقيم المضافة سابقاً."
+  },
+  "certificatePinning": {
+    "title": "الاتصال غير آمن",
+    "message": "تعذر على التطبيق التحقق من هوية الخادم، لذلك تم حظر الاتصال لحماية بياناتك. قد يحدث ذلك عند استخدام شبكة غير موثوقة أو عند تغيير شهادة الخادم. يرجى التبديل إلى شبكة موثوقة (أو إيقاف أي VPN/وكيل) ثم المحاولة مرة أخرى. إذا استمرت المشكلة، تواصل مع الدعم أو قم بتحديث التطبيق.",
+    "configTitle": "خطأ في إعدادات الأمان",
+    "configMessage": "إعدادات الاتصال الآمن مفقودة أو غير صالحة في هذا الإصدار من التطبيق. يرجى تحديث التطبيق أو التواصل مع الدعم."
   }
 }

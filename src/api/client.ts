@@ -3,7 +3,9 @@ import axios from "axios";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import i18n from "../i18n";
+import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
+import { handleRequestNetworkError } from "../utils/networkStatus";
 
 if (!process.env.EXPO_PUBLIC_API_URL) {
   throw new Error("EXPO_PUBLIC_API_URL is not set");
@@ -52,6 +54,9 @@ const redirectToLogin = async () => {
 // Interceptor to add the token to requests
 apiClient.interceptors.request.use(
   async (config) => {
+    // No request may leave the app before certificate pinning is active
+    await ensureCertificatePinning();
+
     // If logging out, reject all requests except the logout request itself
     if (isLoggingOut && !config.url?.includes("/auth/logout")) {
       const error = new Error("Request cancelled - logging out");
@@ -65,6 +70,7 @@ apiClient.interceptors.request.use(
     const publicEndpoints = [
       "/auth/login",
       "/auth/sso/login",
+      "/auth/nafath/",
       "/auth/register",
       "/auth/forgot-password",
       "/auth/verify-reset-otp",
@@ -116,6 +122,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    // No server response at all: offline / unreachable -> confirm and warn the user
+    if (
+      axios.isAxiosError(error) &&
+      !error.response &&
+      error.code !== "ERR_CANCELED" &&
+      !isLoggingOut
+    ) {
+      void handleRequestNetworkError();
+    }
     // Log ALL API errors (except during logout or specific cancellation scenarios)
     const shouldLogError =
       !isLoggingOut &&
@@ -149,7 +164,13 @@ apiClient.interceptors.response.use(
             typeof originalRequest.data === "string"
               ? originalRequest.data
               : JSON.stringify(originalRequest.data);
-          errorDetails.requestData = dataStr.substring(0, 500); // Limit to 500 chars
+          errorDetails.requestData = dataStr
+            .replace(
+              /("national_id"\s*:\s*")(\d*)(\d{4})"/g,
+              (_m: string, key: string, head: string, tail: string) =>
+                `${key}${"*".repeat(head.length)}${tail}"`,
+            )
+            .substring(0, 500); // Limit to 500 chars
         } catch (e) {
           errorDetails.requestData = "Unable to stringify request data";
         }
@@ -206,6 +227,8 @@ apiClient.interceptors.response.use(
     if (
       originalRequest.url?.includes("/auth/login") ||
       originalRequest.url?.includes("/auth/sso/login") ||
+      // Nafath login 401s mean the login request expired, not the session.
+      originalRequest.url?.includes("/auth/nafath/") ||
       originalRequest.url?.includes("/ldap/login")
     ) {
       return Promise.reject(error);
@@ -298,7 +321,8 @@ apiClient.interceptors.response.use(
   },
 );
 
-axios.interceptors.request.use((config) => {
+axios.interceptors.request.use(async (config) => {
+  await ensureCertificatePinning();
   console.log("➡️ REQUEST:", config.method?.toUpperCase(), config.url);
   console.log("➡️ DATA:", config.data);
   return config;

@@ -9,6 +9,7 @@ import {
 import { getLookupCategories } from "@/src/api/lookups";
 import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { AuthenticatedImageViewer } from "@/src/components/AuthenticatedImageViewer";
+import { AccessDeniedState } from "@/src/components/AccessDeniedState";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DetailScreenSkeleton } from "@/src/components/DetailScreenSkeleton";
 import { RenderWithIncidentMentions } from "@/src/components/RenderWithIncidentMentions";
@@ -39,7 +40,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import {
+  SingleLocationMap,
+  SingleLocationMapHandle,
+} from "@/src/components/maps/SingleLocationMap";
 
 const COLORS = {
   primary: "#1A237E",
@@ -92,10 +96,13 @@ interface LookupValue {
   name: string;
   name_ar?: string;
   color?: string;
+  created_at?: string;
   category?: {
     id: string;
     name: string;
     name_ar?: string;
+    code?: string;
+    validation_rules?: string;
   };
 }
 
@@ -339,6 +346,76 @@ const SectionHeader = ({ title, icon }: { title: string; icon: string }) => (
   </View>
 );
 
+const parseAllowMultiple = (validationRules?: string): boolean => {
+  if (!validationRules) return false;
+  try {
+    const rules = JSON.parse(validationRules);
+    return !!rules.allowMultiple;
+  } catch {
+    return false;
+  }
+};
+
+// "Allow multiple values" lookup categories (e.g. Visit Number) render
+// compactly: only the most recently recorded value shown by default, with
+// everything else collapsed behind a single "+N more" toggle instead of a
+// wall of tags wrapping across several lines.
+const VisitNumberInfoRow: React.FC<{
+  categoryLabel: string;
+  values: LookupValue[];
+}> = ({ categoryLabel, values }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const sorted = [...values].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+  const [latest, ...rest] = sorted;
+
+  const displayName = (value: LookupValue) =>
+    i18n.language === "en" ? value.name : value.name_ar || value.name;
+
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoRowLeft}>
+        <Ionicons name="pricetag" size={18} color="#10B981" />
+        <Text style={styles.infoLabel}>
+          {categoryLabel} ({values.length})
+        </Text>
+      </View>
+      <View style={styles.lookupValuesList}>
+        <View style={[styles.lookupValueTag, styles.lookupValueTagLatest]}>
+          <Text
+            style={[styles.lookupValueTagText, styles.lookupValueTagTextLatest]}
+          >
+            {displayName(latest)}
+          </Text>
+        </View>
+        {rest.length > 0 &&
+          (expanded ? (
+            <>
+              <Text style={styles.lookupValuesRestText}>
+                {rest.map(displayName).join(", ")}
+              </Text>
+              <TouchableOpacity onPress={() => setExpanded(false)}>
+                <Text style={styles.lookupValuesMoreText}>
+                  {t("common.showLess", "Show Less")}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity onPress={() => setExpanded(true)}>
+              <Text style={styles.lookupValuesMoreText}>
+                +{rest.length} {t("common.more", "more")}
+              </Text>
+            </TouchableOpacity>
+          ))}
+      </View>
+    </View>
+  );
+};
+
 const IncidentDetailsScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -353,15 +430,15 @@ const IncidentDetailsScreen = () => {
   const [attachments, setAttachments] = useState<AttachmentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [mapZoom, setMapZoom] = useState<number>(15);
   const [showAllComments, setShowAllComments] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showAllAssignees, setShowAllAssignees] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const mapRef = useRef<WebView>(null);
+  const mapRef = useRef<SingleLocationMapHandle>(null);
   const insets = useSafeAreaInsets();
 
   const imageAttachments = attachments.filter((att) =>
@@ -380,7 +457,7 @@ const IncidentDetailsScreen = () => {
   const isDefaultLocation =
     incident?.location?.name?.trim().toLowerCase() === "default";
 
-  const { user } = useAuth();
+  const { user, isCitizen } = useAuth();
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -395,6 +472,8 @@ const IncidentDetailsScreen = () => {
     if (!incidentId) return;
 
     setLoading(true);
+
+    setAccessDenied(false);
 
     try {
       const [
@@ -419,6 +498,11 @@ const IncidentDetailsScreen = () => {
             : detailsResponse.data.attachments || [],
         );
       } else {
+        if (detailsResponse.status === 403 || detailsResponse.status === 404) {
+          setAccessDenied(true);
+          return;
+        }
+        setAccessDenied(false);
         setError(detailsResponse.error);
 
         // Log failed API response
@@ -493,23 +577,9 @@ const IncidentDetailsScreen = () => {
     fetchCategories();
   }, []);
 
-  const handleZoomIn = () => {
-    const newZoom = Math.min(mapZoom + 1, 19);
-    setMapZoom(newZoom);
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(${newZoom});
-      true;
-    `);
-  };
+  const handleZoomIn = () => mapRef.current?.zoomIn();
 
-  const handleZoomOut = () => {
-    const newZoom = Math.max(mapZoom - 1, 1);
-    setMapZoom(newZoom);
-    mapRef.current?.injectJavaScript(`
-      map.setZoom(${newZoom});
-      true;
-    `);
-  };
+  const handleZoomOut = () => mapRef.current?.zoomOut();
 
   const handleOpenDirections = () => {
     if (incident?.latitude && incident?.longitude) {
@@ -579,7 +649,6 @@ const IncidentDetailsScreen = () => {
       pathname: "/convert-to-request",
       params: {
         id: incident.id,
-        transitions: JSON.stringify(availableTransitions),
         incident: JSON.stringify({
           id: incident.id,
           classification_id:
@@ -637,6 +706,10 @@ const IncidentDetailsScreen = () => {
         <DetailScreenSkeleton sections={[4, 3, 2]} />
       </View>
     );
+  }
+
+  if (accessDenied) {
+    return <AccessDeniedState />;
   }
 
   if (error || !incident) {
@@ -881,84 +954,87 @@ const IncidentDetailsScreen = () => {
                 }
                 iconColor={COLORS.accent}
               />
-              <InfoRow
-                icon="business-outline"
-                label={t("details.department")}
-                value={
-                  getPath(deptTree, incident.department?.id) ||
-                  incident.department?.name ||
-                  ""
-                }
-                iconColor="#8B5CF6"
-              />
-              {(() => {
-                const assigneesList = incident.assignees?.length
-                  ? incident.assignees
-                  : incident.assignee
-                    ? [incident.assignee]
-                    : [];
-                const visibleAssignees = showAllAssignees
-                  ? assigneesList
-                  : assigneesList.slice(0, 4);
-                const hiddenCount =
-                  assigneesList.length - visibleAssignees.length;
+              {!isCitizen && (
+                <InfoRow
+                  icon="business-outline"
+                  label={t("details.department")}
+                  value={
+                    getPath(deptTree, incident.department?.id) ||
+                    incident.department?.name ||
+                    ""
+                  }
+                  iconColor="#8B5CF6"
+                />
+              )}
+              {!isCitizen &&
+                (() => {
+                  const assigneesList = incident.assignees?.length
+                    ? incident.assignees
+                    : incident.assignee
+                      ? [incident.assignee]
+                      : [];
+                  const visibleAssignees = showAllAssignees
+                    ? assigneesList
+                    : assigneesList.slice(0, 4);
+                  const hiddenCount =
+                    assigneesList.length - visibleAssignees.length;
 
-                return (
-                  <>
-                    <View
-                      style={[
-                        styles.infoRow,
-                        {
-                          borderBottomColor:
-                            assigneesList.length > 4
-                              ? "transparent"
-                              : COLORS.border,
-                          paddingBottom: assigneesList.length > 4 ? 0 : 12,
-                        },
-                      ]}
-                    >
-                      <View style={styles.infoRowLeft}>
-                        <Ionicons
-                          name="person-outline"
-                          size={18}
-                          color="#EC4899"
-                        />
-                        <Text style={styles.infoLabel}>
-                          {t("details.assignees")}
+                  return (
+                    <>
+                      <View
+                        style={[
+                          styles.infoRow,
+                          {
+                            borderBottomColor:
+                              assigneesList.length > 4
+                                ? "transparent"
+                                : COLORS.border,
+                            paddingBottom: assigneesList.length > 4 ? 0 : 12,
+                          },
+                        ]}
+                      >
+                        <View style={styles.infoRowLeft}>
+                          <Ionicons
+                            name="person-outline"
+                            size={18}
+                            color="#EC4899"
+                          />
+                          <Text style={styles.infoLabel}>
+                            {t("details.assignees")}
+                          </Text>
+                        </View>
+                        <Text style={styles.infoValue}>
+                          {visibleAssignees.length
+                            ? visibleAssignees
+                              .map((a) =>
+                                `${a.first_name || ""} ${a.last_name || ""}`.trim(),
+                              )
+                              .join(", ")
+                            : t("common.na")}
                         </Text>
                       </View>
-                      <Text style={styles.infoValue}>
-                        {visibleAssignees.length
-                          ? visibleAssignees
-                            .map((a) =>
-                              `${a.first_name || ""} ${a.last_name || ""}`.trim(),
-                            )
-                            .join(", ")
-                          : t("common.na")}
-                      </Text>
-                    </View>
-                    {assigneesList.length > 4 && (
-                      <TouchableOpacity
-                        style={styles.seeMoreButton}
-                        onPress={() => setShowAllAssignees(!showAllAssignees)}
-                      >
-                        <Text style={styles.seeMoreText}>
-                          {showAllAssignees
-                            ? t("common.showLess")
-                            : `${t("common.viewAll")} (+${hiddenCount})`}
-                        </Text>
-                        <Ionicons
-                          name={
-                            showAllAssignees ? "chevron-up" : "chevron-down"
-                          }
-                          size={16}
-                          color={COLORS.accent}
-                        />
-                      </TouchableOpacity>
-                    )}
-                  </>
-                );
-              })()}
+                      {assigneesList.length > 4 && (
+                        <TouchableOpacity
+                          style={styles.seeMoreButton}
+                          onPress={() => setShowAllAssignees(!showAllAssignees)}
+                        >
+                          <Text style={styles.seeMoreText}>
+                            {showAllAssignees
+                              ? t("common.showLess")
+                              : `${t("common.viewAll")} (+${hiddenCount})`}
+                          </Text>
+                          <Ionicons
+                            name={
+                              showAllAssignees ? "chevron-up" : "chevron-down"
+                            }
+                            size={16}
+                            color={COLORS.accent}
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  );
+                })()}
               {incident.location && (
                 <InfoRow
                   icon="location-outline"
@@ -989,6 +1065,7 @@ const IncidentDetailsScreen = () => {
                 (() => {
                   const grouped: Record<string, LookupValue[]> = {};
                   incident.lookup_values.forEach((value) => {
+                    if (isCitizen && String(value.category?.code || '').toUpperCase() === 'PRIORITY') return;
                     const categoryName =
                       (i18n.language === "en"
                         ? value.category?.name
@@ -999,39 +1076,53 @@ const IncidentDetailsScreen = () => {
                     grouped[categoryName].push(value);
                   });
 
-                  return Object.entries(grouped).map(([category, values]) => (
-                    <View key={category} style={styles.infoRow}>
-                      <View style={styles.infoRowLeft}>
-                        <Ionicons name="pricetag" size={18} color="#10B981" />
-                        <Text style={styles.infoLabel}>{category}</Text>
+                  return Object.entries(grouped).map(([category, values]) => {
+                    if (
+                      parseAllowMultiple(values[0]?.category?.validation_rules)
+                    ) {
+                      return (
+                        <VisitNumberInfoRow
+                          key={category}
+                          categoryLabel={category}
+                          values={values}
+                        />
+                      );
+                    }
+
+                    return (
+                      <View key={category} style={styles.infoRow}>
+                        <View style={styles.infoRowLeft}>
+                          <Ionicons name="pricetag" size={18} color="#10B981" />
+                          <Text style={styles.infoLabel}>{category}</Text>
+                        </View>
+                        <View style={styles.lookupValuesList}>
+                          {values.map((value) => (
+                            <View
+                              key={value.id}
+                              style={[
+                                styles.lookupValueTag,
+                                {
+                                  backgroundColor: value.color
+                                    ? `${value.color}20`
+                                    : "#E2E8F0",
+                                  borderColor: value.color || "#CBD5E1",
+                                },
+                              ]}
+                            >
+                              <RenderWithIncidentMentions
+                                text={
+                                  i18n.language === "en"
+                                    ? value.name || ""
+                                    : value?.name_ar || ""
+                                }
+                                style={styles.descriptionText}
+                              />
+                            </View>
+                          ))}
+                        </View>
                       </View>
-                      <View style={styles.lookupValuesList}>
-                        {values.map((value) => (
-                          <View
-                            key={value.id}
-                            style={[
-                              styles.lookupValueTag,
-                              {
-                                backgroundColor: value.color
-                                  ? `${value.color}20`
-                                  : "#E2E8F0",
-                                borderColor: value.color || "#CBD5E1",
-                              },
-                            ]}
-                          >
-                            <RenderWithIncidentMentions
-                              text={
-                                i18n.language === "en"
-                                  ? value.name || ""
-                                  : value?.name_ar || ""
-                              }
-                              style={styles.descriptionText}
-                            />
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  ));
+                    );
+                  });
                 })()}
 
               {/* Custom Fields as InfoRows */}
@@ -1047,7 +1138,7 @@ const IncidentDetailsScreen = () => {
                         const ld = categories.find(
                           (c: any) => c.id === fieldData.category_id,
                         );
-                        if (key.startsWith("lookup:")) {
+                        if (key.startsWith("lookup:") && !(isCitizen && String(ld?.code || key.slice(7)).toUpperCase() === 'PRIORITY')) {
                           allFields.push({
                             key,
                             label:
@@ -1195,11 +1286,36 @@ const IncidentDetailsScreen = () => {
         </AnimatedListItem>
 
         <AuthenticatedImageViewer
-          images={imageAttachments.map((att) => ({
-            id: att.id,
-            uri: `${baseURL}/attachments/${att.id}/preview`,
-            file_name: att.file_name,
-          }))}
+          images={imageAttachments.map((att) => {
+            const transition = att.transition_history_id
+              ? getHistoryById(att.transition_history_id)
+              : undefined;
+            const d = att.created_at ? new Date(att.created_at) : null;
+            const pad = (n: number) => String(n).padStart(2, "0");
+            return {
+              id: att.id,
+              uri: `${baseURL}/attachments/${att.id}/preview`,
+              file_name: att.file_name,
+              // Only attachments uploaded as part of a transition get details.
+              meta: transition
+                ? {
+                  status:
+                    (i18n.language === "ar" && transition.to_state?.name_ar) ||
+                    transition.to_state?.name ||
+                    undefined,
+                  // Attachments don't store their own GPS; use the incident's.
+                  coordinates:
+                    incident?.latitude != null && incident?.longitude != null
+                      ? `${incident.latitude.toFixed(6)}, ${incident.longitude.toFixed(6)}`
+                      : undefined,
+                  uploadedAt:
+                    d && !isNaN(d.getTime())
+                      ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                      : undefined,
+                }
+                : undefined,
+            };
+          })}
           imageIndex={currentImageIndex}
           visible={isImageViewerVisible}
           onRequestClose={() => setImageViewerVisible(false)}
@@ -1216,101 +1332,13 @@ const IncidentDetailsScreen = () => {
                   icon="navigate"
                 />
                 <View style={styles.mapContainer}>
-                  <WebView
+                  <SingleLocationMap
                     ref={mapRef}
-                    source={{
-                      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; }
-    .custom-marker {
-      width: 30px;
-      height: 30px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      background-color: ${COLORS.error};
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .custom-marker::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>
-    const lat = ${incident.latitude};
-    const lng = ${incident.longitude};
-    const map = L.map('map').setView([lat, lng], 15);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-
-    const markerHtml = '<div class="custom-marker"></div>';
-    const customIcon = L.divIcon({
-      html: markerHtml,
-      className: 'custom-div-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -30]
-    });
-
-    const marker = L.marker([lat, lng], { icon: customIcon })
-      .addTo(map)
-      .bindPopup(\`
-        <div style="min-width: 150px;">
-          <strong style="font-size: 13px;">${incident.title.replace(/'/g, "\\'")}</strong><br/>
-          <span style="font-size: 11px; color: #64748B;">${(incident.address || "Incident Location").replace(/'/g, "\\'")}</span>
-        </div>
-      \`);
-
-    map.whenReady(function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'mapReady'
-      }));
-    });
-  </script>
-</body>
-</html>
-                `,
-                      baseUrl: "https://localhost/",
-                    }}
-                    style={styles.map}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                    startInLoadingState={false}
-                    originWhitelist={["*"]}
-                    mixedContentMode="compatibility"
-                    onMessage={(event) => {
-                      try {
-                        const data = JSON.parse(event.nativeEvent.data);
-                        if (data.type === "mapReady") {
-                          // Map is ready
-                        }
-                      } catch (error) {
-                        console.error(
-                          "❌ [IncidentDetails OSM] Error handling message:",
-                          error,
-                        );
-                      }
-                    }}
+                    latitude={incident.latitude}
+                    longitude={incident.longitude}
+                    title={incident.title}
+                    address={incident.address || "Incident Location"}
+                    markerColor={COLORS.error}
                   />
                   {/* Zoom Controls */}
                   <View style={styles.mapControls}>
@@ -1380,289 +1408,301 @@ const IncidentDetailsScreen = () => {
           </AnimatedListItem>
         )}
 
-        {/* Reporter Card */}
-        <AnimatedListItem index={nextSection()}>
-          <View style={styles.card}>
-            <SectionHeader title={t("details.reporter")} icon="person-circle" />
-            <View style={styles.reporterCard}>
-              <View style={styles.reporterAvatar}>
-                <Text style={styles.reporterAvatarText}>
-                  {incident.reporter?.first_name?.[0] ||
-                    incident.reporter?.username?.[0] ||
-                    "U"}
-                </Text>
-              </View>
-              <View style={styles.reporterInfo}>
-                <Text style={styles.reporterName}>
-                  {incident.reporter?.first_name
-                    ? `${incident.reporter.first_name} ${incident.reporter.last_name || ""}`
-                    : incident.reporter?.username ||
-                    incident.reporter_name ||
-                    t("common.unknown", "Unknown")}
-                </Text>
-                {(incident.reporter_email || incident.reporter?.email) && (
-                  <Text style={styles.reporterEmail}>
-                    {incident.reporter_email || incident.reporter?.email}
+        {/* Reporter Card (hidden for citizens) */}
+        {!isCitizen && (
+          <AnimatedListItem index={nextSection()}>
+            <View style={styles.card}>
+              <SectionHeader
+                title={t("details.reporter")}
+                icon="person-circle"
+              />
+              <View style={styles.reporterCard}>
+                <View style={styles.reporterAvatar}>
+                  <Text style={styles.reporterAvatarText}>
+                    {incident.reporter?.first_name?.[0] ||
+                      incident.reporter?.username?.[0] ||
+                      "U"}
                   </Text>
-                )}
-              </View>
-              <View style={styles.reporterActions}>
-                {(incident.reporter_email || incident.reporter?.email) && (
-                  <TouchableOpacity
-                    style={styles.reporterActionButton}
-                    onPress={() =>
-                      Linking.openURL(
-                        `mailto:${incident.reporter_email || incident.reporter?.email}`,
-                      )
-                    }
-                  >
-                    <Ionicons name="mail" size={18} color={COLORS.accent} />
-                  </TouchableOpacity>
-                )}
-                {incident.reporter?.phone && (
-                  <TouchableOpacity
-                    style={styles.reporterActionButton}
-                    onPress={() =>
-                      Linking.openURL(`tel:${incident.reporter?.phone}`)
-                    }
-                  >
-                    <Ionicons name="call" size={18} color={COLORS.accent} />
-                  </TouchableOpacity>
-                )}
+                </View>
+                <View style={styles.reporterInfo}>
+                  <Text style={styles.reporterName}>
+                    {incident.reporter?.first_name
+                      ? `${incident.reporter.first_name} ${incident.reporter.last_name || ""}`
+                      : incident.reporter?.username ||
+                      incident.reporter_name ||
+                      t("common.unknown", "Unknown")}
+                  </Text>
+                  {(incident.reporter_email || incident.reporter?.email) && (
+                    <Text style={styles.reporterEmail}>
+                      {incident.reporter_email || incident.reporter?.email}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.reporterActions}>
+                  {(incident.reporter_email || incident.reporter?.email) && (
+                    <TouchableOpacity
+                      style={styles.reporterActionButton}
+                      onPress={() =>
+                        Linking.openURL(
+                          `mailto:${incident.reporter_email || incident.reporter?.email}`,
+                        )
+                      }
+                    >
+                      <Ionicons name="mail" size={18} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  )}
+                  {incident.reporter?.phone && (
+                    <TouchableOpacity
+                      style={styles.reporterActionButton}
+                      onPress={() =>
+                        Linking.openURL(`tel:${incident.reporter?.phone}`)
+                      }
+                    >
+                      <Ionicons name="call" size={18} color={COLORS.accent} />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        </AnimatedListItem>
+          </AnimatedListItem>
+        )}
 
         {/* Comments Card */}
-        <AnimatedListItem index={nextSection()}>
-          <View style={styles.card}>
-            <SectionHeader title={t("details.comments")} icon="chatbubbles" />
-            {incident.comments && incident.comments.length > 0 ? (
-              <>
-                {(showAllComments
-                  ? incident.comments
-                  : [incident.comments[0]]
-                ).map((comment) => (
-                  <View style={styles.commentItem} key={comment.id}>
-                    <View style={styles.commentHeader}>
-                      <View style={styles.commentAvatar}>
-                        <Text style={styles.commentAvatarText}>
-                          {comment.author.username[0]}
-                        </Text>
-                      </View>
-                      <View style={styles.commentMeta}>
-                        <Text style={styles.commentAuthor}>
-                          {comment.author.username}
-                        </Text>
-                        <Text style={styles.commentDate}>
-                          {new Date(comment.created_at).toLocaleString("en-GB")}
-                        </Text>
-                      </View>
-                    </View>
-                    <RenderWithIncidentMentions
-                      text={comment.content}
-                      style={styles.commentContent}
-                    />
-                  </View>
-                ))}
-                {incident.comments.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.seeMoreButton}
-                    onPress={() => setShowAllComments(!showAllComments)}
-                  >
-                    <Text style={styles.seeMoreText}>
-                      {showAllComments
-                        ? t("common.showLess")
-                        : `${t("common.viewAll")} (${incident.comments.length})`}
-                    </Text>
-                    <Ionicons
-                      name={showAllComments ? "chevron-up" : "chevron-down"}
-                      size={16}
-                      color={COLORS.accent}
-                    />
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={32}
-                  color={COLORS.text.muted}
-                />
-                <Text style={styles.emptyStateText}>
-                  {t("details.noComments")}
-                </Text>
-              </View>
-            )}
-          </View>
-        </AnimatedListItem>
-
-        {/* Transition History Card */}
-        <AnimatedListItem index={nextSection()}>
-          <View
-            style={[
-              styles.card,
-              { marginBottom: availableTransitions.length > 0 ? 100 : 30 },
-            ]}
-          >
-            <SectionHeader
-              title={t("details.transitionHistory")}
-              icon="git-compare"
-            />
-            {history && history.length > 0 ? (
-              <View style={styles.timeline}>
-                {(showAllHistory ? history : [history[0]]).map(
-                  (item, index) => (
-                    <View key={item.id} style={styles.timelineItem}>
-                      <View style={styles.timelineLeft}>
-                        <View
-                          style={[
-                            styles.timelineDot,
-                            { backgroundColor: COLORS.accent },
-                          ]}
-                        />
-                        {(showAllHistory
-                          ? index < history.length - 1
-                          : false) && <View style={styles.timelineLine} />}
-                      </View>
-                      <View style={styles.timelineContent}>
-                        <View
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            gap: 5,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "bold", fontSize: 12 }}>
-                            {item.transition?.name ||
-                              t("common.stateChanged", "State Changed")}
+        {!isCitizen && (
+          <AnimatedListItem index={nextSection()}>
+            <View style={styles.card}>
+              <SectionHeader title={t("details.comments")} icon="chatbubbles" />
+              {incident.comments && incident.comments.length > 0 ? (
+                <>
+                  {(showAllComments
+                    ? incident.comments
+                    : [incident.comments[0]]
+                  ).map((comment) => (
+                    <View style={styles.commentItem} key={comment.id}>
+                      <View style={styles.commentHeader}>
+                        <View style={styles.commentAvatar}>
+                          <Text style={styles.commentAvatarText}>
+                            {comment.author.username[0]}
                           </Text>
-                          <Text style={styles.transitionMeta}>
-                            {t("details.by")}{" "}
-                            {item?.performed_by?.username ||
-                              item?.performed_by?.name ||
-                              t("common.system")}{" "}
-                            •{" "}
-                            {new Date(item.transitioned_at).toLocaleDateString(
+                        </View>
+                        <View style={styles.commentMeta}>
+                          <Text style={styles.commentAuthor}>
+                            {comment.author.username}
+                          </Text>
+                          <Text style={styles.commentDate}>
+                            {new Date(comment.created_at).toLocaleString(
                               "en-GB",
                             )}
                           </Text>
                         </View>
-                        <View style={styles.transitionBadges}>
-                          <View style={styles.fromBadge}>
-                            <Text style={styles.fromBadgeText}>
-                              {i18n.language === "ar" &&
-                                item.from_state?.name_ar
-                                ? item.from_state?.name_ar
-                                : item.from_state.name}
-                            </Text>
-                          </View>
-                          <Ionicons
-                            name={t("common.icons.arrowForward") as any}
-                            size={14}
-                            color={COLORS.text.muted}
+                      </View>
+                      <RenderWithIncidentMentions
+                        text={comment.content}
+                        style={styles.commentContent}
+                      />
+                    </View>
+                  ))}
+                  {incident.comments.length > 1 && (
+                    <TouchableOpacity
+                      style={styles.seeMoreButton}
+                      onPress={() => setShowAllComments(!showAllComments)}
+                    >
+                      <Text style={styles.seeMoreText}>
+                        {showAllComments
+                          ? t("common.showLess")
+                          : `${t("common.viewAll")} (${incident.comments.length})`}
+                      </Text>
+                      <Ionicons
+                        name={showAllComments ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color={COLORS.accent}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={32}
+                    color={COLORS.text.muted}
+                  />
+                  <Text style={styles.emptyStateText}>
+                    {t("details.noComments")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </AnimatedListItem>
+        )}
+
+        {/* Transition History Card */}
+        {!isCitizen && (
+          <AnimatedListItem index={nextSection()}>
+            <View
+              style={[
+                styles.card,
+                { marginBottom: availableTransitions.length > 0 ? 100 : 30 },
+              ]}
+            >
+              <SectionHeader
+                title={t("details.transitionHistory")}
+                icon="git-compare"
+              />
+              {history && history.length > 0 ? (
+                <View style={styles.timeline}>
+                  {(showAllHistory ? history : [history[0]]).map(
+                    (item, index) => (
+                      <View key={item.id} style={styles.timelineItem}>
+                        <View style={styles.timelineLeft}>
+                          <View
+                            style={[
+                              styles.timelineDot,
+                              { backgroundColor: COLORS.accent },
+                            ]}
                           />
-                          <View style={styles.toBadge}>
-                            <Text style={styles.toBadgeText}>
-                              {i18n.language === "ar" && item.to_state?.name_ar
-                                ? item.to_state?.name_ar
-                                : item.to_state.name}
+                          {(showAllHistory
+                            ? index < history.length - 1
+                            : false) && <View style={styles.timelineLine} />}
+                        </View>
+                        <View style={styles.timelineContent}>
+                          <View
+                            style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              gap: 5,
+                            }}
+                          >
+                            <Text style={{ fontWeight: "bold", fontSize: 12 }}>
+                              {item.transition?.name ||
+                                t("common.stateChanged", "State Changed")}
+                            </Text>
+                            <Text style={styles.transitionMeta}>
+                              {t("details.by")}{" "}
+                              {item?.performed_by?.username ||
+                                item?.performed_by?.name ||
+                                t("common.system")}{" "}
+                              •{" "}
+                              {new Date(
+                                item.transitioned_at,
+                              ).toLocaleDateString("en-GB")}
                             </Text>
                           </View>
-                        </View>
-                        {item.comment && (
-                          <View style={styles.transitionComment}>
+                          <View style={styles.transitionBadges}>
+                            <View style={styles.fromBadge}>
+                              <Text style={styles.fromBadgeText}>
+                                {i18n.language === "ar" &&
+                                  item.from_state?.name_ar
+                                  ? item.from_state?.name_ar
+                                  : item.from_state.name}
+                              </Text>
+                            </View>
                             <Ionicons
-                              name="chatbubble-ellipses-outline"
+                              name={t("common.icons.arrowForward") as any}
                               size={14}
-                              color={COLORS.text.secondary}
+                              color={COLORS.text.muted}
                             />
-                            <RenderWithIncidentMentions
-                              text={item.comment}
-                              style={styles.transitionCommentText}
-                            />
+                            <View style={styles.toBadge}>
+                              <Text style={styles.toBadgeText}>
+                                {i18n.language === "ar" &&
+                                  item.to_state?.name_ar
+                                  ? item.to_state?.name_ar
+                                  : item.to_state.name}
+                              </Text>
+                            </View>
                           </View>
-                        )}
-                        {item?.feedbacks?.comment && (
-                          <View style={styles.transitionComment}>
-                            <Ionicons
-                              name="chatbubble-ellipses-outline"
-                              size={14}
-                              color={COLORS.text.secondary}
-                            />
-                            <RenderWithIncidentMentions
-                              text={item.feedbacks.comment}
-                              style={styles.transitionCommentText}
-                            />
-                          </View>
-                        )}
-                        {item?.feedbacks?.rating > 0 &&
-                          item?.transition?.is_final_close && (
-                            <View
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 4,
-                                marginTop: 8,
-                              }}
-                            >
-                              {[...Array(5).keys()].map((i) => (
-                                <Ionicons
-                                  key={i}
-                                  name={
-                                    i <= item.feedbacks?.rating
-                                      ? "star"
-                                      : "star-outline"
-                                  }
-                                  size={14}
-                                  color={
-                                    i <= item.feedbacks?.rating
-                                      ? "#FFD700"
-                                      : "#CCC"
-                                  }
-                                />
-                              ))}
+                          {item.comment && (
+                            <View style={styles.transitionComment}>
+                              <Ionicons
+                                name="chatbubble-ellipses-outline"
+                                size={14}
+                                color={COLORS.text.secondary}
+                              />
+                              <RenderWithIncidentMentions
+                                text={item.comment}
+                                style={styles.transitionCommentText}
+                              />
                             </View>
                           )}
+                          {item?.feedbacks?.comment && (
+                            <View style={styles.transitionComment}>
+                              <Ionicons
+                                name="chatbubble-ellipses-outline"
+                                size={14}
+                                color={COLORS.text.secondary}
+                              />
+                              <RenderWithIncidentMentions
+                                text={item.feedbacks.comment}
+                                style={styles.transitionCommentText}
+                              />
+                            </View>
+                          )}
+                          {item?.feedbacks?.rating > 0 &&
+                            item?.transition?.is_final_close && (
+                              <View
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  marginTop: 8,
+                                }}
+                              >
+                                {[...Array(5).keys()].map((i) => (
+                                  <Ionicons
+                                    key={i}
+                                    name={
+                                      i <= item.feedbacks?.rating
+                                        ? "star"
+                                        : "star-outline"
+                                    }
+                                    size={14}
+                                    color={
+                                      i <= item.feedbacks?.rating
+                                        ? "#FFD700"
+                                        : "#CCC"
+                                    }
+                                  />
+                                ))}
+                              </View>
+                            )}
+                        </View>
                       </View>
-                    </View>
-                  ),
-                )}
-                {history.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.seeMoreButton}
-                    onPress={() => setShowAllHistory(!showAllHistory)}
-                  >
-                    <Text style={styles.seeMoreText}>
-                      {showAllHistory
-                        ? t("common.showLess") || "Show Less"
-                        : `${t("common.viewAll") || "See More"} (${history.length})`}
-                    </Text>
-                    <Ionicons
-                      name={showAllHistory ? "chevron-up" : "chevron-down"}
-                      size={16}
-                      color={COLORS.accent}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="time-outline"
-                  size={32}
-                  color={COLORS.text.muted}
-                />
-                <Text style={styles.emptyStateText}>
-                  {t("details.noTransitionHistory")}
-                </Text>
-              </View>
-            )}
-          </View>
-        </AnimatedListItem>
+                    ),
+                  )}
+                  {history.length > 1 && (
+                    <TouchableOpacity
+                      style={styles.seeMoreButton}
+                      onPress={() => setShowAllHistory(!showAllHistory)}
+                    >
+                      <Text style={styles.seeMoreText}>
+                        {showAllHistory
+                          ? t("common.showLess") || "Show Less"
+                          : `${t("common.viewAll") || "See More"} (${history.length})`}
+                      </Text>
+                      <Ionicons
+                        name={showAllHistory ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color={COLORS.accent}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons
+                    name="time-outline"
+                    size={32}
+                    color={COLORS.text.muted}
+                  />
+                  <Text style={styles.emptyStateText}>
+                    {t("details.noTransitionHistory")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </AnimatedListItem>
+        )}
       </ScrollView>
 
       {/* Action Buttons */}
@@ -2166,6 +2206,7 @@ const styles = StyleSheet.create({
     maxWidth: "50%",
     gap: 4,
     justifyContent: "flex-end",
+    alignItems: "center",
   },
   lookupValueTag: {
     paddingHorizontal: 8,
@@ -2176,6 +2217,23 @@ const styles = StyleSheet.create({
   lookupValueTagText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  lookupValueTagLatest: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
+  },
+  lookupValueTagTextLatest: {
+    color: "#15803D",
+  },
+  lookupValuesRestText: {
+    fontSize: 12,
+    color: COLORS.text.secondary,
+    maxWidth: 140,
+  },
+  lookupValuesMoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.accent,
   },
   checkboxContainer: {
     flexDirection: "row",

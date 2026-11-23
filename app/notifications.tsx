@@ -1,4 +1,5 @@
 import { getNotifications, markNotificationAsRead } from "@/src/api/notifications";
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import { useAuth } from "@/src/context/AuthContext";
 import { handleNotification } from "@/src/utils/notificationRouter";
 import { Ionicons } from "@expo/vector-icons";
@@ -163,7 +164,7 @@ const NotificationsScreen = () => {
         const response = await getNotifications({ page, limit: 20, channel: "notification", category: "inbox", received_by: user?.id });
         if (response.success) {
             if (append) {
-                setNotifications((prev) => [...prev, ...response.data]);
+                setNotifications((prev) => appendUnique(prev, response.data));
             } else {
                 setNotifications(response.data);
             }
