@@ -7,18 +7,20 @@ import { fetchKffMyIncidents } from '@/src/api/kffIncidents';
 
 import { toKffDateParam } from './kffDateUtils';
 import { mapApiIncidentToKff } from './kffIncidentMapper';
-import { KFF_STATUS_STATE_IDS, KFF_STATUSES, KffIncident, KffListStatus } from './kffTypes';
+import { KFF_STATUSES, KffIncident, KffListStatus } from './kffTypes';
+import { getKffStateIds } from './kffWorkflowStates';
 
 const NO_COUNTS: Record<KffListStatus, number> = { accepted: 0, completed: 0, rejected: 0 };
+const STATES_UNAVAILABLE = 'Workflow states unavailable';
 
 /**
- * My Incidents for the selected day. Each tab is its own server search
- * (`current_state_id` + date), so switching tab or day calls the API for
- * exactly that list. Counts for all three tabs (badges, Profile cards) come
- * from `total_items`. Everything refetches when the screen gains focus — tab
- * screens stay mounted. Without `status` only the counts are loaded.
+ * My Incidents for the selected day and tab. Each tab is its own server
+ * search: `current_state_id` = the tab's workflow states (looked up once per
+ * session, see kffWorkflowStates.ts) + the day. Switching tab or day calls the
+ * API for exactly that list; the tab badges come from `total_items`.
+ * Refetches when the screen gains focus (tab screens stay mounted).
  */
-export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
+export const useKffMyIncidents = (date: Date, status: KffListStatus) => {
   const { user } = useAuth();
   const { i18n } = useTranslation();
   const userId = user?.id;
@@ -27,7 +29,6 @@ export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
   const [rows, setRows] = useState<any[]>([]);
   const [counts, setCounts] = useState(NO_COUNTS);
   const [loading, setLoading] = useState(true);
-  const [countsLoading, setCountsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRequest = useRef(0);
@@ -41,9 +42,12 @@ export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
   }, [day, status]);
 
   const loadList = useCallback(async () => {
-    if (!userId || !status) return;
+    if (!userId) return;
     const id = ++listRequest.current; // newer requests supersede older ones
-    const response = await fetchKffMyIncidents({ day, stateIds: KFF_STATUS_STATE_IDS[status] });
+    const stateIds = (await getKffStateIds())?.[status];
+    const response = stateIds?.length
+      ? await fetchKffMyIncidents({ day, stateIds })
+      : ({ success: false, error: STATES_UNAVAILABLE } as const);
     if (id !== listRequest.current) return;
     if (response.success) {
       setRows(response.data);
@@ -58,9 +62,12 @@ export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
   const loadCounts = useCallback(async () => {
     if (!userId) return;
     const id = ++countsRequest.current;
+    const stateIds = await getKffStateIds();
     const results = await Promise.all(
       KFF_STATUSES.map((s) =>
-        fetchKffMyIncidents({ day, stateIds: KFF_STATUS_STATE_IDS[s], limit: 1 }),
+        stateIds?.[s]?.length
+          ? fetchKffMyIncidents({ day, stateIds: stateIds[s], limit: 1 })
+          : Promise.resolve({ success: true as const, data: [], total: 0 }),
       ),
     );
     if (id !== countsRequest.current) return;
@@ -71,18 +78,18 @@ export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
       });
       return next;
     });
-    setCountsLoading(false);
   }, [userId, day]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadList();
-    }, [loadList]),
-  );
+  // Focus / day change: badges for all tabs. Tab switch: that tab's list only.
   useFocusEffect(
     useCallback(() => {
       loadCounts();
     }, [loadCounts]),
+  );
+  useFocusEffect(
+    useCallback(() => {
+      loadList();
+    }, [loadList]),
   );
 
   const refresh = useCallback(async () => {
@@ -96,10 +103,10 @@ export const useKffMyIncidents = (date: Date, status?: KffListStatus) => {
       rows.map((row) => ({
         ...mapApiIncidentToKff(row, i18n.language),
         // The tab the row was fetched for wins over the name-based state guess.
-        ...(status ? { status } : {}),
+        status,
       })),
     [rows, i18n.language, status],
   );
 
-  return { incidents, counts, loading, countsLoading, refreshing, error, refresh };
+  return { incidents, counts, loading, refreshing, error, refresh };
 };

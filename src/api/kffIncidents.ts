@@ -42,8 +42,7 @@ export const fetchKffMyIncidents = async ({
       page,
       limit,
       record_type: 'incident',
-      // State filter switched off for now — every tab gets the day's incidents.
-      // ...(stateIds?.length ? { current_state_id: stateIds } : {}),
+      ...(stateIds?.length ? { current_state_id: stateIds } : {}),
       ...(day ? { start_date_str: day, end_date_str: day } : {}),
       ...(await unitParam()),
     });
@@ -140,6 +139,92 @@ export const uploadKffAttachment = async (
       params: { ...(version ? { version } : {}), ...(await unitParam()) },
     });
     return response.data?.success ? { success: true } : { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: errorMessage(error) };
+  }
+};
+
+/** GET /admin/workflows — all workflows (use not decided yet). */
+export const fetchKffWorkflows = async (): Promise<{ success: boolean; data?: any[]; error?: string }> => {
+  try {
+    const response = await apiClient.get('/admin/workflows', { params: await unitParam() });
+    return response.data?.success
+      ? { success: true, data: response.data.data }
+      : { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: errorMessage(error) };
+  }
+};
+
+/** GET /admin/workflows/{id} — one workflow with its states and transitions. */
+export const fetchKffWorkflowById = async (
+  workflowId: string,
+): Promise<{ success: boolean; data?: any; error?: string }> => {
+  try {
+    const response = await apiClient.get(`/admin/workflows/${workflowId}`, { params: await unitParam() });
+    return response.data?.success
+      ? { success: true, data: response.data.data }
+      : { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: errorMessage(error) };
+  }
+};
+
+/**
+ * Looks up workflow state ids by state name (case-insensitive) — the ids
+ * differ per server, the names don't. Uses the workflow `workflowId` when the
+ * server has it, otherwise its default incident workflow. Returns null when
+ * the workflow can't be loaded.
+ */
+export const resolveKffStateIds = async <K extends string>(
+  workflowId: string,
+  namesByKey: Record<K, string[]>,
+): Promise<Record<K, string[]> | null> => {
+  const list = await fetchKffWorkflows();
+  const workflows = list.success ? (list.data ?? []) : [];
+  const match =
+    workflows.find((w) => w?.id === workflowId) ??
+    workflows.find((w) => w?.is_default && w?.record_type === 'incident');
+  const detail = await fetchKffWorkflowById(match?.id ?? workflowId);
+  const states: any[] = detail.success ? (detail.data?.states ?? []) : (match?.states ?? []);
+  if (states.length === 0) return null;
+
+  const idsFor = (names: string[]) => {
+    const wanted = names.map((n) => n.trim().toLowerCase());
+    return states
+      .filter((s) => wanted.includes(String(s?.name ?? '').trim().toLowerCase()))
+      .map((s) => String(s.id));
+  };
+  return Object.fromEntries(
+    (Object.keys(namesByKey) as K[]).map((key) => [key, idsFor(namesByKey[key])]),
+  ) as Record<K, string[]>;
+};
+
+/**
+ * GET /incidents/stats/v2 → incident counts per workflow state name
+ * (`by_state`, e.g. { Dispatched: 2, Completed: 8 }). Reads the given
+ * workflow's entry in `workflow_stats` when present, else the top-level
+ * `by_state`. `day` (YYYY-MM-DD) limits the counts to that date.
+ */
+export const fetchKffStateCounts = async (
+  workflowId: string,
+  day?: string,
+): Promise<{ success: boolean; data?: Record<string, number>; error?: string }> => {
+  try {
+    const response = await apiClient.get('/incidents/stats/v2', {
+      params: {
+        record_type: 'incident',
+        // stats/v2 filters on start_date/end_date (the *_str pair is ignored
+        // by this endpoint today); both are sent.
+        ...(day ? { start_date: day, end_date: day, start_date_str: day, end_date_str: day } : {}),
+        ...(await unitParam()),
+      },
+    });
+    if (!response.data?.success) return { success: false, error: 'Invalid response from server' };
+    const stats = response.data.data ?? {};
+    const perWorkflow: any[] = Array.isArray(stats.workflow_stats) ? stats.workflow_stats : [];
+    const entry = perWorkflow.find((w) => (w?.workflow_id ?? w?.id) === workflowId) ?? perWorkflow[0];
+    return { success: true, data: entry?.by_state ?? stats.by_state ?? {} };
   } catch (error: any) {
     return { success: false, error: errorMessage(error) };
   }

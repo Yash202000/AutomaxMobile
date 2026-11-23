@@ -63,8 +63,9 @@ export const isKffDeviceConfigured = (config: KffDeviceConfig): boolean =>
 
 /**
  * Call once at app start (KFF passcode login only). API requests wait until
- * the stored Web Service URL has been applied; with no setup saved yet they
- * keep using EXPO_PUBLIC_API_URL.
+ * the stored Web Service URL has been applied. With no setup saved yet they
+ * fall back to EXPO_PUBLIC_API_URL, which is optional for KFF — without it,
+ * requests are refused until the admin saves the device setup.
  */
 export const initKffDeviceConfig = () => {
   registerApiBaseURLLoader(async () => {

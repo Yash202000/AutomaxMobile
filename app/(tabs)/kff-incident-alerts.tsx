@@ -26,8 +26,9 @@ import {
 } from "react-native";
 
 // KFF Dispatcher — notification inbox of the unit (opened from the bell):
-// GET /notifications with received_by = unit id. Tapping a notification marks
-// it read and opens the incident it refers to (meta.id).
+// GET /notifications with received_by = unit id. Unread notifications (black)
+// open the incident they refer to (meta.id) and are marked read; read ones
+// are greyed out and can't be tapped.
 
 const NotificationCard = ({ item }: { item: any }) => {
   const { t, i18n } = useTranslation();
@@ -47,25 +48,26 @@ const NotificationCard = ({ item }: { item: any }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, unread && styles.cardUnread]}
+      style={[styles.card, unread ? styles.cardUnread : styles.cardRead]}
       activeOpacity={0.85}
       onPress={handlePress}
+      disabled={!unread}
     >
       <View style={styles.cardHeader}>
         <KffTicketIcon />
         <View style={styles.cardHeaderText}>
           <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={2}>
+            <Text style={[styles.title, !unread && styles.textRead]} numberOfLines={2}>
               {subject || t("kff.alerts.newIncident")}
             </Text>
             {unread && <View style={styles.newDot} />}
           </View>
           <Text style={styles.timeAgo}>{formatKffRelativeTime(item.created_at, t)}</Text>
-          <View style={styles.datePill}>
-            <Text style={styles.datePillText}>{formatKffDateTime(item.created_at, i18n.language)}</Text>
+          <View style={[styles.datePill, !unread && styles.datePillRead]}>
+            <Text style={[styles.datePillText, !unread && styles.textRead]}>{formatKffDateTime(item.created_at, i18n.language)}</Text>
           </View>
         </View>
-        {!!incidentId && (
+        {unread && !!incidentId && (
           <Ionicons
             name={t("common.icons.chevronForward") as any}
             size={20}
@@ -77,7 +79,7 @@ const NotificationCard = ({ item }: { item: any }) => {
       {!!body && (
         <>
           <View style={styles.separator} />
-          <Text style={styles.body} numberOfLines={4}>
+          <Text style={[styles.body, !unread && styles.textRead]} numberOfLines={4}>
             {body}
           </Text>
         </>
@@ -218,6 +220,17 @@ const styles = StyleSheet.create({
     borderColor: KFF_COLORS.primaryRing,
     backgroundColor: "#FAFBFF",
   },
+  cardRead: {
+    backgroundColor: "#F3F4F7",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  textRead: {
+    color: KFF_COLORS.textMuted,
+  },
+  datePillRead: {
+    borderColor: KFF_COLORS.divider,
+  },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -227,7 +240,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 16,
     fontWeight: "700",
-    color: KFF_COLORS.primary,
+    color: KFF_COLORS.text,
     textAlign: "left",
   },
   newDot: {
@@ -260,7 +273,7 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 14,
     lineHeight: 20,
-    color: KFF_COLORS.textSecondary,
+    color: KFF_COLORS.text,
     textAlign: "left",
   },
   loader: {

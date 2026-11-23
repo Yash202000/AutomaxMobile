@@ -12,7 +12,7 @@ PODS:
   - EXJSONUtils (0.15.0)
   - EXManifests (1.0.10):
     - ExpoModulesCore
-  - Expo (54.0.33):
+  - Expo (54.0.38):
     - ExpoModulesCore
     - hermes-engine
     - RCTRequired
@@ -251,7 +251,7 @@ PODS:
   - ExpoMediaLibrary (18.2.1):
     - ExpoModulesCore
     - React-Core
-  - ExpoModulesCore (3.0.29):
+  - ExpoModulesCore (3.0.30):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2884,7 +2884,7 @@ SPEC CHECKSUMS:
   EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
   EXJSONUtils: 1d3e4590438c3ee593684186007028a14b3686cd
   EXManifests: a8d97683e5c7a3b026ffbd58559c64dc655b747b
-  Expo: aadbcc8c6c14ff3105a9154f1683cb1424ff0d2a
+  Expo: 661f5120ab5f917b1a4e4c4141a3977eb5946046
   expo-dev-client: 425ee077d6754a98cfe3a2e2410d29b440b24c9d
   expo-dev-launcher: be2313ec1943375fe70846b9b014c0a116536425
   expo-dev-menu: 05b18812110c175814c6af0d09dd658abcc5e00d
@@ -2906,7 +2906,7 @@ SPEC CHECKSUMS:
   ExpoLocalization: d9168d5300a5b03e5e78b986124d11fb6ec3ebbd
   ExpoLocation: d5b61cb4970fa982e39ca94246a206a0c3b812ca
   ExpoMediaLibrary: a3093b04365b245bb23b25b6eba84eb6ab55fecb
-  ExpoModulesCore: f3da4f1ab5a8375d0beafab763739dbee8446583
+  ExpoModulesCore: 9e6a5514828e7dd5ded9e99d33557be2d284e660
   ExpoSecureStore: d32f751874a2ceb5aaeebeb3578e165c1ba2b24a
   ExpoSharing: 0d983394ed4a80334bab5a0d5384f75710feb7e8
   ExpoSplashScreen: bc3cffefca2716e5f22350ca109badd7e50ec14d

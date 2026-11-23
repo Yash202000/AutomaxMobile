@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { kffAppVersionLabel } from '@/src/utils/kff';
+
 import { KFF_COLORS } from '../kffTheme';
 import { KFF_AUTH_BLUE } from './kffAuthTheme';
 import KffLanguagePicker from './KffLanguagePicker';
@@ -36,7 +38,7 @@ interface KffAuthLayoutProps {
 const RevealFocusedContext = createContext<() => void>(() => {});
 export const useKffRevealFocused = () => useContext(RevealFocusedContext);
 
-const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION;
+const APP_VERSION = kffAppVersionLabel();
 
 // Shared frame for the KFF login / register / create-passcode screens.
 // The logo, language toggle and white card never move: when the keyboard

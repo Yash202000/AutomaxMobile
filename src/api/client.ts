@@ -5,13 +5,17 @@ import * as SecureStore from "expo-secure-store";
 import i18n from "../i18n";
 import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
+import { isKffPasscodeLogin } from "../utils/kff";
 import { handleRequestNetworkError } from "../utils/networkStatus";
 import { attachApiLogger } from "./apiLogger";
 
-if (!process.env.EXPO_PUBLIC_API_URL) {
+// KFF passcode login takes its API server from the admin device setup at
+// runtime (src/services/kffDeviceConfig.ts), so EXPO_PUBLIC_API_URL is
+// optional there. Every other build still requires it.
+if (!process.env.EXPO_PUBLIC_API_URL && !isKffPasscodeLogin()) {
   throw new Error("EXPO_PUBLIC_API_URL is not set");
 }
-export const baseURL = process.env.EXPO_PUBLIC_API_URL;
+export const baseURL = process.env.EXPO_PUBLIC_API_URL ?? "";
 
 const apiClient = axios.create({
   baseURL,
@@ -90,6 +94,13 @@ apiClient.interceptors.request.use(
     if (runtimeBaseURLReady) {
       await runtimeBaseURLReady;
       config.baseURL = getApiBaseURL();
+      // KFF before the admin device setup (and no EXPO_PUBLIC_API_URL):
+      // there's no server yet, so fail fast instead of sending a relative URL.
+      if (!config.baseURL) {
+        const error = new Error("API server not configured");
+        (error as any).isNoServer = true;
+        return Promise.reject(error);
+      }
     }
 
     // If logging out, reject all requests except the logout request itself
@@ -174,6 +185,7 @@ apiClient.interceptors.response.use(
       !isLoggingOut &&
       !(error as any).isLogoutCancel &&
       !(error as any).isNoToken &&
+      !(error as any).isNoServer &&
       // Don't log 401s as errors since they're handled by token refresh
       error.response?.status !== 401;
 

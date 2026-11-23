@@ -17,6 +17,7 @@ import {
   useKffNotifications,
 } from './kffNotificationStore';
 import { KFF_COLORS } from './kffTheme';
+import { resetKffStateIds } from './kffWorkflowStates';
 
 interface KffAppBarProps {
   title?: string;
@@ -62,6 +63,7 @@ const KffAppBar = ({ title, subtitle, onBack, showActions = true, centerTitle = 
         style: 'destructive',
         onPress: () => {
           resetKffNotifications();
+          resetKffStateIds();
           clearKffSession();
           logout();
         },

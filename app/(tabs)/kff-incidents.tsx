@@ -25,7 +25,7 @@ import {
 
 // KFF Dispatcher — My Incidents tab.
 // The unit's incidents for the selected day, one tab per workflow state group
-// (see useKffMyIncidents / KFF_STATUS_STATE_IDS).
+// (see useKffMyIncidents / KFF_STATUS_STATE_NAMES).
 
 const KffIncidentCard = ({
   incident,

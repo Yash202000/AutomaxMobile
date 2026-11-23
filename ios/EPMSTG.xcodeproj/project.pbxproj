@@ -150,6 +150,7 @@
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
 				1AA1FB2E0C9C892127B7BBDC /* [CP] Embed Pods Frameworks */,
 				1F6F6446008663874376AA33 /* [CP-User] [RNFB] Core Configuration */,
+				E5A1B2C3D4E5F60718293A4B /* [Env] Apply app version */,
 			);
 			buildRules = (
 			);
@@ -347,6 +348,23 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-EPMSTG/Pods-EPMSTG-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		E5A1B2C3D4E5F60718293A4B /* [Env] Apply app version */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../.env",
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "[Env] Apply app version";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"${PROJECT_DIR}/scripts/apply-env-version.sh\"\n";
+		};
 		EFE787956E94B27A6B3158AB /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -414,7 +432,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.leadergroup.kffdispatcher;
-				PRODUCT_NAME = "KFFDISPATCHER";
+				PRODUCT_NAME = KFFDISPATCHER;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPMSTG/EPMSTG-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -446,7 +464,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.leadergroup.kffdispatcher;
-				PRODUCT_NAME = "KFFDISPATCHER";
+				PRODUCT_NAME = KFFDISPATCHER;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPMSTG/EPMSTG-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -9,7 +9,7 @@ import {
   supportedLanguages,
 } from "@/src/i18n";
 import { crashLogger } from "@/src/utils/crashLogger";
-import { isKffDispatcher } from "@/src/utils/kff";
+import { isKffDispatcher, kffAppVersionLabel } from "@/src/utils/kff";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -552,7 +552,8 @@ const SettingsScreen = () => {
 
         {/* Version */}
         <Text style={styles.versionText}>
-          {t("settings.version")} {process.env.EXPO_PUBLIC_APP_VERSION}
+          {t("settings.version")}{" "}
+          {isKff ? kffAppVersionLabel() : process.env.EXPO_PUBLIC_APP_VERSION}
         </Text>
       </ScrollView>
 

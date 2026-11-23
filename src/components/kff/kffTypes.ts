@@ -28,11 +28,15 @@ export interface KffIncident {
 }
 
 /**
- * Workflow state ids each My Incidents tab lists (`current_state_id` on
- * POST /incidents/search) — states of the KFF dispatch workflow.
+ * Workflow state names each My Incidents tab lists. Their ids are looked up
+ * from the workflow every time the list loads (ids differ per server) and
+ * sent as `current_state_id` on POST /incidents/search.
  */
-export const KFF_STATUS_STATE_IDS: Record<KffListStatus, string[]> = {
-  accepted: ['db89d003-c9ab-4c41-b26e-27918b307028'], // Start
-  completed: ['1996d3ae-44ef-4ff5-bbbf-1861a13fa887'],
-  rejected: ['f0580b09-2cfc-4a43-8560-defbe2d96421'],
+export const KFF_STATUS_STATE_NAMES: Record<KffListStatus, string[]> = {
+  accepted: ['Dispatched'],
+  completed: ['Completed'],
+  rejected: ['Rejected'],
 };
+
+/** The KFF dispatch workflow (falls back to the server's default incident workflow). */
+export const KFF_WORKFLOW_ID = '7cc3c22b-2fd1-45e0-8471-e41daa21d4cd';

@@ -4,7 +4,7 @@ import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { isSameDay, startOfDay } from "@/src/components/kff/kffDateUtils";
 import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { KffListStatus } from "@/src/components/kff/kffTypes";
-import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
+import { useKffStateCounts } from "@/src/components/kff/useKffStateCounts";
 import { useKffUnitProfile } from "@/src/components/kff/useKffUnitProfile";
 import { useAuth } from "@/src/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -60,7 +60,7 @@ const KffProfileScreen = () => {
 
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
 
-  const { counts, countsLoading } = useKffMyIncidents(selectedDate);
+  const { counts, loading: countsLoading } = useKffStateCounts(selectedDate);
   const { uniqueId, unit } = useKffUnitProfile();
   const unitStatus = unit?.status || "";
   const isToday = isSameDay(selectedDate, new Date());
