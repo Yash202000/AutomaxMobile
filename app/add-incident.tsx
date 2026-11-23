@@ -2070,6 +2070,11 @@ const AddIncidentScreen = () => {
       } else {
         setSubmitting(false);
         const errorMsg = response.error || "Unknown error occurred";
+        if (response.isDuplicate) {
+          // Duplicate incident is informational, not a failure.
+          CustomAlert.alert(t("common.note"), errorMsg);
+          return;
+        }
         CustomAlert.alert(
           t("common.error"),
           `${t("common.failed")}: ${errorMsg}`,

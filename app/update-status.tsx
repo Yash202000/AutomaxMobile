@@ -190,6 +190,10 @@ const UpdateStatusModal = () => {
       });
     }
   };
+ 
+  const getFieldChangeLabel = (fc: any): string =>
+    i18n.language === "ar" && fc?.label_ar ? fc.label_ar : fc?.label || "";
+
   const [departmentsTree, setDepartmentsTree] = useState<TreeNode[]>([]);
   const [locationsTree, setLocationsTree] = useState<TreeNode[]>([]);
   const [classificationsTree, setClassificationsTree] = useState<TreeNode[]>(
@@ -1048,7 +1052,7 @@ const UpdateStatusModal = () => {
       setValidatingAttachment(false);
 
       if (finalSize !== undefined && finalSize > MAX_FILE_SIZE_BYTES) {
-        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
         CustomAlert.alert(
           t("common.filesTooLargeTitle"),
           t("common.filesTooLargeDesc", {
@@ -1057,13 +1061,13 @@ const UpdateStatusModal = () => {
           }),
         );
       } else if (invalidFiles.length > 0) {
-        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
         CustomAlert.alert(
           t("addIncident.invalidImageTitle"),
           invalidFiles.join("\n"),
         );
       } else if (attachments.length >= MAX_ATTACHMENTS_COUNT) {
-        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => { });
+        FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
         CustomAlert.alert(
           t("common.error"),
           t("addIncident.maxAttachmentsExceeded", {
@@ -1129,7 +1133,7 @@ const UpdateStatusModal = () => {
     CustomAlert.alert(
       t("common.conflictDetected") || "Conflict Detected",
       t("common.incidentModifiedByAnother") ||
-      "This incident was modified by another user. Please review and try again.",
+        "This incident was modified by another user. Please review and try again.",
       [
         {
           text: t("common.refresh") || "Refresh",
@@ -1374,9 +1378,9 @@ const UpdateStatusModal = () => {
       feedback:
         feedbackComment.trim() || feedbackRating > 0
           ? {
-            rating: feedbackRating,
-            comment: feedbackComment.trim() || undefined,
-          }
+              rating: feedbackRating,
+              comment: feedbackComment.trim() || undefined,
+            }
           : undefined,
       ready_to_close_duration: readyToCloseDuration || undefined,
       version: incident?.version || 1,
@@ -1601,7 +1605,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.from_state?.name_ar
+                  selectedTransition.transition.from_state?.name_ar
                     ? selectedTransition.transition.from_state?.name_ar
                     : selectedTransition.transition.from_state?.name) ||
                     t("incidents.currentStateFallback", "Current")}
@@ -1634,7 +1638,7 @@ const UpdateStatusModal = () => {
                   ]}
                 >
                   {(i18n.language === "ar" &&
-                    selectedTransition.transition.to_state?.name_ar
+                  selectedTransition.transition.to_state?.name_ar
                     ? selectedTransition.transition.to_state?.name_ar
                     : selectedTransition.transition.to_state?.name) ||
                     t("incidents.nextStateFallback", "Next")}
@@ -1685,7 +1689,9 @@ const UpdateStatusModal = () => {
                         { textAlign: "left" },
                       ]}
                     >
-                      {i18n.language === 'ar' && trans.transition.name_ar ? trans.transition.name_ar : trans.transition.name}
+                      {i18n.language === "ar" && trans.transition.name_ar
+                        ? trans.transition.name_ar
+                        : trans.transition.name}
                     </Text>
                     {trans.transition.to_state && (
                       <View style={styles.transitionCardStateRow}>
@@ -1714,7 +1720,7 @@ const UpdateStatusModal = () => {
                             ]}
                           >
                             {(i18n.language === "ar" &&
-                              trans.transition.to_state.name_ar
+                            trans.transition.to_state.name_ar
                               ? trans.transition.to_state.name_ar
                               : trans.transition.to_state.name) ||
                               t("incidents.nextStateFallback", "Next")}
@@ -1842,7 +1848,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRow,
                           selectedDepartmentId === dept.id &&
-                          styles.selectionRowSelected,
+                            styles.selectionRowSelected,
                         ]}
                         onPress={() => setSelectedDepartmentId(dept.id)}
                       >
@@ -1851,7 +1857,7 @@ const UpdateStatusModal = () => {
                             style={[
                               styles.selectionRowTitle,
                               selectedDepartmentId === dept.id &&
-                              styles.selectionRowTitleSelected,
+                                styles.selectionRowTitleSelected,
                             ]}
                           >
                             {dept.name}
@@ -1983,7 +1989,7 @@ const UpdateStatusModal = () => {
                       <View key={fc.field_name} style={{ marginBottom: 16 }}>
                         {!fc.field_name.startsWith("lookup:") && (
                           <Text style={styles.label}>
-                            {i18n.language === 'en' && fc.label ? fc.label : fc.label_ar}
+                            {getFieldChangeLabel(fc)}
                             {fc.is_required && (
                               <Text style={{ color: "#E74C3C" }}> *</Text>
                             )}
@@ -2008,7 +2014,7 @@ const UpdateStatusModal = () => {
                                       paddingHorizontal: 4,
                                     },
                                     fieldChangeValues["priority"] === opt.id &&
-                                    styles.priorityBtnSelected,
+                                      styles.priorityBtnSelected,
                                   ]}
                                   onPress={() =>
                                     handleFieldChange("priority", opt.id)
@@ -2019,8 +2025,8 @@ const UpdateStatusModal = () => {
                                       styles.priorityBtnText,
                                       { fontSize: 11 },
                                       fieldChangeValues["priority"] ===
-                                      opt.id &&
-                                      styles.priorityBtnTextSelected,
+                                        opt.id &&
+                                        styles.priorityBtnTextSelected,
                                     ]}
                                     numberOfLines={1}
                                   >
@@ -2039,18 +2045,21 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "department_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.departmentAssignment", "Department")
                             }
                             value={
                               fieldChangeDisplayValues["department_id"] || ""
                             }
+                            valueId={
+                              fieldChangeValues["department_id"] || undefined
+                            }
                             data={
                               fc.department_type_filter
                                 ? filterDeptTree(
-                                  departmentsTree,
-                                  fc.department_type_filter,
-                                )
+                                    departmentsTree,
+                                    fc.department_type_filter,
+                                  )
                                 : departmentsTree
                             }
                             onSelect={(node) => {
@@ -2075,10 +2084,14 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "location_id" && (
                           <TreeSelect
                             label={
-                              fc.label || t("incidents.location", "Location")
+                              getFieldChangeLabel(fc) ||
+                              t("incidents.location", "Location")
                             }
                             value={
                               fieldChangeDisplayValues["location_id"] || ""
+                            }
+                            valueId={
+                              fieldChangeValues["location_id"] || undefined
                             }
                             data={locationsTree}
                             onSelect={(node) => {
@@ -2104,12 +2117,16 @@ const UpdateStatusModal = () => {
                         {fc.field_name === "classification_id" && (
                           <TreeSelect
                             label={
-                              fc.label ||
+                              getFieldChangeLabel(fc) ||
                               t("incidents.classification", "Classification")
                             }
                             value={
                               fieldChangeDisplayValues["classification_id"] ||
                               ""
+                            }
+                            valueId={
+                              fieldChangeValues["classification_id"] ||
+                              undefined
                             }
                             data={classificationsTree}
                             onSelect={(node) => {
@@ -2243,7 +2260,7 @@ const UpdateStatusModal = () => {
                       style={[
                         styles.selectionRow,
                         readyToCloseDuration === opt &&
-                        styles.selectionRowSelected,
+                          styles.selectionRowSelected,
                       ]}
                       onPress={() => setReadyToCloseDuration(opt)}
                     >
@@ -2251,7 +2268,7 @@ const UpdateStatusModal = () => {
                         style={[
                           styles.selectionRowTitle,
                           readyToCloseDuration === opt &&
-                          styles.selectionRowTitleSelected,
+                            styles.selectionRowTitleSelected,
                         ]}
                       >
                         {formatDurationLabel(opt)}
@@ -2313,8 +2330,8 @@ const UpdateStatusModal = () => {
                       {
                         opacity:
                           locationLoading ||
-                            validatingAttachment ||
-                            attachments.length >= MAX_ATTACHMENTS_COUNT
+                          validatingAttachment ||
+                          attachments.length >= MAX_ATTACHMENTS_COUNT
                             ? 0.5
                             : 1,
                       },
@@ -2342,14 +2359,14 @@ const UpdateStatusModal = () => {
                     <Text style={styles.attachmentText}>
                       {validatingAttachment
                         ? t(
-                          "addIncident.validatingImage",
-                          "Validating image...",
-                        )
+                            "addIncident.validatingImage",
+                            "Validating image...",
+                          )
                         : attachments.length >= MAX_ATTACHMENTS_COUNT
                           ? t("addIncident.maxAttachmentsReached", {
-                            max: MAX_ATTACHMENTS_COUNT,
-                            defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
-                          })
+                              max: MAX_ATTACHMENTS_COUNT,
+                              defaultValue: `Maximum of ${MAX_ATTACHMENTS_COUNT} files reached`,
+                            })
                           : attachments.length > 0
                             ? t("incidents.addMoreFiles", "Add more files")
                             : t("incidents.attachFiles", "Attach files")}
@@ -2374,71 +2391,71 @@ const UpdateStatusModal = () => {
                   {selectedTransition.requirements?.find(
                     (x: any) => x.requirement_type === "rating",
                   ) && (
-                      <View>
-                        <Text style={styles.stepHint}>
-                          {t(
-                            "incidents.rateYourExperience",
-                            "Rate your experience with this resolution",
-                          )}
-                          {selectedTransition.requirements?.find(
-                            (x: any) => x.requirement_type === "rating",
-                          )?.is_mandatory && (
-                              <Text style={{ color: "red" }}> *</Text>
-                            )}
-                        </Text>
-                        <View
-                          style={{
-                            justifyContent: "center",
-                            alignItems: "center",
-                            backgroundColor: "#F8F9FA",
-                            borderRadius: 10,
-                            padding: 15,
-                            borderWidth: 1,
-                            borderColor: "#E0E0E0",
-                          }}
-                        >
-                          <View style={styles.starRatingContainer}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <TouchableOpacity
-                                key={star}
-                                onPress={() => setFeedbackRating(star)}
-                              >
-                                <Ionicons
-                                  fill={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                  name={
-                                    star <= feedbackRating
-                                      ? "star"
-                                      : "star-outline"
-                                  }
-                                  size={40}
-                                  color={
-                                    star <= feedbackRating ? "#FFD700" : "#CCC"
-                                  }
-                                />
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                          {feedbackRating > 0 && (
-                            <Text
-                              style={[
-                                styles.ratingText,
-                                { textAlign: "center", marginTop: 12 },
-                              ]}
+                    <View>
+                      <Text style={styles.stepHint}>
+                        {t(
+                          "incidents.rateYourExperience",
+                          "Rate your experience with this resolution",
+                        )}
+                        {selectedTransition.requirements?.find(
+                          (x: any) => x.requirement_type === "rating",
+                        )?.is_mandatory && (
+                          <Text style={{ color: "red" }}> *</Text>
+                        )}
+                      </Text>
+                      <View
+                        style={{
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#F8F9FA",
+                          borderRadius: 10,
+                          padding: 15,
+                          borderWidth: 1,
+                          borderColor: "#E0E0E0",
+                        }}
+                      >
+                        <View style={styles.starRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                              key={star}
+                              onPress={() => setFeedbackRating(star)}
                             >
-                              {feedbackRating === 1 && t("incidents.ratingPoor")}
-                              {feedbackRating === 2 && t("incidents.ratingFair")}
-                              {feedbackRating === 3 && t("incidents.ratingGood")}
-                              {feedbackRating === 4 &&
-                                t("incidents.ratingVeryGood")}
-                              {feedbackRating === 5 &&
-                                t("incidents.ratingExcellent")}
-                            </Text>
-                          )}
+                              <Ionicons
+                                fill={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                                name={
+                                  star <= feedbackRating
+                                    ? "star"
+                                    : "star-outline"
+                                }
+                                size={40}
+                                color={
+                                  star <= feedbackRating ? "#FFD700" : "#CCC"
+                                }
+                              />
+                            </TouchableOpacity>
+                          ))}
                         </View>
+                        {feedbackRating > 0 && (
+                          <Text
+                            style={[
+                              styles.ratingText,
+                              { textAlign: "center", marginTop: 12 },
+                            ]}
+                          >
+                            {feedbackRating === 1 && t("incidents.ratingPoor")}
+                            {feedbackRating === 2 && t("incidents.ratingFair")}
+                            {feedbackRating === 3 && t("incidents.ratingGood")}
+                            {feedbackRating === 4 &&
+                              t("incidents.ratingVeryGood")}
+                            {feedbackRating === 5 &&
+                              t("incidents.ratingExcellent")}
+                          </Text>
+                        )}
                       </View>
-                    )}
+                    </View>
+                  )}
                   {feedbackTemplates && feedbackTemplates.length > 0 ? (
                     <View style={{ marginTop: 8 }}>
                       <TouchableOpacity
@@ -2804,7 +2821,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
     marginTop: 12,
-    textAlign: "left"
+    textAlign: "left",
   },
   dropdown: {
     flexDirection: "row",
