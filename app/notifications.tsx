@@ -1,4 +1,5 @@
 import { getNotifications, markNotificationAsRead } from "@/src/api/notifications";
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import { useAuth } from "@/src/context/AuthContext";
 import { handleNotification } from "@/src/utils/notificationRouter";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,7 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Notification {
     id: string;
@@ -149,6 +150,7 @@ const NotificationsScreen = () => {
         total_pages: 0,
     });
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
 
     const isLoadingMore = useRef(false);
 
@@ -162,7 +164,7 @@ const NotificationsScreen = () => {
         const response = await getNotifications({ page, limit: 20, channel: "notification", category: "inbox", received_by: user?.id });
         if (response.success) {
             if (append) {
-                setNotifications((prev) => [...prev, ...response.data]);
+                setNotifications((prev) => appendUnique(prev, response.data));
             } else {
                 setNotifications(response.data);
             }
@@ -225,10 +227,10 @@ const NotificationsScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <ImageBackground
                 source={require("@/assets/images/background.png")}
-                style={styles.header}
+                style={[styles.header, { paddingTop: insets.top }]}
             >
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name={t('common.icons.arrowBack') as any} size={24} color="white" />
@@ -266,7 +268,7 @@ const NotificationsScreen = () => {
                     />
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 

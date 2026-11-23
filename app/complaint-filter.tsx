@@ -1,4 +1,5 @@
 import { getClassificationsTree } from '@/src/api/classifications';
+import { useAuth } from '@/src/context/AuthContext';
 import { getDepartmentsTree } from '@/src/api/departments';
 import { getComplaintStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
@@ -67,10 +68,11 @@ const isSmallScreen = screenHeight < 700;
 const ComplaintFilterScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -115,6 +117,7 @@ const ComplaintFilterScreen = () => {
   });
 
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const { isCitizen } = useAuth();
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
 
   useEffect(() => {
@@ -284,7 +287,15 @@ const ComplaintFilterScreen = () => {
     }
 
     const queryParams: any = {};
-    if (filters.state_ids.length > 0) { queryParams.state_id = filters.state_ids.join(','); queryParams.state_name = filters.state_names.join(','); }
+    if (filters.state_ids.length > 0) {
+      queryParams.state_id = filters.state_ids.join(',');
+      queryParams.state_name = filters.state_names.join(',');
+      // Carry the Arabic name alongside so the destination screen's filter
+      // badge can localize it instead of always showing the English name.
+      queryParams.state_name_ar = filters.state_ids
+        .map(id => states.find(s => s.id === id)?.name_ar || '')
+        .join(',');
+    }
     if (filters.priorities.length > 0) queryParams.priority = filters.priorities.join(',');
     if (filters.severities.length > 0) queryParams.severity = filters.severities.join(',');
     if (filters.assignee_ids.length > 0) { queryParams.assignee_id = filters.assignee_ids.join(','); queryParams.assignee_name = filters.assignee_names.join(','); }
@@ -368,19 +379,19 @@ const ComplaintFilterScreen = () => {
           )}
 
           {renderFilterSection('status', t('filter.status', 'Status'), 'flag-outline',
-            filters.state_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.state_ids.length === 1 ? filters.state_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.state_ids.length })),
+            filters.state_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.state_ids.length === 1 ? ((states.find(s => s.id === filters.state_ids[0])?.[(i18n.language === 'en' ? 'name' : 'name_ar')]) || (i18n.language !== 'en' && params.state_name_ar) || filters.state_names[0]) : t('filter.nSelected', '{{count}} selected', { count: filters.state_ids.length })),
             loadingStates,
             [{ id: null, name: t('filter.allStatuses', 'All Statuses') }, ...states],
             (state) => (
               <TouchableOpacity key={state.id || 'all'} style={[styles.filterOption, (state.id ? filters.state_ids.includes(state.id) : filters.state_ids.length === 0) && styles.filterOptionSelected]}
                 onPress={() => state.id ? selectState(state) : setFilters({ ...filters, state_ids: [], state_names: [] })}>
-                <Text style={styles.filterOptionText}>{state.name}</Text>
+                <Text style={styles.filterOptionText}>{(i18n.language === 'en' || !state?.name_ar) ? state.name : state.name_ar}</Text>
                 {(state.id ? filters.state_ids.includes(state.id) : filters.state_ids.length === 0) && <Ionicons name="checkmark" size={20} color="#E74C3C" />}
               </TouchableOpacity>
             )
           )}
 
-          {renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
+          {!isCitizen && renderFilterSection('priority', t('filter.priority', 'Priority'), 'flag-outline',
             filters.priorities.length === 0 ? t('filter.allLabel', 'All') : (filters.priorities.length === 1 ? t(`priorities.${priorities.find(p => p.value === filters.priorities[0])?.key}`) : t('filter.nSelected', '{{count}} selected', { count: filters.priorities.length })),
             false,
             [{ value: null, label: t('filter.allPriorities', 'All Priorities') }, ...priorities],
@@ -412,7 +423,7 @@ const ComplaintFilterScreen = () => {
           )
         )} */}
 
-          {renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
+          {!isCitizen && renderFilterSection('assignee', t('filter.assignee', 'Assignee'), 'person-outline',
             filters.assignee_ids.length === 0 ? t('filter.allLabel', 'All') : (filters.assignee_ids.length === 1 ? filters.assignee_names[0] : t('filter.nSelected', '{{count}} selected', { count: filters.assignee_ids.length })),
             loadingUsers,
             [{ id: null, first_name: t('filter.allLabel', 'All'), last_name: t('filter.assignee', 'Assignees') }, ...users],
@@ -552,9 +563,23 @@ const ComplaintFilterScreen = () => {
               <View style={styles.dateModalContent}>
                 <View style={styles.dateModalHeader}>
                   <Text style={styles.dateModalTitle}>
-                    {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
+                    {showDatePicker === 'from'
+                      ? t('filter.selectFromDate', 'Select From Date')
+                      : t('filter.selectToDate', 'Select To Date')}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                  <TouchableOpacity onPress={() => {
+                      // iOS spinner only fires onChange on change, so commit the shown date (today) if unset
+                      if (showDatePicker === 'from') {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        setFilters(prev => (prev.start_date ? prev : { ...prev, start_date: d.toISOString() }));
+                      } else {
+                        const d = new Date();
+                        d.setHours(23, 59, 59, 999);
+                        setFilters(prev => (prev.end_date ? prev : { ...prev, end_date: d.toISOString() }));
+                      }
+                      setShowDatePicker(null);
+                    }}>
                     <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
@@ -565,6 +590,9 @@ const ComplaintFilterScreen = () => {
                   }
                   mode="date"
                   display="spinner"
+                  themeVariant="light"
+                  textColor="#000000"
+                  style={{ height: 216, alignSelf: "stretch" }}
                   maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
                     if (selectedDate) {

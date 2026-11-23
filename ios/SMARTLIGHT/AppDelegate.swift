@@ -28,7 +28,6 @@ public class AppDelegate: ExpoAppDelegate {
       in: window,
       launchOptions: launchOptions)
 #endif
-
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

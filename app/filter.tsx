@@ -1,5 +1,6 @@
 import { getClassificationsTree } from '@/src/api/classifications';
-import { getDepartments } from '@/src/api/departments';
+import { useAuth } from '@/src/context/AuthContext';
+import { getDepartmentsTree } from '@/src/api/departments';
 import { getIncidentStats } from '@/src/api/incidents';
 import { getLocationsTree } from '@/src/api/locations';
 import { getUsers } from '@/src/api/users';
@@ -78,6 +79,7 @@ const FilterScreen = () => {
   const params = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -94,8 +96,9 @@ const FilterScreen = () => {
   }>();
 
   const [states, setStates] = useState<any[]>([]);
+  const { isCitizen } = useAuth();
   const { canViewAllIncidents } = usePermissions()
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<TreeNode[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [classifications, setClassifications] = useState<TreeNode[]>([]);
   const [locations, setLocations] = useState<TreeNode[]>([]);
@@ -144,7 +147,7 @@ const FilterScreen = () => {
 
   const fetchDepartments = async () => {
     setLoadingDepartments(true);
-    const response = await getDepartments();
+    const response = await getDepartmentsTree();
     if (response.success) {
       setDepartments(response.data || []);
     }
@@ -237,21 +240,12 @@ const FilterScreen = () => {
     }
   };
 
-  const selectDepartment = (department: any) => {
-    const isSelected = filters.department_ids.includes(department.id);
-    if (isSelected) {
-      setFilters({
-        ...filters,
-        department_ids: filters.department_ids.filter(id => id !== department.id),
-        department_names: filters.department_names.filter(name => name !== department.name),
-      });
-    } else {
-      setFilters({
-        ...filters,
-        department_ids: [...filters.department_ids, department.id],
-        department_names: [...filters.department_names, department.name],
-      });
-    }
+  const handleDepartmentMultiSelect = (nodes: any[]) => {
+    setFilters({
+      ...filters,
+      department_ids: nodes.map(n => n.id),
+      department_names: nodes.map(n => n.name),
+    });
   };
 
   const handleClassificationMultiSelect = (nodes: any[]) => {
@@ -295,6 +289,11 @@ const FilterScreen = () => {
     if (filters.state_ids.length > 0) {
       queryParams.state_id = filters.state_ids.join(',');
       queryParams.state_name = filters.state_names.join(',');
+      // Carry the Arabic name alongside so the destination screen's filter
+      // badge can localize it instead of always showing the English name.
+      queryParams.state_name_ar = filters.state_ids
+        .map(id => states.find(s => s.id === id)?.name_ar || '')
+        .join(',');
     }
     if (filters.priorities.length > 0) {
       queryParams.priority = filters.priorities.join(',');
@@ -343,7 +342,16 @@ const FilterScreen = () => {
 
   const getSelectedStateName = () => {
     if (filters.state_ids.length === 0) return t('filter.all');
-    if (filters.state_ids.length === 1) return filters.state_names[0] || t('filter.selected');
+    if (filters.state_ids.length === 1) {
+      const match = states.find(s => s.id === filters.state_ids[0]);
+      if (match) {
+        return (i18n.language === 'en' || !match.name_ar) ? match.name : match.name_ar;
+      }
+      // states hasn't loaded yet — use the Arabic name carried over via
+      // params instead of always falling back to English, so there's no
+      // flash of English text while the list is still fetching.
+      return (i18n.language !== 'en' && params.state_name_ar) || filters.state_names[0] || t('filter.selected');
+    }
     return `${filters.state_ids.length} ${t('filter.selected')}`;
   };
 
@@ -369,12 +377,6 @@ const FilterScreen = () => {
     if (filters.assignee_ids.length === 0) return t('filter.all');
     if (filters.assignee_ids.length === 1) return filters.assignee_names[0] || t('filter.selected');
     return `${filters.assignee_ids.length} ${t('filter.selected')}`;
-  };
-
-  const getSelectedDepartmentName = () => {
-    if (filters.department_ids.length === 0) return t('filter.all');
-    if (filters.department_ids.length === 1) return filters.department_names[0] || t('filter.selected');
-    return `${filters.department_ids.length} ${t('filter.selected')}`;
   };
 
   const getSelectedClassificationName = () => {
@@ -457,7 +459,8 @@ const FilterScreen = () => {
           </View>
 
           {/* Priority Filter */}
-          <View style={styles.filterSection}>
+          {!isCitizen && (
+<View style={styles.filterSection}>
             <TouchableOpacity
               style={styles.filterHeader}
               onPress={() => toggleSection('priority')}
@@ -507,6 +510,7 @@ const FilterScreen = () => {
               </View>
             )}
           </View>
+)}
 
           {/* Classification Filter */}
           <View style={styles.filterSection}>
@@ -559,7 +563,7 @@ const FilterScreen = () => {
           </View>
 
           {/* Assignee Filter */}
-          {canViewAllIncidents() && <View style={styles.filterSection}>
+          {!isCitizen && canViewAllIncidents() && <View style={styles.filterSection}>
             <TouchableOpacity
               style={styles.filterHeader}
               onPress={() => toggleSection('assignee')}
@@ -621,59 +625,30 @@ const FilterScreen = () => {
           </View>}
 
           {/* Department Filter */}
-          <View style={styles.filterSection}>
-            <TouchableOpacity
-              style={styles.filterHeader}
-              onPress={() => toggleSection('department')}
-            >
-              <View style={styles.filterHeaderLeft}>
-                <Ionicons name="business-outline" size={20} color="#1A237E" />
-                <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+          {!isCitizen && (
+            <View style={styles.filterSection}>
+              <View style={styles.filterHeader}>
+                <View style={styles.filterHeaderLeft}>
+                  <Ionicons name="business-outline" size={20} color="#1A237E" />
+                  <Text style={styles.filterLabel}>{t('filter.department')}</Text>
+                </View>
               </View>
-              <View style={styles.filterHeaderRight}>
-                <Text style={[styles.filterValue, filters.department_ids.length > 0 && styles.filterValueActive]}>
-                  {getSelectedDepartmentName()}
-                </Text>
-                <Ionicons
-                  name={expandedSection === 'department' ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color="#666"
+              <View style={styles.treeSelectWrapper}>
+                <TreeSelect
+                  label={t('filter.department')}
+                  value=""
+                  data={departments}
+                  loading={loadingDepartments}
+                  onSelect={() => { }}
+                  leafOnly={false}
+                  placeholder={filters.department_ids.length > 0 ? `${filters.department_ids.length} selected` : t('filter.allDepartments')}
+                  multiSelect={true}
+                  selectedIds={filters.department_ids}
+                  onMultiSelect={handleDepartmentMultiSelect}
                 />
               </View>
-            </TouchableOpacity>
-
-            {expandedSection === 'department' && (
-              <View style={styles.filterOptions}>
-                {loadingDepartments ? (
-                  <ActivityIndicator size="small" color="#1A237E" />
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.filterOption, filters.department_ids.length === 0 && styles.filterOptionSelected]}
-                      onPress={() => setFilters({ ...filters, department_ids: [], department_names: [] })}
-                    >
-                      <Text style={[styles.filterOptionText, filters.department_ids.length === 0 && styles.filterOptionTextSelected]}>
-                        {t('filter.allDepartments')}
-                      </Text>
-                      {filters.department_ids.length === 0 && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                    </TouchableOpacity>
-                    {departments.map((department) => (
-                      <TouchableOpacity
-                        key={department.id}
-                        style={[styles.filterOption, filters.department_ids.includes(department.id) && styles.filterOptionSelected]}
-                        onPress={() => selectDepartment(department)}
-                      >
-                        <Text style={[styles.filterOptionText, filters.department_ids.includes(department.id) && styles.filterOptionTextSelected]}>
-                          {department.name}
-                        </Text>
-                        {filters.department_ids.includes(department.id) && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                      </TouchableOpacity>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Source Filter */}
           <View style={styles.filterSection}>
@@ -779,9 +754,23 @@ const FilterScreen = () => {
               <View style={styles.dateModalContent}>
                 <View style={styles.dateModalHeader}>
                   <Text style={styles.dateModalTitle}>
-                    {showDatePicker === 'from' ? 'Select From Date' : 'Select To Date'}
+                    {showDatePicker === 'from'
+                      ? t('filter.selectFromDate', 'Select From Date')
+                      : t('filter.selectToDate', 'Select To Date')}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                  <TouchableOpacity onPress={() => {
+                      // iOS spinner only fires onChange on change, so commit the shown date (today) if unset
+                      if (showDatePicker === 'from') {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        setFilters(prev => (prev.start_date ? prev : { ...prev, start_date: d.toISOString() }));
+                      } else {
+                        const d = new Date();
+                        d.setHours(23, 59, 59, 999);
+                        setFilters(prev => (prev.end_date ? prev : { ...prev, end_date: d.toISOString() }));
+                      }
+                      setShowDatePicker(null);
+                    }}>
                     <Text style={styles.dateModalDone}>{t('common.done', 'Done')}</Text>
                   </TouchableOpacity>
                 </View>
@@ -792,6 +781,9 @@ const FilterScreen = () => {
                   }
                   mode="date"
                   display="spinner"
+                  themeVariant="light"
+                  textColor="#000000"
+                  style={{ height: 216, alignSelf: "stretch" }}
                   maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
                     if (selectedDate) {

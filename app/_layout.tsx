@@ -14,7 +14,10 @@ import { useFCM } from '@/hooks/use-FCM';
 import { registerToken } from '@/src/api/notifications';
 import { CustomAlertComponent } from '@/src/components/CustomAlert';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
+import NoInternetOverlay from '@/src/components/NoInternetOverlay';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
+import { useGlobalWebSocket } from '@/src/hooks/useGlobalWebSocket';
+import { useNetworkMonitor } from '@/src/hooks/useNetworkMonitor';
 import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
@@ -151,6 +154,8 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   useFCM(router);
+  useGlobalWebSocket();
+  useNetworkMonitor();
 
   useEffect(() => {
     if (isLoading || isLoggingOut) return;
@@ -253,7 +258,7 @@ function RootLayoutNav() {
         <Stack.Screen name="add-complaint" options={{ headerShown: false }} />
         <Stack.Screen name="query-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-query" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-profile" options={{ title: t('settings.editProfile'), headerTitle: '' }} />
+        <Stack.Screen name="edit-profile" options={{ title: t('settings.profile'), headerTitle: '' }} />
         <Stack.Screen name="change-password" options={{ title: t('settings.changePassword') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="filter" options={{ presentation: 'transparentModal', headerShown: false }} />
@@ -261,6 +266,7 @@ function RootLayoutNav() {
         <Stack.Screen name="request-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="query-filter" options={{ presentation: 'transparentModal', headerShown: false }} />
         <Stack.Screen name="update-status" options={{ presentation: 'transparentModal', headerShown: false }} />
+        <Stack.Screen name="convert-to-request" options={{ title: t('requests.convertToRequest', 'Convert to Request') }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal') }} />
       </Stack>
@@ -301,6 +307,7 @@ export default function RootLayout() {
         <RootLayoutNav />
       </AuthProvider>
       <CustomAlertComponent />
+      <NoInternetOverlay />
     </ErrorBoundary>
   );
 }

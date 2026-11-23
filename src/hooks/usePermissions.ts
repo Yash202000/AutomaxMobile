@@ -26,6 +26,7 @@ export const usePermissions = () => {
     canCommentIncidents: () => hasPermission(PERMISSIONS.INCIDENTS_COMMENT),
     canManageSLA: () => hasPermission(PERMISSIONS.INCIDENTS_MANAGE_SLA),
     canShareIncidents: () => hasPermission(PERMISSIONS.INCIDENTS_SHARE),
+    canUploadAttachmentGallery: () => hasPermission(PERMISSIONS.INCIDENTS_UPLOAD_ATTACHMENT_GALLERY),
 
     // Request permissions
     canViewRequests: () => hasPermission(PERMISSIONS.REQUESTS_VIEW),

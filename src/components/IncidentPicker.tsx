@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
 import {
     ActivityIndicator,
     FlatList,
@@ -21,11 +22,13 @@ const SEARCH_DEBOUNCE_MS = 400;
 const IncidentPicker = ({
     incidentDropdownOpen,
     onClose,
+    currentStateId,
     selectedSourceIncident,
     onSelect,
 }: {
     incidentDropdownOpen: boolean;
     onClose: (value: boolean) => void;
+    currentStateId?: string;
     selectedSourceIncident: any;
     onSelect: (value: any) => void;
 }) => {
@@ -59,9 +62,10 @@ const IncidentPicker = ({
             last3Months.setUTCHours(0, 0, 0, 0);
 
             const params: Record<string, any> = {
-                reporter_id: user?.id,
+                reporter_phone: user?.phone,
                 limit: PAGE_SIZE,
                 page: pageNum,
+                current_state_id: currentStateId ? [currentStateId] : undefined,
                 start_date: last3Months.toISOString(),
                 end_date: today.toISOString(),
             };
@@ -72,14 +76,15 @@ const IncidentPicker = ({
             const response = await getIncidents(params);
             // Discard stale responses (user may have typed again)
             if (fetchedSearch.current !== searchTerm) return;
-
             if (response.success && response.data) {
                 const mapped = response.data.map((i: any) => ({
                     id: i.id,
                     name: `${i.incident_number} - ${i.title}`,
+                    location: i.location,
+                    location_id: i.location_id,
                 }));
 
-                setIncidents(prev => isFirstPage ? mapped : [...prev, ...mapped]);
+                setIncidents(prev => isFirstPage ? dedupeById(mapped) : appendUnique(prev, mapped));
                 setTotalPages(response.pagination?.total_pages ?? 1);
                 setPage(pageNum);
             }
@@ -89,7 +94,7 @@ const IncidentPicker = ({
             if (isFirstPage) setLoading(false);
             else setLoadingMore(false);
         }
-    }, []);
+    }, [user?.phone, currentStateId]);
 
     // ── Reset + initial load when modal opens ───────────────────────────────────
     useEffect(() => {
