@@ -44,6 +44,22 @@ export const ldapLogin = async (username: string, password: string) => {
   }
 };
 
+export const sendOtp = async (
+  phone: string,
+  channel: 'sms' | 'whatsapp' = 'sms',
+  type: 'employee' | 'citizen' = 'employee'
+): Promise<{ success: true; session_id: string } | { success: false; error: string }> => {
+  try {
+    const response = await apiClient.post('/otp/send', { phone, channel, type });
+    if (response.data && response.data.session_id) {
+      return { success: true, session_id: response.data.session_id as string };
+    }
+    return { success: false, error: 'Invalid response from server' };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.error || error.response?.data?.message || error.message };
+  }
+};
+
 export const logout = async () => {
   // Set flag to prevent 401 interceptor from running during logout
   setLoggingOut(true);

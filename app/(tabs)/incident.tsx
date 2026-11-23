@@ -1,5 +1,7 @@
 import { getIncidents, getIncidentStats } from "@/src/api/incidents";
+import { AnimatedListItem } from "@/src/components/AnimatedListItem";
 import { CustomAlert } from "@/src/components/CustomAlert";
+import { TicketListSkeleton } from "@/src/components/TicketListSkeleton";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { useHierarchy } from "@/src/hooks/useHierarchy";
@@ -90,6 +92,7 @@ interface Incident {
   title: string;
   priority: number;
   created_at: string;
+  updated_at?: string;
   current_state?: { name: string; name_ar: string };
   location?: { name: string; name_ar: string };
   lookup_values?: Array<{
@@ -100,6 +103,11 @@ interface Incident {
     color: string;
   }>;
   transition_history?: Array<any>;
+  department: any;
+  classification?: any;
+  description?: string;
+  reporter?: any;
+  reporter_phone?: string
 }
 
 interface PaginationInfo {
@@ -271,6 +279,7 @@ const IncidentsScreen = () => {
   let {
     state_id,
     state_name,
+    state_name_ar,
     priority,
     severity,
     assignee_id,
@@ -287,6 +296,7 @@ const IncidentsScreen = () => {
   } = useLocalSearchParams<{
     state_id?: string;
     state_name?: string;
+    state_name_ar?: string;
     priority?: string;
     severity?: string;
     assignee_id?: string;
@@ -317,6 +327,11 @@ const IncidentsScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<TextInput>(null);
   const isLoadingMore = useRef(false);
+  const [sortByUpdated, setSortByUpdated] = useState(true);
+  // Ordering now comes from the backend (sort_by param in buildParams) so
+  // pages arrive already in the right order — no client-side re-sort of the
+  // accumulated list, which used to reshuffle already-rendered rows (and
+  // their entrance animations) every time a new page loaded.
 
   // Multi-selection states & operations
   const [selectionMode, setSelectionMode] = useState(false);
@@ -398,8 +413,13 @@ const IncidentsScreen = () => {
 
     const selectedIncidents = incidents.filter((inc) => selectedIds.has(inc.id));
 
+    const translationHelper = (a: any) => {
+      const isArabic = i18n.language === 'ar' && a.name_ar;
+      return isArabic ? a?.name_ar : a?.name;
+    }
+
     const doShare = async (incidentsToShare: typeof selectedIncidents) => {
-      let shareText = `📋 *${t("incidents.title")} Summary*:\n\n`;
+      let shareText = `📋 *${t("incidents.title")} ${t("common.summary")}*:\n\n`;
       incidentsToShare.forEach((inc, index) => {
         const priorityLookup = inc.lookup_values?.find(
           (lv) => lv.category.code === "PRIORITY",
@@ -411,10 +431,10 @@ const IncidentsScreen = () => {
         }
 
         shareText += `${index + 1}. *${inc.incident_number}* - ${inc.title}\n`;
-        shareText += `   ${t("incidents.classification")} : ${inc.classification.name || t("common.na")}\n`;
-        shareText += `   ${t("incidents.location")} : ${inc.location?.name || t("common.na")}\n`;
-        shareText += `   ${t("incidents.description")} : ${inc.description || t("common.na")}\n`;
-        shareText += `   ${t("incidents.status")} : ${inc.current_state?.name || t("common.na")}\n`;
+        shareText += `   ${t("incidents.classification")} : ${translationHelper(inc.classification) || t("common.na")}\n`;
+        shareText += `   ${t("incidents.location")} : ${translationHelper(inc.location) || t("common.na")}\n`;
+        shareText += `   ${t("incidents.department")} : ${translationHelper(inc.department) || t("common.na")}\n`;
+        shareText += `   ${t("incidents.status")} : ${translationHelper(inc.current_state) || t("common.na")}\n`;
         shareText += `   ${t("filter.priority")} : ${priorityVal}\n`;
         shareText += `   ${t("incidents.reporter")} : ${(inc.reporter?.first_name + " " + inc.reporter?.last_name) || t("common.na")}\n`;
         shareText += `   ${t("addIncident.reporterPhone")} : ${inc.reporter?.phone || inc?.reporter_phone || t("common.na")}\n`;
@@ -455,12 +475,16 @@ const IncidentsScreen = () => {
 
   // Don't apply default status filter - show ALL incidents unless explicitly filtered
   const activeStateId = state_id;
-  const activeStateName = state_name;
+  const activeStateName = (i18n.language !== "en" && state_name_ar) || state_name;
 
   const buildParams = (page: number) => {
-    const params: Record<string, any> = { page, limit: 20 };
+    const params: Record<string, any> = {
+      page,
+      limit: 20,
+      sort_by: sortByUpdated ? "updated_at" : "created_at",
+    };
     if (activeStateId) params.current_state_id = activeStateId.split(",");
-    if (priority) params.priority = priority.split(",").map((p) => parseInt(p));
+    if (priority) params.priorities = priority.split(",").map((p) => parseInt(p));
     if (severity) params.severity = severity.split(",").map((s) => parseInt(s));
     if (assignee_id) params.assignee_id = assignee_id.split(",");
     if (department_id) params.department_id = department_id.split(",");
@@ -469,7 +493,7 @@ const IncidentsScreen = () => {
     else if (treeSelectedIds.size > 0 && isViewerMode)
       params.classification_id = Array.from(treeSelectedIds);
     if (location_ids) params.location_id = location_ids.split(",");
-    if (source) params.source = source.split(",");
+    if (source) params.sources = source.split(",");
     if (start_date) params.start_date = start_date;
     if (end_date) params.end_date = end_date;
     if (searchQuery.trim().length >= 3) params.search = searchQuery.trim();
@@ -493,12 +517,16 @@ const IncidentsScreen = () => {
     try {
       let params = buildParams(page);
       if (!params?.current_state_id || params?.current_state_id.length === 0) {
-        const statsResponse = await getIncidentStats();
-        if (statsResponse.success && statsResponse.data?.workflow_stats) {
-          params.current_state_id = statsResponse.data.workflow_stats[0].by_state_details.map(
-            (s: any) => s.id,
-          );
-          state_id = params.current_state_id.join(",");
+        try {
+          const statsResponse = await getIncidentStats();
+          const stateDetails =
+            statsResponse.data?.workflow_stats?.[0]?.by_state_details;
+          if (statsResponse.success && Array.isArray(stateDetails) && stateDetails.length > 0) {
+            params.current_state_id = stateDetails.map((s: any) => s.id);
+            state_id = params.current_state_id.join(",");
+          }
+        } catch (statsErr: any) {
+          if (statsErr?.isLogoutCancel) throw statsErr;
         }
       }
       if (!canViewAllIncidents() && !isViewerMode) {
@@ -506,8 +534,16 @@ const IncidentsScreen = () => {
       }
       const response = await getIncidents(params);
       if (response.success) {
+        // De-duplicate by id: shifting pages / overlapping loads can return the
+        // same incident twice, which breaks FlatList keys.
+        const dedupe = (list: Incident[]) => {
+          const seen = new Set<string>();
+          return list.filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+        };
         setIncidents(
-          append ? (prev) => [...prev, ...response.data] : response.data,
+          append
+            ? (prev) => dedupe([...prev, ...response.data])
+            : dedupe(response.data),
         );
         setPagination(response.pagination);
       } else {
@@ -554,6 +590,7 @@ const IncidentsScreen = () => {
       start_date,
       end_date,
       searchQuery,
+      sortByUpdated,
     ]),
   );
 
@@ -643,20 +680,51 @@ const IncidentsScreen = () => {
   };
 
   const renderHeader = () => (
-    <View style={styles.listHeader}>
-      <Text style={[styles.foundText, { textAlign: 'left' }]}>
-        {hasManualFilters
-          ? t("incidents.incidentsFound", { count: pagination.total_items }) +
-          ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
-          : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
-      </Text>
-      {pagination.total_pages > 1 && (
-        <Text style={[styles.paginationText, { textAlign: 'left' }]}>
-          {t("incidents.page", {
-            current: pagination.page,
-            total: pagination.total_pages,
-          })}
+    <View style={[styles.listHeader, { flexDirection: 'row', alignItems: 'center' }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.foundText, { textAlign: 'left' }]}>
+          {hasManualFilters
+            ? t("incidents.incidentsFound", { count: pagination.total_items }) +
+            ` (${activeFilterCount} ${t("filter.title").toLowerCase()})`
+            : `${pagination.total_items} ${activeStateName || ""} ${pagination.total_items !== 1 ? t("tabs.incident").toLowerCase() : t("tabs.incident").toLowerCase().slice(0, -1)}`}
         </Text>
+        {pagination.total_pages > 1 && (
+          <Text style={[styles.paginationText, { textAlign: 'left' }]}>
+            {t("incidents.page", {
+              current: pagination.page,
+              total: pagination.total_pages,
+            })}
+          </Text>
+        )}
+      </View>
+      {incidents.length > 0 && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: sortByUpdated ? COLORS.accent : COLORS.white,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: sortByUpdated ? COLORS.accent : COLORS.text.muted,
+            marginLeft: 8
+          }}
+          onPress={() => setSortByUpdated(!sortByUpdated)}
+        >
+          <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
+          {
+            !hasManualFilters &&
+            <Text style={{
+              marginLeft: 4,
+              fontSize: 12,
+              color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+              fontWeight: '500'
+            }}>
+              {t("sort.updated", "Latest Updated")}
+            </Text>
+          }
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -670,7 +738,7 @@ const IncidentsScreen = () => {
         value:
           state_id.split(",").length > 1
             ? `${state_id.split(",").length} ${t("filter.selected")}`
-            : state_name || state_id,
+            : (i18n.language !== "en" && state_name_ar) || state_name || state_id,
       },
       priority && {
         key: "priority",
@@ -986,6 +1054,7 @@ const IncidentsScreen = () => {
                     params: {
                       state_id,
                       state_name,
+                      state_name_ar,
                       priority,
                       severity,
                       assignee_id,
@@ -1014,12 +1083,7 @@ const IncidentsScreen = () => {
       <FilterBadges />
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
-            {t("incidents.loadingIncidents")}
-          </Text>
-        </View>
+        <TicketListSkeleton style={{ backgroundColor: COLORS.background }} />
       ) : error ? (
         <View style={styles.centered}>
           <Ionicons
@@ -1040,15 +1104,17 @@ const IncidentsScreen = () => {
       ) : (
         <FlatList
           data={incidents}
-          renderItem={({ item }) => (
-            <IncidentCard
-              incident={item}
-              isSelected={selectedIds.has(item.id)}
-              selectionMode={selectionMode}
-              onSelect={() => toggleSelectIncident(item.id)}
-              onLongPress={() => handleLongPressIncident(item.id)}
-              viewer={isViewerMode}
-            />
+          renderItem={({ item, index }) => (
+            <AnimatedListItem index={index}>
+              <IncidentCard
+                incident={item}
+                isSelected={selectedIds.has(item.id)}
+                selectionMode={selectionMode}
+                onSelect={() => toggleSelectIncident(item.id)}
+                onLongPress={() => handleLongPressIncident(item.id)}
+                viewer={isViewerMode}
+              />
+            </AnimatedListItem>
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}

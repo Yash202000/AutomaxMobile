@@ -1,4 +1,7 @@
 import { getQueries, getQueryStats } from '@/src/api/incidents';
+import { appendUnique, dedupeById } from '@/src/utils/dedupeById';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { TicketListSkeleton } from '@/src/components/TicketListSkeleton';
 import { useAuth } from '@/src/context/AuthContext';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import i18n from '@/src/i18n';
@@ -39,6 +42,7 @@ interface Query {
     title: string;
     priority: number;
     created_at: string;
+    updated_at?: string;
     current_state?: { name: string };
     location?: { name: string };
     channel?: string;
@@ -118,11 +122,11 @@ const QueriesScreen = () => {
     const router = useRouter();
     const { canCreateQueries } = usePermissions();
     const {
-        state_id, state_name, priority, severity, assignee_id, assignee_name,
+        state_id, state_name, state_name_ar, priority, severity, assignee_id, assignee_name,
         department_id, department_name, classification_id, classification_name,
         location_id, location_name, channel, start_date, end_date
     } = useLocalSearchParams<{
-        state_id?: string; state_name?: string; priority?: string; severity?: string;
+        state_id?: string; state_name?: string; state_name_ar?: string; priority?: string; severity?: string;
         assignee_id?: string; assignee_name?: string; department_id?: string;
         department_name?: string; classification_id?: string; classification_name?: string;
         location_id?: string; location_name?: string; channel?: string;
@@ -139,18 +143,30 @@ const QueriesScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<TextInput>(null);
     const isLoadingMore = useRef(false);
+    const [sortByUpdated, setSortByUpdated] = useState(true);
+
+    const sortedQueries = React.useMemo(() => {
+        if (sortByUpdated) {
+            return [...queries].sort((a, b) => {
+                const dateA = new Date(a.updated_at || a.created_at).getTime();
+                const dateB = new Date(b.updated_at || b.created_at).getTime();
+                return dateB - dateA;
+            });
+        }
+        return queries;
+    }, [queries, sortByUpdated]);
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { canViewAllQueries } = usePermissions()
 
     // Don't apply default status filter - show ALL queries unless explicitly filtered
     const activeStateId = state_id;
-    const activeStateName = state_name;
+    const activeStateName = (i18n.language !== 'en' && state_name_ar) || state_name;
 
     const buildParams = (page: number) => {
         const params: Record<string, any> = { page, limit: 20 };
         if (activeStateId) params.current_state_id = activeStateId;
-        if (priority) params.priority = parseInt(priority);
+        if (priority) params.priorities = parseInt(priority);
         if (severity) params.severity = parseInt(severity);
         if (assignee_id) params.assignee_id = assignee_id;
         if (department_id) params.department_id = department_id.split(",");
@@ -190,7 +206,7 @@ const QueriesScreen = () => {
             }
             const response = await getQueries(params);
             if (response.success) {
-                setQueries(append ? prev => [...prev, ...response.data] : response.data);
+                setQueries(append ? prev => appendUnique(prev, response.data) : dedupeById(response.data));
                 setPagination(response.pagination);
             } else {
                 setError(response.error || t('errors.fetchFailed'));
@@ -273,13 +289,41 @@ const QueriesScreen = () => {
     };
 
     const renderHeader = () => (
-        <View style={styles.listHeader}>
-            <Text style={[styles.foundText, { textAlign: "left" }]}>
-                {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.query').toLowerCase()}`}
-                {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
-            </Text>
-            {pagination.total_pages > 1 && (
-                <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+        <View style={[styles.listHeader, { flexDirection: 'row', alignItems: 'center' }]}>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.foundText, { textAlign: "left" }]}>
+                    {`${pagination.total_items} ${activeStateName || ''} ${t('tabs.query').toLowerCase()}`}
+                    {hasManualFilters && ` (${activeFilterCount} ${t('filter.title').toLowerCase()})`}
+                </Text>
+                {pagination.total_pages > 1 && (
+                    <Text style={[styles.paginationText, { textAlign: "left" }]}>{t('incidents.page', { current: pagination.page, total: pagination.total_pages })}</Text>
+                )}
+            </View>
+            {queries.length > 0 && (
+                <TouchableOpacity
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: sortByUpdated ? COLORS.accent : COLORS.white,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: sortByUpdated ? COLORS.accent : COLORS.text.muted,
+                        marginLeft: 8
+                    }}
+                    onPress={() => setSortByUpdated(!sortByUpdated)}
+                >
+                    <Ionicons name="swap-vertical" size={16} color={sortByUpdated ? COLORS.white : COLORS.text.muted} />
+                    <Text style={{
+                        marginLeft: 4,
+                        fontSize: 12,
+                        color: sortByUpdated ? COLORS.white : COLORS.text.muted,
+                        fontWeight: '500'
+                    }}>
+                        {t('sort.updated', 'Latest Updated')}
+                    </Text>
+                </TouchableOpacity>
             )}
         </View>
     );
@@ -287,7 +331,7 @@ const QueriesScreen = () => {
     const FilterBadges = () => {
         if (!hasManualFilters) return null;
         const badges = [
-            state_id && state_name && { key: 'status', label: t('filter.status'), value: state_name },
+            state_id && state_name && { key: 'status', label: t('filter.status'), value: (i18n.language !== 'en' && state_name_ar) || state_name },
             priority && { key: 'priority', label: t('filter.priority'), value: t(`priorities.${priorityConfig[parseInt(priority)]?.key}`) },
             assignee_id && assignee_name && { key: 'assignee', label: t('filter.assignee'), value: assignee_name },
             department_id && department_name && { key: 'dept', label: t('filter.department'), value: department_name },
@@ -364,7 +408,7 @@ const QueriesScreen = () => {
                                 style={[styles.headerIcon, hasManualFilters && styles.filterIconActive]}
                                 onPress={() => router.push({
                                     pathname: '/query-filter',
-                                    params: { state_id, state_name, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, channel, start_date, end_date }
+                                    params: { state_id, state_name, state_name_ar, priority, severity, assignee_id, assignee_name, department_id, department_name, classification_id, classification_name, location_id, location_name, channel, start_date, end_date }
                                 })}
                             >
                                 <Ionicons name="filter" size={22} color="white" />
@@ -378,10 +422,7 @@ const QueriesScreen = () => {
             <FilterBadges />
 
             {loading ? (
-                <View style={styles.centered}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>{t('common.loading')}</Text>
-                </View>
+                <TicketListSkeleton style={{ backgroundColor: COLORS.background }} />
             ) : error ? (
                 <View style={styles.centered}>
                     <Ionicons name="cloud-offline-outline" size={64} color={COLORS.text.muted} />
@@ -394,8 +435,12 @@ const QueriesScreen = () => {
                 </View>
             ) : (
                 <FlatList
-                    data={queries}
-                    renderItem={({ item }) => <QueryCard query={item} t={t} />}
+                    data={sortedQueries}
+                    renderItem={({ item, index }) => (
+                        <AnimatedListItem index={index}>
+                            <QueryCard query={item} t={t} />
+                        </AnimatedListItem>
+                    )}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
                     ListHeaderComponent={renderHeader}

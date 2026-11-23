@@ -1,38 +1,42 @@
 import apiClient from '@/src/api/client';
+import { OtpInput, useOtpResendTimer } from '@/src/components/OtpInput';
+import { updateProfile } from '@/src/api/user';
 import { useAuth } from '@/src/context/AuthContext';
-import i18n from '@/src/i18n';
+import { routeToDashboard, navigateAfterLogin } from '@/src/utils/postLoginNavigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const OtpScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { phoneNumber, sessionId: initialSessionId, channel: initialChannel, isForgotPassword } = useLocalSearchParams<{ phoneNumber: string, sessionId: string, channel: 'sms' | 'whatsapp' | 'email', isForgotPassword?: string }>();
+  const {
+    phoneNumber,
+    sessionId: initialSessionId,
+    channel: initialChannel,
+    isForgotPassword,
+    securityCheck,
+    pendingLogin,
+    markMobileVerified,
+    firstName,
+    lastName,
+  } = useLocalSearchParams<{
+    phoneNumber: string, sessionId: string, channel: 'sms' | 'whatsapp' | 'email', isForgotPassword?: string,
+    securityCheck?: string, pendingLogin?: string, markMobileVerified?: string, firstName?: string, lastName?: string,
+  }>();
   const [sessionId, setSessionId] = useState(initialSessionId);
   const [channel, setChannel] = useState(initialChannel || 'sms');
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
-  const inputs = useRef<(TextInput | null)[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [timer, setTimer] = useState(60);
+  const { timer, reset: resetTimer } = useOtpResendTimer();
 
-  React.useEffect(() => {
-    let interval: any;
-    if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timer]);
-
-  const handleVerify = async () => {
-    const enteredOtp = otp.join('');
-    if (enteredOtp.length < 6) return;
+  const handleVerify = async (codeOverride?: string) => {
+    const enteredOtp = codeOverride ?? otp.join('');
+    if (enteredOtp.length < 6 || loading) return;
 
     setLoading(true);
     setError('');
@@ -63,9 +67,38 @@ const OtpScreen = () => {
         });
 
         if (response.data && response.data.success) {
-          const { token, refresh_token } = response.data.data;
-          await login(token, refresh_token);
-          router.replace('/(tabs)/explore');
+          if (securityCheck === 'true') {
+            // Post-login 2FA step — the user is already authenticated, just
+            // clear the security gate and continue to the dashboard.
+            routeToDashboard(user, router);
+          } else if (pendingLogin === 'true') {
+            // /auth/login withheld the token pending this 2FA step (not super
+            // admin & totp_enabled on) — this verify call is what actually
+            // completes the login.
+            const { token, refresh_token } = response.data.data;
+            const loggedInUser = await login(token, refresh_token);
+            if (markMobileVerified === 'true' && loggedInUser) {
+              // The phone wasn't verified yet — successfully verifying this
+              // OTP is itself proof of ownership, so mark it verified now
+              // instead of also routing through the separate /verify-phone gate.
+              await updateProfile({
+                first_name: firstName ?? loggedInUser.first_name,
+                last_name: lastName ?? loggedInUser.last_name,
+                phone: phoneNumber,
+                mobile_verified: true,
+              });
+            }
+            routeToDashboard(loggedInUser, router);
+          } else {
+            // Citizen tab / employee "phone" method — this OTP verify IS the
+            // login itself, already proving phone ownership, so don't also
+            // run the settings-driven 2FA OTP gate right after it, and don't
+            // route through /verify-phone either — mobile_verified doesn't
+            // gate this path at all.
+            const { token, refresh_token } = response.data.data;
+            const loggedInUser = await login(token, refresh_token);
+            await navigateAfterLogin(loggedInUser, router, { enforcePhoneVerification: false, skipTotpCheck: true });
+          }
         } else {
           setError(t('auth.invalidOTP'));
           alert(t('auth.invalidOTP'));
@@ -102,8 +135,7 @@ const OtpScreen = () => {
       if (response.data && (response.data.session_id || response.data.data?.sessionID)) {
         setSessionId(sessionID);
         setOtp(new Array(6).fill(''));
-        setTimer(60);
-        inputs.current[0]?.focus();
+        resetTimer();
       } else {
         setError(t('auth.otpSentFailed', 'Failed to resend OTP'));
       }
@@ -114,47 +146,13 @@ const OtpScreen = () => {
     }
   };
 
-  const handleChange = (text: string, index: number) => {
-    if (isNaN(Number(text))) {
-      return; // Only allow numbers
-    }
-    const newOtp = [...otp];
-    newOtp[index] = text;
-    setOtp(newOtp);
-
-    // Move to next input
-    if (text !== '' && index < 5) {
-      inputs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    // Move to previous input on backspace
-    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
-      inputs.current[index - 1]?.focus();
-    }
-  };
-
   return (
     <View style={styles.container}>
       <Text style={styles.instructions}>
         {t('auth.otpInstructions')}
       </Text>
 
-      <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            style={[styles.otpInput, { textAlign: i18n.language === 'ar' ? 'right' : 'left' }]}
-            value={digit}
-            onChangeText={(text) => handleChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            keyboardType="numeric"
-            maxLength={1}
-            ref={(ref) => { inputs.current[index] = ref; }}
-          />
-        ))}
-      </View>
+      <OtpInput value={otp} onChange={setOtp} onComplete={(code) => handleVerify(code)} />
 
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
@@ -162,7 +160,7 @@ const OtpScreen = () => {
 
       <TouchableOpacity
         style={[styles.verifyButton, (loading || otp.join('').length < 6) && styles.disabledButton]}
-        onPress={handleVerify}
+        onPress={() => handleVerify()}
         disabled={loading || otp.join('').length < 6}
       >
         {loading ? (
@@ -207,20 +205,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 30,
-  },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  otpInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    textAlign: 'center',
-    fontSize: 20,
   },
   verifyButton: {
     backgroundColor: '#2EC4B6',

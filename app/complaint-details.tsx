@@ -1,9 +1,14 @@
 import { baseURL } from '@/src/api/client';
 import { getAvailableTransitions, getComplaintHistory, getIncidentById } from '@/src/api/incidents';
 import { getLookupCategories, LookupValue } from '@/src/api/lookups';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { useAuth } from '@/src/context/AuthContext';
 import { AuthenticatedImageViewer } from '@/src/components/AuthenticatedImageViewer';
+import { AccessDeniedState } from '@/src/components/AccessDeniedState';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { DetailScreenSkeleton } from '@/src/components/DetailScreenSkeleton';
 import { RenderWithIncidentMentions } from '@/src/components/RenderWithIncidentMentions';
+import { Skeleton } from '@/src/components/Skeleton';
 import { useHierarchy } from '@/src/hooks/useHierarchy';
 import i18n from '@/src/i18n';
 import { downloadAndOpenAttachment } from '@/src/utils/attachmentDownload';
@@ -15,7 +20,7 @@ import * as SecureStore from 'expo-secure-store';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -73,11 +78,13 @@ const ComplaintDetailsScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { classTree, deptTree, locTree, getPath } = useHierarchy();
+  const { isCitizen } = useAuth();
   const [complaint, setComplaint] = useState<any>(null);
   const [availableTransitions, setAvailableTransitions] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [isImageViewerVisible, setImageViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -113,6 +120,8 @@ const ComplaintDetailsScreen = () => {
     if (!complaintId) return;
 
     setLoading(true);
+
+    setAccessDenied(false);
     try {
       const [detailsResponse, transitionsResponse, historyResponse] = await Promise.all([
         getIncidentById(complaintId),
@@ -124,6 +133,11 @@ const ComplaintDetailsScreen = () => {
         setComplaint(detailsResponse.data);
         setAttachments(detailsResponse.data.attachments || []);
       } else {
+        if (detailsResponse.status === 403 || detailsResponse.status === 404) {
+          setAccessDenied(true);
+          return;
+        }
+        setAccessDenied(false);
         setError(detailsResponse.error);
         CustomAlert.alert(t('common.error'), `${t('details.fetchError')}: ${detailsResponse.error}`);
       }
@@ -153,13 +167,29 @@ const ComplaintDetailsScreen = () => {
     }, [fetchDetails])
   );
 
+  useEffect(() => {
+    return () => {
+      sound?.unloadAsync().catch(() => {});
+    };
+  }, [sound]);
+
   // Audio playback functions
   const playAudio = async (audioId: string) => {
     try {
       // Stop currently playing audio
       if (sound) {
-        await sound.unloadAsync();
+        await sound.unloadAsync().catch(() => {});
+        setSound(null);
       }
+
+      // iOS mutes playback with the silent switch and routes to the earpiece
+      // while the session is still in recording mode.
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
 
       const audioUrl = `${baseURL}/attachments/${audioId}/preview`;
       const { sound: newSound } = await Audio.Sound.createAsync(
@@ -167,8 +197,8 @@ const ComplaintDetailsScreen = () => {
         { shouldPlay: true },
         (status) => {
           if (status.isLoaded) {
-            setAudioPosition({ ...audioPosition, [audioId]: status.positionMillis });
-            setAudioDuration({ ...audioDuration, [audioId]: status.durationMillis || 0 });
+            setAudioPosition((prev) => ({ ...prev, [audioId]: status.positionMillis }));
+            setAudioDuration((prev) => ({ ...prev, [audioId]: status.durationMillis || 0 }));
             if (status.didJustFinish) {
               setPlayingAudioId(null);
             }
@@ -200,13 +230,24 @@ const ComplaintDetailsScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.safeArea}>
+        <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Skeleton width={120} height={18} style={{ backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            <Text style={styles.headerSubtitle}>{t('details.complaint')}</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </ImageBackground>
+        <DetailScreenSkeleton sections={[4, 3, 2]} />
+      </View>
     );
+  }
+
+  if (accessDenied) {
+    return <AccessDeniedState />;
   }
 
   if (error || !complaint) {
@@ -228,11 +269,14 @@ const ComplaintDetailsScreen = () => {
   const config = priorityConfig[complaint.priority] || { key: 'unknown', color: COLORS.text.muted };
   const priorityText = t(`priorities.${config.key}`, config.key);
 
+  let sectionIndex = 0;
+  const nextSection = () => sectionIndex++;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
-      <ImageBackground source={require('@/assets/images/background.png')} style={styles.header}>
+      <ImageBackground source={require('@/assets/images/background.png')} style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name={t('common.icons.chevronBack') as any} size={24} color={COLORS.white} />
         </TouchableOpacity>
@@ -245,8 +289,9 @@ const ComplaintDetailsScreen = () => {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Title Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.titleCard}>
-          <View style={[styles.priorityBar, { backgroundColor: config.color }]} />
+          {!isCitizen && <View style={[styles.priorityBar, { backgroundColor: config.color }]} />}
           <View style={styles.titleCardContent}>
             <View style={styles.titleHeader}>
               <View style={[styles.typeBadge]}>
@@ -267,8 +312,10 @@ const ComplaintDetailsScreen = () => {
             )}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Details Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('complaints.title')} icon="information-circle" />
           <View style={styles.infoContainer}>
@@ -276,8 +323,8 @@ const ComplaintDetailsScreen = () => {
               <InfoRow icon="megaphone-outline" label={t('details.channel')} value={complaint.channel} iconColor="#F59E0B" />
             )}
             <InfoRow icon="grid-outline" label={t('details.classification')} value={getPath(classTree, complaint.classification?.id) || complaint.classification?.name || ''} iconColor={COLORS.accent} />
-            <InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />
-            <InfoRow icon="person-outline" label={t('details.assignees')}
+            {!isCitizen && (<InfoRow icon="business-outline" label={t('details.department')} value={getPath(deptTree, complaint.department?.id) || complaint.department?.name || ''} iconColor="#8B5CF6" />)}
+            {!isCitizen && (<InfoRow icon="person-outline" label={t('details.assignees')}
               value={complaint.assignees?.length
                 ? complaint.assignees.map((a: any) => `${a.first_name || ''} ${a.last_name || ''}`.trim()).join(', ')
                 : complaint.assignee
@@ -285,7 +332,7 @@ const ComplaintDetailsScreen = () => {
                   : ''
               }
               iconColor="#EC4899"
-            />
+            />)}
             {complaint.location && (
               <InfoRow icon="location-outline" label={t('details.location')} value={getPath(locTree, complaint.location.id) || complaint.location.name} iconColor={COLORS.error} />
             )}
@@ -300,7 +347,8 @@ const ComplaintDetailsScreen = () => {
             {/* Lookup Values as InfoRows */}
             {complaint.lookup_values && complaint.lookup_values.length > 0 && (() => {
               const grouped: Record<string, LookupValue[]> = {};
-              complaint.lookup_values.forEach(value => {
+              complaint.lookup_values.forEach((value: any) => {
+                if (isCitizen && String(value.category?.code || '').toUpperCase() === 'PRIORITY') return;
                 const categoryName = (i18n.language === 'en' ? value.category?.name : value.category?.name_ar) || 'Other';
                 if (!grouped[categoryName]) {
                   grouped[categoryName] = [];
@@ -350,7 +398,7 @@ const ComplaintDetailsScreen = () => {
                 // Extract all custom fields
                 Object.entries(customFields).forEach(([key, fieldData]: [string, any]) => {
                   const ld = categories.find((c: any) => c.id === fieldData.category_id);
-                  if (key.startsWith('lookup:')) {
+                  if (key.startsWith('lookup:') && !(isCitizen && String(ld?.code || key.slice(7)).toUpperCase() === 'PRIORITY')) {
                     allFields.push({
                       key,
                       label: i18n.language === 'en' ? ld.name : (ld?.name_ar || ld.name),
@@ -385,16 +433,21 @@ const ComplaintDetailsScreen = () => {
             })()}
           </View>
         </View>
+        </AnimatedListItem>
 
         {/* Description Card */}
         {complaint.description && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.description')} icon="document-text" />
             <RenderWithIncidentMentions text={complaint.description} style={styles.descriptionText} />
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Comments Card */}
+        {!isCitizen && (
+<AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.comments')} icon="chatbubbles" />
           {complaint.comments && complaint.comments.length > 0 ? (
@@ -419,8 +472,11 @@ const ComplaintDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
+)}
 
         {/* Attachments Card */}
+        <AnimatedListItem index={nextSection()}>
         <View style={styles.card}>
           <SectionHeader title={t('details.attachments')} icon="attach" />
           {imageAttachments.length > 0 && (
@@ -486,6 +542,7 @@ const ComplaintDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
 
         <AuthenticatedImageViewer
           images={imageAttachments.map(att => ({
@@ -501,6 +558,7 @@ const ComplaintDetailsScreen = () => {
 
         {/* Location Card */}
         {complaint.location && (
+          <AnimatedListItem index={nextSection()}>
           <View style={styles.card}>
             <SectionHeader title={t('details.location')} icon="location" />
             <View style={styles.locationInfo}>
@@ -511,9 +569,12 @@ const ComplaintDetailsScreen = () => {
               </View>
             </View>
           </View>
+          </AnimatedListItem>
         )}
 
         {/* Transition History Card */}
+        {!isCitizen && (
+<AnimatedListItem index={nextSection()}>
         <View style={[styles.card, { marginBottom: availableTransitions.length > 0 ? 100 : 30 }]}>
           <SectionHeader title={t('details.transitionHistory')} icon="git-compare" />
           {history && history.length > 0 ? (
@@ -560,6 +621,8 @@ const ComplaintDetailsScreen = () => {
             </View>
           )}
         </View>
+        </AnimatedListItem>
+)}
       </ScrollView>
 
       {/* Update Button */}
@@ -588,7 +651,7 @@ const ComplaintDetailsScreen = () => {
           <Text style={styles.updateButtonText}>{t('details.update')}</Text>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -741,7 +804,7 @@ const styles = StyleSheet.create({
   transitionCommentText: { fontSize: 13, color: COLORS.text.secondary, fontStyle: 'italic', flex: 1 },
 
   updateButton: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
+    position: 'absolute', bottom: 0, left: 20, right: 20,
     backgroundColor: COLORS.accent, flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', paddingVertical: 16, borderRadius: 14, gap: 8,
     ...Platform.select({
