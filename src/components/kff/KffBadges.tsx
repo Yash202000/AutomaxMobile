@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { KffCriticality, KffIncidentState } from './kffTypes';
-import { KFF_COLORS, KFF_CRITICALITY_COLORS } from './kffTheme';
+import { KFF_COLORS, KFF_CRITICALITY_COLORS, KFF_STATE_COLORS } from './kffTheme';
 
 // Round ticket icon (assets/images/kff/ticket-icon.svg, grey circle included)
 // used on KFF incident cards, the bell list and the incident detail.
@@ -32,24 +32,19 @@ export const KffCriticalityPill = ({ level }: { level: KffCriticality }) => {
   );
 };
 
-const STATE_BADGE: Record<
-  KffIncidentState,
-  { color: string; icon: keyof typeof Ionicons.glyphMap }
-> = {
-  assigned: { color: KFF_COLORS.assigned, icon: 'warning' },
-  inProgress: { color: KFF_COLORS.inProgress, icon: 'navigate' },
-  completed: { color: KFF_COLORS.completed, icon: 'checkmark-circle' },
-  rejected: { color: KFF_COLORS.danger, icon: 'close-circle' },
-};
+/** Colour of a state (KFF_STATE_COLORS). */
+export const kffStateColor = (state: KffIncidentState): string => KFF_STATE_COLORS[state];
 
-// Solid status badge, e.g. "⚠ Assigned".
-export const KffStateBadge = ({ state }: { state: KffIncidentState }) => {
+// Solid state badge, e.g. "✓ Dispatched": same icon for every state, only the
+// colour changes. `label` is the server's state name; falls back to ours.
+export const KffStateBadge = ({ state, label }: { state: KffIncidentState; label?: string }) => {
   const { t } = useTranslation();
-  const badge = STATE_BADGE[state];
   return (
-    <View style={[styles.stateBadge, { backgroundColor: badge.color }]}>
-      <Ionicons name={badge.icon} size={13} color={KFF_COLORS.white} />
-      <Text style={styles.stateBadgeText}>{t(`kff.state.${state}`)}</Text>
+    <View style={[styles.stateBadge, { backgroundColor: KFF_STATE_COLORS[state] }]}>
+      <Ionicons name="checkmark-circle" size={13} color={KFF_COLORS.white} />
+      <Text style={styles.stateBadgeText} numberOfLines={1}>
+        {label || t(`kff.state.${state}`)}
+      </Text>
     </View>
   );
 };
@@ -63,8 +58,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 5,
     paddingHorizontal: 10,
+    maxWidth: '60%',
+    flexShrink: 1,
   },
   stateBadgeText: {
+    flexShrink: 1,
     color: KFF_COLORS.white,
     fontSize: 12,
     fontWeight: '700',

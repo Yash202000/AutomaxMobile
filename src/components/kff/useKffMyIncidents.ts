@@ -7,10 +7,10 @@ import { fetchKffMyIncidents } from '@/src/api/kffIncidents';
 
 import { toKffDateParam } from './kffDateUtils';
 import { mapApiIncidentToKff } from './kffIncidentMapper';
-import { KFF_STATUSES, KffIncident, KffListStatus } from './kffTypes';
+import { emptyKffCounts, KFF_STATUSES, KffIncident, KffListStatus } from './kffTypes';
 import { getKffStateIds } from './kffWorkflowStates';
 
-const NO_COUNTS: Record<KffListStatus, number> = { accepted: 0, completed: 0, rejected: 0 };
+const NO_COUNTS = emptyKffCounts();
 const STATES_UNAVAILABLE = 'Workflow states unavailable';
 
 /**

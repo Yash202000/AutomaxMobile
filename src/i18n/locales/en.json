@@ -239,7 +239,7 @@
       "unitNo": "Unit No",
       "unitStatus": "Unit Status",
       "tetraRadioAlarm": "Tetra radio alarm",
-      "todayActivities": "Today Activities",
+      "todayActivities": "Today's Activities",
       "activities": "Activities",
       "unitDetails": "Unit Details",
       "vehicleType": "Vehicle Type",
@@ -259,15 +259,22 @@
       "offline": "Offline"
     },
     "status": {
-      "accepted": "Accepted",
+      "accepted": "Dispatched",
       "completed": "Completed",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "enRoute": "En route",
+      "reached": "Reached",
+      "closed": "Closed"
     },
     "state": {
       "assigned": "Assigned",
+      "accepted": "Accepted",
       "inProgress": "In Progress",
+      "enRoute": "En route",
+      "reached": "Reached",
       "completed": "Completed",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "closed": "Closed"
     },
     "criticality": "Criticality",
     "criticalityLevel": {
@@ -282,6 +289,7 @@
     "noIncidentsDesc": "Pick another date from the calendar to see more.",
     "loadFailed": "Couldn't load your incidents.",
     "alerts": {
+      "awaitingResponse": "Awaiting response",
       "newIncident": "New incident",
       "loadFailed": "Couldn't load notifications",
       "pullToRetry": "Pull down to try again.",

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { addDays, getKffLocale, isSameDay, startOfDay } from './kffDateUtils';
+import KffMonthCalendar from './KffMonthCalendar';
 import { KFF_COLORS } from './kffTheme';
 
 const ITEM_WIDTH = 54;
@@ -10,19 +11,19 @@ const ITEM_WIDTH = 54;
 interface KffCalendarStripProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  /** How many past days to show before today. */
-  daysBack?: number;
-  /** How many future days to show after today. */
+  /** How many future days (after today) can be picked. */
   daysForward?: number;
   /** Draws the thin divider lines above and below the strip. */
   showDividers?: boolean;
 }
 
 // Common KFF date strip — shared by the Profile and My Incidents screens.
+// Shows the selected date's month: the 1st to today for the current month,
+// the whole month (1st – 30th/31st) for earlier ones. Tapping the
+// "November 2026" title opens a month calendar to jump to another month.
 const KffCalendarStrip = ({
   selectedDate,
   onSelectDate,
-  daysBack = 30,
   daysForward = 0,
   showDividers = true,
 }: KffCalendarStripProps) => {
@@ -30,13 +31,19 @@ const KffCalendarStrip = ({
   const locale = getKffLocale(i18n.language);
   const listRef = useRef<FlatList<Date>>(null);
   const [listWidth, setListWidth] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const year = selectedDate.getFullYear();
+  const monthIndex = selectedDate.getMonth();
+  const maximumDate = addDays(startOfDay(new Date()), daysForward);
+  const lastAllowed = maximumDate.getTime();
 
   const days = useMemo(() => {
-    const today = startOfDay(new Date());
-    return Array.from({ length: daysBack + daysForward + 1 }, (_, i) =>
-      addDays(today, i - daysBack),
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => new Date(year, monthIndex, i + 1)).filter(
+      (d) => d.getTime() <= lastAllowed,
     );
-  }, [daysBack, daysForward]);
+  }, [year, monthIndex, lastAllowed]);
 
   const selectedIndex = Math.max(
     0,
@@ -51,7 +58,9 @@ const KffCalendarStrip = ({
       viewPosition: 0.5,
       animated: true,
     });
-  }, [selectedIndex, listWidth]);
+  }, [selectedIndex, listWidth, days.length]);
+
+  const openMonthCalendar = () => setPickerOpen(true);
 
   const getItemLayout = useCallback(
     (_: ArrayLike<Date> | null | undefined, index: number) => ({
@@ -63,15 +72,17 @@ const KffCalendarStrip = ({
   );
 
   const today = new Date();
-  const month = selectedDate.toLocaleDateString(locale, { month: 'long' });
-  const year = selectedDate.toLocaleDateString(locale, { year: 'numeric' });
+  const monthLabel = selectedDate.toLocaleDateString(locale, { month: 'long' });
+  const yearLabel = selectedDate.toLocaleDateString(locale, { year: 'numeric' });
 
   return (
     <View>
-      <Text style={styles.monthRow}>
-        <Text style={styles.month}>{month} </Text>
-        <Text style={styles.year}>{year}</Text>
-      </Text>
+      <TouchableOpacity style={styles.monthButton} activeOpacity={0.6} onPress={openMonthCalendar}>
+        <Text style={styles.monthRow}>
+          <Text style={styles.month}>{monthLabel} </Text>
+          <Text style={styles.year}>{yearLabel}</Text>
+        </Text>
+      </TouchableOpacity>
       <View style={[styles.stripWrapper, showDividers && styles.dividers]}>
         <FlatList
           ref={listRef}
@@ -108,15 +119,33 @@ const KffCalendarStrip = ({
           }}
         />
       </View>
+
+      <KffMonthCalendar
+        visible={pickerOpen}
+        value={selectedDate}
+        maximumDate={maximumDate}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(date) => {
+          setPickerOpen(false);
+          onSelectDate(startOfDay(date));
+        }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  monthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    marginBottom: 6,
+  },
   monthRow: {
     textAlign: 'center',
     fontSize: 16,
-    marginBottom: 6,
   },
   month: {
     color: KFF_COLORS.primary,

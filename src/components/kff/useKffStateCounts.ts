@@ -4,12 +4,12 @@ import { useCallback, useState } from 'react';
 import { fetchKffStateCounts } from '@/src/api/kffIncidents';
 
 import { toKffDateParam } from './kffDateUtils';
-import { KFF_STATUS_STATE_NAMES, KFF_STATUSES, KFF_WORKFLOW_ID, KffListStatus } from './kffTypes';
+import { emptyKffCounts, KFF_STATUS_STATE_NAMES, KFF_STATUSES, KFF_WORKFLOW_ID } from './kffTypes';
 
-const NO_COUNTS: Record<KffListStatus, number> = { accepted: 0, completed: 0, rejected: 0 };
+const NO_COUNTS = emptyKffCounts();
 
 /**
- * Accepted / Completed / Rejected totals for the Profile cards from
+ * Per-tab totals (Accepted, En route, Reached, …) for the Profile cards from
  * GET /incidents/stats/v2 `by_state` (summed over each tab's state names)
  * for the selected day. Refetches when the day changes or the screen gains
  * focus.

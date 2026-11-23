@@ -258,7 +258,7 @@ const KffIncidentDetailScreen = () => {
               {incident.ticketNumber}
             </Text>
             <View style={styles.badgeRow}>
-              <KffStateBadge state={incident.state} />
+              <KffStateBadge state={incident.state} label={incident.stateName} />
               <KffCriticalityPill level={incident.criticality} />
             </View>
           </View>

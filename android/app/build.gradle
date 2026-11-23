@@ -85,7 +85,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 /**
  * App version from the project .env, the same values app.config.js uses:
  * EXPO_PUBLIC_APP_VERSION -> versionName, EXPO_PUBLIC_APP_VERSION_CODE ->
- * versionCode. Change the numbers in .env, not here.
+ * versionCode 2
  */
 def appEnv = [:]
 def appEnvFile = rootProject.file('../.env')

@@ -256,15 +256,22 @@
       "offline": "غير متصل"
     },
     "status": {
-      "accepted": "المقبولة",
+      "accepted": "المُرسلة",
       "completed": "المكتملة",
-      "rejected": "المرفوضة"
+      "rejected": "المرفوضة",
+      "enRoute": "في الطريق",
+      "reached": "تم الوصول",
+      "closed": "المغلقة"
     },
     "state": {
       "assigned": "مُسند",
+      "accepted": "مقبول",
       "inProgress": "قيد التنفيذ",
+      "enRoute": "في الطريق",
+      "reached": "تم الوصول",
       "completed": "مكتمل",
-      "rejected": "مرفوض"
+      "rejected": "مرفوض",
+      "closed": "مغلق"
     },
     "criticality": "الأهمية",
     "criticalityLevel": {
@@ -279,6 +286,7 @@
     "noIncidentsDesc": "اختر تاريخًا آخر من التقويم لعرض المزيد.",
     "loadFailed": "تعذّر تحميل بلاغاتك.",
     "alerts": {
+      "awaitingResponse": "بانتظار الرد",
       "newIncident": "بلاغ جديد",
       "loadFailed": "تعذر تحميل الإشعارات",
       "pullToRetry": "اسحب للأسفل للمحاولة مرة أخرى.",

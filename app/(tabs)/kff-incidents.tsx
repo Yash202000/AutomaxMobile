@@ -4,6 +4,7 @@ import KffBackground from "@/src/components/kff/KffBackground";
 import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { formatKffDateTime, formatKffRelativeTime, startOfDay } from "@/src/components/kff/kffDateUtils";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
+import KffStatusTabs from "@/src/components/kff/KffStatusTabs";
 import { useKffCurrentLocation } from "@/src/components/kff/useKffCurrentLocation";
 import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
 import { KFF_STATUSES, KffIncident, KffListStatus } from "@/src/components/kff/kffTypes";
@@ -56,7 +57,7 @@ const KffIncidentCard = ({
               {formatKffDateTime(incident.createdAt, i18n.language)}
             </Text>
           </View>
-          <KffStateBadge state={incident.state} />
+          <KffStateBadge state={incident.state} label={incident.stateName} />
         </View>
 
         <Text style={styles.cardTitle}>{incident.title}</Text>
@@ -165,33 +166,12 @@ const KffIncidentsScreen = () => {
         }
         ListHeaderComponent={
           <View style={styles.listHeader}>
-            <View style={styles.segmentBar}>
-              {KFF_STATUSES.map((status) => {
-                const active = status === activeStatus;
-                return (
-                  <TouchableOpacity
-                    key={status}
-                    style={[styles.segment, active && styles.segmentActive]}
-                    activeOpacity={0.8}
-                    onPress={() => setActiveStatus(status)}
-                  >
-                    <Text
-                      style={[styles.segmentText, active && styles.segmentTextActive]}
-                      numberOfLines={1}
-                    >
-                      {t(`kff.status.${status}`)}
-                    </Text>
-                    <View style={[styles.segmentCount, active && styles.segmentCountActive]}>
-                      <Text
-                        style={[styles.segmentCountText, active && styles.segmentCountTextActive]}
-                      >
-                        {counts[status]}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <KffStatusTabs
+              statuses={KFF_STATUSES}
+              active={activeStatus}
+              counts={counts}
+              onChange={setActiveStatus}
+            />
             <KffCalendarStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
           </View>
         }
@@ -236,58 +216,6 @@ const styles = StyleSheet.create({
   listHeader: {
     gap: 14,
     marginBottom: 16,
-  },
-  segmentBar: {
-    flexDirection: "row",
-    backgroundColor: KFF_COLORS.primary,
-    borderRadius: 20,
-    padding: 6,
-    gap: 6,
-    shadowColor: KFF_COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  segment: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 15,
-  },
-  segmentActive: {
-    backgroundColor: KFF_COLORS.white,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.75)",
-  },
-  segmentTextActive: {
-    color: KFF_COLORS.primary,
-  },
-  segmentCount: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  segmentCountActive: {
-    backgroundColor: KFF_COLORS.primarySoft,
-  },
-  segmentCountText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: KFF_COLORS.white,
-  },
-  segmentCountTextActive: {
-    color: KFF_COLORS.primary,
   },
   card: {
     backgroundColor: KFF_COLORS.card,

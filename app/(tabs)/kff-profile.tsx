@@ -2,8 +2,8 @@ import KffAppBar from "@/src/components/kff/KffAppBar";
 import KffBackground from "@/src/components/kff/KffBackground";
 import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
 import { isSameDay, startOfDay } from "@/src/components/kff/kffDateUtils";
-import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
-import { KffListStatus } from "@/src/components/kff/kffTypes";
+import { KFF_COLORS, KFF_SHADOWS, KFF_STATE_COLORS } from "@/src/components/kff/kffTheme";
+import { KFF_PROFILE_STATUSES, KffListStatus } from "@/src/components/kff/kffTypes";
 import { useKffStateCounts } from "@/src/components/kff/useKffStateCounts";
 import { useKffUnitProfile } from "@/src/components/kff/useKffUnitProfile";
 import { useAuth } from "@/src/context/AuthContext";
@@ -35,15 +35,20 @@ const unitStatusColor = (status: string) => {
 const humanize = (value: string) =>
   value.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const ACTIVITY_CARDS: {
-  status: KffListStatus;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}[] = [
-  { status: "accepted", icon: "arrow-redo", color: KFF_COLORS.accepted },
-  { status: "completed", icon: "thumbs-up", color: KFF_COLORS.completed },
-  { status: "rejected", icon: "close-circle-outline", color: KFF_COLORS.rejected },
-];
+// Activity cards: two rows of three equal cards, in workflow order
+// (KFF_PROFILE_STATUSES).
+const ACTIVITY_ROWS = [KFF_PROFILE_STATUSES.slice(0, 3), KFF_PROFILE_STATUSES.slice(3)];
+const ACTIVITY_STYLE: Record<
+  KffListStatus,
+  { icon: keyof typeof Ionicons.glyphMap; color: string }
+> = {
+  accepted: { icon: "arrow-redo", color: KFF_STATE_COLORS.accepted },
+  enRoute: { icon: "navigate", color: KFF_STATE_COLORS.enRoute },
+  reached: { icon: "location", color: KFF_STATE_COLORS.reached },
+  completed: { icon: "thumbs-up", color: KFF_STATE_COLORS.completed },
+  closed: { icon: "lock-closed", color: KFF_STATE_COLORS.closed },
+  rejected: { icon: "close-circle", color: KFF_STATE_COLORS.rejected },
+};
 
 const getGreetingKey = () => {
   const hour = new Date().getHours();
@@ -138,24 +143,33 @@ const KffProfileScreen = () => {
           <Text style={styles.sectionTitle}>
             {isToday ? t("kff.profile.todayActivities") : t("kff.profile.activities")}
           </Text>
-          <View style={styles.activityRow}>
-            {ACTIVITY_CARDS.map((card) => (
-              <TouchableOpacity
-                key={card.status}
-                style={[styles.activityCard, { backgroundColor: card.color }]}
-                activeOpacity={0.85}
-                onPress={() => openIncidents(card.status)}
-              >
-                <View style={styles.activityIcon}>
-                  <Ionicons name={card.icon} size={22} color={KFF_COLORS.white} />
-                </View>
-                <Text style={styles.activityCount}>
-                  {countsLoading ? "–" : counts[card.status]}
-                </Text>
-                <Text style={styles.activityLabel} numberOfLines={1}>
-                  {t(`kff.status.${card.status}`)}
-                </Text>
-              </TouchableOpacity>
+          <View style={styles.activityGrid}>
+            {ACTIVITY_ROWS.map((row) => (
+              <View key={row.join()} style={styles.activityRow}>
+                {row.map((status) => {
+                  const card = ACTIVITY_STYLE[status];
+                  return (
+                    <TouchableOpacity
+                      key={status}
+                      style={[styles.activityCard, { backgroundColor: card.color }]}
+                      activeOpacity={0.85}
+                      onPress={() => openIncidents(status)}
+                    >
+                      <View style={styles.activityTop}>
+                        <View style={styles.activityIcon}>
+                          <Ionicons name={card.icon} size={17} color={KFF_COLORS.white} />
+                        </View>
+                        <Text style={styles.activityCount} numberOfLines={1} adjustsFontSizeToFit>
+                          {countsLoading ? "–" : counts[status]}
+                        </Text>
+                      </View>
+                      <Text style={styles.activityLabel} numberOfLines={1} adjustsFontSizeToFit>
+                        {t(`kff.status.${status}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             ))}
           </View>
         </View>
@@ -293,40 +307,50 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "left",
   },
+  activityGrid: {
+    gap: 10,
+  },
   activityRow: {
     flexDirection: "row",
     gap: 10,
   },
   activityCard: {
     flex: 1,
-    borderRadius: 20,
-    paddingVertical: 16,
+    borderRadius: 18,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    alignItems: "flex-start",
+    gap: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
   },
+  activityTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
   activityIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
   },
   activityCount: {
-    marginTop: 12,
-    fontSize: 26,
+    flexShrink: 1,
+    fontSize: 24,
     fontWeight: "800",
     color: KFF_COLORS.white,
   },
   activityLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.92)",
+    color: "rgba(255,255,255,0.95)",
+    textAlign: "left",
   },
   detailRow: {
     flexDirection: "row",

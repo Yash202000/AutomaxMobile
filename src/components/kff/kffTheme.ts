@@ -21,9 +21,27 @@ export const KFF_COLORS = {
   accepted: '#5E9E78',
   completed: '#4596C1',
   rejected: '#A9A8E3',
+  closed: '#7D8BA6',
+  enRoute: '#E8924A',
+  reached: '#3AA99F',
   assigned: '#E5B53A',
   inProgress: '#4D77FF',
 };
+
+/**
+ * One colour per incident state — the state badge on incident cards (list and
+ * detail) and the Profile activity cards (by list status).
+ */
+export const KFF_STATE_COLORS = {
+  assigned: '#E3A21A', // waiting for Accept / Reject
+  accepted: '#EF7D22', // Dispatched — orange
+  inProgress: '#4D77FF',
+  enRoute: '#F5AA66', // light orange
+  reached: '#62AAE6', // light blue
+  completed: '#2F73C9', // blue
+  closed: '#A0A7B6', // greyed out
+  rejected: '#E04B4B', // red
+} as const;
 
 export const KFF_CRITICALITY_COLORS: Record<string, string> = {
   low: '#C0501A',

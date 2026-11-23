@@ -9,6 +9,7 @@ import {
   useKffNotifications,
 } from "@/src/components/kff/kffNotificationStore";
 import { KFF_COLORS } from "@/src/components/kff/kffTheme";
+import { useKffOpenableIncidents } from "@/src/components/kff/useKffOpenableIncidents";
 import { KFF_HOME_ROUTE } from "@/src/utils/kff";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -26,18 +27,33 @@ import {
 } from "react-native";
 
 // KFF Dispatcher — notification inbox of the unit (opened from the bell):
-// GET /notifications with received_by = unit id. Unread notifications (black)
-// open the incident they refer to (meta.id) and are marked read; read ones
-// are greyed out and can't be tapped.
+// GET /notifications with received_by = unit id. Unread ones carry a small dot
+// (top corner). A card opens the incident it refers to (meta.id) and marks the
+// notification read — while that incident still waits for Accept / Reject.
+// Once it has moved on (Dispatched or later) the card is greyed out and can't
+// be tapped, read or not (see useKffOpenableIncidents). Waiting incidents show
+// their current state (e.g. "Waiting for dispatch") as a tag.
 
-const NotificationCard = ({ item }: { item: any }) => {
+const NotificationCard = ({
+  item,
+  canOpen,
+  waitingState,
+}: {
+  item: any;
+  canOpen: boolean;
+  waitingState?: any;
+}) => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const unread = isUnreadKffNotification(item);
   const incidentId = item?.meta?.id;
+  const greyed = !!incidentId && !canOpen;
   const isAr = i18n.language === "ar";
   const subject = (isAr && item.subject_ar) || item.subject;
   const body = (isAr && item.body_ar) || item.body;
+  const waitingLabel = waitingState
+    ? (isAr && waitingState.name_ar) || waitingState.name || t("kff.alerts.awaitingResponse")
+    : "";
 
   const handlePress = () => {
     markKffNotificationAsRead(item.id);
@@ -48,26 +64,34 @@ const NotificationCard = ({ item }: { item: any }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, unread ? styles.cardUnread : styles.cardRead]}
+      style={[styles.card, greyed && styles.cardGreyed]}
       activeOpacity={0.85}
       onPress={handlePress}
-      disabled={!unread}
+      disabled={!incidentId || greyed}
     >
+      {unread && <View style={styles.unreadDot} />}
       <View style={styles.cardHeader}>
         <KffTicketIcon />
         <View style={styles.cardHeaderText}>
           <View style={styles.titleRow}>
-            <Text style={[styles.title, !unread && styles.textRead]} numberOfLines={2}>
+            <Text style={[styles.title, greyed && styles.textGreyed]} numberOfLines={2}>
               {subject || t("kff.alerts.newIncident")}
             </Text>
-            {unread && <View style={styles.newDot} />}
           </View>
           <Text style={styles.timeAgo}>{formatKffRelativeTime(item.created_at, t)}</Text>
-          <View style={[styles.datePill, !unread && styles.datePillRead]}>
-            <Text style={[styles.datePillText, !unread && styles.textRead]}>{formatKffDateTime(item.created_at, i18n.language)}</Text>
+          {!!waitingLabel && !greyed && (
+            <View style={styles.stateTag}>
+              <Ionicons name="hourglass-outline" size={12} color={KFF_COLORS.assigned} />
+              <Text style={styles.stateTagText} numberOfLines={1}>
+                {waitingLabel}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.datePill, greyed && styles.datePillGreyed]}>
+            <Text style={[styles.datePillText, greyed && styles.textGreyed]}>{formatKffDateTime(item.created_at, i18n.language)}</Text>
           </View>
         </View>
-        {unread && !!incidentId && (
+        {!!incidentId && !greyed && (
           <Ionicons
             name={t("common.icons.chevronForward") as any}
             size={20}
@@ -79,7 +103,7 @@ const NotificationCard = ({ item }: { item: any }) => {
       {!!body && (
         <>
           <View style={styles.separator} />
-          <Text style={[styles.body, !unread && styles.textRead]} numberOfLines={4}>
+          <Text style={[styles.body, greyed && styles.textGreyed]} numberOfLines={4}>
             {body}
           </Text>
         </>
@@ -94,13 +118,17 @@ const KffIncidentAlertsScreen = () => {
   const tabBarHeight = useBottomTabBarHeight();
   const { items, loaded, loading, refreshing, error, page, totalPages } = useKffNotifications();
   const unreadCount = items.filter(isUnreadKffNotification).length;
-
-  // Fresh inbox every time the screen is opened.
-  useFocusEffect(
-    useCallback(() => {
-      loadKffNotifications("refresh");
-    }, []),
+  const { canOpen, waitingState, recheck } = useKffOpenableIncidents(
+    items.map((item: any) => String(item?.meta?.id ?? "")),
   );
+
+  const reload = useCallback(() => {
+    recheck();
+    loadKffNotifications("refresh");
+  }, [recheck]);
+
+  // Fresh inbox (and incident states) every time the screen is opened.
+  useFocusEffect(reload);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -120,13 +148,19 @@ const KffIncidentAlertsScreen = () => {
           <FlatList
             data={items}
             keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => <NotificationCard item={item} />}
+            renderItem={({ item }) => (
+              <NotificationCard
+                item={item}
+                canOpen={canOpen(item?.meta?.id)}
+                waitingState={waitingState(item?.meta?.id)}
+              />
+            )}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                onRefresh={() => loadKffNotifications("refresh")}
+                onRefresh={reload}
                 colors={[KFF_COLORS.primary]}
                 tintColor={KFF_COLORS.primary}
               />
@@ -216,20 +250,26 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 6,
   },
-  cardUnread: {
-    borderColor: KFF_COLORS.primaryRing,
-    backgroundColor: "#FAFBFF",
-  },
-  cardRead: {
+  cardGreyed: {
     backgroundColor: "#F3F4F7",
     shadowOpacity: 0,
     elevation: 0,
   },
-  textRead: {
+  textGreyed: {
     color: KFF_COLORS.textMuted,
   },
-  datePillRead: {
+  datePillGreyed: {
     borderColor: KFF_COLORS.divider,
+  },
+  // Unread marker in the card's top corner (flips with RTL).
+  unreadDot: {
+    position: "absolute",
+    top: 12,
+    end: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: KFF_COLORS.primary,
   },
   titleRow: {
     flexDirection: "row",
@@ -243,11 +283,21 @@ const styles = StyleSheet.create({
     color: KFF_COLORS.text,
     textAlign: "left",
   },
-  newDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: KFF_COLORS.accepted,
+  stateTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    maxWidth: "100%",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: "#FCF4DD",
+  },
+  stateTagText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9A6F05",
   },
   timeAgo: {
     fontSize: 12,

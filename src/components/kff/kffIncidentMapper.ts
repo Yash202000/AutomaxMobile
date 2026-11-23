@@ -1,7 +1,7 @@
 import type { KffCriticality, KffIncident, KffIncidentState, KffListStatus } from './kffTypes';
 
 // Automax incident record → KFF Dispatcher view models. There are no
-// KFF-specific state codes yet, so Accepted / Completed / Rejected is derived
+// KFF-specific state codes yet, so the My Incidents tab is derived
 // from the workflow state's code/name (see mapStatus).
 
 const PRIORITY_TO_CRITICALITY: Record<number, KffCriticality> = {
@@ -26,7 +26,7 @@ const mapStatus = (raw: any): { status: KffListStatus; state: KffIncidentState }
   mapWorkflowState(raw.current_state);
 
 /**
- * My Incidents tab (Accepted / Completed / Rejected) for a workflow state —
+ * My Incidents tab (Accepted, En route, Reached, …) for a workflow state —
  * e.g. a transition's `to_state`, to open the right tab after an update.
  */
 export const kffListStatusForState = (workflowState: any): KffListStatus =>
@@ -36,12 +36,16 @@ function mapWorkflowState(workflowState: any): { status: KffListStatus; state: K
   const s = workflowState ?? {};
   const text = `${s.code ?? ''} ${s.name ?? ''}`.toLowerCase();
   if (/reject|cancel/.test(text)) return { status: 'rejected', state: 'rejected' };
-  if (/complet|resolv|clos|done|finish/.test(text) || s.state_type === 'terminal') {
+  if (/clos/.test(text)) return { status: 'closed', state: 'closed' };
+  if (/complet|resolv|done|finish/.test(text) || s.state_type === 'terminal') {
     return { status: 'completed', state: 'completed' };
   }
-  if (/progress|enroute|en route|on.?site|arriv|start/.test(text)) {
-    return { status: 'accepted', state: 'inProgress' };
-  }
+  if (/en.?route|start/.test(text)) return { status: 'enRoute', state: 'enRoute' };
+  if (/reach|arriv|on.?site/.test(text)) return { status: 'reached', state: 'reached' };
+  if (/progress/.test(text)) return { status: 'accepted', state: 'inProgress' };
+  // "Waiting for dispatch" still waits for Accept / Reject; "Dispatched" = accepted.
+  if (/wait|pending/.test(text)) return { status: 'accepted', state: 'assigned' };
+  if (/dispatch|accept/.test(text)) return { status: 'accepted', state: 'accepted' };
   return { status: 'accepted', state: 'assigned' };
 }
 
@@ -66,6 +70,7 @@ export const mapApiIncidentToKff = (raw: any, language: string): KffIncident => 
   title: pickLocalized(raw.classification, language) || raw.title || '',
   criticality: mapCriticality(raw),
   ...mapStatus(raw),
+  stateName: pickLocalized(raw.current_state, language),
   createdAt: new Date(raw.created_at),
   to:
     [raw.address, raw.city].filter(Boolean).join(', ') ||

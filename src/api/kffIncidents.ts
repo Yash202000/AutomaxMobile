@@ -70,14 +70,21 @@ export const fetchKffIncidentById = async (
 };
 
 /** GET /incidents/{id}/available-transitions — the workflow buttons. */
-export const fetchKffTransitions = async (id: string): Promise<any[]> => {
+export const fetchKffTransitions = async (id: string): Promise<any[]> =>
+  (await fetchKffTransitionsResult(id)).data;
+
+/** Same call; `success: false` tells a failed request apart from "no transitions". */
+export const fetchKffTransitionsResult = async (
+  id: string,
+): Promise<{ success: boolean; data: any[] }> => {
   try {
     const response = await apiClient.get(`/incidents/${id}/available-transitions`, {
       params: await unitParam(),
     });
-    return response.data?.success && Array.isArray(response.data.data) ? response.data.data : [];
+    const ok = !!response.data?.success && Array.isArray(response.data.data);
+    return { success: ok, data: ok ? response.data.data : [] };
   } catch {
-    return [];
+    return { success: false, data: [] };
   }
 };
 

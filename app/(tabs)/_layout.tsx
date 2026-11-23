@@ -8,10 +8,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HapticTab } from "@/components/haptic-tab";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
-  getKffTabScreenOptions,
   KffIncidentsTabIcon,
   KffProfileTabIcon,
   KffSettingsTabIcon,
+  renderKffTabBar,
 } from "@/src/components/kff/kffTabs";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
@@ -55,6 +55,8 @@ export default function TabLayout() {
   return (
     <Tabs
       backBehavior={isViewerMode ? 'none' : isKff ? 'history' : 'firstRoute'}
+      // KFF: its own floating bar (src/components/kff/kffTabs.tsx); others keep the default.
+      tabBar={isKff ? renderKffTabBar : undefined}
       screenOptions={{
         tabBarActiveTintColor: "#2EC4B6",
         tabBarInactiveTintColor: "#94A3B8",
@@ -93,7 +95,6 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginBottom: 0,
         },
-        ...(isKff ? getKffTabScreenOptions(tabBarHeight) : {}),
       }}
     >
       <Tabs.Screen
