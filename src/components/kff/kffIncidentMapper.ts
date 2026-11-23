@@ -48,10 +48,10 @@ function mapWorkflowState(workflowState: any): { status: KffListStatus; state: K
 const pickLocalized = (obj: any, language: string): string =>
   (language === 'ar' && obj?.name_ar) || obj?.name || '';
 
-const personName = (person: any): string =>
+export const kffPersonName = (person: any): string =>
   [person?.first_name, person?.last_name].filter(Boolean).join(' ') || person?.username || '';
 
-const callerName = (raw: any) => raw?.reporter_name || personName(raw?.reporter);
+const callerName = (raw: any) => raw?.reporter_name || kffPersonName(raw?.reporter);
 const callerPhone = (raw: any) => raw?.reporter_phone || raw?.reporter?.phone || '';
 
 const toNumber = (value: unknown) => {
@@ -85,7 +85,7 @@ export const mapKffIncidentInfo = (raw: any, language: string) => ({
   callerPhone: callerPhone(raw),
   callerEmail: raw?.reporter_email || raw?.reporter?.email || '',
   department: pickLocalized(raw?.department, language),
-  assignee: personName(raw?.assignee),
+  assignee: kffPersonName(raw?.assignee),
 });
 
 /** Subset of the record the Automax update-status modal needs. */

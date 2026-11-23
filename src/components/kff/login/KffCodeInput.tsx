@@ -98,10 +98,14 @@ const styles = StyleSheet.create({
   },
   hiddenInput: {
     ...StyleSheet.absoluteFillObject,
-    // NOT opacity: 0 — iOS ignores touches (and focus) on views with alpha
-    // below 0.01. Keep it fully opaque but with invisible text instead.
+    // Invisible but still focusable: iOS ignores touches/focus on views with
+    // alpha below 0.01, and Android ignores `color: 'transparent'` on
+    // TextInput (typed digits showed through), so use opacity just above
+    // iOS's cut-off plus transparent, 1px text.
+    opacity: 0.011,
     color: 'transparent',
     backgroundColor: 'transparent',
+    fontSize: 1,
   },
 });
 

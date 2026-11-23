@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,43 +14,42 @@ import {
 
 import { KFF_COLORS } from './kffTheme';
 
-interface KffReasonModalProps {
+interface KffCommentModalProps {
   visible: boolean;
-  title: string;
-  submitLabel: string;
   submitting?: boolean;
   onCancel: () => void;
-  onSubmit: (reason: string) => void;
+  onSubmit: (comment: string) => void;
 }
 
-// Asks for a (required) reason before a reject transition runs.
-const KffReasonModal = ({ visible, title, submitLabel, submitting, onCancel, onSubmit }: KffReasonModalProps) => {
+// Comment box for the KFF incident detail screen's "Add Comments" button.
+const KffCommentModal = ({ visible, submitting, onCancel, onSubmit }: KffCommentModalProps) => {
   const { t } = useTranslation();
-  const [reason, setReason] = useState('');
+  const [comment, setComment] = useState('');
 
   useEffect(() => {
-    if (visible) setReason('');
+    if (visible) setComment('');
   }, [visible]);
 
-  const canSubmit = reason.trim().length > 0 && !submitting;
+  const canSubmit = comment.trim().length > 0 && !submitting;
+  const close = submitting ? undefined : onCancel;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={submitting ? undefined : onCancel} />
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <View style={styles.sheet}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.label}>{t('kff.detail.rejectReason')}</Text>
+          <Text style={styles.title}>{t('kff.detail.addComments')}</Text>
           <TextInput
             style={styles.input}
-            value={reason}
-            onChangeText={setReason}
-            placeholder={t('kff.detail.rejectReasonPlaceholder')}
+            value={comment}
+            onChangeText={setComment}
+            placeholder={t('kff.detail.commentPlaceholder')}
             placeholderTextColor={KFF_COLORS.textMuted}
             multiline
             autoFocus
             textAlignVertical="top"
-            maxLength={500}
+            maxLength={1000}
+            editable={!submitting}
           />
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancel} onPress={onCancel} disabled={submitting}>
@@ -59,13 +57,13 @@ const KffReasonModal = ({ visible, title, submitLabel, submitting, onCancel, onS
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.submit, !canSubmit && styles.disabled]}
-              onPress={() => onSubmit(reason.trim())}
+              onPress={() => onSubmit(comment.trim())}
               disabled={!canSubmit}
             >
               {submitting ? (
                 <ActivityIndicator color={KFF_COLORS.white} />
               ) : (
-                <Text style={styles.submitText}>{submitLabel}</Text>
+                <Text style={styles.submitText}>{t('kff.detail.postComment')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -92,17 +90,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: KFF_COLORS.navy,
     textAlign: 'center',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: KFF_COLORS.text,
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'left',
+    marginBottom: 16,
   },
   input: {
-    minHeight: 100,
+    minHeight: 110,
+    maxHeight: 220,
     borderWidth: 1.5,
     borderColor: '#E3E6EE',
     borderRadius: 14,
@@ -135,7 +127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderRadius: 24,
-    backgroundColor: KFF_COLORS.danger,
+    backgroundColor: KFF_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -149,4 +141,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default KffReasonModal;
+export default KffCommentModal;

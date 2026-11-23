@@ -27,11 +27,12 @@ export interface KffIncident {
   caller: { name: string; phone: string };
 }
 
-export const countByStatus = (incidents: KffIncident[]): Record<KffListStatus, number> =>
-  incidents.reduce(
-    (acc, incident) => {
-      acc[incident.status] += 1;
-      return acc;
-    },
-    { accepted: 0, completed: 0, rejected: 0 } as Record<KffListStatus, number>,
-  );
+/**
+ * Workflow state ids each My Incidents tab lists (`current_state_id` on
+ * POST /incidents/search) — states of the KFF dispatch workflow.
+ */
+export const KFF_STATUS_STATE_IDS: Record<KffListStatus, string[]> = {
+  accepted: ['db89d003-c9ab-4c41-b26e-27918b307028'], // Start
+  completed: ['1996d3ae-44ef-4ff5-bbbf-1861a13fa887'],
+  rejected: ['f0580b09-2cfc-4a43-8560-defbe2d96421'],
+};

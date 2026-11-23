@@ -8,6 +8,12 @@ import {
   toTransitionIncidentParam,
 } from "@/src/components/kff/kffIncidentMapper";
 import { useKffIncidentDetail } from "@/src/components/kff/useKffIncidentDetail";
+import { KffAttachmentsCard, KffCommentsCard } from "@/src/components/kff/KffIncidentActivity";
+import KffAttachmentSourceSheet from "@/src/components/kff/KffAttachmentSourceSheet";
+import KffCommentModal from "@/src/components/kff/KffCommentModal";
+import { WatermarkPreview } from "@/src/components/WatermarkPreview";
+import { WatermarkProcessor } from "@/src/components/WatermarkProcessor";
+import { KffAttachmentSource, useKffIncidentFollowUp } from "@/src/components/kff/useKffIncidentFollowUp";
 import { executeKffTransition } from "@/src/api/kffIncidents";
 import { openKffDirections } from "@/src/utils/kffDirections";
 import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
@@ -88,6 +94,14 @@ const KffIncidentDetailScreen = () => {
   const [runningTransitionId, setRunningTransitionId] = useState<string | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
   const fullMapRef = useRef<KffRouteMapHandle>(null);
+  const [attachSheetVisible, setAttachSheetVisible] = useState(false);
+  const [showStateFlow, setShowStateFlow] = useState(false);
+  const [commentVisible, setCommentVisible] = useState(false);
+  const followUp = useKffIncidentFollowUp(
+    remoteRaw?.id ? String(remoteRaw.id) : undefined,
+    remoteRaw?.version,
+    reload,
+  );
 
   // Unit's own position (device GPS) for "Current Location" and the map.
   const { location: myLocation, text: currentLocationText } = useKffCurrentLocation();
@@ -151,6 +165,7 @@ const KffIncidentDetailScreen = () => {
 
   const info = remoteRaw ? mapKffIncidentInfo(remoteRaw, i18n.language) : undefined;
   const transitionLabel = (tr: any): string => (i18n.language === "ar" && tr?.name_ar) || tr?.name || "";
+  const stateName = (state: any): string => (i18n.language === "ar" && state?.name_ar) || state?.name || "";
   const isDefaultLocation = info?.location.trim().toLowerCase() === "default";
 
   const handleCall = () => {
@@ -217,9 +232,15 @@ const KffIncidentDetailScreen = () => {
     ]);
   };
 
-  // TODO: wire up once the KFF attachment/comment endpoints exist (no-op for now).
-  const handleAddAttachments = () => {};
-  const handleAddComments = () => {};
+  const handleAttachmentSource = (source: KffAttachmentSource) => {
+    setAttachSheetVisible(false);
+    // Let the sheet finish closing first — iOS can't present the picker over it.
+    setTimeout(() => followUp.addAttachments(source), 350);
+  };
+
+  const handleSubmitComment = async (content: string) => {
+    if (await followUp.addComment(content)) setCommentVisible(false);
+  };
 
   return (
     <KffBackground>
@@ -256,29 +277,61 @@ const KffIncidentDetailScreen = () => {
                   if (!tr?.id) return null;
                   const running = runningTransitionId === tr.id;
                   const blocked = isDefaultLocation || item.can_execute === false;
+                  const from = stateName(tr.from_state);
+                  const to = stateName(tr.to_state);
                   return (
-                    <TouchableOpacity
-                      key={tr.id}
-                      style={[
-                        styles.transitionButton,
-                        isRejectTransition(tr) && styles.transitionReject,
-                        (blocked || (!!runningTransitionId && !running)) && styles.transitionDisabled,
-                      ]}
-                      activeOpacity={0.85}
-                      disabled={!!runningTransitionId}
-                      onPress={() => handleTransition(item)}
-                    >
-                      {running ? (
-                        <ActivityIndicator color={KFF_COLORS.white} />
-                      ) : (
-                        <Text style={styles.transitionText} numberOfLines={2}>
-                          {transitionLabel(tr)}
-                        </Text>
+                    <React.Fragment key={tr.id}>
+                      <TouchableOpacity
+                        style={[
+                          styles.transitionButton,
+                          isRejectTransition(tr) && styles.transitionReject,
+                          (blocked || (!!runningTransitionId && !running)) && styles.transitionDisabled,
+                        ]}
+                        activeOpacity={0.85}
+                        disabled={!!runningTransitionId}
+                        onPress={() => handleTransition(item)}
+                      >
+                        {running ? (
+                          <ActivityIndicator color={KFF_COLORS.white} />
+                        ) : (
+                          <Text style={styles.transitionText} numberOfLines={2}>
+                            {transitionLabel(tr)}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                      {showStateFlow && (!!from || !!to) && (
+                        <View style={styles.stateFlow}>
+                          <Text style={styles.stateFlowText} numberOfLines={1}>
+                            {from || "—"}
+                          </Text>
+                          <Ionicons
+                            name={i18n.language === "ar" ? "arrow-back" : "arrow-forward"}
+                            size={14}
+                            color={KFF_COLORS.primary}
+                          />
+                          <Text style={[styles.stateFlowText, styles.stateFlowTo]} numberOfLines={1}>
+                            {to || "—"}
+                          </Text>
+                        </View>
                       )}
-                    </TouchableOpacity>
+                    </React.Fragment>
                   );
                 })}
               </View>
+            )}
+            {transitions.length > 0 && (
+              <TouchableOpacity
+                style={styles.stateFlowToggle}
+                onPress={() => setShowStateFlow((v) => !v)}
+                hitSlop={12}
+                accessibilityLabel={t("kff.detail.showStateFlow")}
+              >
+                <Ionicons
+                  name={showStateFlow ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={KFF_COLORS.textMuted}
+                />
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -338,14 +391,33 @@ const KffIncidentDetailScreen = () => {
           </View>
         )}
 
+        {/* Attachments + comments from the detail response (hidden when empty) */}
+        <KffAttachmentsCard attachments={remoteRaw?.attachments} />
+        <KffCommentsCard comments={remoteRaw?.comments} />
+
         {/* Follow-up actions on an incident the unit is working (My Incidents) */}
         {incident.status === "accepted" && (
           <View style={styles.followUpPanel}>
-            <TouchableOpacity style={styles.followUpButton} activeOpacity={0.85} onPress={handleAddAttachments}>
-              <Image source={ADD_ICON} style={styles.followUpIcon} contentFit="contain" />
-              <Text style={styles.followUpText}>{t("kff.detail.addAttachments")}</Text>
+            <TouchableOpacity
+              style={styles.followUpButton}
+              activeOpacity={0.85}
+              disabled={followUp.uploading}
+              onPress={() => setAttachSheetVisible(true)}
+            >
+              {followUp.uploading ? (
+                <ActivityIndicator color={KFF_COLORS.primary} />
+              ) : (
+                <Image source={ADD_ICON} style={styles.followUpIcon} contentFit="contain" />
+              )}
+              <Text style={styles.followUpText}>
+                {followUp.uploading ? t("kff.detail.uploading") : t("kff.detail.addAttachments")}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.followUpButton} activeOpacity={0.85} onPress={handleAddComments}>
+            <TouchableOpacity
+              style={styles.followUpButton}
+              activeOpacity={0.85}
+              onPress={() => setCommentVisible(true)}
+            >
               <Image source={ADD_ICON} style={styles.followUpIcon} contentFit="contain" />
               <Text style={styles.followUpText}>{t("kff.detail.addComments")}</Text>
             </TouchableOpacity>
@@ -369,6 +441,34 @@ const KffIncidentDetailScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      <KffAttachmentSourceSheet
+        visible={attachSheetVisible}
+        onClose={() => setAttachSheetVisible(false)}
+        onSelect={handleAttachmentSource}
+      />
+      {/* Camera photo: watermark preview, then a hidden processor burns it in */}
+      <WatermarkPreview
+        visible={!!followUp.photoPreview}
+        imageUri={followUp.photoPreview?.imageUri ?? ""}
+        watermarkData={followUp.photoPreview?.data ?? {}}
+        onAccept={followUp.acceptPhoto}
+        onRetry={followUp.retakePhoto}
+      />
+      {followUp.photoToWatermark && (
+        <WatermarkProcessor
+          key={followUp.photoToWatermark.imageUri}
+          imageUri={followUp.photoToWatermark.imageUri}
+          data={followUp.photoToWatermark.data}
+          onComplete={followUp.onPhotoWatermarked}
+        />
+      )}
+      <KffCommentModal
+        visible={commentVisible}
+        submitting={followUp.commenting}
+        onCancel={() => setCommentVisible(false)}
+        onSubmit={handleSubmitComment}
+      />
 
       {/* Full-screen map */}
       <Modal visible={mapExpanded && hasLocation} animationType="slide" onRequestClose={() => setMapExpanded(false)}>
@@ -498,6 +598,29 @@ const styles = StyleSheet.create({
   transitionReject: {
     backgroundColor: KFF_COLORS.danger,
     shadowColor: KFF_COLORS.danger,
+  },
+  stateFlow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    maxWidth: "80%",
+    marginTop: -4,
+  },
+  stateFlowText: {
+    flexShrink: 1,
+    fontSize: 12,
+    color: KFF_COLORS.textSecondary,
+  },
+  stateFlowTo: {
+    fontWeight: "700",
+    color: KFF_COLORS.navy,
+  },
+  stateFlowToggle: {
+    alignSelf: "center",
+    marginTop: 6,
+    marginBottom: -8,
+    paddingHorizontal: 12,
   },
   transitionDisabled: {
     opacity: 0.5,

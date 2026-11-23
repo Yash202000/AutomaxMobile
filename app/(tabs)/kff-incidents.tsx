@@ -11,7 +11,7 @@ import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -24,8 +24,8 @@ import {
 } from "react-native";
 
 // KFF Dispatcher — My Incidents tab.
-// Incidents assigned to the logged-in user on the selected day, from the
-// Automax incidents API (see src/api/kffIncidents.ts).
+// The unit's incidents for the selected day, one tab per workflow state group
+// (see useKffMyIncidents / KFF_STATUS_STATE_IDS).
 
 const KffIncidentCard = ({
   incident,
@@ -138,17 +138,9 @@ const KffIncidentsScreen = () => {
     }
   }, [params.status, params.date, params.ts]);
 
-  const {
-    incidents: dayIncidents,
-    counts,
-    loading,
-    refreshing,
-    error,
-    refresh,
-  } = useKffMyIncidents();
-  const incidents = useMemo(
-    () => dayIncidents.filter((i) => i.status === activeStatus),
-    [dayIncidents, activeStatus],
+  const { incidents, counts, loading, refreshing, error, refresh } = useKffMyIncidents(
+    selectedDate,
+    activeStatus,
   );
 
   return (

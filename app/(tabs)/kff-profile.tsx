@@ -60,7 +60,7 @@ const KffProfileScreen = () => {
 
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
 
-  const { counts, loading: countsLoading } = useKffMyIncidents();
+  const { counts, countsLoading } = useKffMyIncidents(selectedDate);
   const { uniqueId, unit } = useKffUnitProfile();
   const unitStatus = unit?.status || "";
   const isToday = isSameDay(selectedDate, new Date());

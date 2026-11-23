@@ -295,8 +295,6 @@
     "detail": {
       "transitionConfirm": "هل أنت متأكد أنك تريد {{action}} لهذا البلاغ؟",
       "transitionFailed": "تعذر تحديث البلاغ. حاول مرة أخرى.",
-      "rejectReason": "السبب",
-      "rejectReasonPlaceholder": "أدخل سبب الرفض",
       "locating": "جارٍ تحديد موقعك…",
       "locationDenied": "إذن الموقع غير مفعّل",
       "actions": "تحديث الحالة",
@@ -320,7 +318,28 @@
       "loadFailed": "تعذّر تحميل البلاغ.",
       "expandMap": "تكبير الخريطة",
       "addAttachments": "إضافة مرفقات",
-      "addComments": "إضافة تعليقات"
+      "addComments": "إضافة تعليقات",
+      "attachments": "المرفقات",
+      "comments": "التعليقات",
+      "internal": "داخلي",
+      "commentPlaceholder": "اكتب تعليقك…",
+      "postComment": "إرسال",
+      "commentFailed": "تعذر إرسال التعليق. حاول مرة أخرى.",
+      "uploading": "جارٍ الرفع…",
+      "attachmentPickFailed": "تعذر فتح الملف. حاول مرة أخرى.",
+      "attachmentUploadFailed": "تعذر رفع بعض الملفات",
+      "attachmentsUploaded_zero": "لم يتم رفع أي مرفق.",
+      "attachmentsUploaded_one": "تم رفع مرفق واحد.",
+      "attachmentsUploaded_two": "تم رفع مرفقين.",
+      "attachmentsUploaded_few": "تم رفع {{count}} مرفقات.",
+      "attachmentsUploaded_many": "تم رفع {{count}} مرفقًا.",
+      "attachmentsUploaded_other": "تم رفع {{count}} مرفق.",
+      "attachFrom": {
+        "camera": "التقاط صورة",
+        "gallery": "اختيار من المعرض",
+        "document": "اختيار ملف"
+      },
+      "showStateFlow": "عرض تغيير الحالة"
     },
     "time": {
       "justNow": "الآن",

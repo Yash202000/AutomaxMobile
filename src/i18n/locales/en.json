@@ -294,8 +294,6 @@
     "detail": {
       "transitionConfirm": "Are you sure you want to {{action}} this incident?",
       "transitionFailed": "Couldn't update the incident. Try again.",
-      "rejectReason": "Reason",
-      "rejectReasonPlaceholder": "Enter the reason for rejection",
       "locating": "Getting your location…",
       "locationDenied": "Location permission is off",
       "actions": "Update Status",
@@ -319,7 +317,24 @@
       "loadFailed": "Couldn't load this incident.",
       "expandMap": "Expand map",
       "addAttachments": "Add Attachments",
-      "addComments": "Add Comments"
+      "addComments": "Add Comments",
+      "attachments": "Attachments",
+      "comments": "Comments",
+      "internal": "Internal",
+      "commentPlaceholder": "Write your comment…",
+      "postComment": "Post",
+      "commentFailed": "Couldn't post the comment. Try again.",
+      "uploading": "Uploading…",
+      "attachmentPickFailed": "Couldn't open the file. Try again.",
+      "attachmentUploadFailed": "Some files couldn't be uploaded",
+      "attachmentsUploaded_one": "{{count}} attachment uploaded.",
+      "attachmentsUploaded_other": "{{count}} attachments uploaded.",
+      "attachFrom": {
+        "camera": "Take Photo",
+        "gallery": "Choose from Gallery",
+        "document": "Choose File"
+      },
+      "showStateFlow": "Show status change"
     },
     "time": {
       "justNow": "Just now",
