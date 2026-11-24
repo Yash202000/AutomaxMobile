@@ -14,6 +14,7 @@ import { useFCM } from '@/hooks/use-FCM';
 import { registerToken } from '@/src/api/notifications';
 import { CustomAlertComponent } from '@/src/components/CustomAlert';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
+import KffSplash from '@/src/components/kff/KffSplash';
 import NoInternetOverlay from '@/src/components/NoInternetOverlay';
 import { AuthProvider, useAuth } from '@/src/context/AuthContext';
 import { useGlobalWebSocket } from '@/src/hooks/useGlobalWebSocket';
@@ -22,8 +23,21 @@ import i18n from '@/src/i18n';
 import FCMService from '@/src/services/fcm.service';
 import { createChannel } from '@/src/services/notification.channel';
 import { crashLogger, setupGlobalErrorHandlers } from '@/src/utils/crashLogger';
+import { initKffDeviceConfig } from '@/src/services/kffDeviceConfig';
+import { isKffDispatcher, isKffPasscodeLogin, KFF_HOME_ROUTE } from '@/src/utils/kff';
 import { Ionicons } from '@expo/vector-icons';
 import { t } from 'i18next';
+
+// How long the KFF launch screen stays up at minimum, so it doesn't just flash
+// when the stored session restores instantly.
+const KFF_SPLASH_MIN_MS = 1500;
+
+// KFF passcode login: API requests use the server saved in the admin device
+// setup. Registered before anything renders so no request goes out first.
+if (isKffPasscodeLogin()) initKffDeviceConfig();
+
+// Unauthenticated KFF passcode-login screens (only reachable in that mode).
+const KFF_AUTH_SCREENS = ['kff-register', 'kff-create-passcode', 'kff-device-setup'];
 
 
 
@@ -157,10 +171,20 @@ function RootLayoutNav() {
   useGlobalWebSocket();
   useNetworkMonitor();
 
+  const isKff = isKffDispatcher();
+  const [kffSplashTimeUp, setKffSplashTimeUp] = useState(!isKff);
+  useEffect(() => {
+    if (!isKff) return;
+    const timer = setTimeout(() => setKffSplashTimeUp(true), KFF_SPLASH_MIN_MS);
+    return () => clearTimeout(timer);
+  }, [isKff]);
+  // Launch only: logout keeps the regular spinner overlay below.
+  const showKffSplash = isKff && !isLoggingOut && (isLoading || !kffSplashTimeUp);
+
   useEffect(() => {
     if (isLoading || isLoggingOut) return;
 
-    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password'];
+    const authScreens = ['login', 'forgot-password', 'otp', 'reset-password', ...KFF_AUTH_SCREENS];
     const inAuthGroup = authScreens.includes(segments[0] as string);
 
     if (!isAuthenticated && !inAuthGroup) {
@@ -173,7 +197,9 @@ function RootLayoutNav() {
       const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
       const isViewerMode = isViewerApp && isViewerRole;
 
-      if (isViewerMode) {
+      if (isKffDispatcher()) {
+        router.replace(KFF_HOME_ROUTE);
+      } else if (isViewerMode) {
         router.replace('/(tabs)/incident');
       } else {
         router.replace('/(tabs)/explore');
@@ -248,6 +274,9 @@ function RootLayoutNav() {
         <Stack.Screen name="forgot-password" options={{ title: '' }} />
         <Stack.Screen name="otp" options={{ title: '' }} />
         <Stack.Screen name="reset-password" options={{ title: '' }} />
+        <Stack.Screen name="kff-register" options={{ headerShown: false }} />
+        <Stack.Screen name="kff-create-passcode" options={{ headerShown: false }} />
+        <Stack.Screen name="kff-device-setup" options={{ headerShown: false }} />
         <Stack.Screen name="incident-details" options={{ headerShown: false }} />
         <Stack.Screen name="add-incident" options={{ headerShown: false }} />
         <Stack.Screen name="my-incidents" options={{ headerShown: false }} />
@@ -270,7 +299,9 @@ function RootLayoutNav() {
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('common.modal', 'Modal') }} />
       </Stack>
-      {(isLoading || isLoggingOut) && (
+      {showKffSplash ? (
+        <KffSplash />
+      ) : (isLoading || isLoggingOut) && (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colorScheme === 'dark' ? '#000' : '#FFF', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }]}>
           <ActivityIndicator size="large" color="#2EC4B6" />
         </View>

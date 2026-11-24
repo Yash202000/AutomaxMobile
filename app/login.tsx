@@ -17,7 +17,9 @@ import {
 } from "@/src/components/NafathApproval";
 import { useAuth } from "@/src/context/AuthContext";
 import { getCurrentLanguage, setLanguage } from "@/src/i18n";
+import KffLoginScreen from "@/src/components/kff/login/KffLoginScreen";
 import { crashLogger } from "@/src/utils/crashLogger";
+import { isKffDispatcher, isKffPasscodeLogin } from "@/src/utils/kff";
 import {
   checkConnectivity,
   showNoInternetAlert,
@@ -862,7 +864,11 @@ const LoginScreen = () => {
               >
                 <View style={styles.logoShadow}>
                   <Image
-                    source={require("@/assets/images/start-logo.png")}
+                    source={
+                      isKffDispatcher()
+                        ? require("@/assets/images/kff/kff-logo.png")
+                        : require("@/assets/images/start-logo.png")
+                    }
                     style={styles.headerLogo}
                   />
                 </View>
@@ -2210,4 +2216,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+// KFF passcode login replaces this screen only when EXPO_PUBLIC_KFF_DISPATHER_Login is on.
+export default isKffPasscodeLogin() ? KffLoginScreen : LoginScreen;

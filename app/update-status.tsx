@@ -13,6 +13,7 @@ import { getLookupCategories, LookupCategory } from "@/src/api/lookups";
 import { CustomAlert } from "@/src/components/CustomAlert";
 import { DynamicLookupField } from "@/src/components/DynamicLookupField";
 import { IncidentMentionTextarea } from "@/src/components/IncidentMentionTextarea";
+import { kffListStatusForState } from "@/src/components/kff/kffIncidentMapper";
 import { LocationData } from "@/src/components/LocationPickerOSM";
 import TreeSelect, { TreeNode } from "@/src/components/TreeSelect";
 import { WatermarkPreview } from "@/src/components/WatermarkPreview";
@@ -22,6 +23,7 @@ import { usePermissions } from "@/src/hooks/usePermissions";
 import i18n from "@/src/i18n";
 import { compressImage } from "@/src/utils/imageCompression";
 import { filterInvalidImages } from "@/src/utils/imageValidation";
+import { isKffDispatcher } from "@/src/utils/kff";
 import { getLocationDetails } from "@/src/utils/location";
 import {
   generateWatermarkedFilename,
@@ -79,6 +81,7 @@ const UpdateStatusModal = () => {
     type,
     transitions,
     incident: incidentParam,
+    transitionId: transitionIdParam,
   } = useLocalSearchParams();
   const incidentId = Array.isArray(id) ? id[0] : id;
   const ticketType = Array.isArray(type)
@@ -1405,6 +1408,18 @@ const UpdateStatusModal = () => {
         {
           text: t("common.ok"),
           onPress: () => {
+            // KFF Dispatcher: back to My Incidents on the tab matching the
+            // new state (Accepted / Completed / Rejected), not the Automax list.
+            if (isKffDispatcher() && ticketType === "incident") {
+              router.dismissTo({
+                pathname: "/(tabs)/kff-incidents",
+                params: {
+                  status: kffListStatusForState(selectedTransition?.transition?.to_state),
+                  ts: String(Date.now()),
+                },
+              });
+              return;
+            }
             // The ticket may no longer be visible to this user after the
             // update (403), so return to its list rather than the details.
             const listRoutes: Record<string, string> = {
@@ -1522,6 +1537,22 @@ const UpdateStatusModal = () => {
       });
     }
   };
+
+  // Optional `transitionId` param: open with that transition already chosen
+  // (the KFF incident detail has one button per transition). Runs once.
+  const preselectTransitionId = Array.isArray(transitionIdParam)
+    ? transitionIdParam[0]
+    : transitionIdParam;
+  const preselectDone = useRef(false);
+  useEffect(() => {
+    if (preselectDone.current || !preselectTransitionId) return;
+    const match = availableTransitions.find(
+      (trans: any) => trans?.transition?.id === preselectTransitionId,
+    );
+    if (!match) return;
+    preselectDone.current = true;
+    handleTransitionSelect(match);
+  }, [preselectTransitionId, availableTransitions, handleTransitionSelect]);
 
   return (
     <KeyboardAvoidingView

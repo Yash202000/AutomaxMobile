@@ -1,4 +1,9 @@
+import { handleKffNotification } from './kffNotificationRouter';
+import { isKffDispatcher } from './kff';
+
 export function handleNotification(data: any, navigation: any) {
+    // KFF Dispatcher has its own screens; Automax routing below is unchanged.
+    if (isKffDispatcher()) return handleKffNotification(data, navigation);
     if (data?.type) {
         switch (data.type) {
             case "INCIDENT":

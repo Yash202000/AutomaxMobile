@@ -1,4 +1,4 @@
-package com.automax.mobile
+package com.leadergroup.kffdispatcher
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

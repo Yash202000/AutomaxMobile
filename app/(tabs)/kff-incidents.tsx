@@ -1,0 +1,360 @@
+import KffAppBar from "@/src/components/kff/KffAppBar";
+import { KffCriticalityPill, KffStateBadge, KffTicketIcon } from "@/src/components/kff/KffBadges";
+import KffBackground from "@/src/components/kff/KffBackground";
+import KffCalendarStrip from "@/src/components/kff/KffCalendarStrip";
+import { formatKffDateTime, formatKffRelativeTime, startOfDay } from "@/src/components/kff/kffDateUtils";
+import KffRouteTimeline from "@/src/components/kff/KffRouteTimeline";
+import KffStatusTabs from "@/src/components/kff/KffStatusTabs";
+import { useKffCurrentLocation } from "@/src/components/kff/useKffCurrentLocation";
+import { KFF_COLORS, KFF_SHADOWS } from "@/src/components/kff/kffTheme";
+import { KFF_STATUSES, KffIncident, KffListStatus } from "@/src/components/kff/kffTypes";
+import { useKffMyIncidents } from "@/src/components/kff/useKffMyIncidents";
+import { Ionicons } from "@expo/vector-icons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+// KFF Dispatcher — My Incidents tab.
+// The unit's incidents for the selected day, one tab per workflow state group
+// (see useKffMyIncidents / KFF_STATUS_STATE_NAMES).
+
+const KffIncidentCard = ({
+  incident,
+  currentLocation,
+}: {
+  incident: KffIncident;
+  /** Unit's own position (device GPS), shared by every card. */
+  currentLocation: string;
+}) => {
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const [callerExpanded, setCallerExpanded] = useState(false);
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.9}
+      onPress={() =>
+        router.navigate({ pathname: "/(tabs)/kff-incident-detail", params: { id: incident.id } })
+      }
+    >
+      <View style={styles.cardBody}>
+        <View style={styles.cardHeader}>
+          <KffTicketIcon size={44} />
+          <View style={styles.cardHeaderText}>
+            <Text style={styles.ticketNumber}>{incident.ticketNumber}</Text>
+            <Text style={styles.cardDate}>
+              {formatKffDateTime(incident.createdAt, i18n.language)}
+            </Text>
+          </View>
+          <KffStateBadge state={incident.state} label={incident.stateName} />
+        </View>
+
+        <Text style={styles.cardTitle}>{incident.title}</Text>
+        <View style={styles.metaRow}>
+          <KffCriticalityPill level={incident.criticality} />
+          <View style={styles.timeAgo}>
+            <Ionicons name="time-outline" size={14} color={KFF_COLORS.textMuted} />
+            <Text style={styles.timeAgoText}>
+              {formatKffRelativeTime(incident.createdAt, t)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.separator} />
+
+        <KffRouteTimeline
+          destination={incident.to}
+          currentLocation={currentLocation}
+          compact
+        />
+
+        {!!incident.description && (
+          <>
+            <Text style={styles.sectionLabel}>{t("kff.description")}</Text>
+            <Text style={styles.descriptionText}>{incident.description}</Text>
+          </>
+        )}
+      </View>
+
+      <TouchableOpacity
+        style={styles.callerBar}
+        activeOpacity={0.8}
+        onPress={() => setCallerExpanded((v) => !v)}
+      >
+        <View style={styles.callerHeader}>
+          <Ionicons name="call-outline" size={16} color={KFF_COLORS.primary} />
+          <Text style={styles.callerTitle}>{t("kff.callerDetails")}</Text>
+          <Ionicons
+            name={callerExpanded ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={KFF_COLORS.navy}
+          />
+        </View>
+        {callerExpanded && (
+          <View style={styles.callerContent}>
+            <Text style={styles.callerText}>{incident.caller.name || t("common.na")}</Text>
+            {!!incident.caller.phone && (
+              <Text style={styles.callerText}>{"‎" + incident.caller.phone}</Text>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+};
+
+const parseStatus = (value?: string): KffListStatus | undefined =>
+  KFF_STATUSES.includes(value as KffListStatus) ? (value as KffListStatus) : undefined;
+
+const KffIncidentsScreen = () => {
+  const { t } = useTranslation();
+  const tabBarHeight = useBottomTabBarHeight();
+  const { text: currentLocationText } = useKffCurrentLocation();
+  const params = useLocalSearchParams<{ status?: string; date?: string; ts?: string }>();
+
+  const [activeStatus, setActiveStatus] = useState<KffListStatus>(
+    parseStatus(params.status) ?? "accepted",
+  );
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+
+  // Profile cards / Accept navigate here with ?status=&date=&ts= — tab screens
+  // stay mounted, so sync on every navigation (ts changes each time).
+  useEffect(() => {
+    const status = parseStatus(params.status);
+    if (status) setActiveStatus(status);
+    if (params.date) {
+      const d = new Date(params.date);
+      if (!isNaN(d.getTime())) setSelectedDate(startOfDay(d));
+    }
+  }, [params.status, params.date, params.ts]);
+
+  const { incidents, counts, loading, refreshing, error, refresh } = useKffMyIncidents(
+    selectedDate,
+    activeStatus,
+  );
+
+  return (
+    <KffBackground>
+      <KffAppBar title={t("kff.tabs.myIncidents")} />
+
+      <FlatList
+        data={incidents}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <KffIncidentCard incident={item} currentLocation={currentLocationText} />
+        )}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 24 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={KFF_COLORS.primary}
+            colors={[KFF_COLORS.primary]}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <KffStatusTabs
+              statuses={KFF_STATUSES}
+              active={activeStatus}
+              counts={counts}
+              onChange={setActiveStatus}
+            />
+            <KffCalendarStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color={KFF_COLORS.primary} />
+            </View>
+          ) : error ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="cloud-offline-outline" size={36} color={KFF_COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>{t("kff.loadFailed")}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={refresh} activeOpacity={0.85}>
+                <Text style={styles.retryText}>{t("common.retry")}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="file-tray-outline" size={36} color={KFF_COLORS.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t("kff.noIncidents", { status: t(`kff.status.${activeStatus}`) })}
+              </Text>
+              <Text style={styles.emptySubtitle}>{t("kff.noIncidentsDesc")}</Text>
+            </View>
+          )
+        }
+      />
+    </KffBackground>
+  );
+};
+
+const styles = StyleSheet.create({
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    flexGrow: 1,
+  },
+  listHeader: {
+    gap: 14,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: KFF_COLORS.card,
+    borderRadius: 22,
+    marginBottom: 14,
+    overflow: "hidden",
+    ...KFF_SHADOWS.card,
+  },
+  cardBody: {
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  ticketNumber: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: KFF_COLORS.text,
+    textAlign: "left",
+  },
+  cardDate: {
+    fontSize: 12,
+    color: KFF_COLORS.textMuted,
+    marginTop: 2,
+    textAlign: "left",
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: KFF_COLORS.navy,
+    marginTop: 14,
+    textAlign: "left",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  timeAgo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  timeAgoText: {
+    fontSize: 12,
+    color: KFF_COLORS.textMuted,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#EEF0F6",
+    marginVertical: 14,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: KFF_COLORS.primary,
+    textAlign: "left",
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: KFF_COLORS.text,
+    textAlign: "left",
+  },
+  callerBar: {
+    backgroundColor: KFF_COLORS.primarySoft,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  callerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  callerTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: KFF_COLORS.navy,
+    textAlign: "left",
+  },
+  callerContent: {
+    marginTop: 8,
+    paddingLeft: 24,
+    gap: 4,
+  },
+  callerText: {
+    fontSize: 14,
+    color: KFF_COLORS.text,
+    textAlign: "left",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: KFF_COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: KFF_COLORS.navy,
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: KFF_COLORS.textSecondary,
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 8,
+    backgroundColor: KFF_COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+  },
+  retryText: {
+    color: KFF_COLORS.white,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+});
+
+export default KffIncidentsScreen;

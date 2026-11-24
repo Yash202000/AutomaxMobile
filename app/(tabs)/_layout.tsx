@@ -7,8 +7,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import {
+  KffIncidentsTabIcon,
+  KffProfileTabIcon,
+  KffSettingsTabIcon,
+  renderKffTabBar,
+} from "@/src/components/kff/kffTabs";
 import { useAuth } from "@/src/context/AuthContext";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { isKffDispatcher } from "@/src/utils/kff";
 
 const TAB_BAR_HEIGHT = 70;
 const ICON_SIZE = 26;
@@ -39,12 +46,17 @@ export default function TabLayout() {
   const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;
   const isViewerMode = isViewerApp && isViewerRole;
 
+  // KFF Dispatcher client: only Profile / My Incidents / Settings are shown.
+  const isKff = isKffDispatcher();
+
   const tabBarHeight =
     TAB_BAR_HEIGHT + (insets.bottom > 0 ? insets.bottom - 10 : 0);
 
   return (
     <Tabs
-      backBehavior={isViewerMode ? 'none' : 'firstRoute'}
+      backBehavior={isViewerMode ? 'none' : isKff ? 'history' : 'firstRoute'}
+      // KFF: its own floating bar (src/components/kff/kffTabs.tsx); others keep the default.
+      tabBar={isKff ? renderKffTabBar : undefined}
       screenOptions={{
         tabBarActiveTintColor: "#2EC4B6",
         tabBarInactiveTintColor: "#94A3B8",
@@ -103,7 +115,7 @@ export default function TabLayout() {
               />
             </View>
           ),
-          href: isViewerMode ? null : undefined,
+          href: isViewerMode || isKff ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -125,7 +137,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            isViewerMode || canViewIncidents() || canViewAllIncidents() || canCreateIncidents()
+            !isKff && (isViewerMode || canViewIncidents() || canViewAllIncidents() || canCreateIncidents())
               ? "/(tabs)/incident"
               : null,
         }}
@@ -149,7 +161,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            !isViewerMode && (canViewRequests() || canViewAllRequests() || canCreateRequests())
+            !isKff && !isViewerMode && (canViewRequests() || canViewAllRequests() || canCreateRequests())
               ? "/(tabs)/request"
               : null,
         }}
@@ -177,7 +189,7 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            !isViewerMode && (canViewComplaints() || canViewAllComplaints() || canCreateComplaints())
+            !isKff && !isViewerMode && (canViewComplaints() || canViewAllComplaints() || canCreateComplaints())
               ? "/(tabs)/complaint"
               : null,
         }}
@@ -201,16 +213,47 @@ export default function TabLayout() {
             </View>
           ),
           href:
-            !isViewerMode && (canViewQueries() || canViewAllQueries() || canCreateQueries())
+            !isKff && !isViewerMode && (canViewQueries() || canViewAllQueries() || canCreateQueries())
               ? "/(tabs)/query"
               : null,
+        }}
+      />
+      {/* KFF Dispatcher tabs — hidden (href: null) for every other client */}
+      <Tabs.Screen
+        name="kff-profile"
+        options={{
+          title: t("kff.tabs.profile"),
+          tabBarIcon: KffProfileTabIcon,
+          href: isKff ? "/(tabs)/kff-profile" : null,
+        }}
+      />
+      <Tabs.Screen
+        name="kff-incidents"
+        options={{
+          title: t("kff.tabs.myIncidents"),
+          tabBarIcon: KffIncidentsTabIcon,
+          href: isKff ? "/(tabs)/kff-incidents" : null,
+        }}
+      />
+      <Tabs.Screen
+        name="kff-incident-alerts"
+        options={{
+          title: t("kff.alerts.title"),
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="kff-incident-detail"
+        options={{
+          title: t("kff.detail.title"),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="setting"
         options={{
           title: t("tabs.settings"),
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: isKff ? KffSettingsTabIcon : ({ color, focused }) => (
             <View
               style={[
                 styles.iconContainer,

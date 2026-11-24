@@ -4,10 +4,16 @@ import { sendOtp } from '../api/auth';
 import { getSettings } from '../api/common';
 import { CustomAlert } from '../components/CustomAlert';
 import type { User } from '../context/AuthContext';
+import { isKffDispatcher, KFF_HOME_ROUTE } from './kff';
 
 // Same viewer-role check previously duplicated across every login branch
 // (email/ad/sso in app/login.tsx, citizen/phone in app/otp.tsx).
 export function routeToDashboard(user: User | null, router: Router) {
+  // KFF Dispatcher client lands on its own Profile tab.
+  if (isKffDispatcher()) {
+    router.replace(KFF_HOME_ROUTE);
+    return;
+  }
   const isViewerApp = process.env.EXPO_PUBLIC_VIEWER_APP === 'true';
   const viewerRoles = (process.env.EXPO_PUBLIC_VIEWER_APP_ROLES || '').split(',');
   const isViewerRole = user?.roles?.some(role => viewerRoles.includes(role.code)) ?? false;

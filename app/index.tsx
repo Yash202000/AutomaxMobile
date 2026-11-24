@@ -1,9 +1,20 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import React, { useEffect, useRef } from 'react';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import KffSplash from '@/src/components/kff/KffSplash';
+import { useAuth } from '@/src/context/AuthContext';
+import { isKffDispatcher, KFF_HOME_ROUTE } from '@/src/utils/kff';
+
+// KFF has no "Get Started" screen: keep the launch splash up while the stored
+// session restores, then go straight to the KFF home (signed in) or login.
+const KffEntry = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <KffSplash />;
+  return <Redirect href={isAuthenticated ? KFF_HOME_ROUTE : '/login'} />;
+};
 
 const StartScreen = () => {
   const router = useRouter();
@@ -275,4 +286,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StartScreen;
+export default isKffDispatcher() ? KffEntry : StartScreen;

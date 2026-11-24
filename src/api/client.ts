@@ -5,12 +5,17 @@ import * as SecureStore from "expo-secure-store";
 import i18n from "../i18n";
 import { ensureCertificatePinning } from "../security/certificatePinning";
 import { notifySessionExpired } from "../utils/authEvents";
+import { isKffPasscodeLogin } from "../utils/kff";
 import { handleRequestNetworkError } from "../utils/networkStatus";
+import { attachApiLogger } from "./apiLogger";
 
-if (!process.env.EXPO_PUBLIC_API_URL) {
+// KFF passcode login takes its API server from the admin device setup at
+// runtime (src/services/kffDeviceConfig.ts), so EXPO_PUBLIC_API_URL is
+// optional there. Every other build still requires it.
+if (!process.env.EXPO_PUBLIC_API_URL && !isKffPasscodeLogin()) {
   throw new Error("EXPO_PUBLIC_API_URL is not set");
 }
-export const baseURL = process.env.EXPO_PUBLIC_API_URL;
+export const baseURL = process.env.EXPO_PUBLIC_API_URL ?? "";
 
 const apiClient = axios.create({
   baseURL,
@@ -18,6 +23,33 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Dev-only API Inspector feed (EXPO_PUBLIC_DEBUG_API_LOGS=true, `npm run api-inspector`).
+// Must be attached before the interceptors below.
+attachApiLogger(apiClient);
+
+// Runtime API server override. Only the KFF passcode-login flow uses it (the
+// admin "Web Service URL", see src/services/kffDeviceConfig.ts); every other
+// build never registers a loader, so requests keep EXPO_PUBLIC_API_URL.
+let runtimeBaseURLReady: Promise<void> | null = null;
+
+/** Current API base URL (the runtime override when one is set). */
+export const getApiBaseURL = (): string => apiClient.defaults.baseURL || baseURL;
+
+/** Points every following request at `url`; null restores EXPO_PUBLIC_API_URL. */
+export const setApiBaseURL = (url: string | null) => {
+  apiClient.defaults.baseURL = url || baseURL;
+};
+
+/**
+ * Registers an async source for the API base URL (read from storage at app
+ * start). Requests wait for it once, so nothing is sent to the wrong server.
+ */
+export const registerApiBaseURLLoader = (loader: () => Promise<string | null>) => {
+  runtimeBaseURLReady = loader()
+    .then((url) => setApiBaseURL(url))
+    .catch(() => setApiBaseURL(null));
+};
 
 // Flag to prevent multiple refresh attempts
 let isRefreshing = false;
@@ -57,6 +89,20 @@ apiClient.interceptors.request.use(
     // No request may leave the app before certificate pinning is active
     await ensureCertificatePinning();
 
+    // Runtime base URL (KFF only): axios merged the defaults before this
+    // interceptor ran, so re-apply the (possibly just loaded) override.
+    if (runtimeBaseURLReady) {
+      await runtimeBaseURLReady;
+      config.baseURL = getApiBaseURL();
+      // KFF before the admin device setup (and no EXPO_PUBLIC_API_URL):
+      // there's no server yet, so fail fast instead of sending a relative URL.
+      if (!config.baseURL) {
+        const error = new Error("API server not configured");
+        (error as any).isNoServer = true;
+        return Promise.reject(error);
+      }
+    }
+
     // If logging out, reject all requests except the logout request itself
     if (isLoggingOut && !config.url?.includes("/auth/logout")) {
       const error = new Error("Request cancelled - logging out");
@@ -80,6 +126,10 @@ apiClient.interceptors.request.use(
       "/otp/verify",
       "/ldap/login",
       "/settings",
+      // KFF Dispatcher pre-login calls (unit user lookup; passcode setup during
+      // registration carries its own Authorization header).
+      "/auth/unit/",
+      "/users/passcode",
     ];
     const isPublicEndpoint = publicEndpoints.some((endpoint) =>
       config.url?.includes(endpoint),
@@ -136,6 +186,7 @@ apiClient.interceptors.response.use(
       !isLoggingOut &&
       !(error as any).isLogoutCancel &&
       !(error as any).isNoToken &&
+      !(error as any).isNoServer &&
       // Don't log 401s as errors since they're handled by token refresh
       error.response?.status !== 401;
 
@@ -285,7 +336,7 @@ apiClient.interceptors.response.use(
     }
 
     try {
-      const response = await axios.post(`${baseURL}/auth/refresh`, {
+      const response = await axios.post(`${getApiBaseURL()}/auth/refresh`, {
         refresh_token: refreshToken,
       });
       const { token, refresh_token } = response.data.data;
